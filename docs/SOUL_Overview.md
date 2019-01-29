@@ -4,7 +4,7 @@ SOUL is short for __SOU__*nd* __L__*anguage*.
 
 Its mission is to give audio development a long-overdue kick in the pants, both in terms of how we write audio code, and where the code executes.
 
-The SOUL platform is a language and an API. The language is a small, carefully crafted DSL for writing the real-time parts of an audio algorithm. The API is designed to deploy that SOUL code to heterogenous CPUs and DSPs, both locally and remotely.
+The SOUL platform is a language and an API. The language is a small, carefully crafted DSL for writing the real-time parts of an audio algorithm. The API is designed to deploy that SOUL code to heterogeneous CPUs and DSPs, both locally and remotely.
 
 ### What problems does it solve?
 
@@ -30,9 +30,9 @@ The goals of the project require a language because:
 
 - Because SOUL is an embedded language, even apps written in non-native languages like Javascript, Java, Python, etc can achieve C++-level (or better) performance, without the developer needing to learn C++ or use a compiler toolchain.
 
-Think of it as an audio equivalent of *openGLSL* or *openCL*. Like those languages, you'll typically write a host app (in some other language) which passes a chunk of SOUL code to the SOUL API; the API compiles and sends it on to the best available driver/CPU/DSP or external device.
+Think of it as an audio equivalent of *OpenGLSL* or *OpenCL*. Like those languages, you'll typically write a host app (in some other language) which passes a chunk of SOUL code to the SOUL API; the API compiles and sends it on to the best available driver/CPU/DSP or external device.
 
-That might mean that it just runs on your normal CPU using a JIT-compiler. Or if an audio DSP is available, it might run on that. Or it may send the code to an external audio i/o device which contains a SOUL-compatible processor. Running on a DSP/bare-metal system means that you can get much better latency and performance than running it on a CPU, but your app doesn't have to worry about that - you write once, and the SOUL API takes care of deploying it to all kinds of different architectures.
+That might mean that it just runs on your normal CPU using a JIT-compiler. Or if an audio DSP is available, it might run on that. Or it may send the code to an external audio I/O device which contains a SOUL-compatible processor. Running on a DSP/bare-metal system means that you can get much better latency and performance than running it on a CPU, but your app doesn't have to worry about that - you write once, and the SOUL API takes care of deploying it to all kinds of different architectures.
 
 Because all the performance-critical work happens in SOUL, the host app (or plugin, or web-page) doesn't have to be fast, so all the glue code can be written in user-friendly languages like Javascript, Java, Python, C#, etc.
 
@@ -42,11 +42,11 @@ Some of the design goals for the language are:
 
 - **Frictionless to learn** - Having to learn a new language for a single task is a pain, so we've made it as easy as possible. SOUL's syntax should be second-nature to anyone who's done a bit of casual programming in any of the more common languages. We certainly think that learning SOUL is far easier than the huge set of unwritten rules you need to understand to confidently write safe real-time code in C++.
 
-- **Graph-based architecture** - Not only is a graph of connected nodes the best conceptual model for most audio tasks, it also retains structural information that the SOUL runtime can use for some clever auto-parallelisation tricks. This is the secret of being able to run the same naively-written program optimally on a wide range of heterogenous CPU/DSP architectures.
+- **Graph-based architecture** - Not only is a graph of connected nodes the best conceptual model for most audio tasks, it also retains structural information that the SOUL runtime can use for some clever auto-parallelisation tricks. This is the secret of being able to run the same naively-written program optimally on a wide range of heterogeneous CPU/DSP architectures.
 
 - **Hard real-time performance** - No heap allocation. No GC. No VM. No race conditions. No system calls. When being JIT-compiled to run on a CPU, SOUL code will match or exceed C++ levels of performance.
 
-- **Runs securely without sandboxing or overhead** - No pointers. No recursion. No stack overflows. No runtime bounds-checking. We want the code to run deep inside kernel processes or on bare-metal hardware, but we don't want to add the overhead of sandboxing or a VM. So the language itself stops you writing code that could crash, corrupt memory, or deadlock. Although this sounds restrictive, if you were writing the same thing in C++ you'd end up having to manually avoid all the same pitfalls, but the compiler wouldn't be able to spot your mistakes.
+- **Runs securely without sandboxing or overhead** - No pointers. No recursion. No stack overflows. No runtime bounds-checking. We want the code to run deep inside kernel processes or on bare-metal hardware, but we don't want to add the overhead of sandboxing or a VM. So the language itself stops you writing code that could crash, corrupt memory, use excessive CPU time, or deadlock. Although this sounds restrictive, if you were writing the same thing in C++ you'd end up having to manually avoid all the same pitfalls, but the compiler wouldn't be able to spot your mistakes.
 
 Sadly, no existing language fitted the bill, so we created one!
 
