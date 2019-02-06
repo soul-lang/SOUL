@@ -6,7 +6,8 @@ To read more about the project, please have a look through the files in the [doc
 
 - [Project Overview](/docs/SOUL_Overview.md)
 - [FAQ](/docs/SOUL_FAQ.md)
-- Syntax Guide (coming soon...)
+- [Syntax Guide](/docs/SOUL_Language.md)
+- Code Examples (coming soon...)
 - API Guide (coming soon...)
 
 You may also want to visit:
