@@ -270,9 +270,9 @@ processor ExampleProcessor
 When the SOUL compiler is given a block of code to parse, it expects it to contain a series of top-level declarations.
 There are 3 types of top-level item:
 
-- [Namespaces](Namespace declarations)
-- [Processors](Processor declarations)
-- [Graphs](Graph declarations)
+- [Namespaces](#namespace-declarations)
+- [Processors](#processor-declarations)
+- [Graphs](#graph-declarations)
 
 The order in which a set of declarations occurs is not important, they can refer to each other recursively regardless of which one is declared first.
 
