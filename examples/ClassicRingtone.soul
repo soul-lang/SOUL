@@ -1,0 +1,34 @@
+/*
+    == SOUL example code ==
+
+    Plays the first few notes of Gran Vals by Francisco Tarrega, using a
+    sequence of sine-wave tones.
+*/
+
+processor ClassicRingtone
+{
+    output stream float out;
+
+    void run()
+    {
+        int[] pitches    = (76, 74, 66, 68, 73, 71, 62, 64, 71, 69, 61, 64, 69);
+        int[] durations  = ( 1,  1,  2,  2,  1,  1,  2,  2,  1,  1,  2,  2,  4);
+
+        let samplesPerQuarterNote = int (processor.frequency / 7);
+        float sinewavePhase;
+
+        for (int noteIndex = 0; noteIndex < pitches.size; ++noteIndex)
+        {
+            let noteFrequency  = soul::noteNumberToFrequency (pitches.at (noteIndex));
+            let noteLength     = samplesPerQuarterNote * durations.at (noteIndex);
+            let phaseIncrement = float (noteFrequency * twoPi * processor.period);
+
+            loop (noteLength)  // play our next note...
+            {
+                out << 0.1f * sin (sinewavePhase);
+                sinewavePhase = soul::addModulo2Pi (sinewavePhase, phaseIncrement);
+                advance();
+            }
+        }
+    }
+}

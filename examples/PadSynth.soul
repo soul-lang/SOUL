@@ -1,0 +1,1143 @@
+/*
+    == SOUL example code ==
+
+    A fairly complex expressive synthesiser with some effects and
+    dynamic parameters.
+*/
+
+//==============================================================================
+namespace NoteHandler
+{
+    struct NoteInfo
+    {
+        int channel;
+        float bendSemitones;
+        float note;
+        float pressure;
+        float slide;
+    }
+
+    struct NoteHandler
+    {
+        float currentVelocity;
+        float currentNote;
+        float currentBendSemitones;
+        float currentPressure;
+        float currentSlide;
+
+        int maxNotes;
+
+        NoteInfo[16] noteArray;
+        wrap<16> activeNotes;
+    }
+
+    NoteHandler create()
+    {
+        NoteHandler r;
+        r.currentVelocity = 0.0f;
+        r.currentNote = 0.0f;
+        r.activeNotes = 0;
+        r.maxNotes = 16;
+        return r;
+    }
+
+    void addNote (NoteHandler& this, int channel, float note, float velocity)
+    {
+        // Initial note velocity is used
+        if (int(this.activeNotes) == 0)
+            this.currentVelocity = velocity;
+
+        if (int(this.activeNotes) < this.maxNotes)
+        {
+            this.noteArray[this.activeNotes].channel = channel;
+            this.noteArray[this.activeNotes].note = note;
+            this.noteArray[this.activeNotes].bendSemitones = 0;
+            this.activeNotes++;
+        }
+
+        this.currentNote = note;
+        this.currentBendSemitones = 0;
+        this.currentPressure = 0;
+        this.currentSlide = 0;
+    }
+
+    void removeNote (NoteHandler& this, int channel, float note)
+    {
+        wrap<this.noteArray.size> readPoint = 0;
+        wrap<this.noteArray.size> writePoint = 0;
+
+        while (readPoint < int(this.activeNotes))
+        {
+            if (this.noteArray[readPoint].note != note)
+            {
+                this.noteArray[writePoint] = this.noteArray[readPoint];
+                ++writePoint;
+            }
+
+            ++readPoint;
+        }
+
+        this.activeNotes = writePoint;
+
+        // Update the current active note
+        if (int(this.activeNotes) > 0)
+        {
+            this.currentNote = this.noteArray[this.activeNotes - 1].note;
+            this.currentBendSemitones = this.noteArray[this.activeNotes - 1].bendSemitones;
+        }
+    }
+
+    void addPitchBend (NoteHandler& this, int channel, float bendSemitones)
+    {
+        // Update all notes on this channel
+        for (int i = 0; i < int(this.activeNotes); ++i)
+            if (this.noteArray.at(i).channel == channel)
+                this.noteArray.at(i).bendSemitones = bendSemitones;
+
+        if (int(this.activeNotes) > 0)
+            this.currentBendSemitones = this.noteArray[this.activeNotes - 1].bendSemitones;
+    }
+
+    void addPressure (NoteHandler& this, int channel, float pressure)
+    {
+        for (int i = 0; i < int(this.activeNotes); ++i)
+            if (this.noteArray.at(i).channel == channel)
+                this.noteArray.at(i).pressure = pressure;
+
+        if (int(this.activeNotes) > 0)
+            this.currentPressure = this.noteArray[this.activeNotes - 1].pressure;
+    }
+
+    void addSlide (NoteHandler& this, int channel, float slide)
+    {
+        for (int i = 0; i < int(this.activeNotes); ++i)
+            if (this.noteArray.at(i).channel == channel)
+                this.noteArray.at(i).slide = slide;
+
+        if (int(this.activeNotes) > 0)
+            this.currentSlide= this.noteArray[this.activeNotes - 1].slide;
+    }
+
+    float getCurrentNote (NoteHandler& this)        { return this.currentNote + this.currentBendSemitones; }
+    float getCurrentVelocity (NoteHandler& this)    { return this.currentVelocity; }
+    float getCurrentPressure (NoteHandler& this)    { return this.currentPressure; }
+    float getCurrentSlide (NoteHandler& this)       { return this.currentSlide; }
+
+    bool isNoteActive (NoteHandler& this)           { return int(this.activeNotes) != 0; }
+}
+
+
+//==============================================================================
+processor ParameterSource
+{
+    input event float parameterIn;
+    output event ChangeEvent parameterOut;
+
+    //==============================================================================
+    struct ChangeEvent
+    {
+        int   parameterId;
+        float normalisedValue;
+    }
+
+    event parameterIn (float f)
+    {
+        receivedValues.at(valueCount) = f;
+        ++valueCount;
+
+        if (valueCount == 2)
+        {
+            ChangeEvent parameterChange;
+
+            parameterChange.parameterId = int(receivedValues[0]);
+            parameterChange.normalisedValue = receivedValues[1];
+
+            parameterOut << parameterChange;
+
+            valueCount = 0;
+        }
+    }
+
+    int valueCount;
+    float[2] receivedValues;
+
+    void run()
+    {
+        valueCount = 0;
+
+        loop { advance(); }
+    }
+}
+
+//==============================================================================
+processor OscillatorMix
+{
+    input stream float osc1In, osc2In, mixIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << (osc2In * mixIn) + (osc1In * (1.0f - mixIn));
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+/// PolyBlep oscillator - variable waveshape between 0.0 (saw) and 1.0 (square)
+processor PolyBlep (int parameterId)
+{
+    input event ParameterSource::ChangeEvent parameterChange;
+    input stream float frequencyIn;
+    output stream float audioOut;
+
+    event parameterChange (ParameterSource::ChangeEvent p)
+    {
+        if (p.parameterId == parameterId)
+        {
+            waveshape = p.normalisedValue;
+        }
+        else if (p.parameterId == (parameterId + 1))
+        {
+            detuneSemitones = -12.0f + 24.0f * p.normalisedValue;
+            frequencyMultiplier = pow(2.0f, (detuneSemitones + detune) / 12.0f);
+        }
+        else if (p.parameterId == (parameterId + 2))
+        {
+            detune = -1.0f + 2.0f * p.normalisedValue;
+            frequencyMultiplier = pow(2.0f, (detuneSemitones + detune) / 12.0f);
+        }
+    }
+
+    const float frequencyScaling = 1.0f / float(processor.frequency);
+
+    float normalisedPhase = 0.0f;
+    float normalisedPhaseIncrement = 0.0f;
+
+    float waveshape = 0.0f;
+    float detuneSemitones = 0.0f;
+    float detune = 0.0f;
+    float frequencyMultiplier = 1.0f;
+
+    float blep (float t2)
+    {
+        float t = t2;
+
+        if (t < normalisedPhaseIncrement)
+        {
+            t = t / normalisedPhaseIncrement;
+            return (t + t) - (t * t) - 1.0f;
+        }
+
+        if (t > (1.0f - normalisedPhaseIncrement))
+        {
+            t = (t - 1.0f) / normalisedPhaseIncrement;
+            return (t * t) + (t + t) + 1.0f;
+        }
+
+        return 0.0f;
+    }
+
+    void run()
+    {
+        loop
+        {
+            // Generate phase increment from our input frequency
+            normalisedPhaseIncrement = frequencyIn * frequencyScaling * frequencyMultiplier;
+
+            while (normalisedPhase >= 1.0f)
+                normalisedPhase -= 1.0f;
+
+            float normalisedPhase2 = normalisedPhase + 0.5f;
+
+            if (normalisedPhase2 > 1.0f)
+                normalisedPhase2 -= 1.0f;
+
+            float sawValue = (2.0f * normalisedPhase) - 1.0f - blep(normalisedPhase);
+            float squareValue = -blep(normalisedPhase) + blep(normalisedPhase2);
+
+            squareValue += (normalisedPhase <= 0.5f) ? -1.0f : 1.0f;
+
+            // Mix the square and saw waves together
+            audioOut << squareValue * waveshape + (sawValue * (1.0f - waveshape));
+
+            normalisedPhase += normalisedPhaseIncrement;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+// Runs an ADSR envelope using the input as a trigger
+processor ADSREnvelope (int startParam)
+{
+    input
+    {
+        event ParameterSource::ChangeEvent parameterChange;
+        stream float audioIn;
+    }
+
+    output stream float audioOut;
+
+    event parameterChange (ParameterSource::ChangeEvent p)
+    {
+        if (p.parameterId == startParam)
+        {
+            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+            let secondsToLinearStep = 1.0 / (sampleRate * seconds);
+
+            attackRamp = secondsToLinearStep;
+        }
+        else if (p.parameterId == startParam + 1)
+        {
+            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+            let inverse = 1.0 / (sampleRate * seconds);
+            let secondsToMultiplier = pow(0.0001, inverse);
+
+            decayMultiplier = secondsToMultiplier;
+        }
+        else if (p.parameterId == startParam + 2)
+        {
+            sustainLevel = float64 (p.normalisedValue);
+        }
+        else if (p.parameterId == startParam + 3)
+        {
+            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+            let inverse = 1.0 / (sampleRate * seconds);
+            let secondsToMultiplier = pow(0.0001, inverse);
+
+            releaseMultiplier = secondsToMultiplier;
+        }
+        else if (p.parameterId == startParam + 4)
+        {
+            velocitySensitivity = p.normalisedValue;
+        }
+    }
+
+    const float sampleRate = float (processor.frequency);
+
+    float64 attackRamp = 0.01;
+    float64 decayMultiplier = 0.995;
+    float64 sustainLevel = 1.0;
+    float64 releaseMultiplier = 0.99991;
+    float64 velocitySensitivity = 0.0;
+    float64 targetValue = 1.0;
+
+    void calculateTargetValue (float noteVelocity)
+    {
+        // Use the velocitySensitivity to decide how the noteVelocity affects the target volume
+        //
+        // We determine a db attenuation range, then the note velocity decides where we are on it
+        // Full velocity sensitivity is -12db
+
+        // We use 100 as a 'loud' note, so that's 0.75 out of 100 as 'normal', any higher velocity will be louder
+        let attenuation = -12.0f * velocitySensitivity * (0.75f - noteVelocity);
+
+        targetValue = pow(10.0f, attenuation / 10.0f);
+    }
+
+    void run()
+    {
+        float64 value = 0.0;
+
+        bool released = false;
+
+        loop
+        {
+            if (audioIn > 0.0f)
+            {
+                // TODO: Shouldn't need this
+                released = false;
+
+                // Use the value of the trigger to modify our target value
+                calculateTargetValue(audioIn);
+
+                while (! released && value < targetValue)
+                {
+                    value += attackRamp;
+                    audioOut << float(value);
+                    advance();
+
+                    released = (audioIn <= 0.0f);
+                }
+
+                // Cap it to the target value
+                value = min(value, targetValue);
+
+                // Decay stage
+                while (! released && value > (targetValue * sustainLevel))
+                {
+                    value = value * decayMultiplier;
+                    audioOut << float(value);
+                    advance();
+
+                    released = (audioIn <= 0.0f);
+                }
+
+                // Sustain stage
+                while (!released)
+                {
+                    audioOut << float(value);
+                    advance();
+                    released = (audioIn <= 0.0f);
+                }
+            }
+
+            value = value * releaseMultiplier;
+
+            audioOut << float(value);
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor LowPassFilter
+{
+    input  stream float gainIn, cutoffIn, resonanceIn, audioIn;
+    output stream float audioOut;
+
+    const int TABLE_ENTRIES = 128;
+    const int MAX_RESONANCE = 100;
+
+    // Update the filter settings every UPDATE_INTERVAL samples
+    const int UPDATE_INTERVAL = 64;
+
+    struct FilterTerms
+    {
+        float a, b, c;
+    }
+
+    struct FrequencySettings
+    {
+        FilterTerms[MAX_RESONANCE + 1] resonance;
+    }
+
+    struct PrecalcTerms
+    {
+        FrequencySettings[TABLE_ENTRIES] frequency;
+    }
+
+    PrecalcTerms precalcTerms;
+
+    FilterTerms calcTermEntry (float frequency, float resonance)
+    {
+        FilterTerms result;
+
+        let r = 1.4f - (resonance * 0.0135f);
+        let f = clamp(soul::noteNumberToFrequency(frequency), 0.0f, 20000.0f);
+        let c = 1.0f / tan (float(pi) * (10.0f + f) / float32(processor.frequency));
+
+        result.a = 1.0f / (1.0f + r * c + c * c);
+        result.b = 2.0f * (1.0f - c * c) * result.a;
+        result.c = (1.0f - r * c + c * c) * result.a;
+
+        return result;
+    }
+
+    void initaliseTerms()
+    {
+        for (int i = 0; i < TABLE_ENTRIES; ++i)
+            for (int j = 0; j <= MAX_RESONANCE; ++j)
+                precalcTerms.frequency.at(i).resonance.at(j) = calcTermEntry(float(i), float(j));
+    }
+
+    void updateFactors (float cutoff, float resonance)
+    {
+        cutoff    = clamp (cutoff, 0.0f, float(TABLE_ENTRIES - 2));
+        resonance = clamp (resonance * 100.0f, 0.0f, float(MAX_RESONANCE));
+
+        // Interpolate the cutoff
+        let cutoffInterpolation = cutoff - int(cutoff);
+
+        let resonanceEntry = wrap<MAX_RESONANCE>(int(resonance));
+        var cutoffEntry = wrap<TABLE_ENTRIES>(int(cutoff));
+
+        let terms1_a = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].a;
+        let terms1_b = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].b;
+        let terms1_c = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].c;
+
+        ++cutoffEntry;
+
+        let terms2_a = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].a;
+        let terms2_b = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].b;
+        let terms2_c = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].c;
+
+        factor_a1 = terms1_a + (terms2_a - terms1_a) * cutoffInterpolation;
+        factor_a2 = 2.0f * factor_a1;
+        factor_b1 = terms1_b + (terms2_b - terms1_b) * cutoffInterpolation;
+        factor_b2 = terms1_c + (terms2_c - terms1_c) * cutoffInterpolation;
+    }
+
+    float factor_a1, factor_a2, factor_b1, factor_b2;
+    int samplesTillUpdate = 0;
+
+    void run()
+    {
+        initaliseTerms();
+        float in_1, in_2, out_1, out_2;
+
+        loop
+        {
+            if (samplesTillUpdate == 0)
+            {
+                updateFactors(cutoffIn, resonanceIn);
+                samplesTillUpdate = UPDATE_INTERVAL;
+            }
+
+            let in = audioIn;
+
+            let f = factor_a1 * (in + in_1)
+                      + factor_a2 * in_2
+                      - factor_b1 * out_1
+                      - factor_b2 * out_2;
+
+            out_2 = out_1;
+            out_1 = f;
+            in_2 = in_1;
+            in_1 = in;
+
+            --samplesTillUpdate;
+
+            audioOut << f * gainIn * 0.2f;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Constant (float f)
+{
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << f;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor ParameterValue (int parameterId, float minValue, float maxValue, float initialValue)
+{
+    input event ParameterSource::ChangeEvent parameterChange;
+    output stream float audioOut;
+
+    event parameterChange (ParameterSource::ChangeEvent p)
+    {
+        // If this is the parameter we are interested in, apply the updated value
+        if (p.parameterId == parameterId)
+            currentValue = minValue + (p.normalisedValue * (maxValue - minValue));
+    }
+
+    void run()
+    {
+        currentValue = initialValue;
+
+        loop
+        {
+            audioOut << currentValue;
+            advance();
+        }
+    }
+
+    float currentValue;
+}
+
+//==============================================================================
+/*
+    Voice control processor - receives NoteOn/NoteOff events, and generates control signals
+    for our oscillators/filters
+*/
+processor Controller
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+        soul::NoteEvents::Pressure pressure;
+        soul::NoteEvents::Slide slide;
+    }
+
+    output stream float note1_noteOut, note1_frequencyOut, note1_velocity, note1_active,
+                        note2_frequencyOut, note1_pressure, note1_slide;
+
+    event noteOn (soul::NoteEvents::NoteOn e)           { NoteHandler::addNote      (noteHandler, e.channel, e.note, e.velocity); }
+    event noteOff (soul::NoteEvents::NoteOff e)         { NoteHandler::removeNote   (noteHandler, e.channel, e.note); }
+    event pitchBend (soul::NoteEvents::PitchBend e)     { NoteHandler::addPitchBend (noteHandler, e.channel, e.bendSemitones); }
+    event pressure (soul::NoteEvents::Pressure p)       { NoteHandler::addPressure  (noteHandler, p.channel, p.pressure); }
+    event slide (soul::NoteEvents::Slide s)             { NoteHandler::addSlide     (noteHandler, s.channel, s.slide); }
+
+    NoteHandler::NoteHandler noteHandler;
+
+    void run()
+    {
+        float multiplier = 1.0f;
+        int sampleCount = 0;
+
+        noteHandler = NoteHandler::create();
+
+        loop
+        {
+            ++sampleCount;
+
+            if (sampleCount == 1000)
+            {
+                sampleCount = 0;
+                multiplier += 0.001f;
+
+                if (multiplier >= 1.01f)
+                    multiplier = 1.0f;
+            }
+
+            let noteFrequency = soul::noteNumberToFrequency (NoteHandler::getCurrentNote(noteHandler));
+
+            note1_noteOut      << NoteHandler::getCurrentNote(noteHandler);
+            note1_frequencyOut << noteFrequency;
+            note2_frequencyOut << noteFrequency * multiplier;
+            note1_velocity     << NoteHandler::getCurrentVelocity(noteHandler);
+            note1_active       << NoteHandler::isNoteActive(noteHandler) ? NoteHandler::getCurrentVelocity(noteHandler) : 0.0f;
+            note1_pressure     << NoteHandler::getCurrentPressure(noteHandler);
+            note1_slide        << NoteHandler::getCurrentSlide(noteHandler);
+
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor CutoffHandler
+{
+    input stream float cutoffIn, envelopeIn, envelopeModIn, trackModIn, noteIn, modIn;
+    output stream float cutoffOut;
+
+    void run()
+    {
+        // The cutoff has a base cutoff value
+        // It is modified by the envelope and by key-tracking
+        loop
+        {
+            cutoffOut << cutoffIn
+                          + (envelopeIn * envelopeModIn)
+                          + ((noteIn - 60.0f) * trackModIn)
+                          + (modIn * 36.0f);
+            advance();
+        }
+    }
+}
+
+
+graph voice
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+        soul::NoteEvents::Pressure pressure;
+        soul::NoteEvents::Slide slide;
+        ParameterSource::ChangeEvent parameterChange;
+    }
+
+    output stream float audioOut;
+
+    let
+    {
+        Osc1 = PolyBlep(7);
+        Osc2 = PolyBlep(10);
+        AmplitudeEnvelope = ADSREnvelope(2);
+        CutoffEnvelope = ADSREnvelope(14);
+        VoiceController = Controller;
+        VoiceOscillatorMix = OscillatorMix;
+        VoiceCutoffHandler = CutoffHandler;
+        VoiceLowPassFilter = LowPassFilter;
+
+        //                                  Control            Min        Max    Default
+        Cutoff             = ParameterValue(      0,          0.0f,    127.0f,     80.0f);
+        Resonance          = ParameterValue(      1,          0.0f,      1.0f,      0.2f);
+        OscillatorMixParam = ParameterValue(     13,          0.0f,      1.0f,      0.0f);
+        CutoffEnvMod       = ParameterValue(     19,        -24.0f,     24.0f,      0.0f);
+        CutoffKeytrackMod  = ParameterValue(     20,          0.0f,      1.0f,      0.0f);
+    }
+
+    connection
+    {
+        parameterChange -> Cutoff.parameterChange;
+        parameterChange -> Resonance.parameterChange;
+        parameterChange -> AmplitudeEnvelope.parameterChange;
+        parameterChange -> Osc1.parameterChange;
+        parameterChange -> Osc2.parameterChange;
+        parameterChange -> OscillatorMixParam.parameterChange;
+        parameterChange -> CutoffEnvelope.parameterChange;
+        parameterChange -> CutoffEnvMod.parameterChange;
+        parameterChange -> CutoffKeytrackMod.parameterChange;
+
+        noteOn    -> VoiceController.noteOn;
+        noteOff   -> VoiceController.noteOff;
+        pitchBend -> VoiceController.pitchBend;
+        pressure  -> VoiceController.pressure;
+        slide     -> VoiceController.slide;
+
+
+        VoiceController.note1_frequencyOut -> Osc1.frequencyIn;
+        VoiceController.note2_frequencyOut -> Osc2.frequencyIn;
+        VoiceController.note1_active       -> AmplitudeEnvelope.audioIn;
+        VoiceController.note1_active       -> CutoffEnvelope.audioIn;
+
+        Osc1.audioOut                -> VoiceOscillatorMix.osc1In;
+        Osc2.audioOut                -> VoiceOscillatorMix.osc2In;
+        OscillatorMixParam.audioOut  -> VoiceOscillatorMix.mixIn;
+
+        Cutoff.audioOut                     -> VoiceCutoffHandler.cutoffIn;
+        CutoffEnvelope.audioOut             -> VoiceCutoffHandler.envelopeIn;
+        CutoffEnvMod.audioOut               -> VoiceCutoffHandler.envelopeModIn;
+        CutoffKeytrackMod.audioOut          -> VoiceCutoffHandler.trackModIn;
+        VoiceController.note1_noteOut       -> VoiceCutoffHandler.noteIn;
+        VoiceController.note1_slide         -> VoiceCutoffHandler.modIn;
+
+        VoiceOscillatorMix.audioOut  -> VoiceLowPassFilter.audioIn;
+        VoiceCutoffHandler.cutoffOut -> VoiceLowPassFilter.cutoffIn;
+        Resonance.audioOut           -> VoiceLowPassFilter.resonanceIn;
+        AmplitudeEnvelope.audioOut   -> VoiceLowPassFilter.gainIn;
+
+        VoiceLowPassFilter.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor RoundRobinVoiceAllocator (int voiceCount)
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn       noteOn;
+        soul::NoteEvents::NoteOff      noteOff;
+        soul::NoteEvents::PitchBend    pitchBend;
+        soul::NoteEvents::Pressure     pressure;
+        soul::NoteEvents::Slide        slide;
+    }
+
+    output event
+    {
+        soul::NoteEvents::NoteOn       voiceNoteOn[voiceCount];
+        soul::NoteEvents::NoteOff      voiceNoteOff[voiceCount];
+        soul::NoteEvents::PitchBend    voicePitchBend[voiceCount];
+        soul::NoteEvents::Pressure     voicePressure[voiceCount];
+        soul::NoteEvents::Slide        voiceSlide[voiceCount];
+    }
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+        wrap<voiceCount> allocatedVoice = 0;
+        var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
+
+        // Find the oldest voice to reuse
+        for (int i = 1; i < voiceCount; ++i)
+        {
+            let age = voiceInfo.at(i).voiceAge;
+
+            if (age < allocatedVoiceAge)
+            {
+                allocatedVoiceAge = age;
+                allocatedVoice = wrap<voiceCount>(i);
+            }
+        }
+
+        // Send the note on to the voice
+        voiceNoteOn[allocatedVoice] << e;
+
+        // If the voice was previously active, we're stealing it, so send a note off too
+        if (voiceInfo[allocatedVoice].active)
+        {
+            soul::NoteEvents::NoteOff noteOff;
+
+            noteOff.channel = voiceInfo[allocatedVoice].channel;
+            noteOff.note    = voiceInfo[allocatedVoice].note;
+
+            voiceNoteOff[allocatedVoice] << noteOff;
+        }
+
+        // Update the VoiceInfo for our chosen voice
+        voiceInfo[allocatedVoice].active   = true;
+        voiceInfo[allocatedVoice].channel  = e.channel;
+        voiceInfo[allocatedVoice].note     = e.note;
+        voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
+    }
+
+    event noteOff (soul::NoteEvents::NoteOff e)
+    {
+        // Release all voices associated with this note/channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel
+                 && voiceInfo[voice].note == e.note)
+            {
+                // Mark the voice as being unused
+                voiceInfo[voice].active   = false;
+                voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+
+                voiceNoteOff[voice] << e;
+            }
+
+            ++voice;
+        }
+    }
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
+    {
+        // Forward the pitch bend to all notes on this channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel)
+                voicePitchBend[voice] << e;
+
+            ++voice;
+        }
+    }
+
+    event pressure (soul::NoteEvents::Pressure p)
+    {
+        // Forward the event to all notes on this channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == p.channel)
+                voicePressure[voice] << p;
+
+            ++voice;
+        }
+    }
+
+    event slide (soul::NoteEvents::Slide s)
+    {
+        // Forward the event to all notes on this channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == s.channel)
+                voiceSlide[voice] << s;
+
+            ++voice;
+        }
+    }
+
+    struct VoiceInfo
+    {
+        bool active;
+        int channel;
+        float note;
+        int voiceAge;
+    }
+
+    int nextAllocatedVoiceAge   = 1000000000;
+    int nextUnallocatedVoiceAge = 1;
+
+    VoiceInfo[voiceCount] voiceInfo;
+
+    void run()
+    {
+        loop advance();
+    }
+}
+
+//==============================================================================
+graph Reverb
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    let
+    {
+        allPass_225 = AllPassFilter(225);
+        allPass_341 = AllPassFilter(341);
+        allPass_441 = AllPassFilter(441);
+        allPass_556 = AllPassFilter(556);
+
+        comb_1116 = CombFilter(1116);
+        comb_1188 = CombFilter(1188);
+        comb_1277 = CombFilter(1277);
+        comb_1356 = CombFilter(1356);
+        comb_1422 = CombFilter(1422);
+        comb_1491 = CombFilter(1491);
+        comb_1557 = CombFilter(1557);
+        comb_1617 = CombFilter(1617);
+
+        dryWetMixer = DryWetMixer (0.8f, 0.01485f);
+    }
+
+    connection
+    {
+        audioIn -> comb_1116.audioIn;
+        audioIn -> comb_1188.audioIn;
+        audioIn -> comb_1277.audioIn;
+        audioIn -> comb_1356.audioIn;
+        audioIn -> comb_1422.audioIn;
+        audioIn -> comb_1491.audioIn;
+        audioIn -> comb_1557.audioIn;
+        audioIn -> comb_1617.audioIn;
+        audioIn -> dryWetMixer.audioInDry;
+
+        comb_1116.audioOut -> allPass_225.audioIn;
+        comb_1188.audioOut -> allPass_225.audioIn;
+        comb_1277.audioOut -> allPass_225.audioIn;
+        comb_1356.audioOut -> allPass_225.audioIn;
+        comb_1422.audioOut -> allPass_225.audioIn;
+        comb_1491.audioOut -> allPass_225.audioIn;
+        comb_1557.audioOut -> allPass_225.audioIn;
+        comb_1617.audioOut -> allPass_225.audioIn;
+
+        allPass_225.audioOut -> allPass_341.audioIn;
+        allPass_341.audioOut -> allPass_441.audioIn;
+        allPass_441.audioOut -> allPass_556.audioIn;
+        allPass_556.audioOut -> dryWetMixer.audioInWet;
+
+        dryWetMixer.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor AllPassFilter (int bufferLength)
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        float[bufferLength] buffer;
+        wrap<buffer.size> bufferIndex;
+
+        loop
+        {
+            let bufferedValue = buffer[bufferIndex];
+            buffer[bufferIndex++] = audioIn + (bufferedValue * 0.5f);
+
+            audioOut << bufferedValue - audioIn;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor CombFilter (int bufferLength)
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        float[bufferLength] buffer;
+        wrap<buffer.size> bufferIndex;
+
+        let damp          = 0.2f;
+        let feedbackLevel = 0.95f;
+
+        float last;
+
+        loop
+        {
+            let out = buffer[bufferIndex];
+            last = (out * (1.0f - damp)) + (last * damp);
+            buffer[bufferIndex++] = audioIn + (last * feedbackLevel);
+
+            audioOut << out;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor DryWetMixer (float dryFactor, float wetFactor)
+{
+    input stream float audioInDry, audioInWet;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << (audioInDry * dryFactor) + (audioInWet * wetFactor);
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Delay(int delay, float feedbackLevel)
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    float[delay] delayBuffer;
+
+    void run()
+    {
+        wrap<delayBuffer.size> pos;
+
+        loop
+        {
+            delayBuffer[pos] = delayBuffer[pos] * feedbackLevel + audioIn;
+            audioOut << delayBuffer[pos];
+
+            ++pos;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph Oscillators
+{
+    input event
+    {
+        int midiIn;
+        float parameterIn;
+    }
+
+    output stream float audioOut;
+
+    let
+    {
+        midiParser = soul::NoteEvents::MPEParser;
+
+        voices = voice[8];
+        voiceAllocator = RoundRobinVoiceAllocator(8);
+    }
+
+    connection
+    {
+        // Convert the parameter float events into parameterChange events
+        parameterIn                  -> ParameterSource.parameterIn;
+        ParameterSource.parameterOut -> voices.parameterChange;
+
+        midiIn -> midiParser.parseMIDI;
+
+        // Pass the events to the voice allocator
+        midiParser.noteOn    -> voiceAllocator.noteOn;
+        midiParser.noteOff   -> voiceAllocator.noteOff;
+        midiParser.pitchBend -> voiceAllocator.pitchBend;
+        midiParser.pressure  -> voiceAllocator.pressure;
+        midiParser.slide     -> voiceAllocator.slide;
+
+        // Pass the allocated events to the voice bank
+        voiceAllocator.voiceNoteOn    -> voices.noteOn;
+        voiceAllocator.voiceNoteOff   -> voices.noteOff;
+        voiceAllocator.voicePitchBend -> voices.pitchBend;
+        voiceAllocator.voicePressure  -> voices.pressure;
+        voiceAllocator.voiceSlide     -> voices.slide;
+
+        // Now pass through reverb
+        voices.audioOut -> audioOut;
+    }
+}
+
+processor ParameterInit
+{
+    output event float parameterOut;
+
+    void sendNormalisedParameterValue (int parameter, float value)
+    {
+        parameterOut << float(parameter);
+        parameterOut << value;
+    }
+
+    void initParameters()
+    {
+        sendNormalisedParameterValue (0,  0.307087f);
+        sendNormalisedParameterValue (1,  0.200000f);
+        sendNormalisedParameterValue (2,  0.795241f);
+        sendNormalisedParameterValue (3,  0.668673f);
+        sendNormalisedParameterValue (4,  1.000000f);
+        sendNormalisedParameterValue (5,  0.880097f);
+        sendNormalisedParameterValue (6,  1.000000f);
+        sendNormalisedParameterValue (7,  1.000000f);
+        sendNormalisedParameterValue (8,  0.500000f);
+        sendNormalisedParameterValue (9,  0.500000f);
+        sendNormalisedParameterValue (10, 1.000000f);
+        sendNormalisedParameterValue (11, 0.500000f);
+        sendNormalisedParameterValue (12, 0.525000f);
+        sendNormalisedParameterValue (13, 0.225000f);
+        sendNormalisedParameterValue (14, 0.795241f);
+        sendNormalisedParameterValue (15, 0.740040f);
+        sendNormalisedParameterValue (16, 0.750000f);
+        sendNormalisedParameterValue (17, 0.668673f);
+        sendNormalisedParameterValue (18, 0.250000f);
+        sendNormalisedParameterValue (19, 0.854167f);
+        sendNormalisedParameterValue (20, 1.000000f);
+    }
+
+    void run()
+    {
+        initParameters();
+
+        loop advance();
+    }
+}
+
+//==============================================================================
+/*  Definition of the paramters exposed by the synth - these are used to configure
+    the controls in the GUI
+
+             Id     Name                 Unit    MinValue        MaxValue        Shape   Steps   dps DefaultValue
+    #param   0      Cutoff               note    1               127             lin     127     0   40
+    #param   1      Resonance            %       0.0             100.0           lin     100     0   20
+    #param   2      Amp.Attack           s       0.001           10.0            exp     0       3   4.0
+    #param   3      Amp.Decay            s       0.001           10.0            exp     0       3   2.0
+    #param   4      Amp.Sustain          %       0.0             100.0           lin     100     0   100.0
+    #param   5      Amp.Release          s       0.001           10.0            exp     0       3   6.0
+    #param   6      Amp.Velocity         %       0               100.0           lin     100     0   100.0
+    #param   7      Osc1.Shape           %       0.0             100.0           lin     100     0   100.0
+    #param   8      Osc1.Semitones       %       -12.0           12.0            lin     24      0   0.0
+    #param   9      Osc1.Detune          %       -100.0          100.0           lin     200     0   0.0
+    #param  10      Osc2.Shape           %       0.0             100.0           lin     100     0   100.0
+    #param  11      Osc2.Semitones       %       -12.0           12.0            lin     24      0   0.0
+    #param  12      Osc2.Detune          %       -100.0          100.0           lin     200     0   5.0
+    #param  13      Oscillator.Mix       %       -100.0          100.0           lin     200     0   -55.0
+    #param  14      Cutoff.Attack        s       0.001           10.0            exp     0       3   4.0
+    #param  15      Cutoff.Decay         s       0.001           10.0            exp     0       3   3.0
+    #param  16      Cutoff.Sustain       %       0.0             100.0           lin     100     0   75.0
+    #param  17      Cutoff.Release       s       0.001           10.0            exp     0       3   2.0
+    #param  18      Cutoff.Velocity      %       0               100.0           lin     100     0   25.0
+    #param  19      Cutoff.EnvMod        semi    -24.0           24.0            lin     48      0   17.0
+    #param  20      Filter.Cutff.Track   %       0               100.0           lin     100     0   100.0
+*/
+graph PadSynth
+{
+    input event
+    {
+        int midiIn;
+        float parameterIn;
+    }
+
+    output stream float audioOut;
+
+    let
+    {
+        delay = Delay (20000, 0.5f);
+        oscillators = Oscillators;
+    }
+
+    connection
+    {
+        midiIn -> oscillators.midiIn;
+
+        // Send through initial parameter values
+        ParameterInit.parameterOut -> oscillators.parameterIn;
+
+        parameterIn ->oscillators.parameterIn;
+
+        oscillators.audioOut -> delay.audioIn;
+        delay.audioOut -> Reverb.audioIn;
+        Reverb.audioOut -> audioOut;
+    }
+}

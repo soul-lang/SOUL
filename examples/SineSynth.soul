@@ -1,0 +1,303 @@
+/*
+    == SOUL example code ==
+
+    A simple sine-wave synthesiser, featuring pitch-bend support, a simple voice
+    allocator and envelope generator.
+*/
+
+//==============================================================================
+processor SineOsc
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+    }
+
+    output stream float audioOut;
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+        notePitch = e.note;
+        bendSemitones = 0.0f;
+        calculatePhaseIncrement();
+    }
+
+    event noteOff (soul::NoteEvents::NoteOff e) {}
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
+    {
+        bendSemitones = e.bendSemitones;
+        calculatePhaseIncrement();
+    }
+
+    float bendSemitones, notePitch, phase, phaseIncrement;
+
+    void calculatePhaseIncrement()
+    {
+        let noteFrequency = soul::noteNumberToFrequency (notePitch + bendSemitones);
+        phaseIncrement = noteFrequency / float (processor.frequency);
+    }
+
+    void run()
+    {
+        phaseIncrement = 0.1f;
+
+        loop
+        {
+            phase = phase + phaseIncrement;
+
+            while (phase > 1.0f)
+                phase = phase - 1.0f;
+
+            audioOut << sin(float(2.0f * pi * phase));
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Envelope (float targetLevel, float attackSeconds, float releaseSeconds)
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+    }
+
+    output stream float audioOut;
+
+    event noteOn (soul::NoteEvents::NoteOn e)       { active = true; }
+    event noteOff (soul::NoteEvents::NoteOff e)     { active = false; }
+
+    bool active = false;
+
+    // Calculate the multiplier that gives the required release milliseconds
+    float calculateReleaseMultiplier()
+    {
+        let inverse = 1.0 / (processor.frequency * releaseSeconds);
+        return float(pow(0.0001, inverse));
+    }
+
+    void run()
+    {
+        let attackSamples = attackSeconds * float(processor.frequency);
+        let attackIncrement = targetLevel / attackSamples;
+        let releaseMultiplier = calculateReleaseMultiplier();
+
+        var value = 0.0f;
+
+        loop
+        {
+            // Waiting for note on
+            while (! active)
+            {
+                audioOut << value;
+                advance();
+            }
+
+            // Attacking
+            while (active && value < targetLevel)
+            {
+                value += attackIncrement;
+                audioOut << value;
+                advance();
+            }
+
+            // Sustaining
+            while (active)
+            {
+                audioOut << value;
+                advance();
+            }
+
+            // Releasing
+            while (! active && value > 0.00001f)
+            {
+                value *= releaseMultiplier;
+                audioOut << value;
+                advance();
+            }
+
+            // If we're still not active, ensure the value is pulled to 0
+            if (! active)
+                value = 0.0f;
+        }
+    }
+}
+
+//==============================================================================
+processor Gain
+{
+    input  stream float audioIn, gain;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph Voice
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+    }
+
+    output stream float audioOut;
+
+    let
+    {
+        Osc = SineOsc;
+        AmplitudeEnvelope = Envelope(0.2f, 0.02f, 0.1f);
+    }
+
+    connection
+    {
+        noteOn    -> Osc.noteOn;
+        noteOff   -> Osc.noteOff;
+        pitchBend -> Osc.pitchBend;
+        noteOn    -> AmplitudeEnvelope.noteOn;
+        noteOff   -> AmplitudeEnvelope.noteOff;
+
+        Osc.audioOut               -> Gain.audioIn;
+        AmplitudeEnvelope.audioOut -> Gain.gain;
+
+        Gain.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor RoundRobinVoiceAllocator (int voiceCount)
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn     noteOn;
+        soul::NoteEvents::NoteOff    noteOff;
+        soul::NoteEvents::PitchBend  pitchBend;
+    }
+
+    output event
+    {
+        soul::NoteEvents::NoteOn     voiceNoteOn[voiceCount];
+        soul::NoteEvents::NoteOff    voiceNoteOff[voiceCount];
+        soul::NoteEvents::PitchBend  voicePitchBend[voiceCount];
+    }
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+        wrap<voiceCount> allocatedVoice = 0;
+        var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
+
+        // Find the oldest voice to reuse
+        for (int i = 1; i < voiceCount; i++)
+        {
+            let age = voiceInfo.at(i).voiceAge;
+
+            if (age < allocatedVoiceAge)
+            {
+                allocatedVoiceAge = age;
+                allocatedVoice = wrap<voiceCount>(i);
+            }
+        }
+
+        // Update the VoiceInfo for our chosen voice
+        voiceInfo[allocatedVoice].channel  = e.channel;
+        voiceInfo[allocatedVoice].note     = e.note;
+        voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
+
+        // Send the note on to the voice
+        voiceNoteOn[allocatedVoice] << e;
+    }
+
+    event noteOff (soul::NoteEvents::NoteOff e)
+    {
+        // Release all voices associated with this note/channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel
+                 && voiceInfo[voice].note == e.note)
+            {
+                // Mark the voice as being unused
+                voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+                voiceNoteOff[voice] << e;
+            }
+
+            ++voice;
+        }
+    }
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
+    {
+        // Forward the pitch bend to all notes on this channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel)
+                voicePitchBend[voice] << e;
+
+            voice++;
+        }
+    }
+
+    struct VoiceInfo
+    {
+        bool active;
+        float note;
+        int channel, voiceAge;
+    }
+
+    int nextAllocatedVoiceAge   = 1000000000;
+    int nextUnallocatedVoiceAge = 1;
+
+    VoiceInfo[voiceCount] voiceInfo;
+
+    void run()
+    {
+        loop { advance(); }
+    }
+}
+
+//==============================================================================
+graph SineSynth
+{
+    input event int midiIn;
+    output stream float audioOut;
+
+    let
+    {
+        midiParser = soul::NoteEvents::MPEParser;
+
+        voices = Voice[8];
+        voiceAllocator = RoundRobinVoiceAllocator(8);
+    }
+
+    connection
+    {
+        midiIn -> midiParser.parseMIDI;
+
+        midiParser.noteOn    -> voiceAllocator.noteOn;
+        midiParser.noteOff   -> voiceAllocator.noteOff;
+        midiParser.pitchBend -> voiceAllocator.pitchBend;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceNoteOn    -> voices.noteOn;
+        voiceAllocator.voiceNoteOff   -> voices.noteOff;
+        voiceAllocator.voicePitchBend -> voices.pitchBend;
+
+        // Sum the voices audio out to the output
+        voices.audioOut -> audioOut;
+    }
+}

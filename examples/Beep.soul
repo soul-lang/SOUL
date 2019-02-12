@@ -1,0 +1,28 @@
+/*
+    == SOUL example code ==
+
+    This is a trivially simplified sinewave generator that plays a
+    fixed-length beep and stops.
+*/
+
+processor Beep
+{
+    output stream float out;
+
+    let beepFrequency      = 440.0;
+    let beepLengthSamples  = int (processor.frequency / 2);
+    let beepVolume         = 0.1f;
+
+    void run()
+    {
+        let phaseIncrement = float (beepFrequency * twoPi * processor.period);
+        float phase = 0;
+
+        loop (beepLengthSamples)
+        {
+            out << sin (phase) * beepVolume;
+            phase = soul::addModulo2Pi (phase, phaseIncrement);
+            advance();
+       }
+    }
+}

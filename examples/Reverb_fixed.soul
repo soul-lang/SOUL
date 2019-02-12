@@ -1,0 +1,122 @@
+/*
+    == SOUL example code ==
+
+    This is a very simple implementation of the classic freeverb, using fixed
+    parameter values.
+*/
+
+graph Reverb
+{
+    input  stream float audioIn;    // just using mono in and out
+    output stream float audioOut;
+
+    let
+    {
+        allPass_1 = AllPassFilter (225);
+        allPass_2 = AllPassFilter (341);
+        allPass_3 = AllPassFilter (441);
+        allPass_4 = AllPassFilter (556);
+
+        comb_1 = CombFilter (1116, 0.2f, 0.95f);
+        comb_2 = CombFilter (1188, 0.2f, 0.95f);
+        comb_3 = CombFilter (1277, 0.2f, 0.95f);
+        comb_4 = CombFilter (1356, 0.2f, 0.95f);
+        comb_5 = CombFilter (1422, 0.2f, 0.95f);
+        comb_6 = CombFilter (1491, 0.2f, 0.95f);
+        comb_7 = CombFilter (1557, 0.2f, 0.95f);
+        comb_8 = CombFilter (1617, 0.2f, 0.95f);
+
+        dryWetMixer = DryWetMixer (0.8f, 0.015f);
+    }
+
+    connection
+    {
+        audioIn -> comb_1.audioIn;
+        audioIn -> comb_2.audioIn;
+        audioIn -> comb_3.audioIn;
+        audioIn -> comb_4.audioIn;
+        audioIn -> comb_5.audioIn;
+        audioIn -> comb_6.audioIn;
+        audioIn -> comb_7.audioIn;
+        audioIn -> comb_8.audioIn;
+        audioIn -> dryWetMixer.dryInput;
+
+        comb_1.audioOut -> allPass_1.audioIn;
+        comb_2.audioOut -> allPass_1.audioIn;
+        comb_3.audioOut -> allPass_1.audioIn;
+        comb_4.audioOut -> allPass_1.audioIn;
+        comb_5.audioOut -> allPass_1.audioIn;
+        comb_6.audioOut -> allPass_1.audioIn;
+        comb_7.audioOut -> allPass_1.audioIn;
+        comb_8.audioOut -> allPass_1.audioIn;
+
+        allPass_1.audioOut -> allPass_2.audioIn;
+        allPass_2.audioOut -> allPass_3.audioIn;
+        allPass_3.audioOut -> allPass_4.audioIn;
+        allPass_4.audioOut -> dryWetMixer.wetInput;
+
+        dryWetMixer.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor AllPassFilter (int bufferLength)
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        float[bufferLength] buffer;
+        wrap<buffer.size> bufferIndex;
+
+        loop
+        {
+            let bufferedValue = buffer[bufferIndex];
+            buffer[bufferIndex++] = audioIn + (bufferedValue * 0.5f);
+
+            audioOut << bufferedValue - audioIn;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor CombFilter (int bufferLength, float damp, float feedbackLevel)
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        float[bufferLength] buffer;
+        wrap<buffer.size> bufferIndex;
+        float last;
+
+        loop
+        {
+            let out = buffer[bufferIndex];
+            last = (out * (1.0f - damp)) + (last * damp);
+            buffer[bufferIndex++] = audioIn + (last * feedbackLevel);
+
+            audioOut << out;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor DryWetMixer (float dryFactor, float wetFactor)
+{
+    input stream float dryInput, wetInput;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << (dryInput * dryFactor) + (wetInput * wetFactor);
+            advance();
+        }
+    }
+}
