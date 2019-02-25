@@ -1,6 +1,6 @@
 ## SOUL Language Guide
 
-SOUL uses a familiar syntax which has shares a lot of syntax and style with many mainstream languages (e.g. C/C++, Java, Javascript, C#, etc). This document covers the basic structure and syntax of the code that is passed into the SOUL compiler.
+SOUL uses a familiar syntax which shares a lot of syntax and style with many mainstream languages (e.g. C/C++, Java, Javascript, C#, etc). This document covers the basic structure and syntax of the code that is passed into the SOUL compiler.
 
 The intended audience for this guide is people who've at least dabbled with some simple programming using a procedural language.
 
@@ -27,7 +27,7 @@ SOUL uses the familiar C++/Java/Javascript/C# style, i.e.:
 
 #### Identifiers
 
-An identifier name (e.g. the name of a type, variable, structure, processor, or graph) many only contain the following ASCII characters: `A-Z` `a-z` `0-9` `_`.
+An identifier name (e.g. the name of a type, variable, structure, processor, or graph) may only contain the following ASCII characters: `A-Z` `a-z` `0-9` `_`.
 
 The first character must be a letter. Leading underscores are reserved for use in system code, and trailing underscores are discouraged on the grounds that they're ugly :)
 
@@ -38,9 +38,9 @@ It's up to you how you choose to name your objects, but the official SOUL style 
 
 We recommend choosing meaningful, self-explanatory names rather than adding annotations like prefixes (e.g. 'g' for globals) or Hungarian notation.
 
-#### Semi-colons
+#### Semicolons
 
-SOUL statements are terminated with a semi-colon. In future versions of the compiler, we may decide to allow the semi-colon to be omitted at the end of lines, but are keeping things conservative initially by requiring it in all cases.
+SOUL statements are terminated with a semicolon. In future versions of the compiler, we may decide to allow the semicolon to be omitted at the end of lines, but are keeping things conservative initially by requiring it in all cases.
 
 #### Reserved keywords
 
@@ -164,7 +164,7 @@ Sometimes a processor needs to randomly-access large blocks of read-only data (e
 
 Elements can be read from the object with the `[]` operator like a normal array, but it does not provide all the other operations that an array does. An external variable can also be passed by value without the data itself being copied, so you can pass it around like a handle for use in functions.
 
-At runtime, the app must use API to bind a data provider (either a lump of raw data or a callback function) for each external that the program declares. These data providers determine the size of the array when the program uses it.
+At runtime, the app must use an API to bind a data provider (either a lump of raw data or a callback function) for each external that the program declares. These data providers determine the size of the array when the program uses it.
 
 ```C++
 processor ExampleSampleLooper
@@ -197,7 +197,7 @@ processor ExampleSampleLooper
 
 #### Structures
 
-Structures are declared in traditional C style (but without the semi-colon after the closing brace):
+Structures are declared in traditional C style (but without the semicolon after the closing brace):
 
 ```C++
 struct ExampleStruct
@@ -448,7 +448,7 @@ processor ExampleMixer
 
 The 'input' or 'output' keyword is followed by the name of its type, which may be:
 
-- `stream` a continuous stream of values of the type which follows. The type must be a primitive or vector
+- `stream` a continuous stream of values of the type which follows. The type must be a primitive or vector.
 - `value` an instantaneous value which can be changed at any moment, with no guarantee of temporal accuracy. (An example use-case could be a master volume control)
 - `event` a stream of sample-accurate event callbacks which hold a user-specified type
 
@@ -803,11 +803,11 @@ SOUL provides the standard set of operators:
 - Logical: `&&` `||` `!`
 - Bitwise: `&` `|` `^` `~` `<<` `>>`
 - Comparison: `<` `<=` `>` `>=` `==` `!=`
-- Ternery: `? :`
+- Ternary: `? :`
 
 ### Conditionals
 
-The `if` statement and ternery operators are pretty unremarkable:
+The `if` statement and ternary operators are pretty unremarkable:
 
 ```C++
 if (x == 0) foo();
