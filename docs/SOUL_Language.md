@@ -44,22 +44,26 @@ SOUL statements are terminated with a semicolon. In future versions of the compi
 
 #### Reserved keywords
 
-Some identifiers are reserved for use as keywords, and can't be used as variable or type names.
+Some identifiers are reserved for use as keywords, and can't be used as identifiers (e.g variable, namespace, processor or type names).
 
-Currently these are: `if, else, do, while, for, loop, break, continue, return, let, var, void, int,
-float, float32, float64, fixed, bool, true, false, string, struct, using, external, graph, processor, namespace, input, output, connection, event, import`
+Currently these are: `if, else, do, while, for, loop, break, continue, const, return, let, var, void, int, int32, int64,
+float, float32, float64, bool, clamp, wrap, true, false, struct, string, using, external, graph, processor, namespace, input, output, connection, event`
+
+In addition, there are some reserved words which have been set aside for possible use with future language features. These are: `fixed, import, try, catch, throw`
 
 ## Types
 
 #### Primitive types
 
 The primitive types currently supported are:
-- `int` - 32-bit int type
-- `bool` - boolean
+- `int` - fastest integer type on the platform, either `int32` or `int64`
+- `int32` - 32-bit int type
+- `int64` - 64-bit int type
+- `bool` - boolean type (either true or false)
 - `float32` - 32-bit float type
 - `float64` - 64-bit float type
 - `float` - fastest floating-point type that provides at least 32-bit precision
-- `wrap<size>` - a range-constrained integer type. The `size` value must be a compile-time constant, and operations on this type are guaranteed to result in values where 0 <= x < size. If incrementing or decrementing it, out-of-range values will wrap around.
+- `wrap<size>` - a range-constrained `int32` type. The `size` value must be a compile-time constant, and operations on this type are guaranteed to result in values where 0 <= x < size. If incrementing or decrementing it, out-of-range values will wrap around.
 - `clamp<size>` - similar to `wrap<size>` but out-of-range values are clamped rather than wrapped
 - `string` - a character literal. These can be passed around but no operations which could incur runtime allocation are possible (i.e. concatenation, etc), and slicing/indexing is not supported - the main purpose of string literals and this type is for use in debug logging functions.
 
@@ -228,7 +232,7 @@ using MySampleType = float<2>;
 There are two scopes in which variables can be declared:
 
 - **Local** variables are self-explanatory - they work like any other stack/scope-based language. You can declare them inside functions and they're visible to any code that follows them in the same block.
-- **State** variables are declared inside a processor block, and are visible to all functions within that processor. Each instance of the processor has its own copy of the state variables, so they can be seen as having a similar role to globals or member variables.
+- **State** variables are declared inside a processor block. See [Processor state variables](#processor-state-variables) for details
 
 Variables can be declared in several styles:
 - `let [name] = [initial value];` - infers the type from the initialiser, and the resulting variable is *const*
@@ -368,7 +372,7 @@ void run()
 }
 ```
 
-If the `run()` function returns at any point, this essentially puts it into an inert state where it continues to emit silence on all its inputs and outputs.
+If the `run()` function returns at any point, this essentially puts it into an inert state where it continues to emit silence on all its outputs.
 
 ##### The `advance()` function
 
@@ -399,7 +403,7 @@ State variables are inaccessible from outside the processor instance which they 
 
 #### Input/Output declarations
 
-Processors and graphs share a syntax for declaring their inputs and outputs (endpoints). Each item in the list is either marked as an `input` or `output`, along with its type and unique name, e.g.
+Processors and graphs share a syntax for declaring their inputs and outputs, collectively referred to as endpoints. Each item in the list is either marked as an `input` or `output` endpoint, along with its type and unique name, e.g.
 
 ```C++
 processor ExampleProcessor
@@ -409,6 +413,7 @@ processor ExampleProcessor
     output stream float64   out1, out2;   // two output streams of float64s
     output stream float<2>  out3;         // output producing a stream of float<2>s
     output value  float64   out4;         // output value of type float64
+    output event  MyType    out5;         // output event of a user specified type
 }
 ```
 
@@ -433,6 +438,8 @@ processor ExampleProcessor
     {
         value float64 out4;
     }
+
+    output event MyType out5;
 }
 ```
 
@@ -448,9 +455,9 @@ processor ExampleMixer
 
 The 'input' or 'output' keyword is followed by the name of its type, which may be:
 
-- `stream` a continuous stream of values of the type which follows. The type must be a primitive or vector.
-- `value` an instantaneous value which can be changed at any moment, with no guarantee of temporal accuracy. (An example use-case could be a master volume control)
-- `event` a stream of sample-accurate event callbacks which hold a user-specified type
+- `stream` a sequence of values (one per time interval for the processor) of the type which follows. The type must be a primitive or vector.
+- `value` an instantaneous value which can be changed at any moment, with no guarantee of temporal accuracy. (An example use-case could be a master volume control).
+- `event` a sequence of sample-accurate event callbacks which hold a user-specified type.
 
 A processor must have *at least one output*. Because processors can only interact with the outside world via their endpoints, a processor with no outputs would be unable to do anything useful.
 
@@ -644,7 +651,7 @@ graph ExampleGraph (int length)
 
 ```
 
-#### Event streams
+#### Event endpoints
 
 Each event input in a processor has a special event handler function, which is called whenever an event is received. The handler is introduced by the event keyword, and has a name that matches the corresponding input event. The value passed must match the event definition, and can be passed by value, or const reference. e.g.
 
@@ -672,7 +679,7 @@ processor EventToStream
 }
 ```
 
-Event handlers can generate events themselves and write these to an output event stream, and can write multiple events. These will be seen as multiple events to the called processor event handler. e.g
+Event handlers can generate events themselves and write these to an output event endpoint, and can write multiple events. These will be seen as multiple events to the called processor event handler. e.g
 
 ```C++
 processor EventToStream
@@ -699,7 +706,19 @@ graph ExampleGraph
     let
     {
         waveshaper = Waveshaper * 4;    // Declare a waveshaper as oversampled 4 times
-        visualiser = Visualiser / 32;   // Declare a visualiser undersampled by 32 times
+        visualiser = Visualiser / 100;   // Declare a visualiser undersampled by 100 times
+    }
+}
+```
+
+The oversampling factor is specified as a compile time integer constant. It  can be based on a graph parameter, e.g
+
+```C++
+graph ExampleGraph(int controlRate)
+{
+    let
+    {
+        visualiser = Visualiser / (controlRate * 4);   // Undersampling rate dependent on the graph parameter
     }
 }
 ```
@@ -716,7 +735,7 @@ Any streams in or out of a processor which is running at a different sample rate
 
 Three strategies are provided:
 
-  - **sinc** interpolation - high quality sample rate conversion removing all aliasing
+  - **sinc** interpolation - high quality sample rate conversion with minimal aliasing
   - **linear** interpolation - simple linear ramp between sample values
   - **latch** interpolation - repeating the last received value between sample values
 
@@ -846,7 +865,7 @@ loop (10)  // runs 10 times
 
 You can use the standard `break` keyword to jump out of any of these loops, and `continue` to jump to the start of the next iteration.
 
-### Reading and writing to streams
+### Reading and writing to endpoints
 
 To read the current value of an input, simply use the input's name as an expression.
 
@@ -863,6 +882,13 @@ void run()
     }
 }
 ```
+
+The `<<` operator was chosen for writing to output endpoints as the operation is distinct from an assignment. For different endpoint types, the `<<` operator performs differently:
+
+- `stream endpoints` The sum of the written values between advance calls is written for the current timeslice. If no values are written, the output is 0
+- `event endpoints` Each time `<<` is called a distinct event is emitted by the endpoint
+- `value endpoints` The written value overwrites the previous value and is persisted until a new value is written
+
 
 ### Built-in intrinsics and constants
 
