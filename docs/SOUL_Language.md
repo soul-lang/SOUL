@@ -191,10 +191,12 @@ processor ExampleSampleLooper
 
     float<2> getNextFrame (external float<2>[] sample)
     {
-        return sample.at (sampleIndex);
+        let result = sample.at (sampleIndex);
 
         if (++sampleIndex >= sample.size)
             sampleIndex = 0;
+
+        return result;
     }
 }
 ```
@@ -685,7 +687,7 @@ Event handlers can generate events themselves and write these to an output event
 processor EventToStream
 {
     input event float eventIn;
-    output stream float out1;
+    output stream float eventOut;
 
     event eventIn (float f)
     {
