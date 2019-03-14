@@ -5,7 +5,7 @@
 
 - #### Who created SOUL?
 
-    SOUL was first created by Julian Storer at ROLI/JUCE in 2016, and announced publicly at [ADC2018](https://youtu.be/-GhleKNaPdk?t=910)
+    SOUL was created by Julian Storer at ROLI/JUCE in 2016, and announced publicly at [ADC2018](https://youtu.be/-GhleKNaPdk?t=910)
 
 - #### What is the project status?
 
@@ -15,7 +15,7 @@
 
 - #### Where can I find more technical details?
 
-    The project website is at [soul-lang.org](https://soul-lang.org).  
+    The project website is at [soul.dev](https://soul.dev).  
     This repository has various other guides in the [docs](/docs/) folder.
 
 - #### Where can I give feedback, get help, or discuss the project?
