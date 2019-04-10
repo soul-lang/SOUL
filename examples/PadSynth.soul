@@ -274,7 +274,7 @@ processor ADSREnvelope
 
     event sensitivity (float f)
     {
-            velocitySensitivity = f;
+            velocitySensitivity = f / 100.0f;
     }
 
     const float sampleRate = float (processor.frequency);
@@ -1059,7 +1059,7 @@ graph PadSynth
         float ampDecay              [[ min:0,       max:100,    init:66,    label: "Amp Decay",             unit: "%",      step: 1 ]];
         float ampSustain            [[ min:0,       max:100,    init:100,   label: "Amp Sustain",           unit: "%",      step: 1 ]];
         float ampRelease            [[ min:0,       max:100,    init:88,    label: "Amp Release",           unit: "%",      step: 1 ]];
-        float ampSensitivity        [[ min:0,       max:1,      init:1,     label: "Amp Sensitivity",       unit: "%",      step: 1 ]];
+        float ampSensitivity        [[ min:0,       max:100,    init:50,    label: "Amp Sensitivity",       unit: "%",      step: 1 ]];
         float osc1waveshape         [[ min:0,       max:100,    init:100,   label: "Osc1 Waveshape",        unit: "%",      step: 1 ]];
         float osc1detuneSemitones   [[ min:-24,     max:24,     init:0,     label: "Osc1 Detune",           unit: "semi",   step: 1]];
         float osc1detune            [[ min:-100,    max:100,    init:0,     label: "Osc1 Detune",           unit: "cent",   step: 1 ]];
