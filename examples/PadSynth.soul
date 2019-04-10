@@ -128,48 +128,6 @@ namespace NoteHandler
 
 
 //==============================================================================
-processor ParameterSource
-{
-    input event float parameterIn;
-    output event ChangeEvent parameterOut;
-
-    //==============================================================================
-    struct ChangeEvent
-    {
-        int   parameterId;
-        float normalisedValue;
-    }
-
-    event parameterIn (float f)
-    {
-        receivedValues.at(valueCount) = f;
-        ++valueCount;
-
-        if (valueCount == 2)
-        {
-            ChangeEvent parameterChange;
-
-            parameterChange.parameterId = int(receivedValues[0]);
-            parameterChange.normalisedValue = receivedValues[1];
-
-            parameterOut << parameterChange;
-
-            valueCount = 0;
-        }
-    }
-
-    int valueCount;
-    float[2] receivedValues;
-
-    void run()
-    {
-        valueCount = 0;
-
-        loop { advance(); }
-    }
-}
-
-//==============================================================================
 processor OscillatorMix
 {
     input stream float osc1In, osc2In, mixIn;
@@ -179,7 +137,10 @@ processor OscillatorMix
     {
         loop
         {
-            audioOut << (osc2In * mixIn) + (osc1In * (1.0f - mixIn));
+            let mix2 = mixIn * 0.01f;
+            let mix1 = 1.0f - mix2;
+
+            audioOut << (osc2In * mix2) + (osc1In * mix1);
             advance();
         }
     }
@@ -187,28 +148,27 @@ processor OscillatorMix
 
 //==============================================================================
 /// PolyBlep oscillator - variable waveshape between 0.0 (saw) and 1.0 (square)
-processor PolyBlep (int parameterId)
+processor PolyBlep
 {
-    input event ParameterSource::ChangeEvent parameterChange;
+    input event float waveshape, detuneSemitones, detune;
     input stream float frequencyIn;
     output stream float audioOut;
 
-    event parameterChange (ParameterSource::ChangeEvent p)
+    event waveshape (float f)
     {
-        if (p.parameterId == parameterId)
-        {
-            waveshape = p.normalisedValue;
-        }
-        else if (p.parameterId == (parameterId + 1))
-        {
-            detuneSemitones = -12.0f + 24.0f * p.normalisedValue;
-            frequencyMultiplier = pow(2.0f, (detuneSemitones + detune) / 12.0f);
-        }
-        else if (p.parameterId == (parameterId + 2))
-        {
-            detune = -1.0f + 2.0f * p.normalisedValue;
-            frequencyMultiplier = pow(2.0f, (detuneSemitones + detune) / 12.0f);
-        }
+        waveshapeValue = f / 100.0f;
+    }
+
+    event detuneSemitones (float f)
+    {
+        detuneSemitonesValue = f;
+        frequencyMultiplier = pow(2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
+    }
+
+    event detune (float f)
+    {
+        detuneValue = f / 100.0f;
+        frequencyMultiplier = pow(2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
     }
 
     const float frequencyScaling = 1.0f / float(processor.frequency);
@@ -216,9 +176,9 @@ processor PolyBlep (int parameterId)
     float normalisedPhase = 0.0f;
     float normalisedPhaseIncrement = 0.0f;
 
-    float waveshape = 0.0f;
-    float detuneSemitones = 0.0f;
-    float detune = 0.0f;
+    float waveshapeValue = 0.0f;
+    float detuneSemitonesValue = 0.0f;
+    float detuneValue = 0.0f;
     float frequencyMultiplier = 1.0f;
 
     float blep (float t2)
@@ -261,7 +221,7 @@ processor PolyBlep (int parameterId)
             squareValue += (normalisedPhase <= 0.5f) ? -1.0f : 1.0f;
 
             // Mix the square and saw waves together
-            audioOut << squareValue * waveshape + (sawValue * (1.0f - waveshape));
+            audioOut << squareValue * waveshapeValue + (sawValue * (1.0f - waveshapeValue));
 
             normalisedPhase += normalisedPhaseIncrement;
             advance();
@@ -271,49 +231,50 @@ processor PolyBlep (int parameterId)
 
 //==============================================================================
 // Runs an ADSR envelope using the input as a trigger
-processor ADSREnvelope (int startParam)
+processor ADSREnvelope
 {
     input
     {
-        event ParameterSource::ChangeEvent parameterChange;
         stream float audioIn;
+        event float attack, decay, sustain, release, sensitivity;
     }
 
     output stream float audioOut;
 
-    event parameterChange (ParameterSource::ChangeEvent p)
+    event attack (float f)
     {
-        if (p.parameterId == startParam)
-        {
-            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+            let seconds = 0.001 + 9.999 * pow(f / 100.0f, 4.0f);
             let secondsToLinearStep = 1.0 / (sampleRate * seconds);
 
             attackRamp = secondsToLinearStep;
-        }
-        else if (p.parameterId == startParam + 1)
-        {
-            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+    }
+
+    event decay (float f)
+    {
+            let seconds = 0.001 + 9.999 * pow(f / 100.0f, 4.0f);
             let inverse = 1.0 / (sampleRate * seconds);
             let secondsToMultiplier = pow(0.0001, inverse);
 
             decayMultiplier = secondsToMultiplier;
-        }
-        else if (p.parameterId == startParam + 2)
-        {
-            sustainLevel = float64 (p.normalisedValue);
-        }
-        else if (p.parameterId == startParam + 3)
-        {
-            let seconds = 0.001 + 9.999 * pow(p.normalisedValue, 4.0f);
+    }
+
+    event sustain (float f)
+    {
+            sustainLevel = float64 (f);
+    }
+
+    event release (float f)
+    {
+            let seconds = 0.001 + 9.999 * pow(f / 100.0f, 4.0f);
             let inverse = 1.0 / (sampleRate * seconds);
             let secondsToMultiplier = pow(0.0001, inverse);
 
             releaseMultiplier = secondsToMultiplier;
-        }
-        else if (p.parameterId == startParam + 4)
-        {
-            velocitySensitivity = p.normalisedValue;
-        }
+    }
+
+    event sensitivity (float f)
+    {
+            velocitySensitivity = f;
     }
 
     const float sampleRate = float (processor.frequency);
@@ -403,7 +364,7 @@ processor LowPassFilter
     const int MAX_RESONANCE = 100;
 
     // Update the filter settings every UPDATE_INTERVAL samples
-    const int UPDATE_INTERVAL = 64;
+    let updateInterval = 64;
 
     struct FilterTerms
     {
@@ -447,7 +408,7 @@ processor LowPassFilter
     void updateFactors (float cutoff, float resonance)
     {
         cutoff    = clamp (cutoff, 0.0f, float(TABLE_ENTRIES - 2));
-        resonance = clamp (resonance * 100.0f, 0.0f, float(MAX_RESONANCE));
+        resonance = clamp (resonance, 0.0f, float(MAX_RESONANCE - 1));
 
         // Interpolate the cutoff
         let cutoffInterpolation = cutoff - int(cutoff);
@@ -472,7 +433,6 @@ processor LowPassFilter
     }
 
     float factor_a1, factor_a2, factor_b1, factor_b2;
-    int samplesTillUpdate = 0;
 
     void run()
     {
@@ -481,64 +441,42 @@ processor LowPassFilter
 
         loop
         {
-            if (samplesTillUpdate == 0)
+            updateFactors(cutoffIn, resonanceIn);
+
+            loop (updateInterval)
             {
-                updateFactors(cutoffIn, resonanceIn);
-                samplesTillUpdate = UPDATE_INTERVAL;
+                let in = audioIn;
+
+                let f = factor_a1 * (in + in_1)
+                        + factor_a2 * in_2
+                        - factor_b1 * out_1
+                        - factor_b2 * out_2;
+
+                out_2 = out_1;
+                out_1 = f;
+                in_2 = in_1;
+                in_1 = in;
+
+                audioOut << f * gainIn * 0.2f;
+                advance();
             }
-
-            let in = audioIn;
-
-            let f = factor_a1 * (in + in_1)
-                      + factor_a2 * in_2
-                      - factor_b1 * out_1
-                      - factor_b2 * out_2;
-
-            out_2 = out_1;
-            out_1 = f;
-            in_2 = in_1;
-            in_1 = in;
-
-            --samplesTillUpdate;
-
-            audioOut << f * gainIn * 0.2f;
-            advance();
         }
     }
 }
 
 //==============================================================================
-processor Constant (float f)
+processor ParameterStream
 {
+    input event float parameterUpdate;
     output stream float audioOut;
 
-    void run()
+    event parameterUpdate (float f)
     {
-        loop
-        {
-            audioOut << f;
-            advance();
-        }
-    }
-}
-
-//==============================================================================
-processor ParameterValue (int parameterId, float minValue, float maxValue, float initialValue)
-{
-    input event ParameterSource::ChangeEvent parameterChange;
-    output stream float audioOut;
-
-    event parameterChange (ParameterSource::ChangeEvent p)
-    {
-        // If this is the parameter we are interested in, apply the updated value
-        if (p.parameterId == parameterId)
-            currentValue = minValue + (p.normalisedValue * (maxValue - minValue));
+        currentValue = f;
     }
 
     void run()
     {
-        currentValue = initialValue;
-
         loop
         {
             audioOut << currentValue;
@@ -642,41 +580,59 @@ graph voice
         soul::NoteEvents::PitchBend pitchBend;
         soul::NoteEvents::Pressure pressure;
         soul::NoteEvents::Slide slide;
-        ParameterSource::ChangeEvent parameterChange;
+
+        float cutoffParam, resonanceParam;
+        float ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity;
+        float osc1waveshape, osc1detuneSemitones, osc1detune;
+        float osc2waveshape, osc2detuneSemitones, osc2detune;
+        float filterAttack, filterDecay, filterSustain, filterRelease, filterSensitivity;
+        float oscillatorMix;
+        float filterEnvMod, filterCutoffTrack;
     }
 
     output stream float audioOut;
 
     let
     {
-        Osc1 = PolyBlep(7);
-        Osc2 = PolyBlep(10);
-        AmplitudeEnvelope = ADSREnvelope(2);
-        CutoffEnvelope = ADSREnvelope(14);
-        VoiceController = Controller;
-        VoiceOscillatorMix = OscillatorMix;
-        VoiceCutoffHandler = CutoffHandler;
-        VoiceLowPassFilter = LowPassFilter;
+        Osc1                = PolyBlep;
+        Osc2                = PolyBlep;
+        AmplitudeEnvelope   = ADSREnvelope;
+        CutoffEnvelope      = ADSREnvelope;
+        VoiceController     = Controller;
+        VoiceOscillatorMix  = OscillatorMix;
+        VoiceCutoffHandler  = CutoffHandler;
+        VoiceLowPassFilter  = LowPassFilter;
 
-        //                                  Control            Min        Max    Default
-        Cutoff             = ParameterValue(      0,          0.0f,    127.0f,     80.0f);
-        Resonance          = ParameterValue(      1,          0.0f,      1.0f,      0.2f);
-        OscillatorMixParam = ParameterValue(     13,          0.0f,      1.0f,      0.0f);
-        CutoffEnvMod       = ParameterValue(     19,        -24.0f,     24.0f,      0.0f);
-        CutoffKeytrackMod  = ParameterValue(     20,          0.0f,      1.0f,      0.0f);
+        Cutoff              = ParameterStream;
+        Resonance           = ParameterStream;
+        OscillatorMixParam  = ParameterStream;
+        CutoffEnvMod        = ParameterStream;
+        CutoffKeytrackMod   = ParameterStream;
     }
 
     connection
     {
-        parameterChange -> Cutoff.parameterChange;
-        parameterChange -> Resonance.parameterChange;
-        parameterChange -> AmplitudeEnvelope.parameterChange;
-        parameterChange -> Osc1.parameterChange;
-        parameterChange -> Osc2.parameterChange;
-        parameterChange -> OscillatorMixParam.parameterChange;
-        parameterChange -> CutoffEnvelope.parameterChange;
-        parameterChange -> CutoffEnvMod.parameterChange;
-        parameterChange -> CutoffKeytrackMod.parameterChange;
+        cutoffParam         -> Cutoff.parameterUpdate;
+        resonanceParam      -> Resonance.parameterUpdate;
+        ampAttack           -> AmplitudeEnvelope.attack;
+        ampDecay            -> AmplitudeEnvelope.decay;
+        ampSustain          -> AmplitudeEnvelope.sustain;
+        ampRelease          -> AmplitudeEnvelope.release;
+        ampSensitivity      -> AmplitudeEnvelope.sensitivity;
+        osc1waveshape       -> Osc1.waveshape;
+        osc1detuneSemitones -> Osc1.detuneSemitones;
+        osc1detune          -> Osc1.detune;
+        osc2waveshape       -> Osc2.waveshape;
+        osc2detuneSemitones -> Osc2.detuneSemitones;
+        osc2detune          -> Osc2.detune;
+        filterAttack        -> CutoffEnvelope.attack;
+        filterDecay         -> CutoffEnvelope.decay;
+        filterSustain       -> CutoffEnvelope.sustain;
+        filterRelease       -> CutoffEnvelope.release;
+        filterSensitivity   -> CutoffEnvelope.sensitivity;
+        oscillatorMix       -> OscillatorMixParam.parameterUpdate;
+        filterEnvMod        -> CutoffEnvMod.parameterUpdate;
+        filterCutoffTrack   -> CutoffKeytrackMod.parameterUpdate;
 
         noteOn    -> VoiceController.noteOn;
         noteOff   -> VoiceController.noteOff;
@@ -1001,7 +957,13 @@ graph Oscillators
     input event
     {
         int midiIn;
-        float parameterIn;
+        float cutoffParam, resonanceParam;
+        float ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity;
+        float osc1waveshape, osc1detuneSemitones, osc1detune;
+        float osc2waveshape, osc2detuneSemitones, osc2detune;
+        float filterAttack, filterDecay, filterSustain, filterRelease, filterSensitivity;
+        float oscillatorMix;
+        float filterEnvMod, filterCutoffTrack;
     }
 
     output stream float audioOut;
@@ -1016,13 +978,31 @@ graph Oscillators
 
     connection
     {
-        // Convert the parameter float events into parameterChange events
-        parameterIn                  -> ParameterSource.parameterIn;
-        ParameterSource.parameterOut -> voices.parameterChange;
-
-        midiIn -> midiParser.parseMIDI;
+        // Forward events
+        cutoffParam         -> voices.cutoffParam;
+        resonanceParam      -> voices.resonanceParam;
+        ampAttack           -> voices.ampAttack;
+        ampDecay            -> voices.ampDecay;
+        ampSustain          -> voices.ampSustain;
+        ampRelease          -> voices.ampRelease;
+        ampSensitivity      -> voices.ampSensitivity;
+        filterAttack        -> voices.filterAttack;
+        filterDecay         -> voices.filterDecay;
+        filterSustain       -> voices.filterSustain;
+        filterRelease       -> voices.filterRelease;
+        filterSensitivity   -> voices.filterSensitivity;
+        osc1waveshape       -> voices.osc1waveshape;
+        osc1detuneSemitones -> voices.osc1detuneSemitones;
+        osc1detune          -> voices.osc1detune;
+        osc2waveshape       -> voices.osc2waveshape;
+        osc2detuneSemitones -> voices.osc2detuneSemitones;
+        osc2detune          -> voices.osc2detune;
+        oscillatorMix       -> voices.oscillatorMix;
+        filterEnvMod        -> voices.filterEnvMod;
+        filterCutoffTrack   -> voices.filterCutoffTrack;
 
         // Pass the events to the voice allocator
+        midiIn               -> midiParser.parseMIDI;
         midiParser.noteOn    -> voiceAllocator.noteOn;
         midiParser.noteOff   -> voiceAllocator.noteOff;
         midiParser.pitchBend -> voiceAllocator.pitchBend;
@@ -1041,82 +1021,60 @@ graph Oscillators
     }
 }
 
-processor ParameterInit
+processor FxMix
 {
-    output event float parameterOut;
+    input event float dryWetMix;
 
-    void sendNormalisedParameterValue (int parameter, float value)
+    input stream float audioInDry, audioInWet;
+    output stream float audioOut;
+
+    event dryWetMix (float f)
     {
-        parameterOut << float(parameter);
-        parameterOut << value;
+        currentMix = f / 100.0f;
+
     }
 
-    void initParameters()
-    {
-        sendNormalisedParameterValue (0,  0.307087f);
-        sendNormalisedParameterValue (1,  0.200000f);
-        sendNormalisedParameterValue (2,  0.795241f);
-        sendNormalisedParameterValue (3,  0.668673f);
-        sendNormalisedParameterValue (4,  1.000000f);
-        sendNormalisedParameterValue (5,  0.880097f);
-        sendNormalisedParameterValue (6,  1.000000f);
-        sendNormalisedParameterValue (7,  1.000000f);
-        sendNormalisedParameterValue (8,  0.500000f);
-        sendNormalisedParameterValue (9,  0.500000f);
-        sendNormalisedParameterValue (10, 1.000000f);
-        sendNormalisedParameterValue (11, 0.500000f);
-        sendNormalisedParameterValue (12, 0.525000f);
-        sendNormalisedParameterValue (13, 0.225000f);
-        sendNormalisedParameterValue (14, 0.795241f);
-        sendNormalisedParameterValue (15, 0.740040f);
-        sendNormalisedParameterValue (16, 0.750000f);
-        sendNormalisedParameterValue (17, 0.668673f);
-        sendNormalisedParameterValue (18, 0.250000f);
-        sendNormalisedParameterValue (19, 0.854167f);
-        sendNormalisedParameterValue (20, 1.000000f);
-    }
+    float currentMix = 1.0f;
 
     void run()
     {
-        initParameters();
-
-        loop advance();
+        loop
+        {
+            audioOut << (audioInDry * (1.0f - currentMix)) + (audioInWet * currentMix);
+            advance();
+        }
     }
+
 }
 
-//==============================================================================
-/*  Definition of the paramters exposed by the synth - these are used to configure
-    the controls in the GUI
-
-             Id     Name                 Unit    MinValue        MaxValue        Shape   Steps   dps DefaultValue
-    #param   0      Cutoff               note    1               127             lin     127     0   40
-    #param   1      Resonance            %       0.0             100.0           lin     100     0   20
-    #param   2      Amp.Attack           s       0.001           10.0            exp     0       3   4.0
-    #param   3      Amp.Decay            s       0.001           10.0            exp     0       3   2.0
-    #param   4      Amp.Sustain          %       0.0             100.0           lin     100     0   100.0
-    #param   5      Amp.Release          s       0.001           10.0            exp     0       3   6.0
-    #param   6      Amp.Velocity         %       0               100.0           lin     100     0   100.0
-    #param   7      Osc1.Shape           %       0.0             100.0           lin     100     0   100.0
-    #param   8      Osc1.Semitones       %       -12.0           12.0            lin     24      0   0.0
-    #param   9      Osc1.Detune          %       -100.0          100.0           lin     200     0   0.0
-    #param  10      Osc2.Shape           %       0.0             100.0           lin     100     0   100.0
-    #param  11      Osc2.Semitones       %       -12.0           12.0            lin     24      0   0.0
-    #param  12      Osc2.Detune          %       -100.0          100.0           lin     200     0   5.0
-    #param  13      Oscillator.Mix       %       -100.0          100.0           lin     200     0   -55.0
-    #param  14      Cutoff.Attack        s       0.001           10.0            exp     0       3   4.0
-    #param  15      Cutoff.Decay         s       0.001           10.0            exp     0       3   3.0
-    #param  16      Cutoff.Sustain       %       0.0             100.0           lin     100     0   75.0
-    #param  17      Cutoff.Release       s       0.001           10.0            exp     0       3   2.0
-    #param  18      Cutoff.Velocity      %       0               100.0           lin     100     0   25.0
-    #param  19      Cutoff.EnvMod        semi    -24.0           24.0            lin     48      0   17.0
-    #param  20      Filter.Cutff.Track   %       0               100.0           lin     100     0   100.0
-*/
 graph PadSynth
 {
     input event
     {
         int midiIn;
-        float parameterIn;
+
+        float cutoff                [[ min:0,       max:127,    init:80,    label: "Cutoff",                unit: "semi",   step:0.1 ]];
+        float resonance             [[ min:0,       max:100,    init:20,    label: "Resonance",             unit: "%",      step:1 ]];
+        float ampAttack             [[ min:0,       max:100,    init:80,    label: "Amp Attack",            unit: "%",      step: 1 ]];
+        float ampDecay              [[ min:0,       max:100,    init:66,    label: "Amp Decay",             unit: "%",      step: 1 ]];
+        float ampSustain            [[ min:0,       max:100,    init:100,   label: "Amp Sustain",           unit: "%",      step: 1 ]];
+        float ampRelease            [[ min:0,       max:100,    init:88,    label: "Amp Release",           unit: "%",      step: 1 ]];
+        float ampSensitivity        [[ min:0,       max:1,      init:1,     label: "Amp Sensitivity",       unit: "%",      step: 1 ]];
+        float osc1waveshape         [[ min:0,       max:100,    init:100,   label: "Osc1 Waveshape",        unit: "%",      step: 1 ]];
+        float osc1detuneSemitones   [[ min:-24,     max:24,     init:0,     label: "Osc1 Detune",           unit: "semi",   step: 1]];
+        float osc1detune            [[ min:-100,    max:100,    init:0,     label: "Osc1 Detune",           unit: "cent",   step: 1 ]];
+        float osc2waveshape         [[ min:0,       max:100,    init:1.0,   label: "Osc2 Waveshape",        unit: "%",      step: 1 ]];
+        float osc2detuneSemitones   [[ min:-24,     max:24,     init:0,     label: "Osc2 Detune",           unit: "semi",   step: 1]];
+        float osc2detune            [[ min:-100,    max:100,    init:1,     label: "Osc2 Detune",           unit: "cent",   step: 1 ]];
+        float oscillatorMix         [[ min:0,       max:100,    init:22,    label: "Osc Mix",               unit: "%",      step:1 ]];
+        float filterAttack          [[ min:0,       max:100,    init:80,    label: "Filter Attack",         unit: "%",      step: 1 ]];
+        float filterDecay           [[ min:0,       max:100,    init:74,    label: "Filter Decay",          unit: "%",      step: 1 ]];
+        float filterSustain         [[ min:0,       max:100,    init:75,    label: "Filter Sustain",        unit: "%",      step: 1 ]];
+        float filterRelease         [[ min:0,       max:100,    init:66,    label: "Filter Release",        unit: "%",      step: 1 ]];
+        float filterSensitivity     [[ min:0,       max:100,    init:25,    label: "Filter Sensitivity",    unit: "%",      step: 1 ]];
+        float filterEnvMod          [[ min:-24,     max:24,     init:12,    label: "Filter Env Mod",        unit: "semi",   step: 1 ]];
+        float filterCutoffTrack     [[ min:0,       max:1,      init:1,     label: "Filter Cutoff Track",   unit: "semi",   step: 0.01 ]];
+        float dryWetMix             [[ min:0,       max:100,    init:100,   label: "Dry Wet Mix",           unit: "%",      step: 1 ]];
     }
 
     output stream float audioOut;
@@ -1129,15 +1087,36 @@ graph PadSynth
 
     connection
     {
-        midiIn -> oscillators.midiIn;
+        midiIn              -> oscillators.midiIn;
 
-        // Send through initial parameter values
-        ParameterInit.parameterOut -> oscillators.parameterIn;
-
-        parameterIn ->oscillators.parameterIn;
+        cutoff              -> oscillators.cutoffParam;
+        resonance           -> oscillators.resonanceParam;
+        ampAttack           -> oscillators.ampAttack;
+        ampDecay            -> oscillators.ampDecay;
+        ampSustain          -> oscillators.ampSustain;
+        ampRelease          -> oscillators.ampRelease;
+        ampSensitivity      -> oscillators.ampSensitivity;
+        osc1waveshape       -> oscillators.osc1waveshape;
+        osc1detuneSemitones -> oscillators.osc1detuneSemitones;
+        osc1detune          -> oscillators.osc1detune;
+        osc2waveshape       -> oscillators.osc2waveshape;
+        osc2detuneSemitones -> oscillators.osc2detuneSemitones;
+        osc2detune          -> oscillators.osc2detune;
+        filterAttack        -> oscillators.filterAttack;
+        filterDecay         -> oscillators.filterDecay;
+        filterSustain       -> oscillators.filterSustain;
+        filterRelease       -> oscillators.filterRelease;
+        filterSensitivity   -> oscillators.filterSensitivity;
+        oscillatorMix       -> oscillators.oscillatorMix;
+        filterEnvMod        -> oscillators.filterEnvMod;
+        filterCutoffTrack   -> oscillators.filterCutoffTrack;
+        dryWetMix           -> FxMix.dryWetMix;
 
         oscillators.audioOut -> delay.audioIn;
-        delay.audioOut -> Reverb.audioIn;
-        Reverb.audioOut -> audioOut;
+        delay.audioOut       -> Reverb.audioIn;
+
+        oscillators.audioOut -> FxMix.audioInDry;
+        Reverb.audioOut      -> FxMix.audioInWet;
+        FxMix.audioOut       -> audioOut;
     }
 }

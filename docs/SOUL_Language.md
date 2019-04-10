@@ -465,6 +465,29 @@ A processor must have *at least one output*. Because processors can only interac
 
 The endpoint declarations must be the first items that appear in the processor or graph declaration. They are then followed by all the other items such as functions, state variables, connections, etc. (These other items can be mixed up in any order).
 
+#### Endpoint Properties
+
+Properties can be associated with any input or output declaration. Properties have unique names, and are either string or numeric. Multiple properties can be associated with an endpoint. Properties are declared between `[[` and `]]` markers after the name, and appear as a json style list using `:` seperators:
+
+```C++
+graph Reverb
+{
+    input  stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    input event
+    {
+        float roomSize [[ min:0, max:1, default:0.8 ]];
+        float damping  [[ min:0, max:1, default:0.5 ]];
+        float wetLevel [[ min:0, max:1, default:0.33 ]];
+        float dryLevel [[ min:0, max:1, default:0.4 ]];
+        float width    [[ min:0, max:1, default:1.0 ]];
+    }
+}
+```
+
+The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and defaults for parameters.
+
 #### Graph declarations
 
 A graph is a list of processor instances, and a declaration of which endpoints are connected together. Graphs may be nested inside other graphs, and may be treated as a sub-class of processor.
@@ -743,16 +766,21 @@ Three strategies are provided:
 
 By default, oversampled streams are sinc interpolated in both directions. For undersampled processors, input streams are latch interpolated, and the output streams are linear interpolated.
 
-To specify a different interpolation strategy, a modifier is specified in the processor declaration. e.g
+To specify a different interpolation strategy, a modifier is specified in the processor connections. e.g
 
 ```C++
 graph ExampleGraph
 {
     let
     {
-        [sinc]   waveshaper1 = Waveshaper * 4;
-        [linear] waveshaper2 = Waveshaper * 4;
-        [latch]  waveshaper3 = Waveshaper * 4;
+        waveshaper = Waveshaper * 4;
+    }
+
+    connection
+    {
+        // Use sinc interpolation for the input to the waveshaper, and linear for it's output
+        [sinc]   audioIn -> waveshaper.audioIn;
+        [linear] waveshaper.audioOut -> audioOut;
     }
 }
 ```

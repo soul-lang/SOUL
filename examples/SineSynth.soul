@@ -271,8 +271,49 @@ processor RoundRobinVoiceAllocator (int voiceCount)
 }
 
 //==============================================================================
+// Converts an input event (as a gain in db) to a ramped stream
+processor GainParameterRamp (float slewRate)
+{
+    input event float gainDb;
+    output stream float parameterOut;
+
+    event gainDb (float targetDb)
+    {
+        targetValue = soul::dBtoGain (targetDb);
+
+        let diff = targetValue - currentValue;
+        let rampSeconds = abs (diff) / slewRate;
+
+        rampSamples   = int (processor.frequency * rampSeconds);
+        rampIncrement = diff / float (rampSamples);
+    }
+
+    float targetValue;
+    float currentValue;
+    float rampIncrement;
+    int rampSamples;
+
+    void run()
+    {
+        loop
+        {
+            if (rampSamples > 0)
+            {
+                currentValue += rampIncrement;
+                rampSamples--;
+            }
+
+            parameterOut << currentValue;
+            advance();
+        }
+    }
+}
+
+
+//==============================================================================
 graph SineSynth
 {
+    input event float volume [[ min:-40,   max:0,    init:-6, unit: "db", step: 1, label: "Volume" ]];
     input event int midiIn;
     output stream float audioOut;
 
@@ -282,11 +323,15 @@ graph SineSynth
 
         voices = Voice[8];
         voiceAllocator = RoundRobinVoiceAllocator(8);
+
+        gainParameter = GainParameterRamp (1.0f);
+        volumeProcessor = Gain;
     }
 
     connection
     {
         midiIn -> midiParser.parseMIDI;
+        volume -> gainParameter.gainDb;
 
         midiParser.noteOn    -> voiceAllocator.noteOn;
         midiParser.noteOff   -> voiceAllocator.noteOff;
@@ -298,6 +343,10 @@ graph SineSynth
         voiceAllocator.voicePitchBend -> voices.pitchBend;
 
         // Sum the voices audio out to the output
-        voices.audioOut -> audioOut;
+        voices.audioOut -> volumeProcessor.audioIn;
+
+        gainParameter.parameterOut -> volumeProcessor.gain;
+
+        volumeProcessor.audioOut -> audioOut;
     }
 }

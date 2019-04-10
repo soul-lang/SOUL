@@ -1,0 +1,25 @@
+{
+    "name": "soul",
+    "displayName": "soul",
+    "description": "SOUL language support",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.32.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "soul",
+            "aliases": ["SOUL", "soul"],
+            "extensions": [".soul",".soultest"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "soul",
+            "scopeName": "source.soul",
+            "path": "./syntaxes/soul.tmLanguage.json"
+        }]
+    }
+}

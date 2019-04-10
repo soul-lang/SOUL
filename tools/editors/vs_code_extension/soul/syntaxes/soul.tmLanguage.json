@@ -1,0 +1,179 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "SOUL",
+	"scopeName": "source.soul",
+	"patterns": [
+		{
+			"name": "keyword.control.soul",
+			"match": "\\b(if|else|do|while|for|loop|break|continue|return|try|catch|throw)\\b"
+		},
+		{
+			"name": "storage.type.soul",
+			"match": "\\b(const|void|int|int32|int64|float|float32|float64|fixed|bool|string|event|wrap|clamp)\\b"
+		},
+		{
+			"name": "entity.name.type.soul",
+			"match": "\\b(let|var|graph|processor|namespace|struct|input|output|connection|import)\\b"
+		},
+		{
+			"name": "comment.block.soul",
+			"begin": "/\\*",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.comment.begin.c"
+				}
+			},
+			"end": "\\*/",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.comment.end.c"
+				}
+			}
+		},
+		{
+			"name": "invalid.illegal.stray-comment-end.soul",
+			"match": "\\*/.*\\n"
+		},
+		{
+			"name": "comment.line.double-slash.soul",
+			"begin": "//",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.comment.cpp"
+				}
+			},
+			"end": "(?=\\n)",
+			"patterns": [
+				{
+					"match": "(\\\\)\\n"
+				}
+			]
+		},
+		{
+			"match": "--",
+			"name": "keyword.operator.decrement.soul"
+		},
+		{
+			"match": "\\+\\+",
+			"name": "keyword.operator.increment.soul"
+		},
+		{
+			"match": "->|<-",
+			"name": "keyword.other.soul"
+		},
+		{
+			"match": "%=|\\+=|-=|\\*=",
+			"name": "keyword.operator.assignment.compound.soul"
+		},
+		{
+			"match": "&=|\\^=|<<=|>>=|\\|=",
+			"name": "keyword.operator.assignment.compound.bitwise.soul"
+		},
+		{
+			"match": "<<|>>",
+			"name": "keyword.other.soul"
+		},
+		{
+			"match": "!=|<=|>=|==|<|>",
+			"name": "keyword.operator.comparison.soul"
+		},
+		{
+			"match": "&&|!|\\|\\|",
+			"name": "keyword.operator.logical.soul"
+		},
+		{
+			"match": "&|\\||\\^|~",
+			"name": "keyword.operator.soul"
+		},
+		{
+			"match": "\\.|::",
+			"name": "punctuation.separator.soul"
+		},
+		{
+			"match": ";",
+			"name": "punctuation.terminator.soul"
+		},
+		{
+			"match": "=",
+			"name": "keyword.operator.assignment.soul"
+		},
+		{
+			"match": "%|\\*|/|-|\\+",
+			"name": "keyword.operator.soul"
+		},
+		{
+			"match": "\\b(true|false)\\b",
+			"name": "constant.language.soul"
+		},
+		{
+			"match": "\\b((0(x|X)[0-9a-fA-F]([0-9a-fA-F']*[0-9a-fA-F])?)|(0(b|B)[01]([01']*[01])?)|(([0-9]([0-9']*[0-9])?\\.?[0-9]*([0-9']*[0-9])?)|(\\.[0-9]([0-9']*[0-9])?))((e|E)(\\+|-)?[0-9]([0-9']*[0-9])?)?)(F|f)?\\b",
+			"name": "constant.numeric.soul"
+		},
+		{
+			"begin": "\\(",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.section.parens.begin.bracket.round.soul"
+				}
+			},
+			"end": "\\)|(?=//)|(?=/\\*(?!.*\\\\\\s*\\n))|(?<!\\\\)(?=\\n)",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.section.parens.end.bracket.round.soul"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#preprocessor-rule-conditional-line"
+				}
+			]
+		},
+		{
+			"begin": "{",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.section.block.begin.bracket.curly.soul"
+				}
+			},
+			"end": "}|(?=\\s*#\\s*(?:elif|else|endif)\\b)",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.section.block.end.bracket.curly.soul"
+				}
+			},
+			"name": "meta.block.c",
+			"patterns": [
+				{
+					"include": "#block_innards"
+				}
+			]
+		},
+		{
+			"match": "(\\[)|(\\])",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.begin.bracket.square.soul"
+				},
+				"2": {
+					"name": "punctuation.definition.end.bracket.square.soul"
+				}
+			}
+		},
+		{
+			"name": "string.quoted.double.soul",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.soul",
+					"match": "\\\\."
+				}
+			]
+		},
+		{
+			"name": "keyword.control.directive.soul",
+			"begin": "^##",
+			"end": "(?=\\n)"
+		}
+	]
+}
