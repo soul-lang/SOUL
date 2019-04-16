@@ -11,7 +11,9 @@
 
     SOUL is under active development, but is a long-term multi-year project that spans a huge range of target devices, tools and use-cases.
 
-    The team is currently working on the core compiler and API technology, and working with partners to build out 3rd party support.
+    The team is currently working on the core compiler and API technology, and working with partners to plan 3rd party support and hardware. We aim to release a public API to developers in Q4 2019. If you'd like to join our early adopter/beta-test program, please drop us a line.
+
+    If you want'd like to try writing SOUL in your browser, please visit [soul.dev/playground](https://soul.dev/playground)!
 
 - #### Where can I find more technical details?
 
