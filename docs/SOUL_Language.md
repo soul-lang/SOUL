@@ -667,11 +667,13 @@ processor Mixer (int voices)
     // ...etc...
 }
 
-graph ExampleGraph (int length)
+// Graphs may also use 'processor' parameters to allow the caller
+// to pass in specific types of processor for them to use
+graph ExampleGraph (processor DelayType, int length)
 {
-    let delay1 = Delay(float, length * 2);
-    let delay2 = Delay(float, length * 3);
-    let delay3 = Delay(float<2>, 10000);
+    let delay1 = DelayType(float, length * 2);
+    let delay2 = DelayType(float, length * 3);
+    let delay3 = DelayType(float<2>, 10000);
 }
 
 ```
