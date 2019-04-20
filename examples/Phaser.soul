@@ -1,0 +1,121 @@
+/*
+    == SOUL example code ==
+    == Designed by Ivan COHEN ==
+
+    This is a 6-stages phaser with mix and feedback controls
+    The all-pass filter algorithms use the TPT structure
+*/
+
+//==============================================================================
+graph phaser
+{
+    input  stream float audioIn;    // just using mono in and out
+    output stream float audioOut;
+
+    input event
+    {
+        float lfoFrequency      [[ min: 0.01f, max: 10, init: 0.25]];
+        float cutoffFrequency   [[ min: 20, max: 20000, init: 1000]];
+        float depth             [[ min: 0, max: 1, init: 0.5]];
+        float mix               [[ min: 0, max: 1, init: 0.8f]];
+        float feedback          [[ min: 0, max: 0.99f, init: 0.7f]];
+    }
+
+    let phaserEffect = PhaserEffect;
+
+    connection
+    {
+        audioIn -> phaserEffect.audioIn;
+
+        lfoFrequency    -> phaserEffect.lfoFrequencyIn;
+        cutoffFrequency -> phaserEffect.cutoffFrequencyIn;
+        depth           -> phaserEffect.depthIn;
+        mix             -> phaserEffect.mixIn;
+        feedback        -> phaserEffect.feedbackIn;
+
+        phaserEffect.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor PhaserEffect
+{
+    input stream  float audioIn;
+    output stream float audioOut;
+
+    input event
+    {
+        float lfoFrequencyIn;
+        float cutoffFrequencyIn;
+        float depthIn;
+        float mixIn;
+        float feedbackIn;
+    }
+
+    event lfoFrequencyIn (float f)      { lfoFrequency = f; }
+    event cutoffFrequencyIn (float f)   { cutoffFrequency = f; }
+    event depthIn (float f)             { depth = f; }
+    event mixIn (float f)               { mix = f; }
+    event feedbackIn (float f)          { feedback = f; }
+
+    // phaser parameters
+    float lfoFrequency = 0.2f;
+    float cutoffFrequency = 500.0f;
+    float depth = 1.0f;
+    float mix = 0.5f;
+    float feedback = 0.9f;
+
+    // Updates the filter internal variables (TPT structure)
+    float calculateG (float lfo)
+    {
+        let cutoff = clamp (cutoffFrequency * pow (10.0f, lfo), 20.0f, 0.49f * float32 (processor.frequency));
+        let g = tan (float (pi) * cutoff  / float32 (processor.frequency));
+        return g / (1 + g);
+    }
+
+    // Main processing function
+    void run()
+    {
+        // state variables
+        float phase = 0.0f;
+        float lastOutput = 0.0f;
+        float[6] s1;
+
+        let updateInterval = 8;   // number of samples between updating the LTO factor
+
+        loop
+        {
+            // LFO calculus
+            let lfoFactor = lfoFrequency * 2 * float (pi) * updateInterval / float32 (processor.frequency);
+            let lfo = sin(phase) * depth;
+            phase = soul::addModulo2Pi(phase, lfoFactor);
+
+            // AP1 coefficients update
+            let G = calculateG (lfo);
+
+            loop (updateInterval)
+            {
+                // Input with feedback output
+                let in = audioIn;
+                var wet = in - feedback * lastOutput;
+
+                wrap<s1.size> n;  // AP1 processing
+                
+                loop (s1.size)
+                {
+                    let v = G * (wet - s1[n]);
+                    let y = v + s1[n];
+                    s1[n] = y + v;
+
+                    wet = 2 * y - wet;
+                    n++;
+                }
+
+                lastOutput = wet;   // feed back input
+
+                audioOut << mix * wet + (1.0f - mix) * in;
+                advance();
+            }
+        }
+    }
+}

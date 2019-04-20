@@ -1,0 +1,136 @@
+/*
+    == SOUL example code ==
+    == Designed by Ivan COHEN ==
+
+    This is an algorithm simulating the VCS3 diode ladder filter from EMS, using
+    "semi-implicit" resolution of the nonlinear equations.
+
+    Bibliography :
+    - Efficient Polynomial Implementation of the EMS VCS3 Filter Model from 
+    Stefano Zambon and Federico Fontana
+    - Talks from mystran on http://www.kvraudio.com/forum/viewtopic.php?t=349859
+    - The Art of VA Filter Design by Vadim Zavalishin
+    
+    See the slides of the talk "Virtual Analog Audio Effects Simulation with JUCE 4" 
+    at JUCE Summit 2015 for more information.
+*/
+
+//==============================================================================
+graph filterDiodeLadder
+{
+    input  stream float audioIn;    // just using mono in and out
+    output stream float audioOut;
+
+    input event float cutoffFrequency   [[ min: 40, max: 20000, init: 200 ]];
+    input event float resonance         [[ min: 0.5, max: 7, init: 6 ]];
+
+    let diodeLadder = EMSVCS3Filter * 4; // oversampling 4 times
+
+    connection
+    {
+        audioIn -> diodeLadder.audioIn;
+
+        cutoffFrequency -> diodeLadder.cutoffFrequencyIn;
+        resonance -> diodeLadder.resonanceIn;
+
+        diodeLadder.audioOut -> audioOut;
+    }
+}
+
+processor EMSVCS3Filter
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    input event float cutoffFrequencyIn;
+    input event float resonanceIn;
+
+    event cutoffFrequencyIn (float value)   { cutoffFrequency = value; }
+    event resonanceIn (float value)         { resonance = value; }
+
+    // parameters
+    float cutoffFrequency = 1000.f;
+    float resonance = 5.f;
+
+    // update the filter settings every UPDATE_INTERVAL samples
+    let updateInterval = 8;
+
+    // internal variables
+    float f, r;
+
+    /** Updates the internal variables */
+    void updateProcessing()
+    {
+        f = tan (float (pi) * cutoffFrequency / float32 (processor.frequency));
+        r = resonance;
+    }
+
+    /** Pade-approx for tanh(sqrt(x))/sqrt(x) from mystran */
+    float tanhXdX(float x)
+    {
+        let a = x * x;
+        return ((a + 105) * a + 945) / ((15 * a + 420) * a + 945);
+    }
+
+    /** Main processing function */
+    void run()
+    {
+        // constants
+        let g0inv = 1.f;
+        let g1inv = 1.f / 1.836f;
+        let g2inv = 1.f / (3 * 1.836f);
+
+        // state variables
+        float32 s0 = 0.f;
+        float32 s1 = 0.f;
+        float32 s2 = 0.f;
+        float32 s3 = 0.f;
+        float32 zi = 0.f;
+        
+        loop
+        {
+            updateProcessing();
+
+            loop (updateInterval)
+            {
+                let in = audioIn;
+                
+                // input with half delay, for non-linearities
+                let ih = 0.5f * (in + zi);
+
+                // evaluate the non-linear gains
+                let t0 = f * tanhXdX ((ih - r * s3) *g0inv) * g0inv;
+                let t1 = f * tanhXdX ((s1 - s0) * g1inv) * g1inv;
+                let t2 = f * tanhXdX ((s2 - s1) * g1inv) * g1inv;
+                let t3 = f * tanhXdX ((s3 - s2) * g1inv) * g1inv;
+                let t4 = f * tanhXdX ((s3) * g2inv) * g2inv;
+
+                // This formula gives the result for y3 thanks to MATLAB
+                float y3 = (s2 + s3 + t2 * (s1 + s2 + s3 + t1 * (s0 + s1 + s2 + s3 + t0 * in)) +
+                    t1 * (2 * s2 + 2 * s3)) * t3 + s3 + 2 * s3 * t1 + t2 * (2 * s3 + 3 * s3 * t1);
+
+                y3 /= (t4 + t1 * (2 * t4 + 4) + t2 * (t4 + t1 * (t4 + r * t0 + 4) + 3) + 2) * t3 + t4 + t1 * (2 * t4 + 2)
+                    + t2 * (2 * t4 + t1 * (3 * t4 + 3) + 2) + 1;
+
+                // Other outputs
+                let y2 = (s3 - (1 + t4 + t3) * y3) / (-t3);
+                let y1 = (s2 - (1 + t3 + t2) * y2 + t3 * y3) / (-t2);
+                let y0 = (s1 - (1 + t2 + t1) * y1 + t2 * y2) / (-t1);
+                let xx = in - r * y3;
+
+                // update state
+                s0 += 2 * (t0 * xx + t1 * (y1 - y0));
+                s1 += 2 * (t2 * (y2 - y1) - t1 * (y1 - y0));
+                s2 += 2 * (t3 * (y3 - y2) - t2 * (y2 - y1));
+                s3 += 2 * (-t4 * y3 - t3 * (y3 - y2));
+
+                zi = in;
+
+                // output
+                audioOut << y3 * r;
+
+                advance();
+            }
+        }
+    }
+}

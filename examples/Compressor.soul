@@ -1,0 +1,103 @@
+/*
+    == SOUL example code ==
+    == Designed by Ivan COHEN ==
+
+    This is a dynamics compressor
+*/
+
+//==============================================================================
+graph compressor
+{
+    input  stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    input event float threshold [[ min: -80.f, max: 0.f, init: -20.f]];
+    input event float ratio [[ min: 1.f, max: 100.f, init: 5.f]];
+    input event float attack [[ min: 0.01f, max: 100.f, init: 0.25f]];
+    input event float release [[ min: 50.f, max: 1000.f, init: 150.f]];
+
+    let comp = DynamicsCompressor * 2;  // oversampling 2 times
+
+    connection
+    {
+        audioIn -> comp.audioIn;
+        
+        threshold -> comp.thresholdIn;
+        ratio -> comp.ratioIn;
+        attack -> comp.attackIn;
+        release -> comp.releaseIn;
+
+        comp.audioOut -> audioOut;
+    }
+}
+
+processor DynamicsCompressor
+{
+    input stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    input event float thresholdIn;
+    input event float ratioIn;
+    input event float attackIn;
+    input event float releaseIn;
+
+    event thresholdIn (float value)     { threshold = value; }
+    event ratioIn (float value)         { ratio = value; }
+    event attackIn (float value)        { attack = value; }
+    event releaseIn (float value)       { release = value; }
+
+    // User parameters
+    float threshold = -40.f;
+    float ratio = 10.f;
+    float attack = 0.1f;
+    float release = 200.f;
+
+    // Update the settings every UPDATE_INTERVAL samples
+    let updateInterval = 8;
+    
+    // internal variables
+    float thrlin, cteAT, cteRL;
+
+    /** Updates the internal variables */
+    void updateProcessing()
+    {
+        thrlin = soul::dBtoGain (threshold);
+        cteAT = exp (-2.f * float (pi) * 1000.f / (attack * float32 (processor.frequency)));
+        cteRL = exp (-2.f * float (pi) * 1000.f / (release * float32 (processor.frequency)));
+    }
+
+    /** Main processing function */
+    void run()
+    {
+        // state variable
+        float32 s1 = 0.f;
+        
+        loop
+        {
+            updateProcessing();
+
+            loop (updateInterval)
+            {
+                // input
+                let in1 = audioIn[0];
+                let in2 = audioIn[1];
+                
+                // detector (peak)
+                let sideIn = max (abs (in1), abs (in2));
+
+                // ballistics filter and envelope generation
+                let cte = (sideIn >= s1 ? cteAT : cteRL);
+                let env = sideIn + cte * (s1 - sideIn);
+                s1 = env;
+                
+                // compressor transfer function
+                let cv = (env <= thrlin ? 1.f : pow (env / thrlin, 1.f / ratio - 1.f));
+                
+                // processing (VCA) and output
+                audioOut << float<2> (in1, in2) * cv;
+
+                advance();
+            }
+        }
+    }
+}
