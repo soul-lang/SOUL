@@ -477,16 +477,16 @@ graph Reverb
 
     input event
     {
-        float roomSize [[ min:0, max:1, default:0.8 ]];
-        float damping  [[ min:0, max:1, default:0.5 ]];
-        float wetLevel [[ min:0, max:1, default:0.33 ]];
-        float dryLevel [[ min:0, max:1, default:0.4 ]];
-        float width    [[ min:0, max:1, default:1.0 ]];
+        float roomSize [[ min:0, max:1, init:0.8 ]];
+        float damping  [[ min:0, max:1, init:0.5 ]];
+        float wetLevel [[ min:0, max:1, init:0.33 ]];
+        float dryLevel [[ min:0, max:1, init:0.4 ]];
+        float width    [[ min:0, max:1, init:1.0 ]];
     }
 }
 ```
 
-The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and defaults for parameters.
+The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and initial valuess for parameters.
 
 #### Graph declarations
 
