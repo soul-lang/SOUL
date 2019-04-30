@@ -926,9 +926,13 @@ The `<<` operator was chosen for writing to output endpoints as the operation is
 
 The language provides a set of built-in intrinsics:
 
-- Arithmetic: `abs` `sqrt` `pow` `exp` `log` `log10`
-- Range clamping: `min(v1, v2)` `max(v1, v2)` `clamp(v, low, high)` `wrap(v, max)`
-- Trigonometry: `sin` `cos` `tan`
+- Arithmetic: `abs()` `sqrt()` `pow()` `exp()` `log()` `log10()` `floor()` `ceil()`
+- Range clamping: `min(v1, v2)` `max(v1, v2)` `clamp(v, low, high)` `wrap(v, max)` `fmod(numer, denom)` `remainder(numer, denom)`
+- Trigonometry: `sin()` `cos()` `tan()` `acos()` `asin()` `atan()` `atan2()` `sinh()` `cosh()` `tanh()` `asinh()` `acosh()` `atanh()`
+
+All of the intrinsics are defined for `float32` and `float64` data types. The following functions also support `int32` and `int64` data types:
+
+`min()` `max()` `clamp()` `wrap()` `abs()`
 
 ### Built-in library Functions
 
