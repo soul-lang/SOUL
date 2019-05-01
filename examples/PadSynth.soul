@@ -398,7 +398,7 @@ processor LowPassFilter
         return result;
     }
 
-    void initaliseTerms()
+    void initialiseTerms()
     {
         for (int i = 0; i < TABLE_ENTRIES; ++i)
             for (int j = 0; j <= MAX_RESONANCE; ++j)
@@ -436,7 +436,7 @@ processor LowPassFilter
 
     void run()
     {
-        initaliseTerms();
+        initialiseTerms();
         float in_1, in_2, out_1, out_2;
 
         loop
