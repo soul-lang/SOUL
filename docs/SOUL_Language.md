@@ -486,7 +486,7 @@ graph Reverb
 }
 ```
 
-The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and initial valuess for parameters.
+The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and initial values for parameters.
 
 #### Graph declarations
 
