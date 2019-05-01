@@ -93,7 +93,7 @@ Arrays are declared with this syntax:
 float[10] x;   // an array of 10 floats, implicitly initialised to all-zeros
 
 let x = int[4] (1, 2, 3, 4);   // initialises a const array of 4 elements.
-let x = int[] (1, 2, 3, 4);    // (the size can be omitted if giving an initialiser list)
+let x = int[] (1, 2, 3, 4);    // (the size can be omitted if giving an initializer list)
 
 int[] x = (1, 2, 3, 4);       // initialises a mutable array of 4 elements
 ```
@@ -237,8 +237,8 @@ There are two scopes in which variables can be declared:
 - **State** variables are declared inside a processor block. See [Processor state variables](#processor-state-variables) for details
 
 Variables can be declared in several styles:
-- `let [name] = [initial value];` - infers the type from the initialiser, and the resulting variable is *const*
-- `var [name] = [initial value];` - infers the type from the initialiser, and the resulting variable is *non-const*
+- `let [name] = [initial value];` - infers the type from the initializer, and the resulting variable is *const*
+- `var [name] = [initial value];` - infers the type from the initializer, and the resulting variable is *non-const*
 - `[typename] [name];` - creates a mutable variable of the given type, which will be implicitly zero-initialised
 - `const [typename] [name] = [initial value];` - creates a const variable of the given type
 
@@ -261,7 +261,7 @@ processor ExampleProcessor
         var c = 1.0f;    // mutable value
 
         float a = 1.0f;
-        int d = 3.0;     // error! the initialiser must have a matching type
+        int d = 3.0;     // error! the initializer must have a matching type
 
         MyStructure x;   // declare an instance of a structure
 
@@ -486,7 +486,7 @@ graph Reverb
 }
 ```
 
-The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and initial valuess for parameters.
+The properties have no effect on the generated SOUL code, but are visible to the SOUL runtime, and are used to communicate information about inputs and outputs. A typical use would be as the example above, to communicate ranges and initial values for parameters.
 
 #### Graph declarations
 
