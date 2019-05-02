@@ -34,8 +34,8 @@ namespace NoteHandler
     NoteHandler create()
     {
         NoteHandler r;
-        r.currentVelocity = 0.0f;
-        r.currentNote = 0.0f;
+        r.currentVelocity = 0;
+        r.currentNote = 0;
         r.activeNotes = 0;
         r.maxNotes = 16;
         return r;
@@ -162,16 +162,16 @@ processor PolyBlep
     event detuneSemitones (float f)
     {
         detuneSemitonesValue = f;
-        frequencyMultiplier = pow(2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
+        frequencyMultiplier = pow (2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
     }
 
     event detune (float f)
     {
         detuneValue = f * 0.01f;
-        frequencyMultiplier = pow(2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
+        frequencyMultiplier = pow (2.0f, (detuneSemitonesValue + detuneValue) / 12.0f);
     }
 
-    const float frequencyScaling = 1.0f / float(processor.frequency);
+    let frequencyScaling = 1.0f / float(processor.frequency);
 
     float normalisedPhase = 0.0f;
     float normalisedPhaseIncrement = 0.0f;
@@ -197,7 +197,7 @@ processor PolyBlep
             return (t * t) + (t + t) + 1.0f;
         }
 
-        return 0.0f;
+        return 0;
     }
 
     void run()
@@ -210,13 +210,13 @@ processor PolyBlep
             while (normalisedPhase >= 1.0f)
                 normalisedPhase -= 1.0f;
 
-            float normalisedPhase2 = normalisedPhase + 0.5f;
+            var normalisedPhase2 = normalisedPhase + 0.5f;
 
             if (normalisedPhase2 > 1.0f)
                 normalisedPhase2 -= 1.0f;
 
-            float sawValue = (2.0f * normalisedPhase) - 1.0f - blep(normalisedPhase);
-            float squareValue = -blep(normalisedPhase) + blep(normalisedPhase2);
+            let sawValue = (2.0f * normalisedPhase) - 1.0f - blep (normalisedPhase);
+            var squareValue = -blep (normalisedPhase) + blep (normalisedPhase2);
 
             squareValue += (normalisedPhase <= 0.5f) ? -1.0f : 1.0f;
 
@@ -243,38 +243,38 @@ processor ADSREnvelope
 
     event attack (float f)
     {
-            let seconds = 0.001 + 9.999 * pow(f * 0.01f, 4.0f);
-            let secondsToLinearStep = 1.0 / (sampleRate * seconds);
+        let seconds = 0.001 + 9.999 * pow (f * 0.01f, 4.0f);
+        let secondsToLinearStep = 1.0 / (sampleRate * seconds);
 
-            attackRamp = secondsToLinearStep;
+        attackRamp = secondsToLinearStep;
     }
 
     event decay (float f)
     {
-            let seconds = 0.001 + 9.999 * pow(f * 0.01f, 4.0f);
-            let inverse = 1.0 / (sampleRate * seconds);
-            let secondsToMultiplier = pow(0.0001, inverse);
+        let seconds = 0.001 + 9.999 * pow (f * 0.01f, 4.0f);
+        let inverse = 1.0 / (sampleRate * seconds);
+        let secondsToMultiplier = pow (0.0001, inverse);
 
-            decayMultiplier = secondsToMultiplier;
+        decayMultiplier = secondsToMultiplier;
     }
 
     event sustain (float f)
     {
-            sustainLevel = float64 (f) * 0.01f;
+        sustainLevel = float64 (f) * 0.01f;
     }
 
     event release (float f)
     {
-            let seconds = 0.001 + 9.999 * pow(f * 0.01f, 4.0f);
-            let inverse = 1.0 / (sampleRate * seconds);
-            let secondsToMultiplier = pow(0.0001, inverse);
+        let seconds = 0.001 + 9.999 * pow (f * 0.01f, 4.0f);
+        let inverse = 1.0 / (sampleRate * seconds);
+        let secondsToMultiplier = pow (0.0001, inverse);
 
-            releaseMultiplier = secondsToMultiplier;
+        releaseMultiplier = secondsToMultiplier;
     }
 
     event sensitivity (float f)
     {
-            velocitySensitivity = f * 0.01f;
+        velocitySensitivity = f * 0.01f;
     }
 
     const float sampleRate = float (processor.frequency);
@@ -283,37 +283,36 @@ processor ADSREnvelope
     float64 decayMultiplier = 0.995;
     float64 sustainLevel = 1.0;
     float64 releaseMultiplier = 0.99991;
-    float64 velocitySensitivity = 0.0;
+    float32 velocitySensitivity = 0.0f;
     float64 targetValue = 1.0;
 
     void calculateTargetValue (float noteVelocity)
     {
         // Use the velocitySensitivity to decide how the noteVelocity affects the target volume
-        //
-        // We determine a db attenuation range, then the note velocity decides where we are on it
-        // Full velocity sensitivity is -12db
+        // We determine a dB attenuation range, then the note velocity decides where we are on it
+        // Full velocity sensitivity is -12dB
 
         // We use 100 as a 'loud' note, so that's 0.75 out of 100 as 'normal', any higher velocity will be louder
         let attenuation = -12.0f * velocitySensitivity * (0.75f - noteVelocity);
 
-        targetValue = pow(10.0f, attenuation / 10.0f);
+        targetValue = pow (10.0f, attenuation / 10.0f);
     }
 
     void run()
     {
-        float64 value = 0.0;
+        float64 value = 0;
 
         bool released = false;
 
         loop
         {
-            if (audioIn > 0.0f)
+            if (audioIn > 0)
             {
                 // TODO: Shouldn't need this
                 released = false;
 
                 // Use the value of the trigger to modify our target value
-                calculateTargetValue(audioIn);
+                calculateTargetValue (audioIn);
 
                 while (! released && value < targetValue)
                 {
@@ -321,7 +320,7 @@ processor ADSREnvelope
                     audioOut << float(value);
                     advance();
 
-                    released = (audioIn <= 0.0f);
+                    released = (audioIn <= 0);
                 }
 
                 // Cap it to the target value
@@ -334,15 +333,15 @@ processor ADSREnvelope
                     audioOut << float(value);
                     advance();
 
-                    released = (audioIn <= 0.0f);
+                    released = (audioIn <= 0);
                 }
 
                 // Sustain stage
-                while (!released)
+                while (! released)
                 {
                     audioOut << float(value);
                     advance();
-                    released = (audioIn <= 0.0f);
+                    released = (audioIn <= 0);
                 }
             }
 
@@ -360,11 +359,9 @@ processor LowPassFilter
     input  stream float gainIn, cutoffIn, resonanceIn, audioIn;
     output stream float audioOut;
 
-    const int TABLE_ENTRIES = 128;
-    const int MAX_RESONANCE = 100;
-
-    // Update the filter settings every UPDATE_INTERVAL samples
-    let updateInterval = 64;
+    let numTableEntries = 128;
+    let maxResonance = 100;
+    let samplesBetweenFactorUpdates = 64;
 
     struct FilterTerms
     {
@@ -373,12 +370,12 @@ processor LowPassFilter
 
     struct FrequencySettings
     {
-        FilterTerms[MAX_RESONANCE + 1] resonance;
+        FilterTerms[maxResonance + 1] resonance;
     }
 
     struct PrecalcTerms
     {
-        FrequencySettings[TABLE_ENTRIES] frequency;
+        FrequencySettings[numTableEntries] frequency;
     }
 
     PrecalcTerms precalcTerms;
@@ -388,7 +385,7 @@ processor LowPassFilter
         FilterTerms result;
 
         let r = 1.4f - (resonance * 0.0135f);
-        let f = clamp(soul::noteNumberToFrequency(frequency), 0.0f, 20000.0f);
+        let f = clamp (soul::noteNumberToFrequency(frequency), 0.0f, 20000.0f);
         let c = 1.0f / tan (float(pi) * (10.0f + f) / float32(processor.frequency));
 
         result.a = 1.0f / (1.0f + r * c + c * c);
@@ -400,21 +397,21 @@ processor LowPassFilter
 
     void initialiseTerms()
     {
-        for (int i = 0; i < TABLE_ENTRIES; ++i)
-            for (int j = 0; j <= MAX_RESONANCE; ++j)
-                precalcTerms.frequency.at(i).resonance.at(j) = calcTermEntry(float(i), float(j));
+        for (int i = 0; i < numTableEntries; ++i)
+            for (int j = 0; j <= maxResonance; ++j)
+                precalcTerms.frequency.at(i).resonance.at(j) = calcTermEntry (float(i), float(j));
     }
 
     void updateFactors (float cutoff, float resonance)
     {
-        cutoff    = clamp (cutoff, 0.0f, float(TABLE_ENTRIES - 2));
-        resonance = clamp (resonance, 0.0f, float(MAX_RESONANCE - 1));
+        cutoff    = clamp (cutoff, 0.0f, float(numTableEntries - 2));
+        resonance = clamp (resonance, 0.0f, float(maxResonance - 1));
 
         // Interpolate the cutoff
         let cutoffInterpolation = cutoff - int(cutoff);
 
-        let resonanceEntry = wrap<MAX_RESONANCE>(int(resonance));
-        var cutoffEntry = wrap<TABLE_ENTRIES>(int(cutoff));
+        let resonanceEntry = wrap<maxResonance>(int(resonance));
+        var cutoffEntry = wrap<numTableEntries>(int(cutoff));
 
         let terms1_a = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].a;
         let terms1_b = precalcTerms.frequency[cutoffEntry].resonance[resonanceEntry].b;
@@ -443,7 +440,7 @@ processor LowPassFilter
         {
             updateFactors(cutoffIn, resonanceIn);
 
-            loop (updateInterval)
+            loop (samplesBetweenFactorUpdates)
             {
                 let in = audioIn;
 
@@ -506,11 +503,11 @@ processor Controller
     output stream float note1_noteOut, note1_frequencyOut, note1_velocity, note1_active,
                         note2_frequencyOut, note1_pressure, note1_slide;
 
-    event noteOn (soul::NoteEvents::NoteOn e)           { NoteHandler::addNote      (noteHandler, e.channel, e.note, e.velocity); }
-    event noteOff (soul::NoteEvents::NoteOff e)         { NoteHandler::removeNote   (noteHandler, e.channel, e.note); }
-    event pitchBend (soul::NoteEvents::PitchBend e)     { NoteHandler::addPitchBend (noteHandler, e.channel, e.bendSemitones); }
-    event pressure (soul::NoteEvents::Pressure p)       { NoteHandler::addPressure  (noteHandler, p.channel, p.pressure); }
-    event slide (soul::NoteEvents::Slide s)             { NoteHandler::addSlide     (noteHandler, s.channel, s.slide); }
+    event noteOn    (soul::NoteEvents::NoteOn e)     { NoteHandler::addNote      (noteHandler, e.channel, e.note, e.velocity); }
+    event noteOff   (soul::NoteEvents::NoteOff e)    { NoteHandler::removeNote   (noteHandler, e.channel, e.note); }
+    event pitchBend (soul::NoteEvents::PitchBend e)  { NoteHandler::addPitchBend (noteHandler, e.channel, e.bendSemitones); }
+    event pressure  (soul::NoteEvents::Pressure p)   { NoteHandler::addPressure  (noteHandler, p.channel, p.pressure); }
+    event slide     (soul::NoteEvents::Slide s)      { NoteHandler::addSlide     (noteHandler, s.channel, s.slide); }
 
     NoteHandler::NoteHandler noteHandler;
 
@@ -1047,7 +1044,7 @@ processor FxMix
 
 }
 
-graph PadSynth
+graph PadSynth  [[main]]
 {
     input event
     {
