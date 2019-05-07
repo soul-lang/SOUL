@@ -71,12 +71,18 @@ All types can be prefixed with `const` when declaring a constant variable.
 
 #### Numeric literals
 
-SOUL largely follows the familiar C/C++/Java/Javascript convention for numeric values:
+SOUL largely follows familiar C/Java/Javascript conventions for numeric values:
 
 - ##### Integers
-    e.g. `1234` (decimal), `0xabcd` (hexadecimal)
+    Numbers without suffixes are 32-bit signed, e.g. `1234` (32-bit decimal), `0xabcd` (32-bit hexadecimal), `0b101010` (binary).
+    For 64-bit values, SOUL supports both C/Java-style `L` or Rust-style `i64` suffixes. E.g. `123L` is the same as `123i64`. 
+    (Lower-case `l` is not allowed, as it's too easy to confuse with `1`)
+    To explicitly mark a number as a 32-bit integer, you can use the suffix `i32`.
+    For readability, you can also add an underscore before any of these suffixes, e.g. `123_i64`
 - ##### Floating-point
-    e.g. `123.0f` (32-bit float), `123.0` (64-bit float), `1.0e-10` (64-bit float)
+    For a 32-bit float, you can use either `f` or `f32` as the suffix, e.g. `123.0f` or `123.0f32`.
+    For 64-bit floats, either write it without a suffix, or use `f64`, `123.0` or `123.0f64`
+    For readability, you can also add an underscore before any of these suffixes, e.g. `123.0_f64`
 - ##### Boolean
     `true` and `false` are built-in keywords
 
