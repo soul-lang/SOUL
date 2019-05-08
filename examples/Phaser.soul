@@ -100,7 +100,7 @@ processor PhaserEffect
                 var wet = in - feedback * lastOutput;
 
                 wrap<s1.size> n;  // AP1 processing
-                
+
                 loop (s1.size)
                 {
                     let v = G * (wet - s1[n]);

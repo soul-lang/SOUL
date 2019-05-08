@@ -21,7 +21,7 @@ graph compressor
     connection
     {
         audioIn -> comp.audioIn;
-        
+
         threshold -> comp.thresholdIn;
         ratio -> comp.ratioIn;
         attack -> comp.attackIn;
@@ -54,7 +54,7 @@ processor DynamicsCompressor
 
     // Update the settings every UPDATE_INTERVAL samples
     let updateInterval = 8;
-    
+
     // internal variables
     float thrlin, cteAT, cteRL;
 
@@ -71,7 +71,7 @@ processor DynamicsCompressor
     {
         // state variable
         float32 s1 = 0.f;
-        
+
         loop
         {
             updateProcessing();
@@ -81,7 +81,7 @@ processor DynamicsCompressor
                 // input
                 let in1 = audioIn[0];
                 let in2 = audioIn[1];
-                
+
                 // detector (peak)
                 let sideIn = max (abs (in1), abs (in2));
 
@@ -89,10 +89,10 @@ processor DynamicsCompressor
                 let cte = (sideIn >= s1 ? cteAT : cteRL);
                 let env = sideIn + cte * (s1 - sideIn);
                 s1 = env;
-                
+
                 // compressor transfer function
                 let cv = (env <= thrlin ? 1.f : pow (env / thrlin, 1.f / ratio - 1.f));
-                
+
                 // processing (VCA) and output
                 audioOut << float<2> (in1, in2) * cv;
 

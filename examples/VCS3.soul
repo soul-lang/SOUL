@@ -6,12 +6,12 @@
     "semi-implicit" resolution of the nonlinear equations.
 
     Bibliography :
-    - Efficient Polynomial Implementation of the EMS VCS3 Filter Model from 
+    - Efficient Polynomial Implementation of the EMS VCS3 Filter Model from
     Stefano Zambon and Federico Fontana
     - Talks from mystran on http://www.kvraudio.com/forum/viewtopic.php?t=349859
     - The Art of VA Filter Design by Vadim Zavalishin
-    
-    See the slides of the talk "Virtual Analog Audio Effects Simulation with JUCE 4" 
+
+    See the slides of the talk "Virtual Analog Audio Effects Simulation with JUCE 4"
     at JUCE Summit 2015 for more information.
 */
 
@@ -86,7 +86,7 @@ processor EMSVCS3Filter
         float32 s2 = 0.f;
         float32 s3 = 0.f;
         float32 zi = 0.f;
-        
+
         loop
         {
             updateProcessing();
@@ -94,7 +94,7 @@ processor EMSVCS3Filter
             loop (updateInterval)
             {
                 let in = audioIn;
-                
+
                 // input with half delay, for non-linearities
                 let ih = 0.5f * (in + zi);
 
