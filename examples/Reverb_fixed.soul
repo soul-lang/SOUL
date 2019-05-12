@@ -5,7 +5,7 @@
     parameter values.
 */
 
-graph Reverb
+graph Reverb [[main]]
 {
     input  stream float audioIn;    // just using mono in and out
     output stream float audioOut;
