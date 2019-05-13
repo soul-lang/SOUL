@@ -471,9 +471,9 @@ A processor must have *at least one output*. Because processors can only interac
 
 The endpoint declarations must be the first items that appear in the processor or graph declaration. They are then followed by all the other items such as functions, state variables, connections, etc. (These other items can be mixed up in any order).
 
-#### Endpoint Properties
+#### Endpoint Annotations
 
-Properties can be associated with any input or output declaration. Properties have unique names, and are either string or numeric. Multiple properties can be associated with an endpoint. Properties are declared between `[[` and `]]` markers after the name, and appear as a json style list using `:` seperators:
+A set of [annotations](#annotations) can be attached to any input or output declaration. An annotation list has no effect on the generated code - it's simply a set of key-value pairs for use by the application that is loading the SOUL code - so the exact set of properties and their meanings will depend on the application that is loading and running the code. For an endpoint, a typical set of annotations might define its name, range, default value, etc. E.g.
 
 ```C++
 graph Reverb
@@ -483,11 +483,11 @@ graph Reverb
 
     input event
     {
-        float roomSize [[ min:0, max:1, init:0.8 ]];
-        float damping  [[ min:0, max:1, init:0.5 ]];
-        float wetLevel [[ min:0, max:1, init:0.33 ]];
-        float dryLevel [[ min:0, max:1, init:0.4 ]];
-        float width    [[ min:0, max:1, init:1.0 ]];
+        float roomSize  [[ min: 0,  max: 1.0f,  init: 0.8f  ]];
+        float damping   [[ min: 0,  max: 1.0f,  init: 0.5f  ]];
+        float wetLevel  [[ min: 0,  max: 1.0f,  init: 0.33f ]];
+        float dryLevel  [[ min: 0,  max: 1.0f,  init: 0.4f  ]];
+        float width     [[ min: 0,  max: 1.0f,  init: 1.0f  ]];
     }
 }
 ```
@@ -793,7 +793,6 @@ graph ExampleGraph
 }
 ```
 
-
 ### Functions
 
 Functions are declared with C/C++/C#/Java style:
@@ -962,8 +961,35 @@ Within a processor or graph, the special keyword `processor` provides member var
 - `processor.period` returns the duration in seconds of one sample (as a float64)
 - `processor.frequency` returns the number of samples per second (as a float64)
 
+### Annotations
+
+An annotation is a set of key-value pairs which are not used by the SOUL compiler, but instead are passed along for use by the host application that is loading the code, to allow the programmer to add hints about how to use certain elements of the program.
+
+An annotation set is enclosed in double-square-brackets, and contains a (fairly JSON-style) comma-separated list of key-value pairs, e.g.
+
+```C++
+input event float myInput [[ min: 0, max: 100.0f, init: 80.5f, 
+                             label: "Room Size", unit: "%",  step: 1 ]];
+```
+
+The names must be legal identifiers (or SOUL keywords, which are allowed), and can only be used once within the list. The value can be any primitive SOUL numeric literal, or a compile-time constant expression. If no colon or value is provided, the value is considered to be a boolean `true`.
+
+Note that annotations can't be used in arbitrary places in the code, there is only a certain set of limited locations where you can add them, such as after a processor or endpoint declaration (other locations will probably be added in the future).
+
 ## Linking and resolving modules
 
 Multiple blocks of SOUL code containing processor and graph declarations may be parsed separately, and later linked into a single program.
 
 Basic syntax errors will be picked up when compiling the individual modules, but unresolved symbol errors only occur at link time, once all the available modules are known.
+
+#### Specifying the 'main' processor
+
+When providing a block of SOUL code which contains multiple `processor` or `graph` declarations, you can add an [annotation](#annotations) to indicate which one you intend to be the master. To do this, just append the annotation to the processor name, e.g.
+
+```C++
+processor MyMainProcessor  [[ main ]]
+{
+    ...etc
+```
+
+When choosing which processor to instantiate, the runtime will attempt to use the first one with this annotation. If none have this annotation, it'll choose the last declaration that could be a candidate.
