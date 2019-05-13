@@ -58,9 +58,6 @@ processor DiodeClipper
         let R = 2.2e3;
         let tolerance = 1e-12;
 
-        // DAFX15 Capped Step
-        let deltaLim = mu * Vt * acosh (mu * Vt / 2.0 / (R * Is * G));
-
         // state variables
         float32 s1 = 0.0f;
         float64 out = 0.0;
@@ -71,6 +68,9 @@ processor DiodeClipper
         loop
         {
             updateFilterVariables();
+
+            // DAFX15 Capped Step
+            let deltaLim = mu * Vt * acosh (mu * Vt / 2.0 / (R * Is * G));
 
             loop (updateInterval)
             {
