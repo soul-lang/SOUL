@@ -5,6 +5,46 @@
     allocator and envelope generator.
 */
 
+graph SineSynth  [[ main ]]
+{
+    input event float volume [[ min: -40, max: 0,  init: -6, unit: "db", step: 1, label: "Volume" ]];
+    input event int midiIn;
+    output stream float audioOut;
+
+    let
+    {
+        midiParser = soul::NoteEvents::MPEParser;
+
+        voices = Voice[8];
+        voiceAllocator = RoundRobinVoiceAllocator(8);
+
+        gainParameter = GainParameterRamp (1.0f);
+        volumeProcessor = Gain;
+    }
+
+    connection
+    {
+        midiIn -> midiParser.parseMIDI;
+        volume -> gainParameter.gainDb;
+
+        midiParser.noteOn    -> voiceAllocator.noteOn;
+        midiParser.noteOff   -> voiceAllocator.noteOff;
+        midiParser.pitchBend -> voiceAllocator.pitchBend;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceNoteOn    -> voices.noteOn;
+        voiceAllocator.voiceNoteOff   -> voices.noteOff;
+        voiceAllocator.voicePitchBend -> voices.pitchBend;
+
+        // Sum the voices audio out to the output
+        voices.audioOut -> volumeProcessor.audioIn;
+
+        gainParameter.parameterOut -> volumeProcessor.gain;
+
+        volumeProcessor.audioOut -> audioOut;
+    }
+}
+
 //==============================================================================
 processor SineOsc
 {
@@ -300,53 +340,11 @@ processor GainParameterRamp (float slewRate)
             if (rampSamples > 0)
             {
                 currentValue += rampIncrement;
-                rampSamples--;
+                --rampSamples;
             }
 
             parameterOut << currentValue;
             advance();
         }
-    }
-}
-
-
-//==============================================================================
-graph SineSynth
-{
-    input event float volume [[ min:-40,   max:0,    init:-6, unit: "db", step: 1, label: "Volume" ]];
-    input event int midiIn;
-    output stream float audioOut;
-
-    let
-    {
-        midiParser = soul::NoteEvents::MPEParser;
-
-        voices = Voice[8];
-        voiceAllocator = RoundRobinVoiceAllocator(8);
-
-        gainParameter = GainParameterRamp (1.0f);
-        volumeProcessor = Gain;
-    }
-
-    connection
-    {
-        midiIn -> midiParser.parseMIDI;
-        volume -> gainParameter.gainDb;
-
-        midiParser.noteOn    -> voiceAllocator.noteOn;
-        midiParser.noteOff   -> voiceAllocator.noteOff;
-        midiParser.pitchBend -> voiceAllocator.pitchBend;
-
-        // Plumb the voice allocator to the voices array
-        voiceAllocator.voiceNoteOn    -> voices.noteOn;
-        voiceAllocator.voiceNoteOff   -> voices.noteOff;
-        voiceAllocator.voicePitchBend -> voices.pitchBend;
-
-        // Sum the voices audio out to the output
-        voices.audioOut -> volumeProcessor.audioIn;
-
-        gainParameter.parameterOut -> volumeProcessor.gain;
-
-        volumeProcessor.audioOut -> audioOut;
     }
 }

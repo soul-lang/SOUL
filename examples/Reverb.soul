@@ -5,6 +5,73 @@
     parameter changes.
 */
 
+graph Reverb  [[ main ]]
+{
+    input  stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    input event
+    {
+        float roomSize [[ min: 0,  max: 100, init:  80,  label: "Room Size",       unit: "%",  step: 1 ]];
+        float damping  [[ min: 0,  max: 100, init:  50,  label: "Damping Factor",  unit: "%",  step: 1 ]];
+        float wetLevel [[ min: 0,  max: 100, init:  33,  label: "Wet Level",       unit: "%",  step: 1 ]];
+        float dryLevel [[ min: 0,  max: 100, init:  40,  label: "Dry Level",       unit: "%",  step: 1 ]];
+        float width    [[ min: 0,  max: 100, init: 100,  label: "Width",           unit: "%",  step: 1 ]];
+    }
+
+    let
+    {
+        dryGainParameterRamp  = ParameterRamp (20.0f);
+        wetGain1ParameterRamp = ParameterRamp (20.0f);
+        wetGain2ParameterRamp = ParameterRamp (20.0f);
+        dampingParameterRamp  = ParameterRamp (20.0f);
+        feedbackParameterRamp = ParameterRamp (20.0f);
+
+        reverbChannelLeft  = ReverbChannel (0);
+        reverbChannelRight = ReverbChannel (23);
+    }
+
+    connection
+    {
+        // Parameter events to the parameter handler
+        roomSize -> ReverbParameterProcessorParam.roomSize;
+        damping  -> ReverbParameterProcessorParam.damping;
+        wetLevel -> ReverbParameterProcessorParam.wetLevel;
+        dryLevel -> ReverbParameterProcessorParam.dryLevel;
+        width    -> ReverbParameterProcessorParam.width;
+
+        // Parameter outputs to smoothing processors
+        ReverbParameterProcessorParam.dryGainOut  -> dryGainParameterRamp.updateParameter;
+        ReverbParameterProcessorParam.wetGain1Out -> wetGain1ParameterRamp.updateParameter;
+        ReverbParameterProcessorParam.wetGain2Out -> wetGain2ParameterRamp.updateParameter;
+        ReverbParameterProcessorParam.dampingOut  -> dampingParameterRamp.updateParameter;
+        ReverbParameterProcessorParam.feedbackOut -> feedbackParameterRamp.updateParameter;
+
+        // Sum the audio
+        audioIn -> Sum.audioIn,
+                   Mixer.audioInDry;
+
+        // Left channel
+        Sum.audioSum                       -> reverbChannelLeft.audioIn;
+        dampingParameterRamp.parameterOut  -> reverbChannelLeft.damping;
+        feedbackParameterRamp.parameterOut -> reverbChannelLeft.feedback;
+        reverbChannelLeft.audioOut         -> Mixer.audioInLeftWet;
+
+        // Right channel
+        Sum.audioSum                       -> reverbChannelRight.audioIn;
+        dampingParameterRamp.parameterOut  -> reverbChannelRight.damping;
+        feedbackParameterRamp.parameterOut -> reverbChannelRight.feedback;
+        reverbChannelRight.audioOut        -> Mixer.audioInRightWet;
+
+        // Mix parameters to the mixer
+        dryGainParameterRamp.parameterOut  -> Mixer.dryIn;
+        wetGain1ParameterRamp.parameterOut -> Mixer.wet1In;
+        wetGain2ParameterRamp.parameterOut -> Mixer.wet2In;
+
+        // Write the mixed values to the output
+        Mixer.audioOut -> audioOut;
+    }
+}
 
 //==============================================================================
 processor AllpassFilter (int bufferSize)
@@ -80,15 +147,10 @@ processor Mixer
             let wet2 = wet2In;
             let dry = dryIn;
 
-            let left  = (audioInLeftWet * wet1)
-                         + (audioInRightWet * wet2)
-                         + (audioInDry[0] * dry);
+            let left  = (audioInLeftWet  * wet1) + (audioInRightWet * wet2);
+            let right = (audioInRightWet * wet1) + (audioInLeftWet  * wet2);
 
-            let right = (audioInRightWet * wet1)
-                         + (audioInLeftWet * wet2)
-                         + (audioInDry[1] * dry);
-
-            audioOut << float<2> (left, right);
+            audioOut << float<2> (left, right) + audioInDry * dry;
             advance();
         }
     }
@@ -104,7 +166,7 @@ processor Sum
     {
         loop
         {
-            audioSum   << (audioIn[0] + audioIn[1]) * 0.5f;
+            audioSum << (audioIn[0] + audioIn[1]) * 0.5f;
             advance();
         }
     }
@@ -237,115 +299,45 @@ graph ReverbChannel (int offset)
 
     connection
     {
-        damping -> comb_1.dampingIn;
-        damping -> comb_2.dampingIn;
-        damping -> comb_3.dampingIn;
-        damping -> comb_4.dampingIn;
-        damping -> comb_5.dampingIn;
-        damping -> comb_6.dampingIn;
-        damping -> comb_7.dampingIn;
-        damping -> comb_8.dampingIn;
+        damping -> comb_1.dampingIn,
+                   comb_2.dampingIn,
+                   comb_3.dampingIn,
+                   comb_4.dampingIn,
+                   comb_5.dampingIn,
+                   comb_6.dampingIn,
+                   comb_7.dampingIn,
+                   comb_8.dampingIn;
 
-        feedback -> comb_1.feedbackLevelIn;
-        feedback -> comb_2.feedbackLevelIn;
-        feedback -> comb_3.feedbackLevelIn;
-        feedback -> comb_4.feedbackLevelIn;
-        feedback -> comb_5.feedbackLevelIn;
-        feedback -> comb_6.feedbackLevelIn;
-        feedback -> comb_7.feedbackLevelIn;
-        feedback -> comb_8.feedbackLevelIn;
+        feedback -> comb_1.feedbackLevelIn,
+                    comb_2.feedbackLevelIn,
+                    comb_3.feedbackLevelIn,
+                    comb_4.feedbackLevelIn,
+                    comb_5.feedbackLevelIn,
+                    comb_6.feedbackLevelIn,
+                    comb_7.feedbackLevelIn,
+                    comb_8.feedbackLevelIn;
 
-        audioIn -> comb_1.audioIn;
-        audioIn -> comb_2.audioIn;
-        audioIn -> comb_3.audioIn;
-        audioIn -> comb_4.audioIn;
-        audioIn -> comb_5.audioIn;
-        audioIn -> comb_6.audioIn;
-        audioIn -> comb_7.audioIn;
-        audioIn -> comb_8.audioIn;
+        audioIn -> comb_1.audioIn,
+                   comb_2.audioIn,
+                   comb_3.audioIn,
+                   comb_4.audioIn,
+                   comb_5.audioIn,
+                   comb_6.audioIn,
+                   comb_7.audioIn,
+                   comb_8.audioIn;
 
-        comb_1.audioOut -> allpass_1.audioIn;
-        comb_2.audioOut -> allpass_1.audioIn;
-        comb_3.audioOut -> allpass_1.audioIn;
-        comb_4.audioOut -> allpass_1.audioIn;
-        comb_5.audioOut -> allpass_1.audioIn;
-        comb_6.audioOut -> allpass_1.audioIn;
-        comb_7.audioOut -> allpass_1.audioIn;
-        comb_8.audioOut -> allpass_1.audioIn;
+        comb_1.audioOut,
+        comb_2.audioOut,
+        comb_3.audioOut,
+        comb_4.audioOut,
+        comb_5.audioOut,
+        comb_6.audioOut,
+        comb_7.audioOut,
+        comb_8.audioOut  -> allpass_1.audioIn;
 
         allpass_1.audioOut -> allpass_2.audioIn;
         allpass_2.audioOut -> allpass_3.audioIn;
         allpass_3.audioOut -> allpass_4.audioIn;
         allpass_4.audioOut -> audioOut;
-    }
-}
-
-//==============================================================================
-// reverb graph using the above components. Exposes parameters to control the effect
-graph Reverb
-{
-    input  stream float<2> audioIn;
-    output stream float<2> audioOut;
-
-    input event
-    {
-        float roomSize [[min:0, max:100, init:80,  label: "Room Size",      unit: "%", step:1]];
-        float damping  [[min:0, max:100, init:50,  label: "Damping Factor", unit: "%", step:1]];
-        float wetLevel [[min:0, max:100, init:33,  label: "Wet Level",      unit: "%", step:1]];
-        float dryLevel [[min:0, max:100, init:40,  label: "Dry Level",      unit: "%", step:1]];
-        float width    [[min:0, max:100, init:100, label: "Width",          unit: "%", step:1]];
-    }
-
-    let
-    {
-        dryGainParameterRamp  = ParameterRamp(20.f);
-        wetGain1ParameterRamp = ParameterRamp(20.f);
-        wetGain2ParameterRamp = ParameterRamp(20.f);
-        dampingParameterRamp  = ParameterRamp(20.f);
-        feedbackParameterRamp = ParameterRamp(20.f);
-
-        reverbChannelLeft = ReverbChannel (0);
-        reverbChannelRight = ReverbChannel (23);
-    }
-
-    connection
-    {
-        // Parameter events to the parameter handler
-        roomSize -> ReverbParameterProcessorParam.roomSize;
-        damping  -> ReverbParameterProcessorParam.damping;
-        wetLevel -> ReverbParameterProcessorParam.wetLevel;
-        dryLevel -> ReverbParameterProcessorParam.dryLevel;
-        width    -> ReverbParameterProcessorParam.width;
-
-        // Parameter outputs to smoothing processors
-        ReverbParameterProcessorParam.dryGainOut  -> dryGainParameterRamp.updateParameter;
-        ReverbParameterProcessorParam.wetGain1Out -> wetGain1ParameterRamp.updateParameter;
-        ReverbParameterProcessorParam.wetGain2Out -> wetGain2ParameterRamp.updateParameter;
-        ReverbParameterProcessorParam.dampingOut  -> dampingParameterRamp.updateParameter;
-        ReverbParameterProcessorParam.feedbackOut -> feedbackParameterRamp.updateParameter;
-
-        // Sum the audio
-        audioIn -> Sum.audioIn;
-        audioIn -> Mixer.audioInDry;
-
-        // Left channel
-        Sum.audioSum                       -> reverbChannelLeft.audioIn;
-        dampingParameterRamp.parameterOut  -> reverbChannelLeft.damping;
-        feedbackParameterRamp.parameterOut -> reverbChannelLeft.feedback;
-        reverbChannelLeft.audioOut         -> Mixer.audioInLeftWet;
-
-        // Right channel
-        Sum.audioSum                       -> reverbChannelRight.audioIn;
-        dampingParameterRamp.parameterOut  -> reverbChannelRight.damping;
-        feedbackParameterRamp.parameterOut -> reverbChannelRight.feedback;
-        reverbChannelRight.audioOut         -> Mixer.audioInRightWet;
-
-        // Mix parameters to the mixer
-        dryGainParameterRamp.parameterOut  -> Mixer.dryIn;
-        wetGain1ParameterRamp.parameterOut -> Mixer.wet1In;
-        wetGain2ParameterRamp.parameterOut -> Mixer.wet2In;
-
-        // Write the mixed values to the output
-        Mixer.audioOut -> audioOut;
     }
 }

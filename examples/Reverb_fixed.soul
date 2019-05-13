@@ -31,24 +31,24 @@ graph Reverb [[main]]
 
     connection
     {
-        audioIn -> comb_1.audioIn;
-        audioIn -> comb_2.audioIn;
-        audioIn -> comb_3.audioIn;
-        audioIn -> comb_4.audioIn;
-        audioIn -> comb_5.audioIn;
-        audioIn -> comb_6.audioIn;
-        audioIn -> comb_7.audioIn;
-        audioIn -> comb_8.audioIn;
-        audioIn -> dryWetMixer.dryInput;
+        audioIn -> comb_1.audioIn,
+                   comb_2.audioIn,
+                   comb_3.audioIn,
+                   comb_4.audioIn,
+                   comb_5.audioIn,
+                   comb_6.audioIn,
+                   comb_7.audioIn,
+                   comb_8.audioIn,
+                   dryWetMixer.dryInput;
 
-        comb_1.audioOut -> allPass_1.audioIn;
-        comb_2.audioOut -> allPass_1.audioIn;
-        comb_3.audioOut -> allPass_1.audioIn;
-        comb_4.audioOut -> allPass_1.audioIn;
-        comb_5.audioOut -> allPass_1.audioIn;
-        comb_6.audioOut -> allPass_1.audioIn;
-        comb_7.audioOut -> allPass_1.audioIn;
-        comb_8.audioOut -> allPass_1.audioIn;
+        comb_1.audioOut,
+        comb_2.audioOut,
+        comb_3.audioOut,
+        comb_4.audioOut,
+        comb_5.audioOut,
+        comb_6.audioOut,
+        comb_7.audioOut,
+        comb_8.audioOut  -> allPass_1.audioIn;
 
         allPass_1.audioOut -> allPass_2.audioIn;
         allPass_2.audioOut -> allPass_3.audioIn;
