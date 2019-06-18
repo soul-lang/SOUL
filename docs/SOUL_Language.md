@@ -968,8 +968,7 @@ An annotation is a set of key-value pairs which are not used by the SOUL compile
 An annotation set is enclosed in double-square-brackets, and contains a (fairly JSON-style) comma-separated list of key-value pairs, e.g.
 
 ```C++
-input event float myInput [[ min: 0, max: 100.0f, init: 80.5f, 
-                             label: "Room Size", unit: "%",  step: 1 ]];
+input event float myInput [[ name: "Room Size", min: 0, max: 100.0f, init: 80.5f, unit: "%",  step: 1 ]];
 ```
 
 The names must be legal identifiers (or SOUL keywords, which are allowed), and can only be used once within the list. The value can be any primitive SOUL numeric literal, or a compile-time constant expression. If no colon or value is provided, the value is considered to be a boolean `true`.

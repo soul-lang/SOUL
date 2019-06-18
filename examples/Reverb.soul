@@ -12,11 +12,11 @@ graph Reverb  [[ main ]]
 
     input event
     {
-        float roomSize [[ min: 0,  max: 100, init:  80,  label: "Room Size",       unit: "%",  step: 1 ]];
-        float damping  [[ min: 0,  max: 100, init:  50,  label: "Damping Factor",  unit: "%",  step: 1 ]];
-        float wetLevel [[ min: 0,  max: 100, init:  33,  label: "Wet Level",       unit: "%",  step: 1 ]];
-        float dryLevel [[ min: 0,  max: 100, init:  40,  label: "Dry Level",       unit: "%",  step: 1 ]];
-        float width    [[ min: 0,  max: 100, init: 100,  label: "Width",           unit: "%",  step: 1 ]];
+        float roomSize [[ name: "Room Size",       min: 0,  max: 100, init:  80,  unit: "%",  step: 1 ]];
+        float damping  [[ name: "Damping Factor",  min: 0,  max: 100, init:  50,  unit: "%",  step: 1 ]];
+        float wetLevel [[ name: "Wet Level",       min: 0,  max: 100, init:  33,  unit: "%",  step: 1 ]];
+        float dryLevel [[ name: "Dry Level",       min: 0,  max: 100, init:  40,  unit: "%",  step: 1 ]];
+        float width    [[ name: "Width",           min: 0,  max: 100, init: 100,  unit: "%",  step: 1 ]];
     }
 
     let

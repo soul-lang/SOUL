@@ -13,11 +13,11 @@ graph Phaser  [[ main ]]
 
     input event
     {
-        float lfoFrequency      [[ min:  0.01f,  max:     10.0f,  init:    0.25f ]];
-        float cutoffFrequency   [[ min: 20.0f,   max:  20000.0f,  init: 1000.0f  ]];
-        float depth             [[ min:  0,      max:      1.0f,  init:    0.5f  ]];
-        float mix               [[ min:  0,      max:      1.0f,  init:    0.8f  ]];
-        float feedback          [[ min:  0,      max:     0.99f,  init:    0.7f  ]];
+        float lfoFrequency      [[ name: "LFO Freq",      min:  0.01f,  max:     10.0f,  init:    0.25f ]];
+        float cutoffFrequency   [[ name: "Cut-off Freq",  min: 20.0f,   max:  20000.0f,  init: 1000.0f  ]];
+        float depth             [[ name: "Depth",         min:  0,      max:      1.0f,  init:    0.5f  ]];
+        float mix               [[ name: "Mix",           min:  0,      max:      1.0f,  init:    0.8f  ]];
+        float feedback          [[ name: "Feedback",      min:  0,      max:     0.99f,  init:    0.7f  ]];
     }
 
     let phaserEffect = PhaserEffect;

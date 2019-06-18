@@ -14,8 +14,8 @@ graph Diode  [[ main ]]
     input  stream float audioIn;    // just using mono in and out
     output stream float audioOut;
 
-    input event float cutoffFrequency   [[ min: 20,  max: 20000,  init: 10000,  step: 10    ]];
-    input event float gaindB            [[ min:  0,  max:    40,  init:    20,  step:  0.1  ]];
+    input event float cutoffFrequency   [[ name: "Cut-off Freq",  min: 20,  max: 20000,  init: 10000,  step: 10,   unit: "Hz" ]];
+    input event float gaindB            [[ name: "Gain",          min:  0,  max:    40,  init:    20,  step:  0.1, unit: "dB" ]];
 
     let diodeClipper = DiodeClipper * 4;  // oversampling 4 times
 

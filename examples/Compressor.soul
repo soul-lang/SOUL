@@ -10,10 +10,10 @@ graph Compressor  [[ main ]]
     input  stream float<2> audioIn;
     output stream float<2> audioOut;
 
-    input event float threshold  [[ min: -80.0f,   max:    0.0f,   init: -20.0f  ]],
-                      ratio      [[ min:   1.0f,   max:  100.0f,   init:   5.0f  ]],
-                      attack     [[ min:   0.01f,  max:  100.0f,   init:   0.25f ]],
-                      release    [[ min:  50.0f,   max: 1000.0f,   init: 150.0f  ]];
+    input event float threshold  [[ name: "Threshold",  min: -80.0f,   max:    0.0f,   init: -20.0f  ]],
+                      ratio      [[ name: "Ratio",      min:   1.0f,   max:  100.0f,   init:   5.0f  ]],
+                      attack     [[ name: "Attack",     min:   0.01f,  max:  100.0f,   init:   0.25f ]],
+                      release    [[ name: "Release",    min:  50.0f,   max: 1000.0f,   init: 150.0f  ]];
 
     let comp = DynamicsCompressor(2) * 2;  // oversampling 2 times
 
