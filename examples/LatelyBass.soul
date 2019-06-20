@@ -13,13 +13,13 @@
 //==============================================================================
 graph LatelyBass  [[ main ]]
 {
-    input event int midiIn;
+    input event midi::Message midiIn;
     output stream float audioOut;
 
     let
     {
         voices         = LatelyBassVoice[8];
-        midiParser     = soul::NoteEvents::MPEParser;
+        midiParser     = midi::MPEParser;
         filter         = TX81Z::OutputFilter;
         voiceAllocator = TX81Z::PolyVoiceAllocator (-12, 8);
     }

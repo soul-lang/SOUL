@@ -9,7 +9,7 @@ graph PadSynth  [[main]]
 {
     input event
     {
-        int midiIn;
+        midi::Message midiIn;
 
         float cutoff                [[ min: 0,       max: 127,    init: 80,    label: "Cutoff",                unit: "semi",   step: 0.1   ]];
         float resonance             [[ min: 0,       max: 100,    init: 20,    label: "Resonance",             unit: "%",      step: 1     ]];
@@ -1027,7 +1027,7 @@ graph Oscillators
 {
     input event
     {
-        int midiIn;
+        midi::Message midiIn;
         float cutoffParam, resonanceParam;
         float ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity;
         float osc1waveshape, osc1detuneSemitones, osc1detune;
@@ -1041,7 +1041,7 @@ graph Oscillators
 
     let
     {
-        midiParser = soul::NoteEvents::MPEParser;
+        midiParser = midi::MPEParser;
 
         voices = voice[8];
         voiceAllocator = RoundRobinVoiceAllocator(8);
@@ -1074,11 +1074,11 @@ graph Oscillators
 
         // Pass the events to the voice allocator
         midiIn               -> midiParser.parseMIDI;
-        midiParser.noteOn    -> voiceAllocator.noteOn;
-        midiParser.noteOff   -> voiceAllocator.noteOff;
-        midiParser.pitchBend -> voiceAllocator.pitchBend;
-        midiParser.pressure  -> voiceAllocator.pressure;
-        midiParser.slide     -> voiceAllocator.slide;
+        midiParser.eventOut  -> voiceAllocator.noteOn;
+        midiParser.eventOut  -> voiceAllocator.noteOff;
+        midiParser.eventOut  -> voiceAllocator.pitchBend;
+        midiParser.eventOut  -> voiceAllocator.pressure;
+        midiParser.eventOut  -> voiceAllocator.slide;
 
         // Pass the allocated events to the voice bank
         voiceAllocator.voiceNoteOn    -> voices.noteOn;
