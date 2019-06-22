@@ -92,6 +92,21 @@ SOUL supports very basic string literal functionality, allowing literals to be p
 
 e.g. `string s = "Hello World\n";`
 
+#### Vector types
+
+Vectors of primitive types can be declared with angle-bracket syntax, e.g.
+
+```C++
+float<4> myVector;  // a vector of 4 floats
+
+let v1 = int<4> (1, 2, 3, 4);
+let v2 = int<4> (4, 3, 2, 1);
+
+let v3 = v1 + v2; // v3 == (5, 5, 5, 5)
+
+let element1 = v3[1]; // extract an element
+```
+
 #### Array types
 
 Arrays are declared with this syntax:
@@ -149,21 +164,6 @@ x[1:4] = 123; // set elements 1, 2 and 3
 
 int[8] y;
 y[1:5] = x[2:6]; // copying sub-sections of arrays
-```
-
-#### Vector types
-
-Vectors of primitive types can be declared with angle-bracket syntax, e.g.
-
-```C++
-float<4> myVector;  // a vector of 4 floats
-
-let v1 = int<4> (1, 2, 3, 4);
-let v2 = int<4> (4, 3, 2, 1);
-
-let v3 = v1 + v2; // v3 == (5, 5, 5, 5)
-
-let element1 = v3[1]; // extract an element
 ```
 
 #### External data arrays
@@ -333,6 +333,39 @@ namespace OuterNamespaceName::InnerNamespaceName
 ```
 
 The namespace `soul` is reserved for system use.
+
+#### Function declarations
+
+Functions may be declared inside a namespace or a processor, but not inside a graph.
+
+The syntax follows the familiar C/C++/Java/Javascript style of
+```
+<returntype> functionName (type param1, type param2... etc)
+```
+
+#### Universal function call syntax
+
+SOUL supports "universal function call syntax", which allows any suitable function to be called using the dot syntax as used for method calls in languages like Java.
+
+When parsing a dot operator, the compiler will attempt to find a function whose first parameter matches the left-hand side of the dot, and uses that function if found, e.g.
+
+```
+struct MyStruct
+{
+    int blah;
+}
+
+int getBlah (MyStruct& self)      { return self.blah; }
+
+void f()
+{
+    MyStruct s;
+
+    let x = getBlah (s);   // these two calls do exactly the same thing
+    let y = s.getBlah();   // but the second version is more OO-friendly!
+}
+```
+
 
 #### Processor declarations
 A processor declaration looks like this:
@@ -644,8 +677,6 @@ graph ExampleGraph
 }
 ```
 
-
-
 #### Processor/Graph specialisation parameters
 
 A processor or graph can be declared with some constant values and type definitions that must be supplied when it is instantiated. These arguments can then be used to specialise the behaviour of the processor. e.g:
@@ -926,41 +957,6 @@ The `<<` operator was chosen for writing to output endpoints as the operation is
 - `event endpoints` Each time `<<` is called a distinct event is emitted by the endpoint
 - `value endpoints` The written value overwrites the previous value and is persisted until a new value is written
 
-
-### Built-in intrinsics and constants
-
-The language provides a set of built-in intrinsics:
-
-- Arithmetic: `abs()` `sqrt()` `pow()` `exp()` `log()` `log10()` `floor()` `ceil()`
-- Range clamping: `min(v1, v2)` `max(v1, v2)` `clamp(v, low, high)` `wrap(v, max)` `fmod(numer, denom)` `remainder(numer, denom)`
-- Trigonometry: `sin()` `cos()` `tan()` `acos()` `asin()` `atan()` `atan2()` `sinh()` `cosh()` `tanh()` `asinh()` `acosh()` `atanh()`
-
-All of the intrinsics are defined for `float32` and `float64` data types. The following functions also support `int32` and `int64` data types:
-
-`min()` `max()` `clamp()` `wrap()` `abs()`
-
-### Built-in library Functions
-
-A set of utilities are available in the `soul::` namespace. These include:
-
-```C++
-namespace soul
-{
-    float dBtoGain (float decibels);
-    float gainTodB (float gain);
-
-    float addModulo2Pi (float value, float increment);
-
-    float noteNumberToFrequency (float noteNumber);
-    float frequencyToNoteNumber (float frequency);
-}
-```
-
-Within a processor or graph, the special keyword `processor` provides member variables to get information about constants:
-
-- `processor.period` returns the duration in seconds of one sample (as a float64)
-- `processor.frequency` returns the number of samples per second (as a float64)
-
 ### Annotations
 
 An annotation is a set of key-value pairs which are not used by the SOUL compiler, but instead are passed along for use by the host application that is loading the code, to allow the programmer to add hints about how to use certain elements of the program.
@@ -992,3 +988,143 @@ processor MyMainProcessor  [[ main ]]
 ```
 
 When choosing which processor to instantiate, the runtime will attempt to use the first one with this annotation. If none have this annotation, it'll choose the last declaration that could be a candidate.
+
+# Appendices
+
+### Built-in intrinsic functions
+
+The language provides a set of built-in intrinsics. Most of them will accept parameter types such as float32, float64, and integers where appropriate.
+
+##### Arithmetic
+`abs()` `sqrt()` `pow()` `exp()` `log()` `log10()` `floor()` `ceil()` `fmod(numer, denom)` `remainder(numer, denom)`
+
+##### Comparison and ranges
+`min(v1, v2)` `max(v1, v2)` `clamp(value, low, high)` `wrap(v, max)`
+
+##### Trigonometry
+`sin()` `cos()` `tan()` `acos()` `asin()` `atan()` `atan2()` `sinh()` `cosh()` `tanh()` `asinh()` `acosh()` `atanh()`
+
+#### Vector intrinsics
+
+Most of the arithmetic and trigonometry intrinsics which take a single argument can also be applied to vectors, and the result will be a vector where that operation has been applied to each element in parallel.
+
+There are also some vector-reduce operations: `sum` and `product` which take a vector of any size and reduce it to a single value, e.g.
+
+```
+float<5> myVector = (1, 2, 3, 4, 5);
+float total = sum (myVector); 
+```
+
+Note that you can use the universal function call syntax to write any of these intrinsics using the dot operator, e.g.
+
+```
+float<5> myVector = (1, 2, 3, 4, 5);
+float x = myVector.sum();
+float<5> sines = myVector.sin();
+```
+
+### Built-in constants
+
+Within a processor or graph, the special keyword `processor` provides information about compile-time constants:
+
+- `processor.period` returns the duration in seconds of one sample (as a float64)
+- `processor.frequency` returns the number of samples per second (as a float64)
+
+### Built-in library Functions
+
+A set of utilities are available in the `soul::` namespace. These include:
+
+```C++
+namespace soul
+{
+    float32 dBtoGain (float32 decibels);
+    float64 dBtoGain (float64 decibels);
+
+    float32 gainTodB (float32 gain);
+    float64 gainTodB (float64 gain);
+
+    float32 addModulo2Pi (float32 value, float32 increment);
+    float64 addModulo2Pi (float64 value, float64 increment);
+
+    float32 noteNumberToFrequency (int note);
+    float32 noteNumberToFrequency (float32 note);
+    float32 frequencyToNoteNumber (float32 frequency);
+}
+```
+
+Helper classes are provided, including a set of objects to represent note events:
+```
+namespace soul::NoteEvents
+{
+    struct NoteOn
+    {
+        int channel;
+        float note;
+        float velocity;
+    }
+
+    struct NoteOff
+    {
+        int channel;
+        float note;
+        float velocity;
+    }
+
+    struct PitchBend
+    {
+        int channel;
+        float bendSemitones;
+    }
+
+    struct Pressure
+    {
+        int channel;
+        float pressure;
+    }
+
+    struct Slide
+    {
+        int channel;
+        float slide;
+    }
+
+    struct Control
+    {
+        int channel;
+        int control;
+        float value;
+    }
+}
+```
+
+Some MIDI helper classes are provided:
+
+```
+namespace midi
+{
+    /** This type is used to represent a packed short MIDI message. When you create
+        an input event endpoint and would like it to receive MIDI, this is the type
+        that you should use for it.
+    */
+    struct Message
+    {
+        int data;
+    }
+
+    /** This event processor receives incoming MIDI events and parses them as MPE,
+        translating them into a set of note event types which a synthesiser can then
+        handle without neededing to understand MIDI or MPE.
+    */
+    processor MPEParser  [[ main: false ]]
+    {
+        input event midi::Message parseMIDI;
+
+        output event (soul::NoteEvents::NoteOn,
+                      soul::NoteEvents::NoteOff,
+                      soul::NoteEvents::PitchBend,
+                      soul::NoteEvents::Pressure,
+                      soul::NoteEvents::Slide,
+                      soul::NoteEvents::Control) eventOut;
+    }
+}
+```
