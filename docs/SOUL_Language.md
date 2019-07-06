@@ -1049,6 +1049,9 @@ namespace soul
     float32 noteNumberToFrequency (int note);
     float32 noteNumberToFrequency (float32 note);
     float32 frequencyToNoteNumber (float32 frequency);
+
+    float64 getSpeedRatioForPitchedSample (float64 sourceSampleRate, float32 sourceMIDINote,
+                                           float64 targetSampleRate, float32 targetMIDINote);
 }
 ```
 
