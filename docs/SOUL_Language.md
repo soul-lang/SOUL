@@ -166,46 +166,130 @@ int[8] y;
 y[1:5] = x[2:6]; // copying sub-sections of arrays
 ```
 
-#### External data arrays
+#### Dynamic array slices
 
-Sometimes a processor needs to randomly-access large blocks of read-only data (e.g. for audio samples, etc). To allow the app to get this data across to the SOUL program, the `external` qualifier is added to an array with an undefined size (`[]`).
+An array declared without a size, e.g. `int[] x` is treated as a dynamically-sized array, so for example a function which takes a parameter like this can be passed arrays which don't have a fixed size, e.g.
 
-`external float[] someData;   // an array of floats`
+```
+float getAnArrayElement (float[] a, int index)      { return a.at (index); }
+```
 
-Elements can be read from the object with the `[]` operator like a normal array, but it does not provide all the other operations that an array does. An external variable can also be passed by value without the data itself being copied, so you can pass it around like a handle for use in functions.
+To avoid confusion with fixed-size array indexes needing to use the `wrap` or `clamp` types, the `array[index]` syntax is not allowed on dynamic slices. Instead, you can use the following accessor methods:
 
-At runtime, the app must use an API to bind a data provider (either a lump of raw data or a callback function) for each external that the program declares. These data providers determine the size of the array when the program uses it.
+`array.at (index)`  - this casts the index argument to an integer (rounding down if it's a floating point value), wraps it if it's out-of-range, and returns the element at that index.
+`array.read (index)` - (essentially a synonum for `at`)
+`array.readLinearInterpolated (index)` - returns the linearly-interpolated value at the fractional position (after wrapping it if it's out-of-bounds). This us only available for arrays of floating-point types.
+
+Other interpolators such as LaGrange, Catmull-Rom, etc, may be added in future releases.
+
+Like for fixed-size arrays, you can use the `.size` property to find out the number of elements in the array, but this is a run-time operation, not a compile-time constant as it is for fixed-size arrays.
+
+Dynamic slices are handled internally as a "fat pointer", i.e. a pointer + size, and because SOUL has no heap or garbage-collection, there are restrictions on how they can be used. In the current release, those limitations include:
+
+- A dynamic slice can only be used for read-only data
+- A dynamic slice can only refer to data whose lifetime is permanent for the run of the program - currently that means only state variable and externals can be converted to a dynamic slice. Local fixed-size arrays cannot be referenced by a slice, although in the future there'll be some circumstances where this rule can be relaxed if smarter compilers are able to prove that the data's lifetime will outlive the slice object.
+
+Slices may be left uninitialised, in which case they have a size of zero and any access will return a value of 0 (in whatever element type they're using).
+
+#### 'External' variables
+
+Sometimes a processor needs to randomly-access large blocks of read-only data (e.g. for audio samples, etc), or to allow the runtime API to provide other constants which aren't part of the source code. To allow the app to get this data across to the SOUL program, the `external` qualifier can be added to a variable.
+
+```
+external float[] someData;   // an array of floats (its size is determined at runtime from the data provided)
+external int someValue;      // an integer that will be supplied at runtime
+```
+
+At link-time, the host app must supply a data provider which can give it the value of any externals that the program contains.
 
 ```C++
-processor ExampleSampleLooper
+processor DrumLoopPlayer
 {
-    // at link-time, the host program uses the API
-    // to set the data that these variables will contain
-    external float<2>[] myAudioSample1, myAudioSample2;
+    output stream float<2> audioOut;
 
-    int sampleIndex;
+    // at link-time, the host program will provide this data,
+    // and determine the size of the array
+    external float<2>[] drumLoop;
 
     void run()
     {
-        // plays a continuous loop of one of our audio samples
+        int frameNumber;
+
         loop
         {
-            audioOut << getNextFrame (myAudioSample1);
+            audioOut << drumLoop.at (frameNumber);
+            frameNumber = wrap (frameNumber + 1, drumLoop.size);
             advance();
         }
     }
-
-    float<2> getNextFrame (external float<2>[] sample)
-    {
-        let result = sample.at (sampleIndex);
-
-        if (++sampleIndex >= sample.size)
-            sampleIndex = 0;
-
-        return result;
-    }
 }
 ```
+
+The host app will have to supply the data for this array - in a SOUL patch for example that could be done in the manifest like this:
+
+```json
+{
+  "soulPatchV1": {
+    "ID": "dev.soul.examples.drumloop",
+    
+    ...etc...
+
+    "source": "DrumLoopPlayer.soul",
+    "externals": { 
+      "DrumLoopPlayer::drumLoop": "DrumLoop.wav"
+    }
+  }
+}
+```
+
+The patch API will load the file and do some basic adjustments to match the number of channels to the size of the elements in the target array, so for example it'll mono-ise a multichannel file if the data type is `float[]` or convert a mono file to stereo if the destination type is `float<2>[]`.
+
+The low-level API will provide much more control, allowing any kind of data or object to be passed in.
+
+##### Special support for audio data in externals
+
+Because an audio file consists of more than just an array, the runtime will use some heuristics to look for structures which can be used to represent audio data. So if it sees a structure which contains an array of floats and also a member variable called "rate" or "sampleRate", it will do the right thing, e.g.
+
+```C++
+struct MyStereoAudioFile
+{
+    float<2>[] channelData;
+    float64 sampleRate;
+}
+
+external MyStereoAudioFile myAudioSample;
+```
+
+If you're using the SOUL Patch API and you tell it to bind a .wav file to this value, it'll do the right thing and fill-in the sample rate from the file.
+
+Currently it just looks for names like `sampleRate`/`rate`/`frequency` but we will continue to extend this system to allow more complex metadata to be included, such as loop points etc.
+
+##### External variable annotations
+
+There are also some annotations which can be added to an external declaration to help the API provide the data.
+
+A default value can be provided, so that if the host doesn't supply a value, the default can be used rather than triggering an error, e.g.
+
+```C++
+external int sampleRateToUse [[ default: 44100 ]];
+external float someKindOfValue [[ default: 1234.0f ]];
+```
+
+If the type is an array of floats, you can ask the runtime to generate some simple waves to populate it, e.g.
+
+```C++
+external float[] twoSecondA440TriangleWave [[ triangle, rate: 48000, frequency: 440, numFrames: 96000 ]];
+external float[] oneSecondA440Sinewave     [[ sinewave, rate: 44100, frequency: 440, numFrames: 44100 ]];
+```
+
+Wave types supported are `sinewave`, `triangle`, `squarewave`, `sawtooth`.
+
+Where the runtime is providing an audio sample, you can add the annotation:
+```C++
+external float[] audioFileData [[ resample: 48000 ]];
+```
+
+...which will tell the runtime to pre-process the audio file (or buffer) provided so that it is resampled to the given rate. The runtime will use a high-queality interpolator and there'll be no run-time overhead once the code is running.
 
 #### Structures
 
@@ -269,7 +353,7 @@ processor ExampleProcessor
         float a = 1.0f;
         int d = 3.0;     // error! the initialiser must have a matching type
 
-        MyStructure x;   // declare an instance of a structure
+        MyStructure foo; // declare an instance of a structure
 
         int[4] myValue;  // array of 4 ints, initialised to zero
         let f = int[3] (3, 4, 5); // declare an array with some initial values
@@ -667,12 +751,12 @@ graph ExampleGraph
 
     connection
     {
-        voices[0].audioOut -> delay[0].audioIn;   // 1-to-1 first element of voices array feeds first delay
-        voices[1].audioOut -> delay.audioIn;      // 1-to-many second voice feeds all delays
-        delays.audioOut    -> myOutput;           // many-to-1 sum of all delay output feeds myOutput
-        voices.audioOut    -> voiceOut;           // many-to-many each voice output feeds exactly one voiceOut stream
+        voices[0].audioOut -> delays[0].audioIn;   // 1-to-1 first element of voices array feeds first delay
+        voices[1].audioOut -> delays.audioIn;      // 1-to-many second voice feeds all delays
+        delays.audioOut    -> myOutput;            // many-to-1 sum of all delay output feeds myOutput
+        voices.audioOut    -> voiceOut;            // many-to-many each voice output feeds exactly one voiceOut stream
 
-        voices.audioOut    -> delays.audioIn;     // ERROR - voices has 8 elements, delays has 4 elements
+        voices.audioOut    -> delays.audioIn;      // ERROR - voices has 8 elements, delays has 4 elements
     }
 }
 ```
@@ -1035,6 +1119,7 @@ Within a processor or graph, the special keyword `processor` provides informatio
 A set of utilities are available in the `soul::` namespace. These include:
 
 ```C++
+/** The root soul namespace contains an assortment of handy helper functions. */
 namespace soul
 {
     float32 dBtoGain (float32 decibels);
@@ -1055,13 +1140,17 @@ namespace soul
 }
 ```
 
-Helper classes are provided, including a set of objects to represent note events:
-```
+```C++
+/** 
+    This namespace contains some types which are handy for representing synthesiser
+    note events. They do a similar job to MIDI events, but in a more modern, strongly
+    typed way. Things like the midi::MPEParser class generate them.
+*/
 namespace soul::NoteEvents
 {
     struct NoteOn
     {
-        int channel;
+        int channel; 
         float note;
         float velocity;
     }
@@ -1102,7 +1191,7 @@ namespace soul::NoteEvents
 
 Some MIDI helper classes are provided:
 
-```
+```C++
 namespace midi
 {
     /** This type is used to represent a packed short MIDI message. When you create
@@ -1111,12 +1200,14 @@ namespace midi
     */
     struct Message
     {
+        /** Format: (byte[0] << 24) | (byte[1] << 16) | byte[2] */
         int data;
     }
 
-    /** This event processor receives incoming MIDI events and parses them as MPE,
-        translating them into a set of note event types which a synthesiser can then
-        handle without neededing to understand MIDI or MPE.
+    /** This event processor receives incoming MIDI events, parses them as MPE,
+        and then emits a stream of note events using the types in soul::NoteEvents.
+        A synthesiser can then handle the resulting events without needing to go
+        near any actual MIDI or MPE data.
     */
     processor MPEParser  [[ main: false ]]
     {
@@ -1128,6 +1219,26 @@ namespace midi
                       soul::NoteEvents::Pressure,
                       soul::NoteEvents::Slide,
                       soul::NoteEvents::Control) eventOut;
+    }
+}
+```
+
+```C++
+/** This namespace contains some handy stuctures to use when declaring external 
+    variables which are going to be loaded with data from audio files.
+*/
+namespace soul::AudioSamples
+{
+    struct Mono
+    {
+        float[] frames;
+        float64 sampleRate;
+    }
+
+    struct Stereo
+    {
+        float<2>[] frames;
+        float64 sampleRate;
     }
 }
 ```
