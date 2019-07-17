@@ -291,6 +291,12 @@ external float[] audioFileData [[ resample: 48000 ]];
 
 ...which will tell the runtime to pre-process the audio file (or buffer) provided so that it is resampled to the given rate. The runtime will use a high-queality interpolator and there'll be no run-time overhead once the code is running.
 
+You can also use the annotation 'sourceChannel' to pull out a specific channel from the file:
+
+```C++
+external float[] audioFileChannel [[ sourceChannel: 3 ]];  // extracts channel 3 from the source file and returns that
+```
+
 #### Structures
 
 Structures are declared in traditional C style (but without the semicolon after the closing brace):
