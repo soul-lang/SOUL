@@ -80,7 +80,7 @@ processor MySynth
     output stream float<2> audioOut; // a stereo audio output
 ```
 
-The `externals` object in the manifest contains a set of values which need to be provided for external variables in the program (see the SOUL language guide for more details about how to declare an external variable). Each item in the externals list maps the (fully-qualified) name of a SOUL external variable to either a primitive numeric value, or a filename which should be loaded and turned into a float array. The patch loader uses JUCE for reading audio files, so will load WAV, AIFF, FLAC, Ogg-Vorbis and MP3 on all platforms, and maybe other formats on MacOS and Windows where the OS APIs support it.
+The `externals` object in the manifest contains a set of values which need to be provided for external variables in the program (see the SOUL language guide for more details about how to declare an external variable). Each item in the externals list maps the (fully-qualified) name of a SOUL external variable to either a value (primitive or an object or array, etc), or a filename which should be loaded and turned into a float array. The patch loader uses JUCE for reading audio files, so will load WAV, AIFF, FLAC, Ogg-Vorbis and MP3 on all platforms, and maybe other formats on MacOS and Windows where the OS APIs support it.
 
 ### Hosting Support and Utilities
 

@@ -92,6 +92,26 @@ SOUL supports very basic string literal functionality, allowing literals to be p
 
 e.g. `string s = "Hello World\n";`
 
+#### Structures
+
+Structures are declared in traditional C style (but without the semicolon after the closing brace):
+
+```C++
+struct ExampleStruct
+{
+    int            member1;
+    float          member2;
+    bool[8]        member3;
+    MyOtherStruct  member4;
+}
+```
+
+Member access unsurprisingly uses the dot operator:
+
+```C++
+let x = myStruct.member3;
+```
+
 #### Vector types
 
 Vectors of primitive types can be declared with angle-bracket syntax, e.g.
@@ -198,6 +218,7 @@ Sometimes a processor needs to randomly-access large blocks of read-only data (e
 ```
 external float[] someData;   // an array of floats (its size is determined at runtime from the data provided)
 external int someValue;      // an integer that will be supplied at runtime
+external int MyStruct thing; // a structure whose fields should be filled-in at runtime
 ```
 
 At link-time, the host app must supply a data provider which can give it the value of any externals that the program contains.
@@ -207,9 +228,14 @@ processor DrumLoopPlayer
 {
     output stream float<2> audioOut;
 
-    // at link-time, the host program will provide this data,
-    // and determine the size of the array
+    struct Thing
+    {
+        int thing1, thing2;
+    };
+
+    // at link-time, the host program will provide values for these external variables:
     external float<2>[] drumLoop;
+    external Thing[] otherThings;
 
     void run()
     {
@@ -225,7 +251,7 @@ processor DrumLoopPlayer
 }
 ```
 
-The host app will have to supply the data for this array - in a SOUL patch for example that could be done in the manifest like this:
+The host app will have to supply the data for these variables - in a SOUL patch for example that could be done in the manifest like this:
 
 ```json
 {
@@ -236,15 +262,17 @@ The host app will have to supply the data for this array - in a SOUL patch for e
 
     "source": "DrumLoopPlayer.soul",
     "externals": { 
-      "DrumLoopPlayer::drumLoop": "DrumLoop.wav"
+      "DrumLoopPlayer::drumLoop": "DrumLoop.wav",
+      "DrumLoopPlayer::otherThings": [ 
+          { "thing1": 123, "thing2": 456 }, 
+          { "thing1": 234, "thing2": 789 }
+        ]
     }
   }
 }
 ```
 
-The patch API will load the file and do some basic adjustments to match the number of channels to the size of the elements in the target array, so for example it'll mono-ise a multichannel file if the data type is `float[]` or convert a mono file to stereo if the destination type is `float<2>[]`.
-
-The low-level API will provide much more control, allowing any kind of data or object to be passed in.
+If asked to convert a JSON string into an array of floats, the patch API will attempt to load it as an audio filename. If possible, it'll do some basic adjustments to match the number of channels to the size of the elements in the target array - so for example it'll mono-ise a multichannel file if the data type is `float[]` or convert a mono file to stereo if the destination type is `float<2>[]`.
 
 ##### Special support for audio data in externals
 
@@ -295,26 +323,6 @@ You can also use the annotation 'sourceChannel' to pull out a specific channel f
 
 ```C++
 external float[] audioFileChannel [[ sourceChannel: 3 ]];  // extracts channel 3 from the source file and returns that
-```
-
-#### Structures
-
-Structures are declared in traditional C style (but without the semicolon after the closing brace):
-
-```C++
-struct ExampleStruct
-{
-    int            member1;
-    float          member2;
-    bool[8]        member3;
-    MyOtherStruct  member4;
-}
-```
-
-Member access unsurprisingly uses the dot operator:
-
-```C++
-let x = myStruct.member3;
 ```
 
 #### Type aliases
