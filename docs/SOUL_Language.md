@@ -161,6 +161,16 @@ clamp<5> clampedIndex;
 let x = myArray[clampedIndex]; // error - would need to be clamp<4> or less to work
 ```
 
+Negative indexes allow you to take an element at the back of the array, e.g.
+
+```C
+int[10] myArray;
+
+let x = myArray[-1];  // returns the last element (same as myArray[9] for a size of 10)
+let y = myArray[-2];  // returns the last-but-one element in the array
+let z = myArray[-10];  // error: this is out-of-bounds
+```
+
 To access an index with an integer, you can either cast it to a `wrap` or `clamp`, or use the `at()` method:
 
 ```C++
@@ -184,6 +194,7 @@ x[1:4] = 123; // set elements 1, 2 and 3
 
 int[8] y;
 y[1:5] = x[2:6]; // copying sub-sections of arrays
+let z = x[2:-3]; // copies all elements apart from the first 2 and the last 3
 ```
 
 #### Dynamic array slices
