@@ -26,7 +26,7 @@ processor ClassicRingtone
             loop (noteLength)  // play our next note...
             {
                 out << 0.1f * sin (sinewavePhase);
-                sinewavePhase = soul::addModulo2Pi (sinewavePhase, phaseIncrement);
+                sinewavePhase = addModulo2Pi (sinewavePhase, phaseIncrement);
                 advance();
             }
         }

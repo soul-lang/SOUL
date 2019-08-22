@@ -84,7 +84,7 @@ processor PhaserEffect
             // LFO calculus
             let lfoFactor = lfoFrequency * float (twoPi) * updateInterval / float32 (processor.frequency);
             let lfo = sin(phase) * depth;
-            phase = soul::addModulo2Pi(phase, lfoFactor);
+            phase = addModulo2Pi(phase, lfoFactor);
 
             // AP1 coefficients update
             let G = calculateG (lfo);

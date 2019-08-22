@@ -21,7 +21,7 @@ processor Beep
         loop (beepLengthSamples)
         {
             out << sin (phase) * beepVolume;
-            phase = soul::addModulo2Pi (phase, phaseIncrement);
+            phase = addModulo2Pi (phase, phaseIncrement);
             advance();
        }
     }
