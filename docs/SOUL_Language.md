@@ -139,7 +139,7 @@ let x = int[] (1, 2, 3, 4);    // (the size can be omitted if giving an initiali
 int[] x = (1, 2, 3, 4);       // initialises a mutable array of 4 elements
 ```
 
-Arrays have a special built-in member-style variable `size` which is a compile-time constant returning their number of elements.
+Arrays have a special built-in member-style variable `size` which is returns their number of elements.
 
 Access into an array using the square bracket operator requires the parameter type to be a compile time constant, or `wrap` or `clamp` to guarantee that its value is never out-of-bounds. e.g.
 
@@ -227,9 +227,9 @@ Slices may be left uninitialised, in which case they have a size of zero and any
 Sometimes a processor needs to randomly-access large blocks of read-only data (e.g. for audio samples, etc), or to allow the runtime API to provide other constants which aren't part of the source code. To allow the app to get this data across to the SOUL program, the `external` qualifier can be added to a variable.
 
 ```
-external float[] someData;   // an array of floats (its size is determined at runtime from the data provided)
-external int someValue;      // an integer that will be supplied at runtime
-external int MyStruct thing; // a structure whose fields should be filled-in at runtime
+external float[] someData;  // an array of floats (its size is determined at runtime from the data provided)
+external int someValue;     // an integer that will be supplied at runtime
+external MyStruct thing;    // a structure whose fields should be filled-in at runtime
 ```
 
 At link-time, the host app must supply a data provider which can give it the value of any externals that the program contains.
@@ -452,30 +452,6 @@ The syntax follows the familiar C/C++/Java/Javascript style of
 <returntype> functionName (type param1, type param2... etc)
 ```
 
-#### Universal function call syntax
-
-SOUL supports "universal function call syntax", which allows any suitable function to be called using the dot syntax as used for method calls in languages like Java.
-
-When parsing a dot operator, the compiler will attempt to find a function whose first parameter matches the left-hand side of the dot, and uses that function if found, e.g.
-
-```
-struct MyStruct
-{
-    int blah;
-}
-
-int getBlah (MyStruct& self)      { return self.blah; }
-
-void f()
-{
-    MyStruct s;
-
-    let x = getBlah (s);   // these two calls do exactly the same thing
-    let y = s.getBlah();   // but the second version is more OO-friendly!
-}
-```
-
-
 #### Processor declarations
 A processor declaration looks like this:
 ```C++
@@ -652,7 +628,7 @@ graph ExampleGraph [optional specialisation parameters]
 }
 ```
 
-###### Processor instance declarations
+##### Processor instance declarations
 
 After declaring a graph's endpoints, you should declare the set of processor nodes that it contains. The syntax for this is a series of `let` statements to declare local names for each instance of a processor or graph, e.g.
 
@@ -694,7 +670,7 @@ graph ExampleGraph
 }
 ```
 
-###### Connection declarations
+##### Connection declarations
 
 A graph then needs a set of connections to show which node endpoints should be connected together. An input and output can only be connected if they share the same type.
 
@@ -742,7 +718,31 @@ graph ExampleGraph
 }
 ```
 
-###### Arrays of Processors
+##### Delay Lines
+
+A connection may be used to introduce a delay into the signal chain. To add a delay to a connection, just add a bracketed value to indicate the number of samples to introduce:
+
+```C++
+graph SignalWithEcho
+{
+    source.out -> [5000] -> dest.in;  // pass samples through with 5000 samples delay
+    source.out -> dest.in;            // pass samples through with no delay
+}
+```
+
+##### Feedback loops
+
+Feedback loops within a graph are only permitted if one of the connections in the loop contains a delay.
+
+```C++
+graph SignalWithEcho
+{
+    foo.out -> foo.in;         // Error! Can't send output from a processor back into itself!
+    foo.out -> [1] -> foo.in;  // OK! Cycles are allowed if the loop is broken by a delay of at least 1 sample
+}
+```
+
+##### Arrays of Processors
 
 It is possible to declare an array of processors. Like arrays of inputs and outputs, this allows you to parameterise graphs where the exact number of processors can be chosen at runtime. Typical uses for this would be to vary the number of voices in a synthesiser. Arrays of processors are declared using a variation of the let statement, e.g:
 
@@ -908,9 +908,9 @@ Any streams in or out of a processor which is running at a different sample rate
 
 Three strategies are provided:
 
-  - **sinc** interpolation - high quality sample rate conversion with minimal aliasing
-  - **linear** interpolation - simple linear ramp between sample values
-  - **latch** interpolation - repeating the last received value between sample values
+  - `sinc` interpolation - high quality sample rate conversion with minimal aliasing
+  - `linear` interpolation - simple linear ramp between sample values
+  - `latch` interpolation - repeating the last received value between sample values
 
 By default, oversampled streams are sinc interpolated in both directions. For undersampled processors, input streams are latch interpolated, and the output streams are linear interpolated.
 
@@ -952,6 +952,109 @@ void modifyAMemberVariable()
 Function parameters are always passed using by-value semantics, unless declared as a reference (see the section about references).
 
 The `return` statement works just the way you'd expect it to.
+
+#### Universal function call syntax
+
+SOUL supports "universal function call syntax", which allows any suitable function to be called using the dot syntax as used for method calls in most object-oriented languages.
+
+When parsing a dot operator, the compiler will attempt to find a function whose first parameter matches the left-hand side of the dot, and uses that function if found, e.g.
+
+```
+struct MyStruct
+{
+    int blah;
+}
+
+int getBlah (MyStruct& self)      { return self.blah; }
+
+void f()
+{
+    MyStruct s;
+
+    let x = getBlah (s);   // these two calls do exactly the same thing
+    let y = s.getBlah();   // but the second version is more OO-friendly!
+}
+```
+
+### Generic Functions
+
+Simple generic ("templated") functions are possible by appending a list of named pattern-matching placeholders to the function name:
+
+*return type* function_name<*pattern1*, *pattern2*, ...> ([parameter list])
+
+Each pattern name must be a single identifier, and the return type and parameter declarations may use the pattern names as placeholders for types, e.g.
+
+```
+T negateSomeValue<T> (T x)    { return -x; }
+T addTwoValues<T> (T x, T y)  { return x + y; }
+
+elementType(ArrayType> get4thElement<ArrayType> (ArrayType array)     { return array[4]; }
+
+void foo()
+{
+    let sum1 = addTwoValues (1, 2);         // OK: sum1 is an int
+    let sum2 = addTwoValues (1.0f, 2.0f);   // OK: sum2 is a float32
+    let sum3 = addTwoValues (true, false);  // error! can't add two bools!
+}
+```
+
+Each call to the function will attempt to pattern-match the argument types and generate a specialised instance of the function. This of course means that the body of the function will be left mostly un-parsed until a call attempts to instantiate it, and then each call may trigger difference compile errors in the function body during instantiation, depending on the types that are resolved.
+
+The language doesn't currently support
+
+### Metafunctions for type manipulation
+
+A set of built-in functions are provided which take *types* as parameters rather than values, and which perform compile-time operations on the types. These are:
+
+| function              | operation                                                                            |
+|-----------------------|--------------------------------------------------------------------------------------|
+| `size(T)`             | returns the number of elements in a vector or array                                  |
+| `elementType(T)`      | returns the type of a vector or array's elements, e.g. `elementType(int[4]) == int`  |
+| `primitiveType(T)`    | returns the scalar type of a primitive or vector, e.g. `primitiveType(int<4>) -> int`|
+| `isStruct(T)`         | returns `true` if the type is a structure                                            |
+| `isArray(T)`          | returns `true` if the type is an array (either fixed-size or dynamic)                |
+| `isDynamicArray(T)`   | returns `true` if the type is an unsized array                                       |
+| `isFixedSizeArray(T)` | returns `true` if the type is a fixed-size array                                     |
+| `isVector(T)`         | returns `true` if the type is a vector                                               |
+| `isPrimitive(T)`      | returns `true` if the type is a primitive                                            |
+| `isFloat(T)`          | returns `true` if the type is a float32 or float64                                   |
+| `isFloat32(T)`        | returns `true` if the type is a float32                                              |
+| `isFloat64(T)`        | returns `true` if the type is a float64                                              |
+| `isInt(T)`            | returns `true` if the type is an int32 or int64                                      |
+| `isInt32(T)`          | returns `true` if the type is an int32                                               |
+| `isInt64(T)`          | returns `true` if the type is an int64                                               |
+| `isScalar(T)`         | returns `true` if the type is a scalar type (i.e. a vector or primitive of integer floating points) |
+| `isString(T)`         | returns `true` if the type is a string                                               |
+| `isBool(T)`           | returns `true` if the type is a bool                                                 |
+| `isReference(T)`      | returns `true` if the type is a reference                                            |
+| `isConst(T)`          | returns `true` if the type is a constant                                             |
+
+Note that these functions can be applied to a type name or a value, and can be called in the standard syntax, or applied with the dot operator, e.g.
+
+```
+{
+    int i = 1;
+    
+    int.isScalar        // these expressions all
+    isScalar(int)       // do exactly the same thing
+    i.isScalar
+    isScalar(i)
+}
+```
+
+### static_assert
+
+The `static_assert` statement emits a compile error if a compile-time boolean expression is false.
+
+In generic functions, it can be handy to use `static_assert` along with metafunctions to provide helpful error messages to callers of the function, e.g.
+
+```C++
+T addTwoNumbers<T> (T a, T b)
+{
+    static_assert (T.isScalar, "Sorry, addTwoNumbers() can only take arguments that are scalar types!");
+    return a + b;
+}
+```
 
 ### References
 
@@ -1141,24 +1244,19 @@ Within a processor or graph, the special keyword `processor` provides informatio
 
 ### Built-in library Functions
 
-A set of utilities are available in the `soul::` namespace. These include:
+Various utility functions are provided as part of the SOUL standard library. These include:
 
 ```C++
 /** The root soul namespace contains an assortment of handy helper functions. */
 namespace soul
 {
-    float32 dBtoGain (float32 decibels);
-    float64 dBtoGain (float64 decibels);
+    float dBtoGain (float decibels);
+    float gainTodB (float gain);
+    float addModulo2Pi (float value, float increment);
 
-    float32 gainTodB (float32 gain);
-    float64 gainTodB (float64 gain);
-
-    float32 addModulo2Pi (float32 value, float32 increment);
-    float64 addModulo2Pi (float64 value, float64 increment);
-
-    float32 noteNumberToFrequency (int note);
-    float32 noteNumberToFrequency (float32 note);
-    float32 frequencyToNoteNumber (float32 frequency);
+    float noteNumberToFrequency (int note);
+    float noteNumberToFrequency (float note);
+    float frequencyToNoteNumber (float frequency);
 
     float64 getSpeedRatioForPitchedSample (float64 sourceSampleRate, float32 sourceMIDINote,
                                            float64 targetSampleRate, float32 targetMIDINote);
