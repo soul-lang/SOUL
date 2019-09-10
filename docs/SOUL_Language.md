@@ -778,7 +778,7 @@ graph ExampleGraph
     {
         voices[0].audioOut -> delays[0].audioIn;   // 1-to-1 first element of voices array feeds first delay
         voices[1].audioOut -> delays.audioIn;      // 1-to-many second voice feeds all delays
-        delays.audioOut    -> myOutput;            // many-to-1 sum of all delay output feeds myOutput
+        delays.audioOut    -> audioSum;            // many-to-1 sum of all delay output feeds myOutput
         voices.audioOut    -> voiceOut;            // many-to-many each voice output feeds exactly one voiceOut stream
 
         voices.audioOut    -> delays.audioIn;      // ERROR - voices has 8 elements, delays has 4 elements
