@@ -611,7 +611,7 @@ processor Controller
             note1_frequencyOut << noteFrequency;
             note2_frequencyOut << noteFrequency * multiplier;
             note1_velocity     << NoteHandler::getCurrentVelocity(noteHandler);
-            note1_active       << NoteHandler::isNoteActive(noteHandler) ? NoteHandler::getCurrentVelocity(noteHandler) : 0.0f;
+            note1_active       << (NoteHandler::isNoteActive(noteHandler) ? NoteHandler::getCurrentVelocity(noteHandler) : 0.0f);
             note1_pressure     << NoteHandler::getCurrentPressure(noteHandler);
             note1_slide        << NoteHandler::getCurrentSlide(noteHandler);
 
