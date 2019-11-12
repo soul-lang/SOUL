@@ -1,0 +1,14 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.sinesynth",
+        "version":          "1.0",
+        "name":             "SineSynth",
+        "description":      "SOUL Sine Synth example",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "SineSynth.soul"
+    }
+}

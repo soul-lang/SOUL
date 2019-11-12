@@ -1,0 +1,159 @@
+/*
+    == SOUL example code ==
+
+    A handy little classic drum machine.
+
+    This uses a single sample containing the whole kit, and then plays
+    subsections of it for each drum hit. We could equally have chopped it
+    up into separate wave files and loaded each one separately.
+
+    In memory of Philip Meehan, who created these drum samples for use in
+    the early Tracktion demo songs, back in around 2001.
+*/
+
+graph SOUL909  [[ main ]]
+{
+    input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input event midi::Message midiIn;
+    output stream float<2> audioOut;
+
+    let
+    {
+        midiParser = midi::MPEParser;
+
+        voices          = DrumHitPlayer[8];
+        voiceAllocator  = soul::VoiceAllocators::Basic(8);
+        gainParameter   = GainParameterRamp (1.0f);
+        gainProcessor   = Gain;
+    }
+
+    connection
+    {
+        midiIn                       -> midiParser.parseMIDI;
+        midiParser.eventOut          -> voiceAllocator.eventIn;
+
+        voiceAllocator.voiceEventOut -> voices.eventIn;
+
+        volume                       -> gainParameter.gainDb;
+        gainParameter.parameterOut   -> gainProcessor.gain;
+        voices.audioOut              -> gainProcessor.audioIn;
+
+        gainProcessor.audioOut       -> audioOut;
+    }
+}
+
+//==============================================================================
+processor DrumHitPlayer
+{
+    input event (soul::NoteEvents::NoteOn,
+                 soul::NoteEvents::NoteOff) eventIn;
+
+    output stream float<2> audioOut;
+
+    struct DrumHit
+    {
+        int startNote, endNote;
+        float64 startTimeSeconds, lengthSeconds;
+        float gaindB, pan;
+    }
+
+    external soul::AudioSamples::Mono drumkit;
+    external DrumHit[] drumhits;
+
+    float64 playbackPosition, positionIncrement, playbackEndPosition;
+    float<2> gain;
+
+    event eventIn (soul::NoteEvents::NoteOn e)
+    {
+        let targetNote = int (e.note);
+
+        for (int i  = 0; i < drumhits.size; ++i)
+        {
+            let hit = drumhits.at(i);
+
+            if (targetNote >= hit.startNote && targetNote <= hit.endNote)
+            {
+                let sampleRate = drumkit.sampleRate;
+                playbackPosition = sampleRate * hit.startTimeSeconds;
+                playbackEndPosition = min (playbackPosition + sampleRate * hit.lengthSeconds, drumkit.frames.size);
+                positionIncrement = sampleRate / processor.frequency;
+                gain = e.velocity * soul::dBtoGain (hit.gaindB) * soul::PanLaw::centre3dB (hit.pan);
+                break;
+            }
+        }
+    }
+
+    event eventIn (soul::NoteEvents::NoteOff e) {}
+
+    void run()
+    {
+        loop
+        {
+            if (positionIncrement > 0)
+            {
+                audioOut << gain * drumkit.frames.readLinearInterpolated (playbackPosition);
+
+                playbackPosition += positionIncrement;
+
+                if (playbackPosition >= playbackEndPosition)
+                    positionIncrement = 0;
+            }
+
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Gain
+{
+    input  stream float    gain;
+    input  stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+// Converts an input event (as a gain in db) to a ramped stream
+processor GainParameterRamp (float slewRate)
+{
+    input event float gainDb;
+    output stream float parameterOut;
+
+    event gainDb (float targetDb)
+    {
+        targetValue = soul::dBtoGain (targetDb);
+
+        let diff = targetValue - currentValue;
+        let rampSeconds = abs (diff) / slewRate;
+
+        rampSamples   = int (processor.frequency * rampSeconds);
+        rampIncrement = diff / float (rampSamples);
+    }
+
+    float targetValue, currentValue, rampIncrement;
+    int rampSamples;
+
+    void run()
+    {
+        loop
+        {
+            if (rampSamples > 0)
+            {
+                currentValue += rampIncrement;
+                --rampSamples;
+            }
+
+            parameterOut << currentValue;
+            advance();
+        }
+    }
+}

@@ -127,6 +127,8 @@ let v3 = v1 + v2; // v3 == (5, 5, 5, 5)
 let element1 = v3[1]; // extract an element
 ```
 
+The vector size between angle brackets must be a compile-time constant.
+
 #### Array types
 
 Arrays are declared with this syntax:
@@ -138,6 +140,10 @@ let x = int[] (1, 2, 3, 4);    // (the size can be omitted if giving an initiali
 
 int[] x = (1, 2, 3, 4);       // initialises a mutable array of 4 elements
 ```
+
+Unlike vectors, the element type is not restricted to primitive types.
+
+The array size between square brackets must be either a compile-time constant or omitted.
 
 Arrays have a special built-in member-style variable `size` which is returns their number of elements.
 
@@ -502,7 +508,7 @@ If the `run()` function returns at any point, this essentially puts it into an i
 
 ##### The `advance()` function
 
-`advance()` is a special built-in function which causes all the processor's streams to move forward in time by the same amount (the exact amount will depend on the rate at which the processor has been instantiated by its parent graph)
+`advance()` is a special built-in function which causes all the processor's streams to move forward in time by the same amount called the timeslice (the exact amount will depend on the rate at which the processor has been instantiated by its parent graph)
 
 A well-formed `run()` function must contain at least one call to `advance()`.
 
@@ -1148,7 +1154,9 @@ You can use the standard `break` keyword to jump out of any of these loops, and 
 ### Reading and writing to endpoints
 
 To read the current value of an input, simply use the input's name as an expression.
-
+The read operation is side-effect free, thus an input name can be used multiple times within a timeslice and yields the same value at each use.
+Similarly, if an input name is not used within a timeslice, the value for the current timeslice is discarded.
+ 
 To write a value to an output, use the `<<` operator:
 
 ```C++
@@ -1365,3 +1373,11 @@ namespace soul::AudioSamples
     }
 }
 ```
+
+### HEART
+
+"HEART" is the name we've given to SOUL's internal low-level language, which is used as the format in which code is passed to a performer to be run. It's analogous to low level languages like LLVM-IR or WebAssembly. 
+
+The front-end SOUL compiler converts SOUL into a HEART program, and then it is passed to something like a JIT compiler or a C++ or WASM code-generator. Since HEART is a much simpler, this makes the process of optimising, manipulating and security-checking the code easier, and it makes it simpler to implement new back-end JIT engines.
+
+The syntax of the HEART language can be seen indirectly in the `soul_core` compiler module, but we'll also release a full spec document describing it as soon as we can!

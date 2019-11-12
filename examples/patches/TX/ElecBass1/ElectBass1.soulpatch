@@ -1,0 +1,14 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.tx.elecbass1",
+        "version":          "1.0",
+        "name":             "ElecBass1",
+        "description":      "SOUL Recreation of the classic TX electric bass preset",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "ElecBass1.soul"
+    }
+}

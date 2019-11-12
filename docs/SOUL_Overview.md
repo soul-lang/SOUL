@@ -118,4 +118,42 @@ graph PlayTwoSineWaves
 }
 ```
 
-Your host program passes all this SOUL code into the API, which compiles and links it together, ready for running on a device. The API contains a range of features for finding an available device to use, and for controlling and streaming data to and from the running program.
+Your host program passes all this SOUL code into the API, which compiles and links it together (and converts it into an internal low-level language called HEART), ready for running on a device. The API contains a range of features for finding an available device to use, and for controlling and streaming data to and from the running program.
+
+### APIs
+
+So far we're offering two different styles of API that developers can use to add SOUL code to their apps:
+
+#### SOUL Patches
+
+The SOUL patch format is described in detail [here](./SOUL_Patch_Format.md).
+
+Its purpose is to provide a high-level audio-plugin-like format for SOUL programs. This is the format that's most appropriate for enabling DAWs and other plugin hosts to add SOUL support alongside formats like VST, AU, etc. It provides audio in/out, MIDI in/out and parameter.
+
+#### SOUL Low-level API
+
+The most flexible system for compiling and running SOUL code will be via a C/C++ API (and via other languages which can wrap this API).
+
+The main concepts involved in this API are "SOUL Venues" and "SOUL Performers".
+
+- A *Performer* is an implementation of a JIT compiler which can be given a SOUL program and asked to render blocks of data.
+
+- A *Venue* is an independant device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely.
+
+A developer can build a SOUL host which either compiles and runs SOUL synchronously inside its own process using a *performer*, or dispatch the code to run remotely (and at low latency) in a suitable *venue*. Either way, using these APIs means that the programs are not limited to simple audio/MIDI i/o like the SOUL Patch format, and can do more versatile routing.
+
+#### Code-generation tools
+
+The SOUL command-line tools will provide various conversion utilities for translating SOUL into C++ or WASM to be incorporated manually into a legacy codebases.
+
+### Tools for developing SOUL code
+
+For end-users, we expect to see several environments in which they can write and test SOUL:
+
+- In a browser playground: at [soul.dev](https://soul.dev/lab), where the code is compiled and run in the browser as WASM/Web-audio
+- In a DAW which supports SOUL patches, such as Tracktion Waveform
+- Running the SOUL command-line tool to compile and play a particular file or patch
+
+Most of these environments support live-reloading of the code when it is modified and re-saved in a text editor.
+
+Of course in the future, graphical UIs for visually constructing SOUL graphs are likely to become an easy way to get started for people who aren't so comfortable writing code.

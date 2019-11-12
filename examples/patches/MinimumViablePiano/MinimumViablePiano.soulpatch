@@ -1,0 +1,22 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.MinimumViablePiano",
+        "version":          "1.0",
+        "name":             "Minimum Viable Piano",
+        "description":      "A piano demo, designed for small size rather than high quality",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "MinimumViablePiano.soul",
+
+        "externals": 
+        { 
+            "PianoSamplePlayer::piano_C5": "piano-C5.ogg",
+            "PianoSamplePlayer::piano_G5": "piano-G5.ogg",
+            "PianoSamplePlayer::piano_C6": "piano-C6.ogg",
+            "PianoSamplePlayer::piano_G6": "piano-G6.ogg"
+        }
+    }
+}

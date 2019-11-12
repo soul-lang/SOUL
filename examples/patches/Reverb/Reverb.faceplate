@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<FACEPLATE width="8.0" height="4.0" autoSize="1" skin="Mono Modern">
+  <PARAMETER bounds="1 1 2 4" parameterIDs="roomSize"/>
+  <PARAMETER bounds="3 1 2 2" parameterIDs="damping"/>
+  <PARAMETER bounds="3 3 2 2" parameterIDs="width"/>
+  <PARAMETER bounds="5 3 2 2" parameterIDs="wetLevel"/>
+  <PARAMETER bounds="7 3 2 2" parameterIDs="dryLevel"/>
+  <BACKGROUND imageAlpha="1.0" colour="ff1bae5b"/>
+  <LABEL bounds="5 1 4 2" text="Reverb!" stretch="0"/>
+</FACEPLATE>

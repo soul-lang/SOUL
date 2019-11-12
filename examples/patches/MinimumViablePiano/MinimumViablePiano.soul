@@ -1,0 +1,252 @@
+/*
+    == SOUL example code ==
+
+    "Minimum-Viable-Piano"
+
+    You probably won't want to use this patch to replace your Bosendorfer,
+    but it shows how to play some re-pitched external sample data, and
+    it'll do a pretty good job of recreating some early 1990s rave piano.
+
+    In memory of Philip Meehan, who recorded these piano samples for use in
+    the early Tracktion demo songs, back in around 2001.
+*/
+
+graph Piano  [[ main ]]
+{
+    input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input event midi::Message midiIn;
+    output stream float audioOut;
+
+    let
+    {
+        midiParser      = midi::MPEParser;
+        voices          = Voice[8];
+        voiceAllocator  = soul::VoiceAllocators::Basic(8);
+        gainParameter   = GainParameterRamp (1.0f);
+        volumeProcessor = Gain;
+    }
+
+    connection
+    {
+        midiIn -> midiParser.parseMIDI;
+        volume -> gainParameter.gainDb;
+
+        midiParser.eventOut -> voiceAllocator.eventIn;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceEventOut -> voices.eventIn;
+
+        // Sum the voices audio out to the output
+        voices.audioOut -> volumeProcessor.audioIn;
+
+        gainParameter.parameterOut -> volumeProcessor.gain;
+
+        volumeProcessor.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor PianoSamplePlayer
+{
+    input event (soul::NoteEvents::NoteOn,
+                 soul::NoteEvents::NoteOff) eventIn;
+
+    output stream float audioOut;
+
+    external soul::AudioSamples::Mono  piano_C5,
+                                       piano_G5,
+                                       piano_C6,
+                                       piano_G6;
+
+    struct Sample
+    {
+        soul::AudioSamples::Mono audioData;
+        int rootNote;
+    }
+
+    Sample[4] samples;
+
+    float[] sourceFrames;
+    float64 playbackPosition, positionIncrement;
+
+    event eventIn (soul::NoteEvents::NoteOn e)
+    {
+        let sample = findBestSampleForNote (int (e.note));
+        sourceFrames = sample.audioData.frames;
+        positionIncrement = soul::getSpeedRatioForPitchedSample (sample.audioData.sampleRate,
+                                                                 float (sample.rootNote),
+                                                                 processor.frequency, e.note);
+        playbackPosition = 0;
+    }
+
+    event eventIn (soul::NoteEvents::NoteOff e)  {}
+
+    void initialiseSamples()
+    {
+        samples = ((piano_C5, 72),
+                   (piano_G5, 79),
+                   (piano_C6, 84),
+                   (piano_G6, 91));
+    }
+
+    Sample findBestSampleForNote (int targetNote)
+    {
+        int bestDistance = 128;
+        int bestIndex = 0;
+
+        for (int i  = 0; i < samples.size; ++i)
+        {
+            let distance = abs (samples.at(i).rootNote - targetNote);
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestIndex = i;
+            }
+        }
+
+        return samples.at (bestIndex);
+    }
+
+    void run()
+    {
+        initialiseSamples();
+
+        loop
+        {
+            if (positionIncrement > 0)
+            {
+                audioOut << sourceFrames.readLinearInterpolated (playbackPosition);
+
+                playbackPosition += positionIncrement;
+
+                if (playbackPosition >= sourceFrames.size)
+                    positionIncrement = 0;  // stop at the end of the sample
+            }
+
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Envelope (float targetLevel, float releaseSeconds)
+{
+    input event (soul::NoteEvents::NoteOn,
+                 soul::NoteEvents::NoteOff) eventIn;
+
+    output stream float audioOut;
+
+    event eventIn (soul::NoteEvents::NoteOn e)      { active = true; gain = e.velocity; }
+    event eventIn (soul::NoteEvents::NoteOff e)     { active = false; }
+
+    bool active = false;
+    float gain;
+
+    void run()
+    {
+        let releaseMultiplier = float (pow (0.0001, processor.period / releaseSeconds));
+
+        loop
+        {
+            // Waiting for note-on
+            while (! active)
+                advance();
+
+            // Sustaining
+            while (active)
+            {
+                audioOut << gain;
+                advance();
+            }
+
+            // Releasing
+            for (float level = gain; ! active && level > 0.00001f; level *= releaseMultiplier)
+            {
+                audioOut << level;
+                advance();
+            }
+        }
+    }
+}
+
+//==============================================================================
+processor Gain
+{
+    input  stream float audioIn, gain;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph Voice
+{
+    input event (soul::NoteEvents::NoteOn,
+                 soul::NoteEvents::NoteOff) eventIn;
+
+    output stream float audioOut;
+
+    let
+    {
+        samplePlayer = PianoSamplePlayer;
+        envelope = Envelope (0.2f, 0.3f);
+    }
+
+    connection
+    {
+        eventIn -> samplePlayer.eventIn,
+                   envelope.eventIn;
+
+        samplePlayer.audioOut  -> Gain.audioIn;
+        envelope.audioOut      -> Gain.gain;
+
+        Gain.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+// Converts an input event (as a gain in db) to a ramped stream
+processor GainParameterRamp (float slewRate)
+{
+    input event float gainDb;
+    output stream float parameterOut;
+
+    event gainDb (float targetDb)
+    {
+        targetValue = soul::dBtoGain (targetDb);
+
+        let diff = targetValue - currentValue;
+        let rampSeconds = abs (diff) / slewRate;
+
+        rampSamples   = int (processor.frequency * rampSeconds);
+        rampIncrement = diff / float (rampSamples);
+    }
+
+    float targetValue;
+    float currentValue;
+    float rampIncrement;
+    int rampSamples;
+
+    void run()
+    {
+        loop
+        {
+            if (rampSamples > 0)
+            {
+                currentValue += rampIncrement;
+                --rampSamples;
+            }
+
+            parameterOut << currentValue;
+            advance();
+        }
+    }
+}

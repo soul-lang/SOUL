@@ -95,14 +95,14 @@ To let you create a host that can load and run SOUL patches, we have the followi
 
 ### Annotations for parameters
 
-In SOUL, each endpoint declaration can have an arbitrary set of properties ('annotations') attached to it, e.g.
+In SOUL, each input declaration can have an arbitrary set of properties ('annotations') attached to it, e.g.
 
 ```C++
     input event float cutoff    [[ name: "Cut-off", min: 0, max: 127, init: 80, unit: "semi", step: 0.1 ]];
     input event float turbo     [[ name: "Turbo Boost", boolean, text: "off|on" ]]
 ```
 
-Although people writing patches and hosts are completely free to use any values they like, we've got some guidelines for a small set of standard properties which can be interpreted in a sensible way by existing plugin formats and DAWs. 
+If you'd like an input to be treated by a host as a parameter rather than an audio stream, you can attach some of the following annotations to it:
 
 - `name:` The name that a host should display for this parameter. If not specified, the endpoint name is used.
 - `unit:` If supplied, this string indicates the units for this value, e.g. `"dB"` or `"%"` or `"Hz"`.
@@ -120,3 +120,7 @@ Although people writing patches and hosts are completely free to use any values 
     - `%+d` or `%+f` will always print a `+` or `-` sign before the number.
   - Alternatively, the `text` property can be a list of items separated by a vertical pipe character `|`. These will be evenly spread across the range of the parameter, e.g. `text: "low|medium|high", max: 9` will show "low" for values 0 -> 3, "medium" for 3 -> 6, and "high" for 6 -> 9. If you omit a `max` setting, then `max` will set to the number of items - 1. If you omit `step`, it will be set to snap to the size of each item. If you provide a list of items like this, some hosts may choose to display them as a drop-down list rather than using a slider.
 - `group:` An optional tag for the host to use to group sets of related parameters together when displaying them to the user. Use forward-slashes to create nested hierarchies of groups.
+
+### API Resources
+
+The SOUL Patch API interfaces and helper classes are found [here](../source/API/soul_patch).

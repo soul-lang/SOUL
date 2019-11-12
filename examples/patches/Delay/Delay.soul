@@ -1,0 +1,51 @@
+/*
+    == SOUL example code ==
+
+    A more complex implementation of freeverb, where events are used for sending
+    parameter changes.
+*/
+
+processor Delay  [[ main ]]
+{
+    input  stream float audioIn;
+    output stream float audioOut;
+
+    input event
+    {
+        float delayLength    [[ min: 0,  max: 1000, init:  50,  name: "Length",  unit: "ms",  step: 1 ]];
+        float delayFeedback  [[ min: 0,  max: 100, init:  25,  name: "Feedback", unit: "%",  step: 1 ]];
+    }
+
+    event delayLength (float delayMs)
+    {
+        let delaySamples = max (1, int (processor.frequency * (delayMs / 1000.0f)));
+
+        readPos = writePos - delaySamples;
+    }
+
+    event delayFeedback (float f)
+    {
+        feedback = f * 0.01f;
+    }
+
+    float feedback;
+
+    let bufferLength = 100000;
+
+    float[bufferLength] buffer;
+    wrap<bufferLength> readPos;
+    wrap<bufferLength> writePos;
+
+    void run()
+    {
+        loop
+        {
+            buffer[writePos] = audioIn + feedback * buffer[readPos];
+            audioOut << buffer[readPos];
+            readPos++;
+            writePos++;
+
+            advance();
+        }
+    }
+}

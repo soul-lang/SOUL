@@ -1,0 +1,15 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.reverb",
+        "version":          "1.0",
+        "name":             "Reverb",
+        "description":      "SOUL Reverb",
+        "category":         "fx",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     false,
+        
+        "source":           "Reverb.soul",
+        "view":             "Reverb.faceplate"
+    }
+}

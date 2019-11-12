@@ -1,0 +1,262 @@
+/*
+    _____ _____ _____ __
+   |   __|     |  |  |  |      The SOUL language
+   |__   |  |  |  |  |  |__    Copyright (c) 2019 - ROLI Ltd.
+   |_____|_____|_____|_____|
+
+   The code in this file is provided under the terms of the ISC license:
+
+   Permission to use, copy, modify, and/or distribute this software for any purpose
+   with or without fee is hereby granted, provided that the above copyright notice and
+   this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD
+   TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN
+   NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+   DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
+   IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
+
+namespace soul
+{
+
+class PoolAllocator;
+
+//==============================================================================
+/** A smart-pointer which references an object which is a member of a PoolAllocator.
+
+    Almost all the AST classes are pool_ptrs to avoid the horror of trying dealing with
+    ownership within a huge spaghetti-like graph of interconnected objects.
+
+    A pool_ptr is little more than a wrapper around a raw pointer, but one of the handy
+    tricks it has is that using pool_ptr instead of a raw pointer will detect any nullptr
+    accesses and turn them into nice clean internal compiler errors rather than UB crashes.
+    It also allows the opportunity for implementing new faster ways of casting than dynamic_cast,
+    and casting is a very common operation on AST objects.
+*/
+template <typename Type>
+struct pool_ptr  final
+{
+    pool_ptr() noexcept {}
+    ~pool_ptr() noexcept {}
+
+    pool_ptr (decltype (nullptr)) noexcept {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ptr (OtherType& o) noexcept : object (std::addressof (o)) {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ptr (const pool_ptr<OtherType>& other) noexcept : object (other.get()) {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ptr (pool_ptr<OtherType>&& other) noexcept : object (other.get()) {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ptr& operator= (const pool_ptr<OtherType>& other) noexcept    { object = other.get(); return *this; }
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ptr& operator= (pool_ptr<OtherType>&& other) noexcept         { object = other.get(); return *this; }
+
+    Type* get() const noexcept                              { return object; }
+    Type& operator*() const                                 { SOUL_ASSERT (object != nullptr); return *object; }
+    Type* operator->() const                                { SOUL_ASSERT (object != nullptr); return object; }
+
+    void reset() noexcept                                   { object = nullptr; }
+    void reset (Type* newObject) noexcept                   { object = newObject; }
+
+    bool operator== (Type& other) const noexcept            { return object == std::addressof (other); }
+    bool operator!= (Type& other) const noexcept            { return object != std::addressof (other); }
+    bool operator<  (Type& other) const noexcept            { return object <  std::addressof (other); }
+    bool operator== (pool_ptr other) const noexcept         { return object == other.object; }
+    bool operator!= (pool_ptr other) const noexcept         { return object != other.object; }
+    bool operator<  (pool_ptr other) const noexcept         { return object <  other.object; }
+    bool operator== (decltype (nullptr)) const noexcept     { return object == nullptr; }
+    bool operator!= (decltype (nullptr)) const noexcept     { return object != nullptr; }
+
+    operator bool() const noexcept                          { return object != nullptr; }
+
+    using ObjectType = Type;
+
+private:
+    Type* object = nullptr;
+};
+
+template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, const T2* p2) noexcept     { return p1.get() == p2; }
+template <typename T1, typename T2> bool operator!= (pool_ptr<T1> p1, const T2* p2) noexcept     { return p1.get() != p2; }
+template <typename T1, typename T2> bool operator== (const T1* p1, pool_ptr<T2> p2) noexcept     { return p1 == p2.get(); }
+template <typename T1, typename T2> bool operator!= (const T1* p1, pool_ptr<T2> p2) noexcept     { return p1 != p2.get(); }
+template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.get() == p2.get(); }
+template <typename T1, typename T2> bool operator!= (pool_ptr<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.get() != p2.get(); }
+
+template <typename TargetType, typename SrcType>
+inline pool_ptr<TargetType> cast (pool_ptr<SrcType> object)
+{
+    pool_ptr<TargetType> p;
+    p.reset (dynamic_cast<TargetType*> (object.get()));
+    return p;
+}
+
+template <typename TargetType, typename SrcType>
+inline pool_ptr<TargetType> cast (SrcType& object)
+{
+    pool_ptr<TargetType> p;
+    p.reset (dynamic_cast<TargetType*> (&object));
+    return p;
+}
+
+template <typename TargetType, typename SrcType>
+inline bool is_type (pool_ptr<SrcType> object)
+{
+    return dynamic_cast<TargetType*> (object.get()) != nullptr;
+}
+
+template <typename TargetType, typename SrcType>
+inline bool is_type (SrcType& object)
+{
+    return dynamic_cast<TargetType*> (&object) != nullptr;
+}
+
+template <typename TargetType, typename SrcType>
+inline pool_ptr<TargetType> static_pool_cast (pool_ptr<SrcType> object)
+{
+    SOUL_ASSERT (is_type<TargetType> (object));
+
+    pool_ptr<TargetType> p;
+    p.reset (static_cast<TargetType*> (object.get()));
+    return p;
+}
+
+//==============================================================================
+/**
+    An object pool.
+
+    Objects added to the pool will all be deleted when the pool is destroyed, but
+    no items are ever removed - the pool can only grow in size.
+
+    Allocation of pool objects is very fast, since it allocates memory in bulk
+    internally, and is designed to be single-threaded so has no overhead wasted
+    on locking.
+
+    When you create an object via the allocate() method, the best practice used in
+    the SOUL codebase is to either keep a reference to it, or a pool_ptr, but never
+    a raw pointer.
+*/
+class PoolAllocator  final
+{
+public:
+    PoolAllocator()    { clear(); }
+    ~PoolAllocator() = default;
+
+    PoolAllocator (const PoolAllocator&) = delete;
+    PoolAllocator& operator= (const PoolAllocator&) = delete;
+    PoolAllocator (PoolAllocator&&) = default;
+    PoolAllocator& operator= (PoolAllocator&&) = default;
+
+    /** Clears the pool (deleting all the objects in it) */
+    void clear()
+    {
+        pools.clear();
+        pools.reserve (32);
+        addNewPool();
+    }
+
+    /** Allocates a new object for the pool, returning a reference to it. */
+    template <typename Type, typename... Args>
+    Type& allocate (Args&&... args)
+    {
+        static_assert (sizeof (Type) + itemHeaderSize <= sizeof (Pool::space), "Can't allocate a pool object bigger than the pool block size");
+        // NB: the constructor may throw, so we have to be careful not to register its destructor until we know it was successful
+        auto address = prepareSpaceForObject (sizeof (Type));
+        auto newObject = new (address) Type (std::forward<Args> (args)...);
+        currentPool->registerNewObject (sizeof (Type), [] (void* t) { static_cast<Type*> (t)->~Type(); });
+        return *newObject;
+    }
+
+private:
+    using DestructorFn = void(void*);
+
+    struct PoolItem
+    {
+        size_t size;
+        DestructorFn* destructor;
+        void* item;
+    };
+
+    static constexpr const size_t poolSize = 1024 * 64 - 32;
+    static constexpr const size_t poolItemAlignment = 8;
+    static constexpr const size_t itemHeaderSize = offsetof (PoolItem, item);
+
+    struct Pool
+    {
+        Pool() { SOUL_ASSERT (isAlignedPointer<poolItemAlignment> (getNextAddress())); }
+        Pool (const Pool&) = delete;
+        Pool (Pool&&) = delete;
+
+        ~Pool()
+        {
+            for (size_t i = 0; i < nextSlot;)
+            {
+                auto item = getItem (i);
+                item->destructor (&item->item);
+                i += item->size;
+            }
+        }
+
+        bool hasSpaceFor (size_t size) const
+        {
+            return nextSlot + getAlignedSize<poolItemAlignment> (size + itemHeaderSize) <= poolSize;
+        }
+
+        void* getNextAddress()
+        {
+            auto item = getItem (nextSlot);
+            return &item->item;
+        }
+
+        void registerNewObject (size_t size, DestructorFn d)
+        {
+            size = getAlignedSize<poolItemAlignment> (size + itemHeaderSize);
+            auto item = getItem (nextSlot);
+            item->size = size;
+            item->destructor = d;
+            nextSlot += size;
+        }
+
+        PoolItem* getItem (size_t byteOffset) noexcept  { return reinterpret_cast<PoolItem*> (space.data() + byteOffset); }
+
+        size_t nextSlot = 0;
+        alignas(poolItemAlignment) std::array<char, poolSize> space;
+    };
+
+    std::vector<std::unique_ptr<Pool>> pools;
+    Pool* currentPool = nullptr;
+
+    void addNewPool()
+    {
+        currentPool = new Pool();
+        pools.emplace_back (currentPool);
+    }
+
+    void* prepareSpaceForObject (size_t size)
+    {
+        if (! currentPool->hasSpaceFor (size))
+        {
+            addNewPool();
+            SOUL_ASSERT (currentPool->hasSpaceFor (size));
+        }
+
+        return currentPool->getNextAddress();
+    }
+};
+
+} // namespace soul
+
+namespace std
+{
+    template <typename Type>
+    struct hash<soul::pool_ptr<Type>>
+    {
+        size_t operator() (const soul::pool_ptr<Type>& p) const noexcept { return reinterpret_cast<size_t> (p.get()); }
+    };
+}

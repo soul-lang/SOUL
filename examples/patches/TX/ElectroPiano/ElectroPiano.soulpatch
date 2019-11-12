@@ -1,0 +1,14 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.tx.electropiano",
+        "version":          "1.0",
+        "name":             "ElectroPiano",
+        "description":      "SOUL Recreation of the classic TX electric piano preset",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "ElectroPiano.soul"
+    }
+}

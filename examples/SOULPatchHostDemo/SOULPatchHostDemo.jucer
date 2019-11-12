@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="v8pqkL" name="SOULPatchHostDemo" projectType="guiapp" jucerVersion="5.4.5">
+  <MAINGROUP id="uJnotN" name="SOULPatchHostDemo">
+    <GROUP id="{61855D96-DDCD-96D9-B7FD-5AE623E9A261}" name="Source">
+      <GROUP id="{AD4BFB33-082C-EEB4-7A1C-C89C4FAF536A}" name="API">
+        <FILE id="ZyAQPF" name="soul_patch.h" compile="0" resource="0" file="../../source/API/soul_patch/API/soul_patch.h"/>
+        <FILE id="y6ArDX" name="soul_patch_Instance.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/API/soul_patch_Instance.h"/>
+        <FILE id="tpajVA" name="soul_patch_Library.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/API/soul_patch_Library.h"/>
+        <FILE id="XDIno7" name="soul_patch_Player.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/API/soul_patch_Player.h"/>
+        <FILE id="NQ6DzP" name="soul_patch_VirtualFile.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/API/soul_patch_VirtualFile.h"/>
+      </GROUP>
+      <GROUP id="{C8245316-B1B8-10FE-FC53-3B41036F74F3}" name="helper_classes">
+        <FILE id="HqD7ji" name="soul_patch_AudioPluginFormat.h" compile="0"
+              resource="0" file="../../source/API/soul_patch/helper_classes/soul_patch_AudioPluginFormat.h"/>
+        <FILE id="yc7Vq4" name="soul_patch_AudioProcessor.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/helper_classes/soul_patch_AudioProcessor.h"/>
+        <FILE id="vbCNJF" name="soul_patch_CompilerCacheFolder.h" compile="0"
+              resource="0" file="../../source/API/soul_patch/helper_classes/soul_patch_CompilerCacheFolder.h"/>
+        <FILE id="f8Kb2a" name="soul_patch_Utilities.h" compile="0" resource="0"
+              file="../../source/API/soul_patch/helper_classes/soul_patch_Utilities.h"/>
+      </GROUP>
+      <FILE id="tXLIq5" name="PatchLoaderComponent.h" compile="0" resource="0"
+            file="Source/PatchLoaderComponent.h"/>
+      <FILE id="XMVaPq" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+    </GROUP>
+  </MAINGROUP>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX" microphonePermissionNeeded="1">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug"/>
+        <CONFIGURATION isDebug="0" name="Release"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../juce/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2019 targetFolder="Builds/VisualStudio2019">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug"/>
+        <CONFIGURATION isDebug="0" name="Release"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../juce/modules"/>
+      </MODULEPATHS>
+    </VS2019>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX/>
+  </LIVE_SETTINGS>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+</JUCERPROJECT>

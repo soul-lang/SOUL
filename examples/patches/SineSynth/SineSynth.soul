@@ -1,0 +1,254 @@
+/*
+    == SOUL example code ==
+
+    A simple sine-wave synthesiser, featuring pitch-bend support, a simple voice
+    allocator and envelope generator.
+*/
+
+graph SineSynth  [[ main ]]
+{
+    input event float volume [[ min: -40, max: 0,  init: -6, unit: "db", step: 1, label: "Volume" ]];
+    input event midi::Message midiIn;
+    output stream float audioOut;
+
+    let
+    {
+        midiParser = midi::MPEParser;
+
+        voices = Voice[8];
+        voiceAllocator = soul::VoiceAllocators::Basic(8);
+
+        gainParameter = GainParameterRamp (1.0f);
+        volumeProcessor = Gain;
+    }
+
+    connection
+    {
+        midiIn -> midiParser.parseMIDI;
+        volume -> gainParameter.gainDb;
+
+        midiParser.eventOut -> voiceAllocator.eventIn;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceEventOut -> voices.noteOn,
+                                        voices.noteOff,
+                                        voices.pitchBend;
+
+        // Sum the voices audio out to the output
+        voices.audioOut -> volumeProcessor.audioIn;
+
+        gainParameter.parameterOut -> volumeProcessor.gain;
+
+        volumeProcessor.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+processor SineOsc
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+    }
+
+    output stream float audioOut;
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+        notePitch = e.note;
+        bendSemitones = 0.0f;
+        calculatePhaseIncrement();
+    }
+
+    event noteOff (soul::NoteEvents::NoteOff e) {}
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
+    {
+        bendSemitones = e.bendSemitones;
+        calculatePhaseIncrement();
+    }
+
+    float bendSemitones, notePitch, phase, phaseIncrement;
+
+    void calculatePhaseIncrement()
+    {
+        let noteFrequency = soul::noteNumberToFrequency (notePitch + bendSemitones);
+        phaseIncrement = noteFrequency / float (processor.frequency);
+    }
+
+    void run()
+    {
+        phaseIncrement = 0.1f;
+
+        loop
+        {
+            phase = phase + phaseIncrement;
+
+            while (phase > 1.0f)
+                phase = phase - 1.0f;
+
+            audioOut << sin(float(2.0f * pi * phase));
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor Envelope (float targetLevel, float attackSeconds, float releaseSeconds)
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+    }
+
+    output stream float audioOut;
+
+    event noteOn (soul::NoteEvents::NoteOn e)       { active = true; }
+    event noteOff (soul::NoteEvents::NoteOff e)     { active = false; }
+
+    bool active = false;
+
+    // Calculate the multiplier that gives the required release milliseconds
+    float calculateReleaseMultiplier()
+    {
+        let inverse = 1.0 / (processor.frequency * releaseSeconds);
+        return float(pow(0.0001, inverse));
+    }
+
+    void run()
+    {
+        let attackSamples = attackSeconds * float(processor.frequency);
+        let attackIncrement = targetLevel / attackSamples;
+        let releaseMultiplier = calculateReleaseMultiplier();
+
+        var value = 0.0f;
+
+        loop
+        {
+            // Waiting for note on
+            while (! active)
+            {
+                audioOut << value;
+                advance();
+            }
+
+            // Attacking
+            while (active && value < targetLevel)
+            {
+                value += attackIncrement;
+                audioOut << value;
+                advance();
+            }
+
+            // Sustaining
+            while (active)
+            {
+                audioOut << value;
+                advance();
+            }
+
+            // Releasing
+            while (! active && value > 0.00001f)
+            {
+                value *= releaseMultiplier;
+                audioOut << value;
+                advance();
+            }
+
+            // If we're still not active, ensure the value is pulled to 0
+            if (! active)
+                value = 0.0f;
+        }
+    }
+}
+
+//==============================================================================
+processor Gain
+{
+    input  stream float audioIn, gain;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph Voice
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn noteOn;
+        soul::NoteEvents::NoteOff noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+    }
+
+    output stream float audioOut;
+
+    let
+    {
+        Osc = SineOsc;
+        AmplitudeEnvelope = Envelope(0.2f, 0.02f, 0.1f);
+    }
+
+    connection
+    {
+        noteOn    -> Osc.noteOn;
+        noteOff   -> Osc.noteOff;
+        pitchBend -> Osc.pitchBend;
+        noteOn    -> AmplitudeEnvelope.noteOn;
+        noteOff   -> AmplitudeEnvelope.noteOff;
+
+        Osc.audioOut               -> Gain.audioIn;
+        AmplitudeEnvelope.audioOut -> Gain.gain;
+
+        Gain.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+// Converts an input event (as a gain in db) to a ramped stream
+processor GainParameterRamp (float slewRate)
+{
+    input event float gainDb;
+    output stream float parameterOut;
+
+    event gainDb (float targetDb)
+    {
+        targetValue = soul::dBtoGain (targetDb);
+
+        let diff = targetValue - currentValue;
+        let rampSeconds = abs (diff) / slewRate;
+
+        rampSamples   = int (processor.frequency * rampSeconds);
+        rampIncrement = diff / float (rampSamples);
+    }
+
+    float targetValue;
+    float currentValue;
+    float rampIncrement;
+    int rampSamples;
+
+    void run()
+    {
+        loop
+        {
+            if (rampSamples > 0)
+            {
+                currentValue += rampIncrement;
+                --rampSamples;
+            }
+
+            parameterOut << currentValue;
+            advance();
+        }
+    }
+}

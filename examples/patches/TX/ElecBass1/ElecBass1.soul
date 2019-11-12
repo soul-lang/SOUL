@@ -1,0 +1,505 @@
+/*
+    == SOUL example code ==
+
+    This is a fairly complete implementation of a TX81Z, the limitations are:
+
+    1) No LFO
+    2) Sensitivity - missing PMod, AMS and EBS
+    3) No detune - you can emulate by adding a fixed component to an oscillator
+    4) Envelopes - no shift
+    5) Scaling - no level scaling
+*/
+
+//==============================================================================
+graph ElecBass  [[ main ]]
+{
+    input event midi::Message midiIn;
+    output stream float audioOut;
+
+    let
+    {
+        voices         = ElecBass1Voice[8];
+        midiParser     = midi::MPEParser;
+        filter         = TX81Z::OutputFilter;
+        voiceAllocator = TX81Z::PolyVoiceAllocator (-12, 8);
+    }
+
+    connection
+    {
+        midiIn                  -> midiParser.parseMIDI;
+        midiParser.eventOut     -> voiceAllocator.eventIn;
+        voiceAllocator.eventOut -> voices.eventIn;
+        voices.audioOut         -> filter.audioIn;
+        filter.audioOut         -> audioOut;
+    }
+}
+
+//==============================================================================
+graph ElecBass1Voice
+{
+    input event (soul::NoteEvents::NoteOn,
+                 soul::NoteEvents::NoteOff,
+                 soul::NoteEvents::PitchBend) eventIn;
+
+    output stream float audioOut;
+
+    let
+    {
+        // Oscillator Parameters -        Waveshape, Volume, Freq(fixed), Freq (multiplier), Feedback
+        osc1         = TX81Z::Oscillator (        1,     99,        0.0f,              1.0f,        0);
+        osc2         = TX81Z::Oscillator (        1,     67,        0.0f,              0.5f,        0);
+        osc3         = TX81Z::Oscillator (        1,     70,        0.0f,              9.0f,        0);
+        osc4         = TX81Z::Oscillator (        1,     61,        0.0f,              3.0f,        7);
+
+        // Envelope Parameters -                A, D1R, D1L, D2R,  R, KVS, Rate Scaling
+        amplitudeEnvelope1  = TX81Z::Envelope (31,   9,   9,   0,  9,   1,            0);
+        amplitudeEnvelope2  = TX81Z::Envelope (31,   1,   0,   0,  8,   0,            2);
+        amplitudeEnvelope3  = TX81Z::Envelope (31,   9,  12,   6,  8,   7,            3);
+        amplitudeEnvelope4  = TX81Z::Envelope (31,   1,   4,   0,  8,   3,            3);
+    }
+
+    connection
+    {
+        eventIn  -> osc1.eventIn,
+                    osc2.eventIn,
+                    osc3.eventIn,
+                    osc4.eventIn,
+                    amplitudeEnvelope1.eventIn,
+                    amplitudeEnvelope2.eventIn,
+                    amplitudeEnvelope3.eventIn,
+                    amplitudeEnvelope4.eventIn;
+
+        amplitudeEnvelope1.audioOut -> osc1.amplitudeIn;
+        amplitudeEnvelope2.audioOut -> osc2.amplitudeIn;
+        amplitudeEnvelope3.audioOut -> osc3.amplitudeIn;
+        amplitudeEnvelope4.audioOut -> osc4.amplitudeIn;
+
+        osc4.audioOut -> osc1.modulatorIn;
+        osc3.audioOut -> osc2.modulatorIn;
+        osc2.audioOut -> osc1.modulatorIn;
+        osc1.audioOut -> audioOut;
+    }
+}
+
+//==============================================================================
+/// Various helper functions to map instrument parameters to things we can use in our instrument
+namespace TX81Z
+{
+    // Tuning for how much operator modulation occurs
+    let operatorFactor = 4.0f;
+
+    const float[] feedbackValues        = (0.0f, 0.008f, 0.015f, 0.024f, 0.07f, 0.12f, 0.19f, 0.26f);
+
+    const float[] keyVelocityMapFactor1 = (0,  -34.2f,  -59.6f, -110.5f, -145.5f, -184.7f, -147.4f,  -98.8f);
+    const float[] keyVelocityMapFactor2 = (0,   83.9f,  146.5f,  266.3f,  351.8f,  447.4f,  366.2f,  259.8f);
+    const float[] keyVelocityMapFactor3 = (0,  -76.2f, -135.9f, -236.0f, -313.0f, -399.4f, -346.2f, -274.3f);
+    const float[] keyVelocityMapFactor4 = (0,   36.7f,   69.2f,  110.7f,  147.4f,  188.2f,  185.8f,  178.0f);
+    const float[] keyVelocityMapFactor5 = (0,  -15.5f,  -24.8f,  -34.2f,  -43.7f,  -53.8f,  -59.7f,  -64.9f);
+
+    float feedbackAmount (int level)
+    {
+        return feedbackValues.at (level);
+    }
+
+    float keyVelocityMapping (int level, float velocity)
+    {
+        let velocity2 = velocity * velocity;
+
+        let dB = keyVelocityMapFactor1.at(level) * (velocity2 * velocity2)
+                   + keyVelocityMapFactor2.at(level) * (velocity2 * velocity)
+                   + keyVelocityMapFactor3.at(level) * velocity2
+                   + keyVelocityMapFactor4.at(level) * velocity
+                   + keyVelocityMapFactor5.at(level);
+
+        return soul::dBtoGain (dB);
+    }
+
+    float levelToGain (int level)
+    {
+        return soul::dBtoGain (0.74f * float(level + 1) - 73.26f);
+    }
+
+    float64 envelopeDecayLevel (int level)
+    {
+        return (level == 0) ? 0.0f
+                            : soul::dBtoGain (-3.0f * float(15 - level));
+    }
+
+    float64 enveloperAttackRate (float64 sampleRate, float rate, float adjustment)
+    {
+        let attackSeconds = pow (2.0, (3.5 - ((rate + adjustment) * 0.5f)));
+
+        // Modelled as a linear attack
+        return clamp (1.0 / (sampleRate * attackSeconds), 0.0, 1.0);
+    }
+
+    // At setting 11, decay time is 1 sec for -24db of attenuation
+    // Reducing the rate by 2 doubles the decay time
+    float64 enveloperDecayRateFactor (float64 sampleRate, float rate, float adjustment)
+    {
+        if (rate == 0)
+            return 1.0;
+
+        let attenuationTime =  pow (2.0, (5.5 - ((rate + adjustment) * 0.5)));
+        let samplesPer24db = sampleRate * attenuationTime;
+
+        return 1.0 / exp (log(16.0) / samplesPer24db);
+    }
+
+    // Release rate 1 = decay rate 3, with each change in release rate
+    // being two steps of decay rate
+    float64 envelopeReleaseRateFactor (float64 sampleRate, float rate, float adjustment)
+    {
+        return enveloperDecayRateFactor (sampleRate, 1.0f + rate * 2.0f, adjustment);
+    }
+
+    // Rate scaling affects the envelope rate based on the note being played
+    // Modelled as linear between a lower and upper note
+    float rateScalingFactor (int rateScaling, float note)
+    {
+        float[4] lowerAttenuationFactors = (-0.5f, -0.5f, 0.0f, 0.5f);
+        float[4] upperAttenuationFactors = (1.0f, 3.0f, 7.0f, 15.0f);
+
+        let lowerNote = 28.0f;
+        let upperNote = 110.0f;
+        let lowerAttenuation = lowerAttenuationFactors.at (rateScaling);
+        let upperAttenuation = upperAttenuationFactors.at (rateScaling);
+
+        if (note < lowerNote)
+            return lowerAttenuation;
+
+        if (note > upperNote)
+            return upperAttenuation;
+
+        let notePosition = ((note - lowerNote) / (upperNote - lowerNote));
+        return lowerAttenuation + (upperAttenuation - lowerAttenuation) * notePosition;
+    }
+
+    float sinOfPhase  (float phase)  { return sin (phase * float(twoPi)); }
+    float sinOf2Phase (float phase)  { return sin (phase * float(twoPi * 2)); }
+
+    // 8 waveshapes defined within the instrument, all variations on the sin function
+    float getWaveshape (int waveshape, float phase)
+    {
+        phase = fmod (phase, 1.0f);
+
+        if (waveshape == 1)         return sinOfPhase (phase);
+
+        if (waveshape == 2)
+        {
+            if (phase < 0.25f)      return sinOfPhase (phase - 0.25f) + 1.0f;
+            if (phase < 0.5f)       return sinOfPhase (phase + 0.25f) + 1.0f;
+            if (phase < 0.75f)      return sinOfPhase (phase - 0.25f) - 1.0f;
+                                    return sinOfPhase (phase + 0.25f) - 1.0f;
+        }
+
+        if (waveshape == 3)         return phase < 0.5 ? sinOfPhase (phase) : 0.0f;
+
+        if (waveshape == 4)
+        {
+            if (phase < 0.25f)      return sinOfPhase (phase - 0.25f) + 1.0f;
+            if (phase < 0.5f)       return sinOfPhase (phase + 0.25f) + 1.0f;
+                                    return 0.0f;
+        }
+
+        if (waveshape == 5)         return phase < 0.5 ? sinOfPhase (2.0f * phase) : 0.0f;
+
+        if (waveshape == 6)
+        {
+            if (phase < 0.125f)     return sinOf2Phase (phase - 0.125f) + 1.0f;
+            if (phase < 0.25f)      return sinOf2Phase (phase + 0.125f) + 1.0f;
+            if (phase < 0.375f)     return sinOf2Phase (phase - 0.125f) - 1.0f;
+            if (phase < 0.5f)       return sinOf2Phase (phase + 0.125f) - 1.0f;
+                                    return 0.0f;
+        }
+
+        if (waveshape == 7)
+        {
+            if (phase < 0.25f)      return  sinOf2Phase (phase);
+            if (phase < 0.5f)       return -sinOf2Phase (phase);
+                                    return 0.0f;
+        }
+
+        if (waveshape == 8)
+        {
+            if (phase < 0.125f)     return 1.0f + sinOf2Phase (phase - 0.125f);
+            if (phase < 0.25f)      return 1.0f + sinOf2Phase (phase + 0.125f);
+            if (phase < 0.375f)     return 1.0f - sinOf2Phase (phase - 0.125f);
+            if (phase < 0.5f)       return 1.0f - sinOf2Phase (phase + 0.125f);
+                                    return 0.0f;
+        }
+
+        return 0.0f;
+    }
+
+    //==============================================================================
+    processor Oscillator (int waveshape, int level, float fixedPitch, float multiplier, int feedbackFactor)
+    {
+        input event (soul::NoteEvents::NoteOn,
+                     soul::NoteEvents::NoteOff,
+                     soul::NoteEvents::PitchBend) eventIn;
+
+        input stream float amplitudeIn, modulatorIn;
+
+        output stream float audioOut;
+
+        event eventIn (soul::NoteEvents::NoteOn e)
+        {
+            notePitch = e.note;
+            bendSemitones = 0.0f;
+            calculatePhaseIncrement();
+
+            if (! noteActive)
+                phase = 0.0f;
+
+            noteActive = true;
+        }
+
+        event eventIn (soul::NoteEvents::NoteOff e)
+        {
+            noteActive = false;
+        }
+
+        event eventIn (soul::NoteEvents::PitchBend e)
+        {
+            bendSemitones = e.bendSemitones;
+            calculatePhaseIncrement();
+        }
+
+        float bendSemitones, notePitch, phase, phaseIncrement;
+
+        void calculatePhaseIncrement()
+        {
+            let noteFrequency = fixedPitch + multiplier * soul::noteNumberToFrequency (notePitch + bendSemitones);
+            phaseIncrement = noteFrequency / float (processor.frequency);
+        }
+
+        bool noteActive = false;
+
+        void run()
+        {
+            let gain = levelToGain (level);
+            let feedback = feedbackAmount (feedbackFactor);
+
+            calculatePhaseIncrement();
+
+            var oscillatorValue = 0.0f;
+
+            loop
+            {
+                phase = fmod (phase + phaseIncrement, 1.0f);
+
+                oscillatorValue = amplitudeIn * getWaveshape (waveshape, phase + (operatorFactor * modulatorIn)
+                                                                               + (oscillatorValue * feedback));
+                audioOut << gain * oscillatorValue;
+
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    processor Envelope (float attackRate, float decay1Rate, int decay1Level, float decay2Rate,
+                        float releaseRate, int keyVelocitySensitivity, int keyRateScaling)
+    {
+        input event (soul::NoteEvents::NoteOn,
+                    soul::NoteEvents::NoteOff) eventIn;
+
+        output stream float audioOut;
+
+        bool active = false;
+        float32 keyScaling;
+        float64 attackFactor, decay1Target, decay1Factor, decay2Factor, releaseFactor;
+        let envelopeLimit = 0.0001;
+
+        event eventIn (soul::NoteEvents::NoteOn e)
+        {
+            active = true;
+            keyScaling = TX81Z::keyVelocityMapping (keyVelocitySensitivity, e.velocity);
+
+            let rateScalingFactor = TX81Z::rateScalingFactor (keyRateScaling, e.note);
+
+            attackFactor  = TX81Z::enveloperAttackRate (processor.frequency, attackRate, rateScalingFactor);
+            decay1Target  = TX81Z::envelopeDecayLevel (decay1Level);
+            decay1Factor  = TX81Z::enveloperDecayRateFactor (processor.frequency, decay1Rate, rateScalingFactor);
+            decay2Factor  = TX81Z::enveloperDecayRateFactor (processor.frequency, decay2Rate, rateScalingFactor);
+            releaseFactor = TX81Z::envelopeReleaseRateFactor (processor.frequency, releaseRate, rateScalingFactor);
+        }
+
+        event eventIn (soul::NoteEvents::NoteOff e)
+        {
+            active = false;
+        }
+
+        void run()
+        {
+            var value = 0.0;
+
+            loop
+            {
+                while (! active)
+                {
+                    audioOut << 0.0f;
+                    advance();
+                }
+
+                // Attack
+                while (active && value < 1.0)
+                {
+                    // Model as linear attack - not accurate (more like an S shape in the instrument)
+                    value += attackFactor;
+                    audioOut << keyScaling * float (value);
+                    advance();
+                }
+
+                value = 1.0;
+
+                // Decay1
+                while (active && value > decay1Target)
+                {
+                    value *= decay1Factor;
+                    audioOut << keyScaling * float (value);
+                    advance();
+                }
+
+                // Decay2
+                while (active)
+                {
+                    value *= decay2Factor;
+                    audioOut << keyScaling * float (value);
+                    advance();
+
+                    if (value < envelopeLimit)
+                        active = false;
+                }
+
+                // Release
+                while (! active && value > envelopeLimit)
+                {
+                    value *= releaseFactor;
+                    audioOut << keyScaling * float (value);
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    // Remove DC from the output, apply some gain reduction
+    processor OutputFilter
+    {
+        input stream float  audioIn;
+        output stream float audioOut;
+
+        void run()
+        {
+            let gain = soul::dBtoGain (-6.0f);
+
+            float previousIn, previousOut;
+
+            loop
+            {
+                let y = audioIn - previousIn + 0.997f * previousOut;
+                previousIn = audioIn;
+                previousOut = y;
+
+                audioOut << gain * y;
+                advance();
+            }
+        }
+    }
+
+    //==============================================================================
+    // The voice allocator supports an offset as some patches are pitched up/down
+    processor PolyVoiceAllocator (int noteOffset, int voiceCount)
+    {
+        input event (soul::NoteEvents::NoteOn,
+                     soul::NoteEvents::NoteOff,
+                     soul::NoteEvents::PitchBend) eventIn;
+
+
+        output event (soul::NoteEvents::NoteOn,
+                      soul::NoteEvents::NoteOff,
+                      soul::NoteEvents::PitchBend) eventOut[voiceCount];
+
+        event eventIn (soul::NoteEvents::NoteOn e)
+        {
+            e.note = clamp (e.note + noteOffset, 24.0f, 127.0f);
+
+            wrap<voiceCount> allocatedVoice = 0;
+            var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
+
+            // Find the oldest voice to reuse
+            for (int i = 1; i < voiceCount; i++)
+            {
+                let age = voiceInfo.at(i).voiceAge;
+
+                if (age < allocatedVoiceAge)
+                {
+                    allocatedVoiceAge = age;
+                    allocatedVoice = wrap<voiceCount>(i);
+                }
+            }
+
+            // Update the VoiceInfo for our chosen voice
+            voiceInfo[allocatedVoice].channel  = e.channel;
+            voiceInfo[allocatedVoice].note     = e.note;
+            voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
+
+            // Send the note on to the voice
+            eventOut[allocatedVoice] << e;
+        }
+
+        event eventIn (soul::NoteEvents::NoteOff e)
+        {
+            e.note = clamp (e.note + noteOffset, 24.0f, 127.0f);
+
+            // Release all voices associated with this note/channel
+            wrap<voiceCount> voice = 0;
+
+            loop (voiceCount)
+            {
+                if (voiceInfo[voice].channel == e.channel
+                    && voiceInfo[voice].note == e.note)
+                {
+                    // Mark the voice as being unused
+                    voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+                    eventOut[voice] << e;
+                }
+
+                ++voice;
+            }
+        }
+
+        event eventIn (soul::NoteEvents::PitchBend e)
+        {
+            // Forward the pitch bend to all notes on this channel
+            wrap<voiceCount> voice = 0;
+
+            loop (voiceCount)
+            {
+                if (voiceInfo[voice].channel == e.channel)
+                    eventOut[voice] << e;
+
+                voice++;
+            }
+        }
+
+        struct VoiceInfo
+        {
+            bool active;
+            float note;
+            int channel, voiceAge;
+        }
+
+        int nextAllocatedVoiceAge   = 1000000000;
+        int nextUnallocatedVoiceAge = 1;
+
+        VoiceInfo[voiceCount] voiceInfo;
+
+        void run()
+        {
+            loop { advance(); }
+        }
+    }
+}

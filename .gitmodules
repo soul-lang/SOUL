@@ -1,0 +1,3 @@
+[submodule "binaries"]
+	path = binaries
+	url = ../../soul-lang/SOUL-binaries.git

@@ -1,0 +1,14 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.classicringtone",
+        "version":          "1.0",
+        "name":             "Classic Ringtone",
+        "description":      "SOUL Classic Ringtone",
+        "category":         "generator",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     false,
+
+        "source":           "ClassicRingtone.soul"
+    }
+}

@@ -20,3 +20,14 @@
 *.exe
 *.out
 *.app
+**/MacOSX/build
+**/iOS/build
+**/Linux/build
+**/Builds/LinuxMakefile*
+**/Builds/VisualStudio*
+**/JuceLibraryCode
+**/Builds/MacOSX
+**/Builds/Android
+**/Builds/CLion
+**/doxygen/doc
+**/doxygen/build

@@ -1,0 +1,12 @@
+{
+  "soulPatchV1": {
+    "ID": "dev.soul.examples.delay",
+    "version": "1.0",
+    "name": "Delay",
+    "description": "SOUL Delay",
+    "category": "fx",
+    "manufacturer": "soul.dev",
+    "isInstrument": false,
+    "source": "Delay.soul"
+  }
+}

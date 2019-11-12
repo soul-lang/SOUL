@@ -1,0 +1,14 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.tx.latelybass",
+        "version":          "1.0",
+        "name":             "LatelyBass",
+        "description":      "SOUL Recreation of the classic TX Lately Bass preset",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "LatelyBass.soul"
+    }
+}

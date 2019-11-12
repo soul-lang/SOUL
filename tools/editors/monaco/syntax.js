@@ -1,5 +1,5 @@
 // SOUL Language
-// See https://soul-lang.org/
+// See https://soul.dev/
 
 export default {
 

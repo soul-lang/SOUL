@@ -1,0 +1,41 @@
+{
+    "soulPatchV1": 
+    {
+        "ID":               "dev.soul.examples.SOUL909",
+        "version":          "1.0",
+        "name":             "SOUL-909",
+        "description":      "A simple classic drumkit",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "SOUL909.soul",
+
+        "externals": 
+        { 
+            "DrumHitPlayer::drumkit": "drumkit.ogg",
+
+            "DrumHitPlayer::drumhits": [
+                { "startNote": 36,  "endNote": 36,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 0.63443,  "lengthSeconds": 1.06964 },
+                { "startNote": 38,  "endNote": 38,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 1.75525,  "lengthSeconds": 0.30451 },
+                { "startNote": 40,  "endNote": 40,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 2.08037,  "lengthSeconds": 0.48710 },
+                { "startNote": 41,  "endNote": 41,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 2.58825,  "lengthSeconds": 0.18646 },
+                { "startNote": 43,  "endNote": 43,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 2.78997,  "lengthSeconds": 0.12428 },
+                { "startNote": 45,  "endNote": 45,  "gaindB":  2.98,  "pan":   0.0,  "startTimeSeconds": 2.92620,  "lengthSeconds": 0.10615 },
+                { "startNote": 48,  "endNote": 48,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 0.00000,  "lengthSeconds": 0.30443 },
+                { "startNote": 49,  "endNote": 49,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 3.03674,  "lengthSeconds": 0.04283 },
+                { "startNote": 50,  "endNote": 50,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 0.32749,  "lengthSeconds": 0.28518 },
+                { "startNote": 51,  "endNote": 51,  "gaindB":   0.0,  "pan":   0.0,  "startTimeSeconds": 3.08158,  "lengthSeconds": 0.45000 },
+                { "startNote": 54,  "endNote": 54,  "gaindB": -2.97,  "pan": -0.58,  "startTimeSeconds": 3.53794,  "lengthSeconds": 0.12083 },
+                { "startNote": 57,  "endNote": 57,  "gaindB": -3.01,  "pan": -0.34,  "startTimeSeconds": 4.93584,  "lengthSeconds": 0.34850 },
+                { "startNote": 58,  "endNote": 58,  "gaindB": -2.99,  "pan": -0.62,  "startTimeSeconds": 3.66152,  "lengthSeconds": 0.40353 },
+                { "startNote": 59,  "endNote": 59,  "gaindB": -1.46,  "pan": -0.08,  "startTimeSeconds": 4.55833,  "lengthSeconds": 0.36687 },
+                { "startNote": 60,  "endNote": 60,  "gaindB":   0.0,  "pan":  0.19,  "startTimeSeconds": 4.31731,  "lengthSeconds": 0.23693 },
+                { "startNote": 61,  "endNote": 61,  "gaindB":  -3.0,  "pan":  0.40,  "startTimeSeconds": 5.85193,  "lengthSeconds": 0.89500 },
+                { "startNote": 62,  "endNote": 62,  "gaindB":   0.0,  "pan":  0.63,  "startTimeSeconds": 4.07084,  "lengthSeconds": 0.23869 },
+                { "startNote": 64,  "endNote": 64,  "gaindB": -2.97,  "pan":  0.38,  "startTimeSeconds": 6.76535,  "lengthSeconds": 0.79232 },
+                { "startNote": 67,  "endNote": 67,  "gaindB": -2.95,  "pan": -0.31,  "startTimeSeconds": 5.30207,  "lengthSeconds": 0.53749 } 
+            ]
+        }
+    }
+}

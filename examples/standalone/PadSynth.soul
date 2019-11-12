@@ -382,7 +382,6 @@ processor ADSREnvelope
         {
             if (audioIn > 0)
             {
-                // TODO: Shouldn't need this
                 released = false;
 
                 // Use the value of the trigger to modify our target value
