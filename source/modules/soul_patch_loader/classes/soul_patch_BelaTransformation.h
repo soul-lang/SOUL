@@ -210,8 +210,8 @@ namespace Bela
 {
     let resolution = 16;
 
-    let inputMaxValue = 0.34f;      // When powered from USB
-    //    let inputMaxValue = 1.0f;       // When powered from 12v (Eurorack)
+//    let inputMaxValue = 0.34f;      // When powered from USB
+    let inputMaxValue = 1.0f;       // When powered from 12v (Eurorack)
 
     processor InputParameterStream (int channel, float min, float max)
     {
