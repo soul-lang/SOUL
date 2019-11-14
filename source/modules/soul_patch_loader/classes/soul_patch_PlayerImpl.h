@@ -296,7 +296,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     //==============================================================================
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
-        ParameterImpl (const StringDictionary& stringDictionary, InputEndpoint& input, EndpointProperties endpointProperties)
+        ParameterImpl (const StringDictionary& d, InputEndpoint& input, EndpointProperties endpointProperties)
+            : stringDictionary (d)
         {
             const auto& details = input.getDetails();
 
@@ -396,7 +397,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             auto v = annotation.getValue (propertyName);
 
             if (v.isValid())
-                return makeString (v.getDescription());
+                return makeString (v.getDescription (std::addressof (stringDictionary)));
 
             return {};
         }
@@ -418,6 +419,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         std::vector<std::string> propertyNameStrings;
         std::vector<const char*> propertyNameRawStrings;
         Span<const char*> propertyNameSpan;
+        const StringDictionary& stringDictionary;
     };
 
     //==============================================================================

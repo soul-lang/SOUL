@@ -93,7 +93,9 @@ struct Value  final
     Type& getMutableType();
 
     /** Returns a readable description of the value. For more control over the format, see ValuePrinter. */
-    std::string getDescription() const;
+    std::string getDescription (const StringDictionary* dictionary = nullptr) const;
+
+    /** Uses the given ValuePrinter to print this value. */
     void print (ValuePrinter&) const;
 
     /** Internally the entire value (including all nested objects) is stored as a continguous packed chunk of

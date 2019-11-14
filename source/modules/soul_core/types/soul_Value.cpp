@@ -513,7 +513,7 @@ Value::PackedData Value::getData() const
 
 void Value::print (ValuePrinter& p) const                   { getData().print (p); }
 
-std::string Value::getDescription() const
+std::string Value::getDescription (const StringDictionary* dictionary) const
 {
     struct DefaultPrinter  : public ValuePrinter
     {
@@ -522,6 +522,7 @@ std::string Value::getDescription() const
     };
 
     DefaultPrinter p;
+    p.dictionary = dictionary;
     print (p);
     return p.out.str();
 }
