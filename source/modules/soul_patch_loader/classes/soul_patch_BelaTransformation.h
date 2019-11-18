@@ -184,7 +184,7 @@ namespace soul::patch
         {
             if (parameterId >= 0)
             {
-                parameters << name << "Param = " << type << " (" << std::to_string (parameterChannelOffset + parameterId) << ", float(" << minValue << "), float (" << maxValue << "));" << newLine;
+                parameters << name << "Param = " << type << " (" << std::to_string (parameterChannelOffset + parameterId) << ", " << minValue << "f), " << maxValue << "f));" << newLine;
                 connections << "audioIn -> " << name << "Param.audioIn;" << newLine;
                 connections << name << "Param.out -> wrappedModule." << name << ";" << newLine;
                 connections << newLine;
