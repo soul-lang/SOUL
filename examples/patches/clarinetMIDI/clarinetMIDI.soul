@@ -1,0 +1,520 @@
+/* ------------------------------------------------------------
+copyright: "(c)Romain Michon, CCRMA (Stanford University), GRAME"
+license: "MIT"
+name: "ClarinetMIDI"
+Code generated with Faust 2.19.7 (https://faust.grame.fr)
+Compilation options: -lang soul-poly -scal -ftz 0
+------------------------------------------------------------ */
+ 
+//----------------------------------------------------------------------------
+//  FAUST generated signal processor
+//----------------------------------------------------------------------------
+
+processor clarinetMIDI
+{
+	input event float32 event_freq [[ name: "freq", group: "/v:clarinet/h:midi/freq", min: 50.0f, max: 1000.0f, init: 440.0f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_bend [[ name: "bend", group: "/v:clarinet/h:midi/bend", min: -2.0f, max: 2.0f, init: 0.0f, step: 0.00999999978f, meta_hidden: "1", meta_midi: "pitchwheel", meta_style: "knob" ]];
+	input event float32 event_gain [[ name: "gain", group: "/v:clarinet/h:midi/gain", min: 0.0f, max: 1.0f, init: 0.600000024f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_envAttack [[ name: "envAttack", group: "/v:clarinet/h:midi/envAttack", min: 0.0f, max: 30.0f, init: 1.0f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_sustain [[ name: "sustain", group: "/v:clarinet/h:midi/sustain", min: 0.0f, max: 1.0f, init: 0.0f, step: 1.0f, meta_hidden: "1", meta_midi: "ctrl 64", meta_style: "knob" ]];
+	input event float32 event_reedStiffness [[ name: "reedStiffness", group: "/v:clarinet/h:otherParams/reedStiffness", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.00999999978f, meta_midi: "ctrl 1", meta_style: "knob" ]];
+	input event float32 event_bellOpening [[ name: "bellOpening", group: "/v:clarinet/h:otherParams/bellOpening", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.00999999978f, meta_midi: "ctrl 3", meta_style: "knob" ]];
+	input event float32 event_vibratoFreq [[ name: "vibratoFreq", group: "/v:clarinet/h:otherParams/vibratoFreq", min: 1.0f, max: 10.0f, init: 5.0f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_vibratoGain [[ name: "vibratoGain", group: "/v:clarinet/h:otherParams/vibratoGain", min: 0.0f, max: 1.0f, init: 0.25f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_outGain [[ name: "outGain", group: "/v:clarinet/h:otherParams/outGain", min: 0.0f, max: 1.0f, init: 0.5f, step: 0.00999999978f, meta_style: "knob" ]];
+	input event float32 event_gate [[ name: "gate", group: "/v:clarinet/gate", text: "off|on", boolean ]];
+	output stream float32 output0;
+	output stream float32 output1;
+	float32 fHslider0;
+	int32[2] iRec6;
+	float32 fHslider1;
+	float32[2] fRec12;
+	float32 fButton0;
+	float32 fHslider2;
+	float32[2] fVec0;
+	float32 fHslider3;
+	int32 fSampleRate;
+	float32 fConst0;
+	float32 fConst1;
+	float32 fHslider4;
+	float32[2] fRec15;
+	float32 fConst2;
+	float32 fConst3;
+	float32 fConst4;
+	float32 fConst5;
+	int32[2] iRec17;
+	float32 fConst6;
+	float32 fConst7;
+	float32 fConst8;
+	float32[3] fRec16;
+	float32 fHslider5;
+	float32 fConst9;
+	float32 fHslider6;
+	float32[2] fRec19;
+	float32[2] fRec13;
+	float32 fHslider7;
+	int32 IOTA;
+	float32[2048] fRec14;
+	float32 fConst10;
+	float32 fConst11;
+	float32 fHslider8;
+	float32 fHslider9;
+	float32[2] fRec20;
+	float32[2] fVec1;
+	float32[2] fRec11;
+	float32[2048] fRec2;
+	float32[2] fRec0;
+	bool fUpdated; 
+	int32[1] iControl;
+	float32[11] fControl;
+	float32[65536] ftbl0clarinetMIDISIG0;
+	
+	// freq [init = 440.0f, min = 50.0f, max = 1000.0f, step = 0.00999999978f] 
+	event event_freq (float32 val) { fHslider8 = val; fUpdated = true; } 
+	// bend [init = 0.0f, min = -2.0f, max = 2.0f, step = 0.00999999978f] 
+	event event_bend (float32 val) { fHslider9 = val; fUpdated = true; } 
+	// gain [init = 0.600000024f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
+	event event_gain (float32 val) { fHslider3 = val; fUpdated = true; } 
+	// envAttack [init = 1.0f, min = 0.0f, max = 30.0f, step = 0.00999999978f] 
+	event event_envAttack (float32 val) { fHslider4 = val; fUpdated = true; } 
+	// sustain [init = 0.0f, min = 0.0f, max = 1.0f, step = 1.0f] 
+	event event_sustain (float32 val) { fHslider2 = val; fUpdated = true; } 
+	// reedStiffness [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
+	event event_reedStiffness (float32 val) { fHslider7 = val; fUpdated = true; } 
+	// bellOpening [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
+	event event_bellOpening (float32 val) { fHslider1 = val; fUpdated = true; } 
+	// vibratoFreq [init = 5.0f, min = 1.0f, max = 10.0f, step = 0.00999999978f] 
+	event event_vibratoFreq (float32 val) { fHslider6 = val; fUpdated = true; } 
+	// vibratoGain [init = 0.25f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
+	event event_vibratoGain (float32 val) { fHslider5 = val; fUpdated = true; } 
+	// outGain [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
+	event event_outGain (float32 val) { fHslider0 = val; fUpdated = true; } 
+	// gate 
+	event event_gate (float32 val) { fButton0 = val; fUpdated = true; } 
+	
+	struct clarinetMIDISIG0
+	{
+		int32[2] iRec18;
+	}
+
+	void instanceInitclarinetMIDISIG0 (clarinetMIDISIG0& this, int sample_rate)
+	{
+		for (int32 l6 = 0; (l6 < 2); l6 = (l6 + 1)) {
+			this.iRec18.at (l6) = 0;
+		}
+	}
+	
+	void fillclarinetMIDISIG0_65536 (clarinetMIDISIG0& this, int count, float32[65536]& table)
+	{
+		for (int32 i = 0; (i < count); i = (i + 1)) {
+			this.iRec18[0] = (this.iRec18[1] + 1);
+			table.at (i) = sin ((9.58738019e-05f * float32 ((this.iRec18[0] + -1))));
+			this.iRec18[1] = this.iRec18[0];
+		}
+	}
+	clarinetMIDISIG0 newclarinetMIDISIG0() { clarinetMIDISIG0 obj; return obj; }
+	void deleteclarinetMIDISIG0 (clarinetMIDISIG0& this) {}
+	int getNumInputs() { return 0; }
+	
+	int getNumOuputs() { return 2; }
+	
+	void classInit (int sample_rate)
+	{
+		clarinetMIDISIG0 sig0 = newclarinetMIDISIG0();
+		instanceInitclarinetMIDISIG0 (sig0, sample_rate);
+		fillclarinetMIDISIG0_65536 (sig0, 65536, ftbl0clarinetMIDISIG0);
+		deleteclarinetMIDISIG0 (sig0);
+	}
+	
+	void instanceConstants (int sample_rate)
+	{
+		fSampleRate = sample_rate;
+		fConst0 = min (192000.0f, max (1.0f, float32 (fSampleRate)));
+		fConst1 = (1000.0f / fConst0);
+		fConst2 = tan ((6283.18555f / fConst0));
+		fConst3 = (1.0f / fConst2);
+		fConst4 = (((fConst3 + 1.41421354f) / fConst2) + 1.0f);
+		fConst5 = (0.0500000007f / fConst4);
+		fConst6 = (1.0f / fConst4);
+		fConst7 = (((fConst3 + -1.41421354f) / fConst2) + 1.0f);
+		fConst8 = (2.0f * (1.0f - (1.0f / pow (fConst2, 2.0f))));
+		fConst9 = (1.0f / fConst0);
+		fConst10 = (0.00882352982f * fConst0);
+		fConst11 = (0.00147058826f * fConst0);
+	}
+	
+	void instanceResetUserInterface()
+	{
+		fUpdated = true;
+		fHslider0 = 0.5f;
+		fHslider1 = 0.5f;
+		fButton0 = 0.0f;
+		fHslider2 = 0.0f;
+		fHslider3 = 0.600000024f;
+		fHslider4 = 1.0f;
+		fHslider5 = 0.25f;
+		fHslider6 = 5.0f;
+		fHslider7 = 0.5f;
+		fHslider8 = 440.0f;
+		fHslider9 = 0.0f;
+	}
+	
+	void instanceClear()
+	{
+		for (int32 l0 = 0; (l0 < 2); l0 = (l0 + 1)) {
+			iRec6.at (l0) = 0;
+		}
+		for (int32 l1 = 0; (l1 < 2); l1 = (l1 + 1)) {
+			fRec12.at (l1) = 0.0f;
+		}
+		for (int32 l2 = 0; (l2 < 2); l2 = (l2 + 1)) {
+			fVec0.at (l2) = 0.0f;
+		}
+		for (int32 l3 = 0; (l3 < 2); l3 = (l3 + 1)) {
+			fRec15.at (l3) = 0.0f;
+		}
+		for (int32 l4 = 0; (l4 < 2); l4 = (l4 + 1)) {
+			iRec17.at (l4) = 0;
+		}
+		for (int32 l5 = 0; (l5 < 3); l5 = (l5 + 1)) {
+			fRec16.at (l5) = 0.0f;
+		}
+		for (int32 l7 = 0; (l7 < 2); l7 = (l7 + 1)) {
+			fRec19.at (l7) = 0.0f;
+		}
+		for (int32 l8 = 0; (l8 < 2); l8 = (l8 + 1)) {
+			fRec13.at (l8) = 0.0f;
+		}
+		IOTA = 0;
+		for (int32 l9 = 0; (l9 < 2048); l9 = (l9 + 1)) {
+			fRec14.at (l9) = 0.0f;
+		}
+		for (int32 l10 = 0; (l10 < 2); l10 = (l10 + 1)) {
+			fRec20.at (l10) = 0.0f;
+		}
+		for (int32 l11 = 0; (l11 < 2); l11 = (l11 + 1)) {
+			fVec1.at (l11) = 0.0f;
+		}
+		for (int32 l12 = 0; (l12 < 2); l12 = (l12 + 1)) {
+			fRec11.at (l12) = 0.0f;
+		}
+		for (int32 l13 = 0; (l13 < 2048); l13 = (l13 + 1)) {
+			fRec2.at (l13) = 0.0f;
+		}
+		for (int32 l14 = 0; (l14 < 2); l14 = (l14 + 1)) {
+			fRec0.at (l14) = 0.0f;
+		}
+	}
+	
+	void init (int sample_rate)
+	{
+		classInit (sample_rate);
+		instanceInit (sample_rate);
+	}
+	
+	void instanceInit (int sample_rate)
+	{
+		instanceConstants (sample_rate);
+		instanceResetUserInterface();
+		instanceClear();
+	}
+	
+	void control()
+	{
+		fControl[0] = float32 (fHslider0);
+		fControl[1] = float32 (fHslider1);
+		fControl[2] = (1.0f - fControl[1]);
+		fControl[3] = min (1.0f, (float32 (fButton0) + float32 (fHslider2)));
+		fControl[4] = exp ((0.0f - (fConst1 / float32 (fHslider4))));
+		fControl[5] = ((fControl[3] * float32 (fHslider3)) * (1.0f - fControl[4]));
+		fControl[6] = (0.00999999978f * float32 (fHslider5));
+		fControl[7] = (fConst9 * float32 (fHslider6));
+		fControl[8] = ((0.25999999f * float32 (fHslider7)) + -0.439999998f);
+		fControl[9] = (170.0f / float32 (fHslider8));
+		iControl[0] = int ((fControl[3] == 0.0f));
+		fControl[10] = pow (2.0f, (0.0833333358f * float32 (fHslider9)));
+	}
+
+	void run()
+	{
+		// 'init' called once before starting the DSP loop
+		init (int(processor.frequency));
+		
+		// DSP loop running forever...
+		loop
+		{
+			// Updates control only if needed
+			if (fUpdated) { fUpdated = false; control(); }
+			
+			// Computes one sample
+			iRec6[0] = 0;
+			fRec12[0] = ((fControl[1] * fRec12[1]) + (fControl[2] * fRec11[1]));
+			float32 fRec10 = (fRec12[0] + float32 (iRec6[1]));
+			fVec0[0] = fControl[3];
+			fRec15[0] = (fControl[5] + (fControl[4] * fRec15[1]));
+			iRec17[0] = ((1103515245 * iRec17[1]) + 12345);
+			fRec16[0] = ((4.65661287e-10f * float32 (iRec17[0])) - (fConst6 * ((fConst7 * fRec16[2]) + (fConst8 * fRec16[1]))));
+			float32 fTemp0 = (fRec15[0] * ((fConst5 * (fRec16[2] + (fRec16[0] + (2.0f * fRec16[1])))) + 1.0f));
+			fRec19[0] = (fControl[7] + (fRec19[1] - floor ((fControl[7] + fRec19[1]))));
+			float32 fTemp1 = ftbl0clarinetMIDISIG0.at (int32 ((65536.0f * fRec19[0])));
+			float32 fTemp2 = (fControl[6] * fTemp1);
+			fRec13[0] = (fTemp0 + (fRec0[1] + fTemp2));
+			float32 fTemp3 = (0.0f - fRec13[1]);
+			fRec14.at ((int (IOTA) & int (2047))) = ((fTemp2 + fTemp0) + (fTemp3 * max (-1.0f, min (1.0f, ((fControl[8] * fTemp3) + 0.699999988f)))));
+			float32 fTemp4 = float32 ((int (int ((fControl[3] == fVec0[1]))) | int (iControl[0])));
+			fRec20[0] = ((0.999000013f * (fTemp4 * fRec20[1])) + (fControl[10] * (1.0f - (0.999000013f * fTemp4))));
+			float32 fTemp5 = (fConst11 * ((fControl[9] / (fRec20[0] * ((fControl[6] * (fRec15[0] * fTemp1)) + 1.0f))) + -0.0500000007f));
+			float32 fTemp6 = (fTemp5 + -1.49999499f);
+			int32 iTemp7 = int32 (fTemp6);
+			int32 iTemp8 = (int32 (min (fConst10, float32 (max (0, int32 (iTemp7))))) + 1);
+			float32 fTemp9 = floor (fTemp6);
+			float32 fTemp10 = (fTemp5 + (-1.0f - fTemp9));
+			float32 fTemp11 = (0.0f - fTemp10);
+			float32 fTemp12 = (fTemp5 + (-2.0f - fTemp9));
+			float32 fTemp13 = (0.0f - (0.5f * fTemp12));
+			float32 fTemp14 = (fTemp5 + (-3.0f - fTemp9));
+			float32 fTemp15 = (0.0f - (0.333333343f * fTemp14));
+			float32 fTemp16 = (fTemp5 + (-4.0f - fTemp9));
+			float32 fTemp17 = (0.0f - (0.25f * fTemp16));
+			float32 fTemp18 = (fTemp5 - fTemp9);
+			int32 iTemp19 = (int32 (min (fConst10, float32 (max (0, int32 ((iTemp7 + 1)))))) + 1);
+			float32 fTemp20 = (0.0f - fTemp12);
+			float32 fTemp21 = (0.0f - (0.5f * fTemp14));
+			float32 fTemp22 = (0.0f - (0.333333343f * fTemp16));
+			int32 iTemp23 = (int32 (min (fConst10, float32 (max (0, int32 ((iTemp7 + 2)))))) + 1);
+			float32 fTemp24 = (0.0f - fTemp14);
+			float32 fTemp25 = (0.0f - (0.5f * fTemp16));
+			float32 fTemp26 = (fTemp10 * fTemp12);
+			int32 iTemp27 = (int32 (min (fConst10, float32 (max (0, int32 ((iTemp7 + 3)))))) + 1);
+			float32 fTemp28 = (0.0f - fTemp16);
+			float32 fTemp29 = (fTemp26 * fTemp14);
+			int32 iTemp30 = (int32 (min (fConst10, float32 (max (0, int32 ((iTemp7 + 4)))))) + 1);
+			fVec1[0] = (((((fRec14.at ((int ((IOTA - iTemp8)) & int (2047))) * fTemp11) * fTemp13) * fTemp15) * fTemp17) + (fTemp18 * ((((((fRec14.at ((int ((IOTA - iTemp19)) & int (2047))) * fTemp20) * fTemp21) * fTemp22) + (0.5f * (((fTemp10 * fRec14.at ((int ((IOTA - iTemp23)) & int (2047)))) * fTemp24) * fTemp25))) + (0.166666672f * ((fTemp26 * fRec14.at ((int ((IOTA - iTemp27)) & int (2047)))) * fTemp28))) + (0.0416666679f * (fTemp29 * fRec14.at ((int ((IOTA - iTemp30)) & int (2047))))))));
+			fRec11[0] = fVec1[1];
+			float32 fRec7 = fRec10;
+			float32 fRec8 = fRec11[0];
+			float32 fRec9 = fRec11[0];
+			fRec2.at ((int (IOTA) & int (2047))) = fRec7;
+			float32 fRec3 = (((((fTemp11 * fTemp13) * fTemp15) * fTemp17) * fRec2.at ((int ((IOTA - iTemp8)) & int (2047)))) + (fTemp18 * ((((((fTemp20 * fTemp21) * fTemp22) * fRec2.at ((int ((IOTA - iTemp19)) & int (2047)))) + (0.5f * (((fTemp10 * fTemp24) * fTemp25) * fRec2.at ((int ((IOTA - iTemp23)) & int (2047)))))) + (0.166666672f * ((fTemp26 * fTemp28) * fRec2.at ((int ((IOTA - iTemp27)) & int (2047)))))) + (0.0416666679f * (fTemp29 * fRec2.at ((int ((IOTA - iTemp30)) & int (2047))))))));
+			float32 fRec4 = fRec8;
+			float32 fRec5 = fRec9;
+			fRec0[0] = fRec3;
+			float32 fRec1 = fRec5;
+			float32 fTemp31 = (fControl[0] * fRec1);
+			output0 << float32 (fTemp31);
+			output1 << float32 (fTemp31);
+			iRec6[1] = iRec6[0];
+			fRec12[1] = fRec12[0];
+			fVec0[1] = fVec0[0];
+			fRec15[1] = fRec15[0];
+			iRec17[1] = iRec17[0];
+			fRec16[2] = fRec16[1];
+			fRec16[1] = fRec16[0];
+			fRec19[1] = fRec19[0];
+			fRec13[1] = fRec13[0];
+			IOTA = (IOTA + 1);
+			fRec20[1] = fRec20[0];
+			fVec1[1] = fVec1[0];
+			fRec11[1] = fRec11[0];
+			fRec0[1] = fRec0[0];
+			
+			// Moves all streams forward by one 'tick'
+			advance();
+		}
+	}
+}
+
+// Decode MIDI events and send freq, gain, gate values to the processor
+processor dsp_wrapper
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn    noteOn;
+        soul::NoteEvents::NoteOff   noteOff;
+        soul::NoteEvents::PitchBend pitchBend;
+    }
+
+    output event float32 freq, gain, gate;
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+    	freq << soul::noteNumberToFrequency (e.note);
+        gain << e.velocity;
+        gate << 1.0f;
+    }
+     
+    event noteOff (soul::NoteEvents::NoteOff e) 
+    { 
+        gate << 0.0f;
+    }
+    
+    event pitchBend (soul::NoteEvents::PitchBend e) 
+    {
+    	// TODO
+    }
+     
+    void run()
+    {
+        advance();
+    }
+}
+
+/*
+	Connect the wrapper with the real processor. 
+	This indirection is done since the "expose control event" model is not yet in place.
+	So we have some 'ad-hoc' code for now that may change in the future
+*/
+
+graph dsp_voice
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn   	 noteOn;
+        soul::NoteEvents::NoteOff  	 noteOff;
+        soul::NoteEvents::PitchBend  pitchBend;
+    }
+    
+    output stream float audioOut0;
+    output stream float audioOut1;
+    
+    connection
+    {
+        noteOn    -> dsp_wrapper.noteOn;
+        noteOff   -> dsp_wrapper.noteOff;
+        pitchBend -> dsp_wrapper.pitchBend;
+        
+        // This is still the 'hard coded' part
+        dsp_wrapper.freq  -> clarinetMIDI.event_freq;
+        dsp_wrapper.gain  -> clarinetMIDI.event_gain;
+        dsp_wrapper.gate  -> clarinetMIDI.event_gate;
+ 
+        clarinetMIDI.output0 ->  audioOut0;
+        clarinetMIDI.output1 ->  audioOut1;
+    }
+}
+
+processor RoundRobinVoiceAllocator (int voiceCount)
+{
+    input event
+    {
+        soul::NoteEvents::NoteOn     noteOn;
+        soul::NoteEvents::NoteOff    noteOff;
+        soul::NoteEvents::PitchBend  pitchBend;
+    }
+
+    output event
+    {
+        soul::NoteEvents::NoteOn     voiceNoteOn[voiceCount];
+        soul::NoteEvents::NoteOff    voiceNoteOff[voiceCount];
+        soul::NoteEvents::PitchBend  voicePitchBend[voiceCount];
+    }
+
+    event noteOn (soul::NoteEvents::NoteOn e)
+    {
+        wrap<voiceCount> allocatedVoice = 0;
+        var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
+
+        // Find the oldest voice to reuse
+        for (int i = 1; i < voiceCount; i++)
+        {
+            let age = voiceInfo.at (i).voiceAge;
+
+            if (age < allocatedVoiceAge)
+            {
+                allocatedVoiceAge = age;
+                allocatedVoice = wrap<voiceCount>(i);
+            }
+        }
+
+        // Update the VoiceInfo for our chosen voice
+        voiceInfo[allocatedVoice].channel  = e.channel;
+        voiceInfo[allocatedVoice].note     = e.note;
+        voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
+
+        // Send the note on to the voice
+        voiceNoteOn[allocatedVoice] << e;
+    }
+
+    event noteOff (soul::NoteEvents::NoteOff e)
+    {
+        // Release all voices associated with this note/channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel
+                 && voiceInfo[voice].note == e.note)
+            {
+                // Mark the voice as being unused
+                voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+                voiceNoteOff[voice] << e;
+            }
+
+            ++voice;
+        }
+    }
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
+    {
+        // Forward the pitch bend to all notes on this channel
+        wrap<voiceCount> voice = 0;
+
+        loop (voiceCount)
+        {
+            if (voiceInfo[voice].channel == e.channel)
+                voicePitchBend[voice] << e;
+
+            voice++;
+        }
+    }
+
+    struct VoiceInfo
+    {
+        bool active;
+        float note;
+        int channel, voiceAge;
+    }
+
+    int nextAllocatedVoiceAge   = 1000000000;
+    int nextUnallocatedVoiceAge = 1;
+
+    VoiceInfo[voiceCount] voiceInfo;
+
+    void run()
+    {
+        loop { advance(); }
+    }
+}
+
+// Allocates voices, does dynamic voice management, connect to MIDI parser
+graph clarinetMIDI_poly [[ main ]]
+{
+    input event midi::Message midiIn;
+    output stream float audioOut0;
+    output stream float audioOut1;
+    
+    let
+    {
+        midiParser = midi::MPEParser;
+        voices = dsp_voice[16];
+        voiceAllocator = RoundRobinVoiceAllocator (16);
+    }
+  
+    connection
+    {
+        midiIn -> midiParser.parseMIDI;
+   
+        midiParser.eventOut -> voiceAllocator.noteOn, 
+                               voiceAllocator.noteOff,
+                               voiceAllocator.pitchBend;
+
+        // Plumb the voice allocator to the voices array
+        voiceAllocator.voiceNoteOn    -> voices.noteOn;
+        voiceAllocator.voiceNoteOff   -> voices.noteOff;
+        voiceAllocator.voicePitchBend -> voices.pitchBend;
+
+        // Sum the voices audio out to the output
+        voices.audioOut0 -> audioOut0;
+        voices.audioOut1 -> audioOut1;
+    }
+}

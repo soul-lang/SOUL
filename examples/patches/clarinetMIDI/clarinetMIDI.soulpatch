@@ -1,0 +1,14 @@
+{
+"soulPatchV1":
+{
+"ID": "grame.soul.clarinetMIDI",
+"version": "1.0",
+"name": "clarinetMIDI",
+"description": "SOUL example",
+"category": "synth",
+"manufacturer": "GRAME",
+"website": "https://faust.grame.fr",
+"isInstrument": true,
+"source": "clarinetMIDI.soul"
+}
+}
