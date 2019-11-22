@@ -772,7 +772,8 @@ private:
         auto& endBlock    = builder.createBlock ("@if_end_", labelIndex);
         auto resultType  = t.getResultType();
 
-        auto& tempVar = module.allocate<heart::Variable> (t.context.location, targetVar.getType(),
+        auto& tempVar = module.allocate<heart::Variable> (t.context.location,
+                                                          targetVar.getType().removeReferenceIfPresent(),
                                                           heart::Variable::Role::mutableLocal);
         builder.addZeroAssignment (tempVar);
 

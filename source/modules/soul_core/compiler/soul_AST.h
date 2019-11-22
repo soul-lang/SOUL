@@ -1456,6 +1456,7 @@ struct AST
             makeConst,
             makeConstSilent,
             makeReference,
+            removeReference,
             elementType,
             primitiveType,
             size,
@@ -1489,7 +1490,7 @@ struct AST
         static constexpr bool operationReturnsAType (Op op)
         {
             return op == Op::makeConst || op == Op::makeConstSilent || op == Op::makeReference
-                    || op == Op::elementType || op == Op::primitiveType;
+                    || op == Op::removeReference || op == Op::elementType || op == Op::primitiveType;
         }
 
         static Op getOperationForName (Identifier name)
@@ -1497,6 +1498,7 @@ struct AST
             if (name == "elementType")      return Op::elementType;
             if (name == "primitiveType")    return Op::primitiveType;
             if (name == "size")             return Op::size;
+            if (name == "removeReference")  return Op::removeReference;
             if (name == "isStruct")         return Op::isStruct;
             if (name == "isArray")          return Op::isArray;
             if (name == "isDynamicArray")   return Op::isDynamicArray;
@@ -1559,6 +1561,7 @@ struct AST
 
         bool isMakingConst() const               { return operation == Op::makeConst || operation == Op::makeConstSilent; }
         bool isMakingReference() const           { return operation == Op::makeReference; }
+        bool isRemovingReference() const         { return operation == Op::removeReference; }
         bool isChangingType() const              { return operation == Op::elementType || operation == Op::primitiveType; }
 
         bool isResolved() const override
@@ -1576,7 +1579,8 @@ struct AST
 
         StructDeclarationPtr getAsStruct() override
         {
-            if (operation == Op::makeConst || operation == Op::makeConstSilent || operation == Op::makeReference)
+            if (operation == Op::makeConst || operation == Op::makeConstSilent
+                 || operation == Op::makeReference || operation == Op::removeReference)
                 return source->getAsStruct();
 
             return {};
@@ -1594,6 +1598,7 @@ struct AST
                 case Op::makeConst:        return type.createConst();
                 case Op::makeConstSilent:  return type.createConstIfNotPresent();
                 case Op::makeReference:    return type.isReference() ? type : type.createReference();
+                case Op::removeReference:  return type.removeReferenceIfPresent();
                 case Op::elementType:      return type.getElementType();
                 case Op::primitiveType:    return type.getPrimitiveType();
 
