@@ -648,16 +648,49 @@ private:
 
         AST::ExpPtr visit (AST::TernaryOp& t) override
         {
-            auto e = super::visit (t);
+            super::visit (t);
 
-            if (failIfNotResolved (e))
-                return e;
+            if (failIfNotResolved (t))
+                return t;
 
-            if (auto te = cast<AST::TernaryOp> (e))
-                if (auto constant = te->condition->getAsConstant())
-                    return constant->value.getAsBool() ? te->trueBranch : te->falseBranch;
+            if (AST::isResolvedAsValue (t.condition)
+                 && AST::isResolvedAsValue (t.trueBranch)
+                 && AST::isResolvedAsValue (t.falseBranch))
+            {
+                SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), *t.condition);
 
-            return e;
+                auto trueType  = t.trueBranch->getResultType();
+                auto falseType = t.falseBranch->getResultType();
+
+                if (trueType.isVoid() || falseType.isVoid())
+                    t.context.throwError (Errors::ternaryCannotBeVoid());
+
+                if (! trueType.isIdentical (falseType))
+                {
+                    bool castToTrue  = TypeRules::canSilentlyCastTo (trueType, falseType);
+                    bool castToFalse = TypeRules::canSilentlyCastTo (falseType, trueType);
+
+                    if (! (castToTrue || castToFalse))
+                        t.context.throwError (Errors::ternaryTypesMustMatch (trueType.getDescription(),
+                                                                             falseType.getDescription()));
+
+                    if (castToTrue)
+                    {
+                        t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, t.falseBranch);
+                        ++itemsReplaced;
+                    }
+                    else
+                    {
+                        t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, t.trueBranch);
+                        ++itemsReplaced;
+                    }
+                }
+
+                if (auto constant = t.condition->getAsConstant())
+                    return constant->value.getAsBool() ? t.trueBranch : t.falseBranch;
+            }
+
+            return t;
         }
 
         AST::ExpPtr visit (AST::FunctionCall& c) override
@@ -804,8 +837,12 @@ private:
                 return c.source;
 
             if (auto cv = c.source->getAsConstant())
-                if (TypeRules::canSilentlyCastTo (c.targetType, cv->value))
-                    return allocator.allocate<AST::Constant> (c.context, cv->value.castToTypeExpectingSuccess (c.targetType));
+            {
+                auto castValue = cv->value.tryCastToType (c.targetType);
+
+                if (castValue.isValid())
+                    return allocator.allocate<AST::Constant> (c.context, castValue);
+            }
 
             return c;
         }
@@ -1932,37 +1969,6 @@ private:
             SanityCheckPass::throwErrorIfNotReadableValue (t.trueBranch);
             SanityCheckPass::throwErrorIfNotReadableValue (t.falseBranch);
             SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), *t.condition);
-
-            auto trueType  = t.trueBranch->getResultType();
-            auto falseType = t.falseBranch->getResultType();
-
-            if (trueType.isVoid() || falseType.isVoid())
-                t.context.throwError (Errors::ternaryCannotBeVoid());
-
-            if (! trueType.isIdentical (falseType))
-            {
-                bool castToTrue  = TypeRules::canSilentlyCastTo (trueType, falseType);
-                bool castToFalse = TypeRules::canSilentlyCastTo (falseType, trueType);
-
-                if (! (castToTrue || castToFalse))
-                    t.context.throwError (Errors::ternaryTypesMustMatch (trueType.getDescription(),
-                                                                         falseType.getDescription()));
-
-                if (castToTrue)
-                {
-                    t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, t.falseBranch);
-                    ++itemsReplaced;
-                }
-                else
-                {
-                    t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, t.trueBranch);
-                    ++itemsReplaced;
-                }
-            }
-
-            if (auto constant = t.condition->getAsConstant())
-                return constant->value.getAsBool() ? t.trueBranch : t.falseBranch;
-
             return t;
         }
 
