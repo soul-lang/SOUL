@@ -69,11 +69,7 @@ inline juce::MemoryBlock loadVirtualFileAsMemoryBlock (VirtualFile& f, juce::Str
     juce::MemoryBlock m;
     auto size = f.getSize();
 
-    if (size == 0)
-    {
-        error = "Cannot find file: " + f.getAbsolutePath().toString<juce::String>();
-    }
-    else if (size > 0)
+    if (size > 0)
     {
         m.setSize ((size_t) size);
         auto numRead = f.read (0, m.getData(), (uint64_t) size);
