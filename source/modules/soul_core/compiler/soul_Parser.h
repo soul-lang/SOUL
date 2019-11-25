@@ -25,20 +25,18 @@ namespace soul
 namespace Keyword
 {
     #define SOUL_KEYWORDS(X) \
-        X(if_,          "if")            X(else_,          "else") \
-        X(do_,          "do")            X(while_,         "while")       X(for_,       "for")        X(loop,    "loop") \
-        X(break_,       "break")         X(continue_,      "continue")    X(return_,    "return") \
-        X(const_,       "const")         X(let,            "let")         X(var,        "var") \
-        X(void_,        "void")          X(int_,           "int")         X(int32,      "int32")      X(int64,   "int64") \
-        X(float_,       "float")         X(float32,        "float32")     X(float64,    "float64")    X(fixed,   "fixed") \
-        X(bool_,        "bool")          X(true_,          "true")        X(false_,     "false")      X(string,  "string") \
-        X(struct_,      "struct")        X(using_,         "using")       X(external,   "external") \
-        X(graph,        "graph")         X(processor,      "processor")   X(namespace_, "namespace") \
-        X(input,        "input")         X(output,         "output")      X(connection, "connection") \
-        X(event,        "event")         X(import,         "import") \
-        X(try_,         "try")           X(catch_,         "catch")       X(throw_,     "throw") \
-        X(switch_,      "switch")        X(case_,          "case")        X(default_,   "default") \
-        X(enum_,        "enum")
+        X(if_,        "if")         X(do_,        "do")         X(for_,     "for")        X(let,        "let") \
+        X(var,        "var")        X(int_,       "int")        X(try_,     "try")        X(else_,      "else") \
+        X(bool_,      "bool")       X(true_,      "true")       X(case_,    "case")       X(enum_,      "enum") \
+        X(loop,       "loop")       X(void_,      "void")       X(while_,   "while")      X(break_,     "break") \
+        X(const_,     "const")      X(int32,      "int32")      X(int64,    "int64")      X(float_,     "float") \
+        X(false_,     "false")      X(using_,     "using")      X(fixed,    "fixed")      X(graph,      "graph") \
+        X(input,      "input")      X(event,      "event")      X(class_,   "class")      X(catch_,     "catch") \
+        X(throw_,     "throw")      X(output,     "output")     X(return_,  "return")     X(string,     "string") \
+        X(struct_,    "struct")     X(import,     "import")     X(switch_,  "switch")     X(public_,    "public") \
+        X(double_,    "double")     X(private_,   "private")    X(float32,  "float32")    X(float64,    "float64") \
+        X(default_,   "default")    X(continue_,  "continue")   X(external, "external")   X(processor,  "processor") \
+        X(namespace_, "namespace")  X(connection, "connection")
 
     SOUL_KEYWORDS (SOUL_DECLARE_TOKEN)
 
