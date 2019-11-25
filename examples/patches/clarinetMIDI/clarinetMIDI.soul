@@ -5,7 +5,7 @@ name: "ClarinetMIDI"
 Code generated with Faust 2.19.7 (https://faust.grame.fr)
 Compilation options: -lang soul-poly -scal -ftz 0
 ------------------------------------------------------------ */
- 
+
 //----------------------------------------------------------------------------
 //  FAUST generated signal processor
 //----------------------------------------------------------------------------
@@ -64,34 +64,34 @@ processor clarinetMIDI
 	float32[2] fRec11;
 	float32[2048] fRec2;
 	float32[2] fRec0;
-	bool fUpdated; 
+	bool fUpdated;
 	int32[1] iControl;
 	float32[11] fControl;
 	float32[65536] ftbl0clarinetMIDISIG0;
-	
-	// freq [init = 440.0f, min = 50.0f, max = 1000.0f, step = 0.00999999978f] 
-	event event_freq (float32 val) { fHslider8 = val; fUpdated = true; } 
-	// bend [init = 0.0f, min = -2.0f, max = 2.0f, step = 0.00999999978f] 
-	event event_bend (float32 val) { fHslider9 = val; fUpdated = true; } 
-	// gain [init = 0.600000024f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
-	event event_gain (float32 val) { fHslider3 = val; fUpdated = true; } 
-	// envAttack [init = 1.0f, min = 0.0f, max = 30.0f, step = 0.00999999978f] 
-	event event_envAttack (float32 val) { fHslider4 = val; fUpdated = true; } 
-	// sustain [init = 0.0f, min = 0.0f, max = 1.0f, step = 1.0f] 
-	event event_sustain (float32 val) { fHslider2 = val; fUpdated = true; } 
-	// reedStiffness [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
-	event event_reedStiffness (float32 val) { fHslider7 = val; fUpdated = true; } 
-	// bellOpening [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
-	event event_bellOpening (float32 val) { fHslider1 = val; fUpdated = true; } 
-	// vibratoFreq [init = 5.0f, min = 1.0f, max = 10.0f, step = 0.00999999978f] 
-	event event_vibratoFreq (float32 val) { fHslider6 = val; fUpdated = true; } 
-	// vibratoGain [init = 0.25f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
-	event event_vibratoGain (float32 val) { fHslider5 = val; fUpdated = true; } 
-	// outGain [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f] 
-	event event_outGain (float32 val) { fHslider0 = val; fUpdated = true; } 
-	// gate 
-	event event_gate (float32 val) { fButton0 = val; fUpdated = true; } 
-	
+
+	// freq [init = 440.0f, min = 50.0f, max = 1000.0f, step = 0.00999999978f]
+	event event_freq (float32 val) { fHslider8 = val; fUpdated = true; }
+	// bend [init = 0.0f, min = -2.0f, max = 2.0f, step = 0.00999999978f]
+	event event_bend (float32 val) { fHslider9 = val; fUpdated = true; }
+	// gain [init = 0.600000024f, min = 0.0f, max = 1.0f, step = 0.00999999978f]
+	event event_gain (float32 val) { fHslider3 = val; fUpdated = true; }
+	// envAttack [init = 1.0f, min = 0.0f, max = 30.0f, step = 0.00999999978f]
+	event event_envAttack (float32 val) { fHslider4 = val; fUpdated = true; }
+	// sustain [init = 0.0f, min = 0.0f, max = 1.0f, step = 1.0f]
+	event event_sustain (float32 val) { fHslider2 = val; fUpdated = true; }
+	// reedStiffness [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f]
+	event event_reedStiffness (float32 val) { fHslider7 = val; fUpdated = true; }
+	// bellOpening [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f]
+	event event_bellOpening (float32 val) { fHslider1 = val; fUpdated = true; }
+	// vibratoFreq [init = 5.0f, min = 1.0f, max = 10.0f, step = 0.00999999978f]
+	event event_vibratoFreq (float32 val) { fHslider6 = val; fUpdated = true; }
+	// vibratoGain [init = 0.25f, min = 0.0f, max = 1.0f, step = 0.00999999978f]
+	event event_vibratoGain (float32 val) { fHslider5 = val; fUpdated = true; }
+	// outGain [init = 0.5f, min = 0.0f, max = 1.0f, step = 0.00999999978f]
+	event event_outGain (float32 val) { fHslider0 = val; fUpdated = true; }
+	// gate
+	event event_gate (float32 val) { fButton0 = val; fUpdated = true; }
+
 	struct clarinetMIDISIG0
 	{
 		int32[2] iRec18;
@@ -103,7 +103,7 @@ processor clarinetMIDI
 			this.iRec18.at (l6) = 0;
 		}
 	}
-	
+
 	void fillclarinetMIDISIG0_65536 (clarinetMIDISIG0& this, int count, float32[65536]& table)
 	{
 		for (int32 i = 0; (i < count); i = (i + 1)) {
@@ -115,9 +115,9 @@ processor clarinetMIDI
 	clarinetMIDISIG0 newclarinetMIDISIG0() { clarinetMIDISIG0 obj; return obj; }
 	void deleteclarinetMIDISIG0 (clarinetMIDISIG0& this) {}
 	int getNumInputs() { return 0; }
-	
+
 	int getNumOuputs() { return 2; }
-	
+
 	void classInit (int sample_rate)
 	{
 		clarinetMIDISIG0 sig0 = newclarinetMIDISIG0();
@@ -125,7 +125,7 @@ processor clarinetMIDI
 		fillclarinetMIDISIG0_65536 (sig0, 65536, ftbl0clarinetMIDISIG0);
 		deleteclarinetMIDISIG0 (sig0);
 	}
-	
+
 	void instanceConstants (int sample_rate)
 	{
 		fSampleRate = sample_rate;
@@ -142,7 +142,7 @@ processor clarinetMIDI
 		fConst10 = (0.00882352982f * fConst0);
 		fConst11 = (0.00147058826f * fConst0);
 	}
-	
+
 	void instanceResetUserInterface()
 	{
 		fUpdated = true;
@@ -158,7 +158,7 @@ processor clarinetMIDI
 		fHslider8 = 440.0f;
 		fHslider9 = 0.0f;
 	}
-	
+
 	void instanceClear()
 	{
 		for (int32 l0 = 0; (l0 < 2); l0 = (l0 + 1)) {
@@ -205,20 +205,20 @@ processor clarinetMIDI
 			fRec0.at (l14) = 0.0f;
 		}
 	}
-	
+
 	void init (int sample_rate)
 	{
 		classInit (sample_rate);
 		instanceInit (sample_rate);
 	}
-	
+
 	void instanceInit (int sample_rate)
 	{
 		instanceConstants (sample_rate);
 		instanceResetUserInterface();
 		instanceClear();
 	}
-	
+
 	void control()
 	{
 		fControl[0] = float32 (fHslider0);
@@ -239,13 +239,13 @@ processor clarinetMIDI
 	{
 		// 'init' called once before starting the DSP loop
 		init (int(processor.frequency));
-		
+
 		// DSP loop running forever...
 		loop
 		{
 			// Updates control only if needed
 			if (fUpdated) { fUpdated = false; control(); }
-			
+
 			// Computes one sample
 			iRec6[0] = 0;
 			fRec12[0] = ((fControl[1] * fRec12[1]) + (fControl[2] * fRec11[1]));
@@ -317,7 +317,7 @@ processor clarinetMIDI
 			fVec1[1] = fVec1[0];
 			fRec11[1] = fRec11[0];
 			fRec0[1] = fRec0[0];
-			
+
 			// Moves all streams forward by one 'tick'
 			advance();
 		}
@@ -342,17 +342,17 @@ processor dsp_wrapper
         gain << e.velocity;
         gate << 1.0f;
     }
-     
-    event noteOff (soul::NoteEvents::NoteOff e) 
-    { 
+
+    event noteOff (soul::NoteEvents::NoteOff e)
+    {
         gate << 0.0f;
     }
-    
-    event pitchBend (soul::NoteEvents::PitchBend e) 
+
+    event pitchBend (soul::NoteEvents::PitchBend e)
     {
     	// TODO
     }
-     
+
     void run()
     {
         advance();
@@ -360,7 +360,7 @@ processor dsp_wrapper
 }
 
 /*
-	Connect the wrapper with the real processor. 
+	Connect the wrapper with the real processor.
 	This indirection is done since the "expose control event" model is not yet in place.
 	So we have some 'ad-hoc' code for now that may change in the future
 */
@@ -373,21 +373,21 @@ graph dsp_voice
         soul::NoteEvents::NoteOff  	 noteOff;
         soul::NoteEvents::PitchBend  pitchBend;
     }
-    
+
     output stream float audioOut0;
     output stream float audioOut1;
-    
+
     connection
     {
         noteOn    -> dsp_wrapper.noteOn;
         noteOff   -> dsp_wrapper.noteOff;
         pitchBend -> dsp_wrapper.pitchBend;
-        
+
         // This is still the 'hard coded' part
         dsp_wrapper.freq  -> clarinetMIDI.event_freq;
         dsp_wrapper.gain  -> clarinetMIDI.event_gain;
         dsp_wrapper.gate  -> clarinetMIDI.event_gate;
- 
+
         clarinetMIDI.output0 ->  audioOut0;
         clarinetMIDI.output1 ->  audioOut1;
     }
@@ -492,19 +492,19 @@ graph clarinetMIDI_poly [[ main ]]
     input event midi::Message midiIn;
     output stream float audioOut0;
     output stream float audioOut1;
-    
+
     let
     {
         midiParser = midi::MPEParser;
         voices = dsp_voice[16];
         voiceAllocator = RoundRobinVoiceAllocator (16);
     }
-  
+
     connection
     {
         midiIn -> midiParser.parseMIDI;
-   
-        midiParser.eventOut -> voiceAllocator.noteOn, 
+
+        midiParser.eventOut -> voiceAllocator.noteOn,
                                voiceAllocator.noteOff,
                                voiceAllocator.pitchBend;
 
