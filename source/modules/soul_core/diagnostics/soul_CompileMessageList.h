@@ -46,9 +46,19 @@ struct CompileMessage  final
         internalCompilerError
     };
 
+    enum class Category
+    {
+        none,
+        syntax,
+        limitExceeded,
+        performanceProblem,
+        runtimeProblem
+    };
+
     std::string description;
     CodeLocation location;
     Type type = Type::error;
+    Category category = Category::none;
 };
 
 struct CompileMessageGroup

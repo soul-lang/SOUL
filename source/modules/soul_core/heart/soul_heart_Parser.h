@@ -445,8 +445,11 @@ private:
         {
             c.delayLength = parseInt32();
 
-            if (c.delayLength < 1 || c.delayLength > (int32_t) AST::maxDelayLineLength)
-                location.throwError (Errors::delayLineIllegalLength());
+            if (c.delayLength < 1)
+                location.throwError (Errors::delayLineTooShort());
+
+            if (c.delayLength > (int32_t) AST::maxDelayLineLength)
+                location.throwError (Errors::delayLineTooLong());
 
             expect (HEARTOperator::closeBracket);
             expect (HEARTOperator::rightArrow);

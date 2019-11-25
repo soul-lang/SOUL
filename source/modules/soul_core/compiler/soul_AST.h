@@ -2239,7 +2239,7 @@ struct AST
                 if (auto c = condition->getAsConstant())
                     if (! c->value.getAsBool())
                         context.throwError (errorMessage.empty() ? Errors::staticAssertionFailure()
-                                                                 : Errors::customError (errorMessage), true);
+                                                                 : Errors::staticAssertionFailureWithMessage (errorMessage), true);
         }
 
         ExpPtr condition;

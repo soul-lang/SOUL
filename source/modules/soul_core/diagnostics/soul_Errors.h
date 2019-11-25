@@ -21,9 +21,9 @@
 namespace soul
 {
 
-#define SOUL_ERRORS(X) \
-    X(customError,                          "$0$") \
+#define SOUL_ERRORS_SYNTAX(X) \
     X(staticAssertionFailure,               "Static assertion failure") \
+    X(staticAssertionFailureWithMessage,    "$0$") \
     X(identifierTooLong,                    "Identifier too long") \
     X(invalidUTF8,                          "Invalid UTF8 data") \
     X(noLeadingUnderscoreAllowed,           "Identifiers beginning with an underscore are reserved for system use") \
@@ -125,8 +125,8 @@ namespace soul
     X(tooManyElements,                      "Too many elements") \
     X(delayLineMustBeConstant,              "A delay line length must be a constant") \
     X(delayLineMustHaveIntLength,           "A delay line length must be an integer") \
-    X(delayLineHasZeroLength,               "A delay line length must be greater than zero") \
-    X(delayLineIllegalLength,               "Illegal delay line length") \
+    X(delayLineTooShort,                    "A delay line length must be greater than zero") \
+    X(delayLineTooLong,                     "Illegal delay line length") \
     X(duplicateFunction,                    "A function with matching parameters has already been defined") \
     X(duplicateProcessor,                   "A processor with the name $Q0$ has already been declared") \
     X(processorNeedsAnOutput,               "A processor must declare at least one output") \
@@ -250,21 +250,27 @@ namespace soul
     X(cannotNegateConstant,                 "Cannot negate this type of constant") \
     X(useOfUninitialisedVariable,           "Use of uninitialised variable $Q0$ in function $1$") \
     X(functionHasNoImplementation,          "This function has no implementation") \
+
+#define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \
-    X(cannotOverwriteFile,                  "Cannot overwrite existing file $Q0$") \
-    X(cannotCreateOutputFile,               "Cannot create output file $Q0$") \
-    X(cannotCreateFolder,                   "Cannot create folder $Q0$") \
-    X(cannotReadFile,                       "Failed to read from file $Q0$") \
     X(unsupportedBitDepth,                  "Unsupported bit-depth") \
     X(unsupportedBlockSize,                 "Unsupported block size") \
     X(unsupportedSampleRate,                "Unsupported sample rate") \
     X(unsupportedNumChannels,               "Unsupported number of channels") \
+
+#define SOUL_ERRORS_RUNTIME(X) \
+    X(customRuntimeError,                   "$0$") \
     X(failedToLoadProgram,                  "Failed to load program") \
+    X(cannotOverwriteFile,                  "Cannot overwrite existing file $Q0$") \
+    X(cannotCreateOutputFile,               "Cannot create output file $Q0$") \
+    X(cannotCreateFolder,                   "Cannot create folder $Q0$") \
+    X(cannotReadFile,                       "Failed to read from file $Q0$") \
     X(cannotLoadLibrary,                    "Cannot load library $Q0$") \
+    X(processTookTooLong,                   "Processing took too long") \
 
 
 //==============================================================================
-#define SOUL_WARNINGS(X) \
+#define SOUL_WARNINGS_PERFORMANCE(X) \
     X(indexHasRuntimeOverhead,              "Performance warning: the type of this array index could not be proven to be safe, so a runtime check was added") \
 
 
@@ -310,7 +316,8 @@ private:
 
 public:
     template <typename... Args>
-    static CompileMessage createMessage (CodeLocation location, CompileMessage::Type type, const char* text, Args&&... args)
+    static CompileMessage createMessage (CompileMessage::Category category, CodeLocation location,
+                                         CompileMessage::Type type, const char* text, Args&&... args)
     {
         std::string result (text);
         std::vector<std::string> stringArgs { convertToString (args)... };
@@ -318,13 +325,14 @@ public:
         for (size_t i = 0; i < stringArgs.size(); ++i)
             result = replaceArgument (result, i, stringArgs[i]);
 
-        return CompileMessage { trim (result), location, type };
+        return CompileMessage { trim (result), location, type, category };
     }
 
     template <typename... Args>
-    static CompileMessage createMessage (CompileMessage::Type type, const char* text, Args&&... args)
+    static CompileMessage createMessage (CompileMessage::Category category, CompileMessage::Type type,
+                                         const char* text, Args&&... args)
     {
-        return createMessage (CodeLocation(), type, text, std::forward<Args> (args)...);
+        return createMessage (category, CodeLocation(), type, text, std::forward<Args> (args)...);
     }
 
     static constexpr int countArgs (const char* text)
@@ -345,22 +353,37 @@ public:
 //==============================================================================
 struct Errors
 {
-    #define SOUL_DECLARE_ERROR_HANDLER(name, text) \
+    #define SOUL_DECLARE_ERROR_HANDLER(name, text, category) \
         template <typename... Args> static CompileMessage name (Args&&... args) \
         { static_assert (CompileMessageHelpers::countArgs (text) == sizeof... (args), "mismatched number of args for error"); \
-          return CompileMessageHelpers::createMessage (CompileMessage::Type::error, text, std::forward<Args> (args)...); }
-    SOUL_ERRORS(SOUL_DECLARE_ERROR_HANDLER)
+          return CompileMessageHelpers::createMessage (category, CompileMessage::Type::error, text, std::forward<Args> (args)...); }
+
+    #define SOUL_DECLARE_ERROR_HANDLER_SYNTAX(name, text)  SOUL_DECLARE_ERROR_HANDLER(name, text, CompileMessage::Category::syntax)
+    #define SOUL_DECLARE_ERROR_HANDLER_LIMITS(name, text)  SOUL_DECLARE_ERROR_HANDLER(name, text, CompileMessage::Category::limitExceeded)
+    #define SOUL_DECLARE_ERROR_HANDLER_RUNTIME(name, text) SOUL_DECLARE_ERROR_HANDLER(name, text, CompileMessage::Category::runtimeProblem)
+
+    SOUL_ERRORS_SYNTAX   (SOUL_DECLARE_ERROR_HANDLER_SYNTAX)
+    SOUL_ERRORS_LIMITS   (SOUL_DECLARE_ERROR_HANDLER_LIMITS)
+    SOUL_ERRORS_RUNTIME  (SOUL_DECLARE_ERROR_HANDLER_RUNTIME)
+
+    #undef SOUL_DECLARE_ERROR_HANDLER_SYNTAX
+    #undef SOUL_DECLARE_ERROR_HANDLER_LIMITS
+    #undef SOUL_DECLARE_ERROR_HANDLER_RUNTIME
     #undef SOUL_DECLARE_ERROR_HANDLER
 };
 
 //==============================================================================
 struct Warnings
 {
-    #define SOUL_DECLARE_WARNING_HANDLER(name, text) \
+    #define SOUL_DECLARE_WARNING_HANDLER(name, text, category) \
         template <typename... Args> static CompileMessage name (Args&&... args) \
         { static_assert (CompileMessageHelpers::countArgs (text) == sizeof... (args), "mismatched number of args for warning"); \
-          return CompileMessageHelpers::createMessage (CompileMessage::Type::warning, text, std::forward<Args> (args)...); }
-    SOUL_WARNINGS(SOUL_DECLARE_WARNING_HANDLER)
+          return CompileMessageHelpers::createMessage (category, CompileMessage::Type::warning, text, std::forward<Args> (args)...); }
+
+    #define SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE(name, text)    SOUL_DECLARE_WARNING_HANDLER(name, text, CompileMessage::Category::performanceProblem)
+    SOUL_WARNINGS_PERFORMANCE(SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE)
+
+    #undef SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE
     #undef SOUL_DECLARE_WARNING_HANDLER
 };
 

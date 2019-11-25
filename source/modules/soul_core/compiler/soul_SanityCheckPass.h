@@ -223,10 +223,10 @@ struct SanityCheckPass  final
         auto value = v.getAsInt64();
 
         if (value < 1)
-            context.throwError (Errors::delayLineHasZeroLength());
+            context.throwError (Errors::delayLineTooShort());
 
         if (value > (int64_t) AST::maxDelayLineLength)
-            context.throwError (Errors::delayLineIllegalLength());
+            context.throwError (Errors::delayLineTooLong());
 
         return value;
     }
