@@ -73,6 +73,7 @@ void Compiler::addDefaultBuiltInLibrary()
         compile (getSystemModule ("soul.midi"));
         compile (getSystemModule ("soul.notes"));
         compile (getSystemModule ("soul.frequency"));
+        compile (getSystemModule ("soul.noise"));
     }
     catch (soul::AbortCompilationException)
     {
