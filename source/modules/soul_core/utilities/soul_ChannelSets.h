@@ -121,6 +121,7 @@ struct InterleavedChannelSet
     void allocateData()
     {
         data = new SampleType[(size_t) (numFrames * stride)];
+        std::fill_n (data, numFrames * stride, SampleType());
     }
 
     void freeData()
@@ -226,6 +227,7 @@ struct DiscreteChannelSet
         {
             auto channelStride = getAlignedSize<4> (numFrames);
             auto channelData = new SampleType[channelStride * numChannels];
+            std::fill_n (channelData, channelStride * numChannels, SampleType());
 
             for (uint32_t i = 0; i < numChannels; ++i)
                 channelList[i] = channelData + i * channelStride;
