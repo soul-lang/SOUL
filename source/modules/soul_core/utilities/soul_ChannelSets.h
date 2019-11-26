@@ -218,14 +218,18 @@ struct DiscreteChannelSet
     void allocateData()
     {
         auto channelList = new SampleType*[numChannels + 1];
-        auto channelStride = getAlignedSize<4> (numFrames);
-        auto channelData = new SampleType[channelStride * numChannels];
 
         channels = channelList;
         channelList[numChannels] = nullptr;
 
-        for (uint32_t i = 0; i < numChannels; ++i)
-            channelList[i] = channelData + i * channelStride;
+        if (numChannels > 0)
+        {
+            auto channelStride = getAlignedSize<4> (numFrames);
+            auto channelData = new SampleType[channelStride * numChannels];
+
+            for (uint32_t i = 0; i < numChannels; ++i)
+                channelList[i] = channelData + i * channelStride;
+        }
     }
 
     void freeData()
