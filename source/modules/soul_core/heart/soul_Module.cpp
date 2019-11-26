@@ -125,7 +125,7 @@ void Module::addStruct (StructurePtr newStruct)
 
 Structure& Module::addStruct (std::string name)
 {
-    StructurePtr s (new Structure (name));
+    StructurePtr s (new Structure (name, nullptr));
     addStruct (s);
     return *s;
 }

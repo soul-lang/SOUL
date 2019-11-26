@@ -1187,6 +1187,12 @@ struct AST
         {
         }
 
+        ~StructDeclaration() override
+        {
+            if (structure != nullptr)
+                structure->backlinkToASTObject = nullptr;
+        }
+
         struct Member
         {
             ExpPtr type;
@@ -1218,7 +1224,7 @@ struct AST
         {
             if (structure == nullptr)
             {
-                structure.reset (new Structure (name.toString()));
+                structure.reset (new Structure (name.toString(), const_cast<StructDeclaration*> (this)));
 
                 for (auto& m : members)
                     structure->members.push_back ({ m.type->resolveAsType(), m.name.toString() });

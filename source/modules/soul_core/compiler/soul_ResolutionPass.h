@@ -1454,8 +1454,26 @@ private:
 
             if (name.path.isUnqualified())
             {
+                // Handle intrinsics with no explicit namespace
                 search.partiallyQualifiedPath = owner.intrinsicsNamespacePath.withSuffix (search.partiallyQualifiedPath.getLastPart());
                 call.getParentScope()->performFullNameSearch (search, nullptr);
+
+                // Handle "Koenig" lookup for method calls
+                if (call.isMethodCall)
+                {
+                    SOUL_ASSERT (argTypes.size() != 0);
+
+                    if (argTypes.front().isStruct())
+                    {
+                        if (auto ownerASTObject = argTypes.front().getStructRef().backlinkToASTObject)
+                        {
+                            auto structDecl = reinterpret_cast<AST::StructDeclaration*> (ownerASTObject);
+
+                            search.partiallyQualifiedPath = name.path;
+                            structDecl->context.parentScope->performFullNameSearch (search, nullptr);
+                        }
+                    }
+                }
             }
 
             ArrayWithPreallocation<PossibleFunction, 4> results;

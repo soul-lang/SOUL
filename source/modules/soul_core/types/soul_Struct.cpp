@@ -26,7 +26,8 @@ namespace soul
 #endif
 
 //==============================================================================
-Structure::Structure (std::string nm) : name (std::move (nm))
+Structure::Structure (std::string nm, void* backlink)
+  : name (std::move (nm)), backlinkToASTObject (backlink)
 {
     SOUL_ASSERT (! containsChar (name, '#'));
 }

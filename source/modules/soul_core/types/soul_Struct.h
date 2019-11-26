@@ -28,7 +28,7 @@ namespace soul
 class Structure   : public RefCountedObject
 {
 public:
-    Structure (std::string name);
+    Structure (std::string name, void* backlinkToASTObject);
 
     Structure (const Structure&) = default;
     Structure (Structure&&) = default;
@@ -43,6 +43,11 @@ public:
 
     std::string name;
     ArrayWithPreallocation<Member, 8> members;
+
+    // Because the Structure class has no dependency on any AST classes,
+    // this opaque pointer is a necessary evil for us to provide a way to
+    // quickly trace a structure instance back to its originating AST object.
+    void* backlinkToASTObject = nullptr;
 
     size_t addMember (Type, std::string memberName);
     bool hasMemberWithName (const std::string& memberName) const;

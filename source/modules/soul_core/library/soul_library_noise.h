@@ -34,20 +34,24 @@ namespace soul::Random
         int64 seed;
     }
 
+    /** Returns the next number in the full 32-bit integer range. */
+    int32 getNextInt32 (RandomNumberState& state)
+    {
+        let s = (state.seed * 48271) % 0x7fffffff;
+        state.seed = s + 1;
+        return s;
+    }
+
     /** Advances the given RNG state and returns a value 0 to 1 */
     float getNextUnipolar (RandomNumberState& state)
     {
-        let s = (state.seed * 48271) % 0x7fffffff;
-        state.seed = s;
-        return float (s) * (1.0f / 2147483647.0f);
+        return float (getNextInt32 (state)) * (1.0f / 2147483647.0f);
     }
 
     /** Advances the given RNG state and returns a value -1 to 1 */
     float getNextBipolar (RandomNumberState& state)
     {
-        let s = (state.seed * 48271) % 0x7fffffff;
-        state.seed = s;
-        return (float (s) * (2.0f / 2147483647.0f)) - 1.0f;
+        return (float (getNextInt32 (state)) * (2.0f / 2147483647.0f)) - 1.0f;
     }
 }
 
@@ -67,7 +71,7 @@ namespace soul::Noise
 
             loop
             {
-                out << Random::getNextBipolar (rng);
+                out << rng.getNextBipolar();
                 advance();
             }
         }
@@ -86,7 +90,7 @@ namespace soul::Noise
 
             loop
             {
-                let white = Random::getNextBipolar (rng);
+                let white = rng.getNextBipolar();
                 runningTotal += white;
 
                 if (runningTotal > limit || runningTotal < -limit)
@@ -114,7 +118,7 @@ namespace soul::Noise
 
             loop
             {
-                let white = Random::getNextBipolar (rng);
+                let white = rng.getNextBipolar();
                 ++counter;
 
                 for (int bit = 0; bit < pinkBits; ++bit)

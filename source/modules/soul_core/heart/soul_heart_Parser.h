@@ -519,7 +519,7 @@ private:
             if (st->name == name)
                 throwError (Errors::nameInUse (name));
 
-        StructurePtr s (new Structure (name));
+        StructurePtr s (new Structure (name, nullptr));
         module->structs.push_back (s);
         expect (HEARTOperator::openBrace);
         item.structBodyCode.push_back (getCurrentTokeniserPosition());
