@@ -65,6 +65,9 @@ public:
     /** Provides access to the modules. */
     const std::vector<pool_ptr<Module>>& getModules() const;
 
+    /** Removes the given module */
+    void removeModule (pool_ptr<Module> module);
+
     /** Returns the module that should be used as the main entry point of the program, or nullptr
         if no suitable module exists.
     */

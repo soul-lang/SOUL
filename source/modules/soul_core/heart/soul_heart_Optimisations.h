@@ -69,6 +69,24 @@ struct Optimisations
             removeIf (m->functions, [] (heart::FunctionPtr f) { return ! f->functionUseTestFlag; });
     }
 
+    static void removeUnusedProcessors (Program& program)
+    {
+        auto modules = program.getModules();
+
+        for (auto& m : modules)
+            if (m->isProcessor() && m->functions.empty())
+                program.removeModule (m);
+    }
+
+    static void removeUnusedNamespaces (Program& program)
+    {
+        auto modules = program.getModules();
+
+        for (auto& m : modules)
+            if (m->isNamespace() && m->functions.empty() && m->structs.empty())
+                program.removeModule (m);
+    }
+
     static void removeUnusedStructs (Program& program)
     {
         for (auto& m : program.getModules())
