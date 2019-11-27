@@ -35,8 +35,8 @@ namespace Keyword
         X(throw_,     "throw")      X(output,     "output")     X(return_,  "return")     X(string,     "string") \
         X(struct_,    "struct")     X(import,     "import")     X(switch_,  "switch")     X(public_,    "public") \
         X(double_,    "double")     X(private_,   "private")    X(float32,  "float32")    X(float64,    "float64") \
-        X(default_,   "default")    X(continue_,  "continue")   X(external, "external")   X(processor,  "processor") \
-        X(namespace_, "namespace")  X(connection, "connection")
+        X(default_,   "default")    X(continue_,  "continue")   X(external, "external")   X(operator_,  "operator") \
+        X(processor,  "processor")  X(namespace_, "namespace")  X(connection, "connection")
 
     SOUL_KEYWORDS (SOUL_DECLARE_TOKEN)
 
