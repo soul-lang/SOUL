@@ -263,6 +263,12 @@ private:
         }
 
         sortAndRemoveDuplicates (results);
+
+        std::sort (results.begin(), results.end(), [] (heart::VariablePtr a, heart::VariablePtr b) -> bool
+                                                   {
+                                                       return a->name.toString() < b->name.toString();
+                                                   });
+
         return results;
     }
 
