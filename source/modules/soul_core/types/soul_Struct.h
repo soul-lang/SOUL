@@ -49,6 +49,8 @@ public:
     // quickly trace a structure instance back to its originating AST object.
     void* backlinkToASTObject = nullptr;
 
+    bool activeUseFlag = false;
+
     size_t addMember (Type, std::string memberName);
     bool hasMemberWithName (const std::string& memberName) const;
     size_t getMemberIndex (const std::string& memberName) const;

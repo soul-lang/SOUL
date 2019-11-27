@@ -393,16 +393,20 @@ struct heart
                 return aggregateType.getStruct()->members[fixedStartIndex].type;
             }
 
-            SOUL_ASSERT (aggregateType.isArray() || aggregateType.isVector());
-            SOUL_ASSERT (aggregateType.isUnsizedArray() || aggregateType.isValidArrayOrVectorRange (fixedStartIndex, fixedEndIndex));
-
             auto sliceSize = getSliceSize();
 
             if (sliceSize == 1)
             {
-                temporaryType = aggregateType.getElementType();
+                if (aggregateType.isPrimitive())
+                    temporaryType = aggregateType;
+                else
+                    temporaryType = aggregateType.getElementType();
+
                 return temporaryType;
             }
+
+            SOUL_ASSERT (aggregateType.isArray() || aggregateType.isVector());
+            SOUL_ASSERT (aggregateType.isUnsizedArray() || aggregateType.isValidArrayOrVectorRange (fixedStartIndex, fixedEndIndex));
 
             temporaryType = aggregateType.createCopyWithNewArraySize (sliceSize);
             return temporaryType;

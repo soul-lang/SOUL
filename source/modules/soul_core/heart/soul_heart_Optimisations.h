@@ -69,6 +69,40 @@ struct Optimisations
             removeIf (m->functions, [] (heart::FunctionPtr f) { return ! f->functionUseTestFlag; });
     }
 
+    static void removeUnusedStructs (Program& program)
+    {
+        for (auto& m : program.getModules())
+            for (auto& s : m->structs)
+                s->activeUseFlag = false;
+
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions)
+            {
+                recursivelyFlagStructUse (f->returnType);
+
+                for (auto& p : f->parameters)
+                    recursivelyFlagStructUse (p->getType());
+
+                f->visitExpressions ([] (heart::ExpressionPtr& value, heart::AccessType)
+                {
+                    recursivelyFlagStructUse (value->getType());
+                });
+            }
+
+            for (auto& i : m->inputs)
+                for (auto& t : i->sampleTypes)
+                    recursivelyFlagStructUse (t);
+
+            for (auto& o : m->outputs)
+                for (auto& t : o->sampleTypes)
+                    recursivelyFlagStructUse (t);
+        }
+
+        for (auto& m : program.getModules())
+            removeIf (m->structs, [] (const StructurePtr& s) { return ! s->activeUseFlag; });
+    }
+
     static void optimiseFunctionBlocks (Program& program)
     {
         for (auto& m : program.getModules())
@@ -223,6 +257,21 @@ private:
 
                                                      return false;
                                                  });
+    }
+
+    static void recursivelyFlagStructUse (const Type& type)
+    {
+        if (type.isStruct())
+        {
+            type.getStructRef().activeUseFlag = true;
+
+            for (auto& m : type.getStructRef().members)
+                recursivelyFlagStructUse (m.type);
+        }
+        else if (type.isArray())
+        {
+            recursivelyFlagStructUse (type.getArrayElementType());
+        }
     }
 
     //==============================================================================
