@@ -1100,10 +1100,11 @@ struct AST
         BlockPtr block;
         heart::FunctionPtr generatedFunction;
 
-        bool isEventFunction() const     { return eventFunction; }
-        bool isRunFunction() const       { return name == heart::getRunFunctionName(); }
-        bool isUserInitFunction() const  { return name == heart::getUserInitFunctionName(); }
-        bool isGeneric() const           { return ! genericWildcards.empty(); }
+        bool isEventFunction() const       { return eventFunction; }
+        bool isRunFunction() const         { return name == heart::getRunFunctionName(); }
+        bool isUserInitFunction() const    { return name == heart::getUserInitFunctionName(); }
+        bool isSystemInitFunction() const  { return name == heart::getInitFunctionName(); }
+        bool isGeneric() const             { return ! genericWildcards.empty(); }
 
         heart::Function& getGeneratedFunction() const
         {

@@ -313,6 +313,8 @@ private:
             af.intrinsic = f.intrinsic;
             af.isRunFunction = f.isRunFunction();
             af.isEventFunction = f.isEventFunction();
+            af.isUserInitFunction = f.isUserInitFunction();
+            af.isSystemInitFunction = f.isSystemInitFunction();
             af.annotation = f.annotation.toPlainAnnotation();
             af.location = f.context.location;
         }
