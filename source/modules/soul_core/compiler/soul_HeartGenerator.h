@@ -355,10 +355,8 @@ private:
         builder.beginFunction (af);
         addStateVariableInitialisationCode();
 
-        if (auto initFunction = module.findFunction(heart::getUserInitFunctionName()))
-        {
+        if (auto initFunction = module.findFunction (heart::getUserInitFunctionName()))
             builder.addFunctionCall (nullptr, *initFunction, {});
-        }
 
         builder.endFunction();
         builder.checkFunctionBlocksForTermination();

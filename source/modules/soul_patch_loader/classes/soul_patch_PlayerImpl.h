@@ -264,7 +264,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             static_cast<ParameterImpl&>(*p).changed = true;
     }
 
-    RenderResult render (const RenderContext& rc) override
+    RenderResult render (RenderContext& rc) override
     {
         if (anyErrors)
             return RenderResult::noProgramLoaded;
@@ -286,9 +286,11 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         output.numFrames = (uint32_t) rc.numFrames;
 
         auto midi = rc.incomingMIDI;
-        auto midiEnd = midi != nullptr ? midi + rc.numMIDIMessages : nullptr;
+        auto midiEnd = midi != nullptr ? midi + rc.numMIDIMessagesIn : nullptr;
 
-        wrapper->render (input, output, midi, midiEnd);
+        wrapper->render (input, output,
+                         midi, midiEnd,
+                         rc.outgoingMIDI, rc.maximumMIDIMessagesOut, rc.numMIDIMessagesOut);
 
         return RenderResult::ok;
     }

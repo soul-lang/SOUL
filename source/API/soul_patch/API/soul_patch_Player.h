@@ -183,14 +183,39 @@ public:
         */
         const MIDIMessage* incomingMIDI;
 
-        uint32_t numFrames, numInputChannels, numOutputChannels, numMIDIMessages;
+        /** An array of MIDI messages for the render method to write to.
+            See the numMIDIMessages variable for the number of channels.
+        */
+        MIDIMessage* outgoingMIDI;
+
+        /** Number of audio frames to process */
+        uint32_t numFrames;
+
+        /** Number of channels in the input stream array */
+        uint32_t numInputChannels;
+
+        /** Number of channels in the output stream array */
+        uint32_t numOutputChannels;
+
+        /** Number of messages to process from the incomingMIDI buffer */
+        uint32_t numMIDIMessagesIn;
+
+        /** The maximum number of messages that can be added to the outgoingMIDI buffer */
+        uint32_t maximumMIDIMessagesOut;
+
+        /** On return, this will be set to the number of MIDI messages that could have been
+            added to the outgoingMIDI buffer. If more messages were available than the
+            maximumMIDIMessagesOut size, then the buffer will have been filled up to
+            maximumMIDIMessagesOut, and numMIDIMessagesOut will return a larger number to
+            indicate how many would have been added if it had been possible. */
+        uint32_t numMIDIMessagesOut;
     };
 
     /** Renders the next block of audio.
         The RenderContext object provides all the necessary input/output audio and
         MIDI data that is needed.
     */
-    virtual RenderResult render (const RenderContext&) = 0;
+    virtual RenderResult render (RenderContext&) = 0;
 };
 
 } // namespace patch

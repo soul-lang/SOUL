@@ -44,7 +44,7 @@ namespace callbacks
         no more known future events, you may just want to return a sensible default
         value such as 1024.
     */
-    using FillEventBuffer = std::function<uint32_t(uint64_t totalFramesElapsed, uint32_t blockLength, PostNextEvent postEvent)>;
+    using FillEventBuffer = std::function<uint32_t(uint64_t totalFramesElapsed, uint32_t numFrames, PostNextEvent postEvent)>;
 
     /** Request to fill the given buffer with the number of requested frames.
         @returns the number of frames actually provided
@@ -205,7 +205,7 @@ OutputEndpoint::Ptr findFirstOutputOfType (VenueOrPerformer& session, EndpointKi
     return {};
 }
 
-inline bool isMIDIEventInput (const EndpointDetails& details)
+inline bool isMIDIEventEndpoint (const EndpointDetails& details)
 {
     auto isMIDIMessageStruct = [] (const Structure& s)
     {
@@ -221,14 +221,12 @@ inline bool isMIDIEventInput (const EndpointDetails& details)
             && isMIDIMessageStruct (details.sampleType.getStructRef());
 }
 
-inline bool isMIDIEventInput (InputEndpoint& input)
-{
-    return isMIDIEventInput (input.getDetails());
-}
+inline bool isMIDIEventEndpoint (InputEndpoint& i)  { return isMIDIEventEndpoint (i.getDetails()); }
+inline bool isMIDIEventEndpoint (OutputEndpoint& o) { return isMIDIEventEndpoint (o.getDetails()); }
 
 inline bool isParameterInput (const EndpointDetails& details)
 {
-    if (isEvent (details.kind) && ! isMIDIEventInput (details))
+    if (isEvent (details.kind) && ! isMIDIEventEndpoint (details))
         return true;
 
     if (isStream (details.kind) && details.annotation.hasValue ("name"))

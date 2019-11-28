@@ -45,7 +45,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    void removeModule (pool_ptr<Module> module)
+    void removeModule (Module& module)
     {
         removeIf (modules, [&] (const pool_ptr<Module>& m) { return m == module; });
     }
@@ -249,7 +249,7 @@ bool Program::isEmpty() const                                                   
 Program::operator bool() const                                                          { return ! isEmpty(); }
 std::string Program::toHEART() const                                                    { return heart::Printer::getDump (*this); }
 const std::vector<pool_ptr<Module>>& Program::getModules() const                        { return pimpl->modules; }
-void Program::removeModule (pool_ptr<Module> module)                                    { return pimpl->removeModule (module); }
+void Program::removeModule (Module& module)                                             { return pimpl->removeModule (module); }
 
 pool_ptr<Module> Program::getModuleWithName (const std::string& name) const             { return pimpl->getModuleWithName (name); }
 Module& Program::getOrCreateNamespace (const std::string& name)                         { return pimpl->getOrCreateNamespace (name); }

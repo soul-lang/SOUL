@@ -56,6 +56,7 @@ struct PatchLoadError
 //==============================================================================
 inline uint32_t getFrameIndex (MIDIMessage m)        { return (uint32_t) m.frameIndex; }
 inline uint32_t getPackedMIDIEvent (MIDIMessage m)   { return (((uint32_t) m.byte0) << 16) | (((uint32_t) m.byte1) << 8) | (uint32_t) m.byte2; }
+inline void createMIDIMessage (MIDIMessage& m, uint32_t frameIndex, uint32_t packedData)    { m = { frameIndex, m.byte0 = (uint8_t) (packedData >> 16), (uint8_t) (packedData >> 8), (uint8_t) packedData }; }
 
 //==============================================================================
 /** Converts a JSON value from a manifest file into a Value. */

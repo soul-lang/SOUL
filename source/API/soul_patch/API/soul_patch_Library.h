@@ -19,7 +19,7 @@ namespace patch
 /** The library compatibility API version is used to make sure this set of header
     files is compatible with the library that gets loaded.
 */
-static constexpr int currentLibraryAPIVersion = 0x1003;
+static constexpr int currentLibraryAPIVersion = 0x1004;
 
 //==============================================================================
 /**

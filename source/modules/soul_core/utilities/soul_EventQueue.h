@@ -22,16 +22,60 @@ namespace soul
 {
 
 //==============================================================================
-/** An atomic FIFO for posting and receiving time-stamped event objects.
+/** A FIFO for holding time-stamped event objects.
+
+    TimestampType could be a uint64_t or a std::atomic<uint64_t> depending
+    on whether atomicity is needed.
 */
-template <class EventType>
-struct EventQueue
+template <typename EventObject, typename TimestampType>
+struct EventFIFO
 {
-    EventQueue (InputEndpoint::Ptr stream, EndpointProperties endpointProperties)
-        : inputStream (stream), blockSize (endpointProperties.blockSize)
+    EventFIFO()
     {
-        SOUL_ASSERT (isEvent (inputStream->getDetails().kind));
-        queue.resize (queueLength);
+        events.resize (capacity);
+    }
+
+    using EventType = EventObject;
+    using TimeType = TimestampType;
+
+    struct Event
+    {
+        uint64_t time;
+        EventType value;
+    };
+
+    Event& getEvent (uint64_t pos) noexcept    { return events[pos % capacity]; }
+
+    void pushEvent (uint64_t eventTime, EventType value) noexcept
+    {
+        auto& e = getEvent (writePos);
+        e.time = eventTime;
+        e.value = value;
+        ++writePos;
+    }
+
+    void pushEvents (uint64_t eventTime, const EventType* p, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+            pushEvent (eventTime, p[i]);
+    }
+
+    static constexpr uint32_t capacity = 1024;
+    std::vector<Event> events;
+    TimeType readPos { 0 }, writePos { 0 };
+};
+
+//==============================================================================
+/** Handles the queuing of time-stamped event objects and sending them to an InputEndpoint.
+    FIFOType needs to be of type EventFIFO
+*/
+template <typename FIFOType>
+struct InputEventQueue
+{
+    InputEventQueue (InputEndpoint& stream, EndpointProperties endpointProperties)
+        : inputStream (stream)
+    {
+        SOUL_ASSERT (isEvent (stream.getDetails().kind));
 
         inputStream->setEventSource ([this] (uint64_t currentTime, uint32_t blockLength, callbacks::PostNextEvent postEvent)
                                      {
@@ -40,79 +84,113 @@ struct EventQueue
                                      endpointProperties);
     }
 
-    ~EventQueue()
+    ~InputEventQueue()
     {
         inputStream->setEventSource (nullptr, {});
         inputStream.reset();
     }
 
-    struct Event
+    void enqueueEvent (uint32_t offset, typename FIFOType::EventType value)
     {
-        uint64_t time;
-        EventType value;
-    };
-
-    void enqueueEvent (uint32_t offset, EventType value)
-    {
-        auto& e = getEvent (writePos);
-        e.time = time + offset;
-        e.value = value;
-        ++writePos;
-    }
-
-    void enqueueEvents (uint32_t offset, const EventType* p, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-            enqueueEvent (offset, p[i]);
+        fifo.pushEvent (currentBlockTime + offset, value);
     }
 
     uint32_t dispatchNextEvents (uint64_t currentTime, uint32_t currentBlockSize, callbacks::PostNextEvent postEvent)
     {
-        auto blockEndTime = currentTime + currentBlockSize;
+        const auto blockEndTime = currentTime + currentBlockSize;
+        const uint64_t writePosSnapshot = fifo.writePos;
 
-        // Catch the writePos as we want to dispatch any events present up to this point only
-        auto writePosSnapshot = writePos.load();
-
-        // Dispatch any events for this time
-        while (readPos < writePosSnapshot)
+        while (fifo.readPos < writePosSnapshot)
         {
-            const auto& e = getEvent (readPos);
+            const auto& e = fifo.getEvent (fifo.readPos);
 
             if (e.time > currentTime)
                 break;
 
             postEvent (std::addressof (e.value));
-            ++readPos;
+            ++(fifo.readPos);
         }
 
-        if (readPos < writePosSnapshot)
+        if (fifo.readPos < writePosSnapshot)
         {
-            auto nextEventTime = getEvent (readPos).time;
+            auto nextEventTime = fifo.getEvent (fifo.readPos).time;
 
             if (nextEventTime < blockEndTime)
             {
                 auto samplesToAdvance = static_cast<uint32_t> (nextEventTime - currentTime);
-
-                time = currentTime + samplesToAdvance;
+                currentBlockTime = currentTime + samplesToAdvance;
                 return samplesToAdvance;
             }
         }
 
-        time = currentTime + currentBlockSize;
+        currentBlockTime = currentTime + currentBlockSize;
         return currentBlockSize;
     }
 
     InputEndpoint::Ptr inputStream;
-    std::atomic<uint64_t> time { 0 };
-    std::vector<Event> queue;
+    FIFOType fifo;
+    typename FIFOType::TimeType currentBlockTime { 0 };
+};
 
-private:
-    uint32_t blockSize;
 
-    static constexpr uint32_t queueLength = 1024;
-    std::atomic<uint64_t> readPos { 0 }, writePos { 0 };
+//==============================================================================
+/** Reads blocks of time-stamped event objects from an OutputEndpoint.
+    FIFOType needs to be of type EventFIFO
+*/
+template <typename FIFOType>
+struct OutputEventQueue
+{
+    OutputEventQueue (OutputEndpoint& stream, EndpointProperties endpointProperties)
+        : outputStream (stream)
+    {
+        SOUL_ASSERT (isEvent (stream.getDetails().kind));
 
-    Event& getEvent (uint64_t pos) noexcept    { return queue[pos % queueLength]; }
+        outputStream->setEventSink ([this] (const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+                                    {
+                                        return enqueueEvent (eventData, eventSize, eventFrameTime);
+                                    },
+                                    endpointProperties);
+    }
+
+    ~OutputEventQueue()
+    {
+        outputStream->setEventSink (nullptr, {});
+        outputStream.reset();
+    }
+
+    bool enqueueEvent (const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+    {
+        typename FIFOType::EventType value;
+        SOUL_ASSERT (eventSize == sizeof (value));
+        memcpy (std::addressof (value), eventData, sizeof (value));
+        fifo.pushEvent (eventFrameTime, value);
+        return true;
+    }
+
+    template <typename HandleEvent>
+    void readNextEvents (uint32_t numFrames, HandleEvent&& handleEvent)
+    {
+        const uint64_t blockStartTime = currentBlockTime;
+        const auto blockEndTime = blockStartTime + numFrames;
+        const uint64_t writePosSnapshot = fifo.writePos;
+
+        while (fifo.readPos < writePosSnapshot)
+        {
+            const auto& e = fifo.getEvent (fifo.readPos);
+
+            if (e.time > blockEndTime)
+                break;
+
+            handleEvent (e.time > blockStartTime ? (uint32_t) (e.time - blockStartTime) : 0, e.value);
+            ++(fifo.readPos);
+        }
+
+        currentBlockTime = blockEndTime;
+    }
+
+    OutputEndpoint::Ptr outputStream;
+    FIFOType fifo;
+    typename FIFOType::TimeType currentBlockTime { 0 };
 };
 
 }

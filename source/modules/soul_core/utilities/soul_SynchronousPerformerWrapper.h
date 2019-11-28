@@ -52,8 +52,8 @@ struct SynchronousPerformerWrapper
                 }
             }
 
-            if (isMIDIEventInput (*i))
-                midiEventQueues.push_back (std::make_unique<MidiEventQueueType> (i, properties));
+            if (isMIDIEventEndpoint (*i))
+                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (*i, properties));
         }
 
         for (auto& o : performer.getOutputEndpoints())
@@ -63,6 +63,9 @@ struct SynchronousPerformerWrapper
                 sinks.push_back (std::make_unique<OutputBufferSliceSink> (*o, totalNumOutputChannels, numChans, properties));
                 totalNumOutputChannels += numChans;
             }
+
+            if (isMIDIEventEndpoint (*o) && midiOutputQueue == nullptr)
+                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (*o, properties);
         }
     }
 
@@ -70,7 +73,8 @@ struct SynchronousPerformerWrapper
     {
         sources.clear();
         sinks.clear();
-        midiEventQueues.clear();
+        midiInputQueues.clear();
+        midiOutputQueue.reset();
         totalNumInputChannels = 0;
         totalNumOutputChannels = 0;
     }
@@ -78,13 +82,16 @@ struct SynchronousPerformerWrapper
     template <typename MIDIEventType>
     void render (DiscreteChannelSet<const float> input,
                  DiscreteChannelSet<float> output,
-                 const MIDIEventType* midiStart,
-                 const MIDIEventType* midiEnd)
+                 const MIDIEventType* midiInStart,
+                 const MIDIEventType* midiInEnd,
+                 MIDIEventType* midiOut,
+                 uint32_t midiOutCapacity,
+                 uint32_t& numMIDIOutMessages)
     {
         SOUL_ASSERT (input.numFrames == output.numFrames);
 
-        for (auto& queue : midiEventQueues)
-            for (auto midi = midiStart; midi != midiEnd; ++midi)
+        for (auto& queue : midiInputQueues)
+            for (auto midi = midiInStart; midi != midiInEnd; ++midi)
                 queue->enqueueEvent (getFrameIndex (*midi), (int) getPackedMIDIEvent (*midi));
 
         if (input.numChannels != 0)
@@ -95,6 +102,18 @@ struct SynchronousPerformerWrapper
             s->prepareBuffer (output);
 
         performer.advance (output.numFrames);
+
+        numMIDIOutMessages = 0;
+
+        if (midiOutputQueue != nullptr)
+            midiOutputQueue->readNextEvents (midiOutCapacity,
+                                            [midiOut, midiOutCapacity, &numMIDIOutMessages] (uint32_t frameOffset, int32_t packedData)
+                                            {
+                                                if (numMIDIOutMessages < midiOutCapacity)
+                                                    createMIDIMessage (midiOut[numMIDIOutMessages], frameOffset, (uint32_t) packedData);
+
+                                                ++numMIDIOutMessages;
+                                            });
     }
 
     uint32_t getExpectedNumInputChannels() const     { return totalNumInputChannels; }
@@ -246,8 +265,11 @@ private:
     std::vector<std::unique_ptr<InputBufferSliceSource>> sources;
     std::vector<std::unique_ptr<OutputBufferSliceSink>> sinks;
 
-    using MidiEventQueueType = EventQueue<int32_t>;
-    std::vector<std::unique_ptr<MidiEventQueueType>> midiEventQueues;
+    using MidiInEventQueueType = InputEventQueue<EventFIFO<int32_t, uint64_t>>;
+    using MidiOutEventQueueType = OutputEventQueue<EventFIFO<int32_t, uint64_t>>;
+
+    std::vector<std::unique_ptr<MidiInEventQueueType>> midiInputQueues;
+    std::unique_ptr<MidiOutEventQueueType> midiOutputQueue;
 
     uint32_t totalNumInputChannels = 0, totalNumOutputChannels = 0;
 };

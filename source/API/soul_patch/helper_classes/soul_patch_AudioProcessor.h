@@ -218,7 +218,8 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     {
         const juce::ScopedLock sl (configLock);
         currentConfig = { sampleRate, (uint32_t) maxBlockSize };
-        messageSpace.resize (1024);
+        messageSpaceIn.resize (1024);
+        messageSpaceOut.resize (1024);
         preprocessInputData = nullptr;
         postprocessOutputData = nullptr;
         numPatchInputChannels = 0;
@@ -280,14 +281,17 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             rc.outputChannels = outputBuffer.getArrayOfWritePointers();
             rc.numOutputChannels = (uint32_t) juce::jmin (numPatchOutputChannels, outputBuffer.getNumChannels());
             rc.numFrames = (uint32_t) numFrames;
-            rc.incomingMIDI = std::addressof (messageSpace[0]);
-            rc.numMIDIMessages = 0;
+            rc.incomingMIDI = std::addressof (messageSpaceIn[0]);
+            rc.numMIDIMessagesIn = 0;
+            rc.outgoingMIDI = std::addressof (messageSpaceOut[0]);
+            rc.maximumMIDIMessagesOut = (uint32_t) messageSpaceOut.size();
+            rc.numMIDIMessagesOut = 0;
 
             midiKeyboardState.processNextMidiBuffer (midi, 0, numFrames, true);
 
             if (! midi.isEmpty())
             {
-                auto maxEvents = messageSpace.size();
+                auto maxEvents = messageSpaceIn.size();
 
                 juce::MidiBuffer::Iterator iter (midi);
                 size_t i = 0;
@@ -302,7 +306,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
                     if (numBytesOfMidiData < 4)
                     {
-                        auto& m = messageSpace[i++];
+                        auto& m = messageSpaceIn[i++];
 
                         m.frameIndex = (uint32_t) samplePosition;
                         m.byte0 = (uint8_t) midiData[0];
@@ -311,12 +315,27 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                     }
                 }
 
-                rc.numMIDIMessages = (uint32_t) i;
+                rc.numMIDIMessagesIn = (uint32_t) i;
                 midi.clear();
             }
 
             auto result = player->render (rc);
             juce::ignoreUnused (result);
+
+            if (rc.numMIDIMessagesOut != 0)
+            {
+                // The numMIDIMessagesOut value could be greater than the buffer size we provided,
+                // which lets us know if there was an overflow, but we need to be careful not to
+                // copy beyond the end
+                auto numMessagesOut = std::min (rc.numMIDIMessagesOut, rc.maximumMIDIMessagesOut);
+
+                for (uint32_t i = 0; i < numMessagesOut; ++i)
+                {
+                    auto message = messageSpaceOut[i];
+                    uint8_t bytes[3] = { message.byte0, message.byte1, message.byte2 };
+                    midi.addEvent (bytes, 3, (int) message.frameIndex);
+                }
+            }
         }
 
         for (int i = 0; i < outputBuffer.getNumChannels(); ++i)
@@ -437,7 +456,7 @@ private:
     soul::patch::PatchPlayerConfiguration currentConfig;
 
     juce::AudioBuffer<float> outputBuffer;
-    std::vector<soul::patch::MIDIMessage> messageSpace;
+    std::vector<soul::patch::MIDIMessage> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
 

@@ -75,7 +75,7 @@ struct Optimisations
 
         for (auto& m : modules)
             if (m->isProcessor() && m->functions.empty())
-                program.removeModule (m);
+                program.removeModule (*m);
     }
 
     static void removeUnusedNamespaces (Program& program)
@@ -84,7 +84,7 @@ struct Optimisations
 
         for (auto& m : modules)
             if (m->isNamespace() && m->functions.empty() && m->structs.empty())
-                program.removeModule (m);
+                program.removeModule (*m);
     }
 
     static void removeUnusedStructs (Program& program)

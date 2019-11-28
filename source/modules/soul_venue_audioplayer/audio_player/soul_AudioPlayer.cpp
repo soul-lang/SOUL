@@ -490,7 +490,7 @@ public:
             uint32_t outputBufferOffset = 0;
         };
 
-        using MidiEventQueueType = EventQueue<int32_t>;
+        using MidiEventQueueType = InputEventQueue<EventFIFO<int32_t, std::atomic<uint64_t>>>;
 
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
