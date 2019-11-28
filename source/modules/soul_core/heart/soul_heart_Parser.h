@@ -544,11 +544,11 @@ private:
     void scanFunction (ScannedTopLevelItem& item, bool isEventFunction)
     {
         auto& fn = module->allocate<heart::Function>();
-        fn.isEventFunction = isEventFunction;
-        fn.name = parseIdentifier();
-
-        if (fn.name == heart::getRunFunctionName())
-            fn.isRunFunction = true;
+        
+        fn.isEventFunction    = isEventFunction;
+        fn.name               = parseIdentifier();
+        fn.isRunFunction      = (fn.name == heart::getRunFunctionName());
+        fn.isUserInitFunction = (fn.name == heart::getUserInitFunctionName());
 
         if (module->findFunction (fn.name) != nullptr)
             throwError (Errors::nameInUse (fn.name));
@@ -896,6 +896,9 @@ private:
 
     void parseReadStream (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
+        if (state.function.isUserInitFunction)
+            throwError (Errors::streamsCannotBeUsedDuringInit());
+
         if (! state.function.isRunFunction)
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
@@ -915,6 +918,9 @@ private:
         auto target = module->findOutput (name);
 
         heart::ExpressionPtr index;
+
+        if (state.function.isUserInitFunction)
+            throwError (Errors::streamsCannotBeUsedDuringInit());
 
         if (target == nullptr)
             throwError (Errors::cannotFindOutput (name));

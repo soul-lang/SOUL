@@ -689,7 +689,8 @@ struct heart
         VariablePtr stateParameter = nullptr;
 
         bool isRunFunction = false;
-        bool isInitFunction = false;
+        bool isSystemInitFunction = false;
+        bool isUserInitFunction = false;
         bool isEventFunction = false;
         bool isExported = false;
         bool hasNoBody = false;

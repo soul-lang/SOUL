@@ -426,7 +426,8 @@ struct ModuleCloner
         f.name = newModule.allocator.get (old.name);
         f.isRunFunction = old.isRunFunction;
         f.isEventFunction = old.isEventFunction;
-        f.isInitFunction = old.isInitFunction;
+        f.isSystemInitFunction = old.isSystemInitFunction;
+        f.isUserInitFunction = old.isUserInitFunction;
         f.intrinsic = old.intrinsic;
         f.isExported = old.isExported;
         f.hasNoBody = old.hasNoBody;

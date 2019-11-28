@@ -347,7 +347,7 @@ private:
         auto& af = module.allocate<heart::Function>();
 
         af.name = module.allocator.get (heart::getInitFunctionName());
-        af.isInitFunction = true;
+        af.isSystemInitFunction = true;
         af.returnType = soul::Type (soul::PrimitiveType::void_);
 
         module.functions.push_back (af);
