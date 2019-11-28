@@ -272,15 +272,16 @@ private:
 
             for (auto& f : processor->getFunctions())
             {
-                if (f->isRunFunction())
+                if (f->isRunFunction() || f->isUserInitFunction())
                 {
                     if (! f->returnType->resolveAsType().isVoid())
-                        f->context.throwError (Errors::runFunctionMustBeVoid());
+                        f->context.throwError (Errors::functionMustBeVoid (f->name.toString()));
 
                     if (! f->parameters.empty())
-                        f->context.throwError (Errors::runFunctionHasParams());
+                        f->context.throwError (Errors::functionHasParams (f->name.toString()));
 
-                    ++numRunFunctions;
+                    if (f->isRunFunction())
+                        ++numRunFunctions;
                 }
             }
 

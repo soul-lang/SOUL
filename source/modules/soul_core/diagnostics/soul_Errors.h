@@ -130,11 +130,11 @@ namespace soul
     X(duplicateFunction,                    "A function with matching parameters has already been defined") \
     X(duplicateProcessor,                   "A processor with the name $Q0$ has already been declared") \
     X(processorNeedsAnOutput,               "A processor must declare at least one output") \
-    X(runFunctionMustBeVoid,                "The run() function must return 'void'") \
-    X(runFunctionHasParams,                 "The run() function must not have any parameters") \
+    X(functionMustBeVoid,                   "The $0$() function must return 'void'") \
+    X(functionHasParams,                    "The $0$() function must not have any parameters") \
     X(processorNeedsRunFunction,            "A processor must contain a run() function") \
     X(multipleRunFunctions,                 "A processor cannot contain more than one run() function") \
-    X(cannotCallRunFunction,                "The run() function cannot be called from user code") \
+    X(cannotCallFunction,                   "The $0$() function cannot be called from user code") \
     X(runFunctionMustCallAdvance,           "The run() function must call advance()") \
     X(advanceIsNotAMethod,                  "The advance() function cannot be used as a method call") \
     X(advanceHasNoArgs,                     "The advance() function does not take any arguments") \

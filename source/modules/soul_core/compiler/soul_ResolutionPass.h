@@ -1418,8 +1418,8 @@ private:
 
         AST::ExpPtr resolveFunction (const PossibleFunction& f, AST::CallOrCast& call, bool ignoreErrorsInGenerics)
         {
-            if (f.function.isRunFunction())
-                call.context.throwError (Errors::cannotCallRunFunction());
+            if (f.function.isRunFunction() || f.function.isUserInitFunction())
+                call.context.throwError (Errors::cannotCallFunction (f.function.name.toString()));
 
             if (f.function.isGeneric())
                 return createCallToGenericFunction (call, f.function, ignoreErrorsInGenerics);
