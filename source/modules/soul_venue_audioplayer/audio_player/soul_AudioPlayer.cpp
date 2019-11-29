@@ -51,6 +51,10 @@ public:
     ~AudioPlayerVenue() override
     {
         SOUL_ASSERT (activeSessions.empty());
+        performerFactory.reset();
+        audioDevice.reset();
+        midiInputs.clear();
+        midiCollector.reset();
     }
 
     std::unique_ptr<Venue::Session> createSession() override
