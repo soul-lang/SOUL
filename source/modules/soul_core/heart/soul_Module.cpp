@@ -63,14 +63,20 @@ std::vector<heart::FunctionPtr> Module::getExportedFunctions() const
     return result;
 }
 
-heart::FunctionPtr Module::getRunFunction() const
+heart::FunctionPtr Module::findRunFunction() const
 {
     for (auto& f : functions)
         if (f->isRunFunction)
             return f;
 
-    SOUL_ASSERT_FALSE;
     return {};
+}
+
+heart::Function& Module::getRunFunction() const
+{
+    auto f = findRunFunction();
+    SOUL_ASSERT (f != nullptr);
+    return *f;
 }
 
 heart::InputDeclarationPtr Module::findInput (const std::string& name) const

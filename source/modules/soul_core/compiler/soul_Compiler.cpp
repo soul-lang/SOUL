@@ -639,7 +639,7 @@ void Compiler::sanityCheckRunFunctions (Program& program)
 {
     for (auto& m : program.getModules())
         if (m->isProcessor())
-            if (auto runFn = m->getRunFunction())
+            if (auto runFn = m->findRunFunction())
                 if (! CallFlowGraph::doesFunctionCallAdvance (*runFn))
                     throwErrorForFunction (runFn, Errors::runFunctionMustCallAdvance());
 }

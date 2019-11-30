@@ -60,7 +60,8 @@ public:
 
     //==============================================================================
     std::vector<heart::FunctionPtr> getExportedFunctions() const;
-    heart::FunctionPtr getRunFunction() const;
+    heart::FunctionPtr findRunFunction() const;
+    heart::Function& getRunFunction() const;
     heart::Function& getFunction (const std::string& name) const;
     heart::FunctionPtr findFunction (const std::string& name) const;
     heart::VariablePtr findStateVariable (const std::string& name) const;

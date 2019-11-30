@@ -287,7 +287,16 @@ private:
             }
 
             if (numRunFunctions == 0)
-                processor->context.throwError (Errors::processorNeedsRunFunction());
+            {
+                // If the processor has non-event I/O then we need a run processor
+                for (auto i : processorOrGraph->inputs)
+                    if (! isEvent (i->kind))
+                        processor->context.throwError (Errors::processorNeedsRunFunction());
+
+                for (auto o : processorOrGraph->outputs)
+                    if (! isEvent (o->kind))
+                        processor->context.throwError (Errors::processorNeedsRunFunction());
+            }
 
             if (numRunFunctions > 1)
                 processor->context.throwError (Errors::multipleRunFunctions());
