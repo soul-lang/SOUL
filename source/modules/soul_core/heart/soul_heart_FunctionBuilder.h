@@ -425,13 +425,22 @@ struct FunctionBuilder  : public BlockBuilder
         return createFunction (m, name, std::move (returnType), std::move (buildFunction));
     }
 
-    static heart::Function& createFunction (Module& m, const std::string& name, Type returnType,
-                                            std::function<void(FunctionBuilder&)> buildFunction)
+    static heart::Function& createEmptyFunction (Module& m, const std::string& name, Type returnType)
     {
         auto& fn = m.allocate<heart::Function>();
         fn.name = m.allocator.get (name);
         fn.returnType = std::move (returnType);
+        fn.hasNoBody = true;
         m.functions.push_back (fn);
+
+        return fn;
+    }
+
+    static void populateFunctionBody (Module& m, heart::Function& fn, std::function<void(FunctionBuilder&)> buildFunction)
+    {
+        SOUL_ASSERT (fn.hasNoBody);
+
+        fn.hasNoBody = false;
 
         FunctionBuilder builder (m);
         builder.beginFunction (fn);
@@ -443,6 +452,13 @@ struct FunctionBuilder  : public BlockBuilder
             bool terminationOK = builder.checkFunctionBlocksForTermination();
             SOUL_ASSERT (terminationOK); ignoreUnused (terminationOK);
         }
+    }
+
+    static heart::Function& createFunction (Module& m, const std::string& name, Type returnType,
+                                            std::function<void(FunctionBuilder&)> buildFunction)
+    {
+        auto& fn = createEmptyFunction (m, name, returnType);
+        populateFunctionBody (m, fn, buildFunction);
 
         return fn;
     }
@@ -507,6 +523,14 @@ struct FunctionBuilder  : public BlockBuilder
                                                     heart::Variable::Role::parameter);
         addParameter (v);
         return v;
+    }
+
+    heart::Variable& addStateParameter (const std::string& name, const Type& type)
+    {
+        auto& param = addParameter (name, type);
+        currentFunction->stateParameter = param;
+
+        return param;
     }
 
     heart::Block& createBlock (Identifier name)
