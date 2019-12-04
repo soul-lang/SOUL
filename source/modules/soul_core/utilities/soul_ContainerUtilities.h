@@ -337,6 +337,11 @@ struct LinkedList
                 removeNext (*i);
     }
 
+    void remove (Type& item)
+    {
+        removeMatches ([&] (Type& i) { return std::addressof (i) == std::addressof (item); });
+    }
+
     template <typename Predicate>
     void replaceMatches (Predicate&& getReplacement)
     {

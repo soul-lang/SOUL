@@ -143,6 +143,35 @@ struct Optimisations
         removeUnconnectedOutputs (module, epp);
     }
 
+    static bool canFunctionBeInlined (Program& program,
+                                      heart::Function& parentFunction,
+                                      heart::FunctionCall& call)
+    {
+        auto& targetFunction = call.getFunction();
+
+        if (targetFunction.isRunFunction || targetFunction.isSystemInitFunction
+             || targetFunction.isUserInitFunction || targetFunction.isEventFunction
+             || targetFunction.hasNoBody)
+            return false;
+
+        auto destModule   = program.findModuleContainingFunction (parentFunction);
+        auto sourceModule = program.findModuleContainingFunction (targetFunction);
+        SOUL_ASSERT (destModule != nullptr && sourceModule != nullptr);
+
+        // NB: cross-processor inlining is not allowed, to avoid confusion over endpoints, advances, etc
+        return destModule == sourceModule || sourceModule->isNamespace();
+    }
+
+    static void makeFunctionCallInline (Program& program, heart::Function& parentFunction,
+                                        size_t blockIndex, heart::FunctionCall& call)
+    {
+        SOUL_ASSERT (canFunctionBeInlined (program, parentFunction, call));
+        SOUL_ASSERT (contains (parentFunction.blocks[blockIndex]->statements, std::addressof (call)));
+
+        Inliner (*program.findModuleContainingFunction (call.getFunction()),
+                 parentFunction, blockIndex, call, call.getFunction()).perform();
+    }
+
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {
@@ -437,6 +466,261 @@ private:
             }
         }
     }
+
+    //==============================================================================
+    struct Inliner
+    {
+        Inliner (Module& m, heart::Function& parentFn, size_t block,
+                 heart::FunctionCall& fc, heart::Function& targetFn)
+            : module (m), parentFunction (parentFn), call (fc), blockIndex (block), targetFunction (targetFn)
+        {
+            inlinedFnName = addSuffixToMakeUnique ("_inlined_" + targetFunction.name.toString(),
+                                                   [&] (const std::string& nm)
+                                                   {
+                                                       return BlockHelpers::findBlock (parentFn, "@" + nm) != nullptr;
+                                                   });
+        }
+
+        void perform()
+        {
+            auto& postBlock = BlockHelpers::splitBlock (module, parentFunction, blockIndex, call, "@" + inlinedFnName + "_end");
+            postCallResumeBlock = postBlock;
+            auto& preBlock = *parentFunction.blocks[blockIndex];
+
+            preBlock.statements.remove (call);
+
+            if (! targetFunction.returnType.isVoid())
+            {
+                returnValueVar = module.allocate<heart::Variable> (CodeLocation(), targetFunction.returnType,
+                                                                   module.allocator.get (inlinedFnName + "_retval"),
+                                                                   heart::Variable::Role::mutableLocal);
+
+                postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.target, *returnValueVar));
+            }
+
+            {
+                BlockBuilder builder (module, preBlock);
+
+                for (size_t i = 0; i < targetFunction.parameters.size(); ++i)
+                {
+                    auto& param = *targetFunction.parameters[i];
+                    auto& localParamVar = builder.createMutableLocalVariable (param.type, inlinedFnName + "_param_" + param.name.toString());
+                    builder.addAssignment (localParamVar, *call.arguments[i]);
+                    remappedVariables[param] = localParamVar;
+                }
+            }
+
+            newBlocks.reserve (targetFunction.blocks.size());
+
+            for (auto& b : targetFunction.blocks)
+            {
+                // NB: the name of the first block must be "@" + inlinedFnName, since that's what the unique
+                // name picker will look for to make sure there's not a block name clash
+                auto name = "@" + inlinedFnName + (newBlocks.empty() ? std::string() : ("_" + std::to_string (newBlocks.size())));
+                auto& newBlock = module.allocate<heart::Block> (module.allocator.get (name));
+                newBlocks.push_back (newBlock);
+                remappedBlocks[b] = newBlock;
+            }
+
+            parentFunction.blocks.insert (parentFunction.blocks.begin() + (ssize_t) (blockIndex + 1),
+                                          newBlocks.begin(), newBlocks.end());
+
+            preBlock.terminator = module.allocate<heart::Branch> (newBlocks.front());
+
+            for (size_t i = 0; i < newBlocks.size(); ++i)
+                cloneBlock (*newBlocks[i], *targetFunction.blocks[i]);
+        }
+
+        void cloneBlock (heart::Block& target, const heart::Block& source)
+        {
+            LinkedList<heart::Statement>::Iterator last;
+
+            for (auto s : source.statements)
+                last = target.statements.insertAfter (last, cloneStatement (*s));
+
+            if (auto returnValue = cast<heart::ReturnValue> (source.terminator))
+                target.statements.insertAfter (last, module.allocate<heart::AssignFromValue> (*returnValueVar,
+                                                                                              getRemappedExpressionRef (*returnValue->returnValue)));
+
+            target.terminator = cloneTerminator (*source.terminator);
+        }
+
+        heart::Statement& cloneStatement (heart::Statement& s)
+        {
+            #define SOUL_CLONE_STATEMENT(Type)     if (auto t = cast<const heart::Type> (s)) return clone (*t);
+            SOUL_HEART_STATEMENTS (SOUL_CLONE_STATEMENT)
+            #undef SOUL_CLONE_STATEMENT
+            SOUL_ASSERT_FALSE;
+            return s;
+        }
+
+        heart::Terminator& cloneTerminator (heart::Terminator& s)
+        {
+            #define SOUL_CLONE_TERMINATOR(Type)    if (auto t = cast<const heart::Type> (s)) return clone (*t);
+            SOUL_HEART_TERMINATORS (SOUL_CLONE_TERMINATOR)
+            #undef SOUL_CLONE_TERMINATOR
+            SOUL_ASSERT_FALSE;
+            return s;
+        }
+
+        heart::Branch& clone (const heart::Branch& old)
+        {
+            return module.allocate<heart::Branch> (*remappedBlocks[*old.target]);
+        }
+
+        heart::BranchIf& clone (const heart::BranchIf& old)
+        {
+            return module.allocate<heart::BranchIf> (getRemappedExpressionRef (*old.condition),
+                                                     *remappedBlocks[old.targets[0]],
+                                                     *remappedBlocks[old.targets[1]]);
+        }
+
+        heart::Terminator& clone (const heart::ReturnVoid&)    { return module.allocate<heart::Branch> (*postCallResumeBlock); }
+        heart::Terminator& clone (const heart::ReturnValue&)   { return module.allocate<heart::Branch> (*postCallResumeBlock); }
+
+        heart::AssignFromValue& clone (const heart::AssignFromValue& old)
+        {
+            return module.allocate<heart::AssignFromValue> (getRemappedExpressionRef (*old.target),
+                                                            getRemappedExpressionRef (*old.source));
+        }
+
+        heart::FunctionCall& clone (const heart::FunctionCall& old)
+        {
+            auto& fc = module.allocate<heart::FunctionCall> (getRemappedExpression (old.target), old.getFunction());
+
+            for (auto& arg : old.arguments)
+                fc.arguments.push_back (getRemappedExpression (arg));
+
+            return fc;
+        }
+
+        heart::PureFunctionCall& clone (const heart::PureFunctionCall& old)
+        {
+            auto& fc = module.allocate<heart::PureFunctionCall> (old.location, old.function);
+
+            for (auto& arg : old.arguments)
+                fc.arguments.push_back (getRemappedExpression (arg));
+
+            return fc;
+        }
+
+        heart::PlaceholderFunctionCall& clone (const heart::PlaceholderFunctionCall& old)
+        {
+            auto& fc = module.allocate<heart::PlaceholderFunctionCall> (old.location, old.name, old.returnType);
+
+            for (auto& arg : old.arguments)
+                fc.arguments.push_back (getRemappedExpression (arg));
+
+            return fc;
+        }
+
+        heart::ReadStream& clone (const heart::ReadStream& old)
+        {
+            return module.allocate<heart::ReadStream> (getRemappedExpressionRef (*old.target), *old.source);
+        }
+
+        heart::WriteStream& clone (const heart::WriteStream& old)
+        {
+            return module.allocate<heart::WriteStream> (*old.target,
+                                                        getRemappedExpression (old.element),
+                                                        getRemappedExpressionRef (*old.value));
+        }
+
+        heart::AdvanceClock& clone (const heart::AdvanceClock&)
+        {
+            return module.allocate<heart::AdvanceClock>();
+        }
+
+        heart::Expression& getRemappedExpressionRef (heart::Expression& old)
+        {
+            return *getRemappedExpression (old);
+        }
+
+        heart::ExpressionPtr getRemappedExpression (heart::ExpressionPtr old)
+        {
+            if (old == nullptr)
+                return {};
+
+            if (auto c = cast<heart::Constant> (old))
+                return module.allocate<heart::Constant> (c->location, c->value);
+
+            if (auto pp = cast<heart::ProcessorProperty> (old))
+                return module.allocate<heart::ProcessorProperty> (pp->location, pp->property);
+
+            if (auto b = cast<heart::BinaryOperator> (old))
+                return module.allocate<heart::BinaryOperator> (b->location,
+                                                               getRemappedExpressionRef (*b->lhs),
+                                                               getRemappedExpressionRef (*b->rhs),
+                                                               b->operation,
+                                                               b->destType);
+
+            if (auto u = cast<heart::UnaryOperator> (old))
+                return module.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (*u->source), u->operation);
+
+            if (auto t = cast<heart::TypeCast> (old))
+                return module.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (*t->source), t->destType);
+
+            if (auto f = cast<heart::PureFunctionCall> (old))
+                return clone (*f);
+
+            if (auto f = cast<heart::PlaceholderFunctionCall> (old))
+                return clone (*f);
+
+            if (auto v = cast<heart::Variable> (old))
+                return getRemappedVariable (*v);
+
+            if (auto s = cast<heart::SubElement> (old))
+                return cloneSubElement (*s);
+
+            SOUL_ASSERT_FALSE;
+            return {};
+        }
+
+        heart::Variable& getRemappedVariable (heart::Variable& old)
+        {
+            if (old.isFunctionLocal() || old.isParameter())
+            {
+                auto& v = remappedVariables[old];
+
+                if (v == nullptr)
+                {
+                    v = module.allocate<heart::Variable> (old.location, old.type,
+                                                          old.name.isValid() ? module.allocator.get (inlinedFnName + "_" + old.name.toString()) : Identifier(),
+                                                          old.role);
+                    v->annotation = old.annotation;
+                }
+
+                return *v;
+            }
+
+            return old;
+        }
+
+        heart::SubElement& cloneSubElement (const heart::SubElement& old)
+        {
+            auto& s = module.allocate<heart::SubElement> (old.location,
+                                                          getRemappedExpressionRef (*old.parent),
+                                                          old.fixedStartIndex,
+                                                          old.fixedEndIndex);
+
+            s.dynamicIndex = getRemappedExpression (old.dynamicIndex);
+            s.suppressWrapWarning = old.suppressWrapWarning;
+            s.isRangeTrusted = old.isRangeTrusted;
+            return s;
+        }
+
+        Module& module;
+        heart::Function& parentFunction;
+        heart::FunctionCall& call;
+        size_t blockIndex;
+        heart::Function& targetFunction;
+        std::string inlinedFnName;
+        std::vector<heart::BlockPtr> newBlocks;
+        std::unordered_map<heart::BlockPtr, heart::BlockPtr> remappedBlocks;
+        std::unordered_map<heart::VariablePtr, heart::VariablePtr> remappedVariables;
+        heart::BlockPtr postCallResumeBlock;
+        heart::VariablePtr returnValueVar;
+    };
 };
 
 } // namespace soul

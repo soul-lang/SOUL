@@ -27,7 +27,7 @@ namespace soul
 */
 namespace BlockHelpers
 {
-    static inline heart::BlockPtr insertBlock (Module& module, heart::Function& f, size_t blockIndex, const std::string& name)
+    static inline heart::Block& insertBlock (Module& module, heart::Function& f, size_t blockIndex, const std::string& name)
     {
         SOUL_ASSERT (blockIndex <= f.blocks.size());
         auto& newBlock = module.allocate<heart::Block> (module.allocator.get (name));
@@ -35,29 +35,29 @@ namespace BlockHelpers
         return newBlock;
     }
 
-    static inline heart::BlockPtr splitBlock (Module& module, heart::Function& f, size_t blockIndex,
-                                              LinkedList<heart::Statement>::Iterator lastStatementOfFirstBlock,
-                                              const std::string& newSecondBlockName)
+    static inline heart::Block& splitBlock (Module& module, heart::Function& f, size_t blockIndex,
+                                            LinkedList<heart::Statement>::Iterator lastStatementOfFirstBlock,
+                                            const std::string& newSecondBlockName)
     {
-        auto oldBlock = f.blocks[blockIndex];
-        auto newBlock = insertBlock (module, f, blockIndex + 1, newSecondBlockName);
+        auto& oldBlock = *f.blocks[blockIndex];
+        auto& newBlock = insertBlock (module, f, blockIndex + 1, newSecondBlockName);
 
         if (lastStatementOfFirstBlock != nullptr)
         {
             if (auto next = lastStatementOfFirstBlock.next())
             {
-                newBlock->statements.append (*next);
+                newBlock.statements.append (*next);
                 lastStatementOfFirstBlock.removeAllSuccessors();
             }
         }
         else
         {
-            newBlock->statements = oldBlock->statements;
-            oldBlock->statements.clear();
+            newBlock.statements = oldBlock.statements;
+            oldBlock.statements.clear();
         }
 
-        newBlock->terminator = oldBlock->terminator;
-        oldBlock->terminator = module.allocate<heart::Branch> (newBlock);
+        newBlock.terminator = oldBlock.terminator;
+        oldBlock.terminator = module.allocate<heart::Branch> (newBlock);
 
         return newBlock;
     }
@@ -108,11 +108,11 @@ namespace BlockHelpers
 */
 struct BlockBuilder
 {
-    BlockBuilder (Module& m, heart::BlockPtr block)
-        : module (m), currentBlock (block)
+    BlockBuilder (Module& m) : module (m) {}
+
+    BlockBuilder (Module& m, heart::Block& block) : module (m), currentBlock (block)
     {
-        if (currentBlock != nullptr)
-            lastStatementInCurrentBlock = currentBlock->statements.getLast();
+        lastStatementInCurrentBlock = block.statements.getLast();
     }
 
     virtual ~BlockBuilder() {}
@@ -408,7 +408,7 @@ struct BlockBuilder
 */
 struct FunctionBuilder  : public BlockBuilder
 {
-    FunctionBuilder (Module& m) : BlockBuilder (m, {}) {}
+    FunctionBuilder (Module& m) : BlockBuilder (m) {}
 
     ~FunctionBuilder() override
     {

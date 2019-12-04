@@ -79,6 +79,9 @@ public:
     /** Looks for a given module by name. */
     pool_ptr<Module> getModuleWithName (const std::string& name) const;
 
+    /** Looks for a given module by name. */
+    pool_ptr<Module> findModuleContainingFunction (const heart::Function&) const;
+
     /** Returns the namespace with this name, or creates one if it's not there. */
     Module& getOrCreateNamespace (const std::string& name);
 
