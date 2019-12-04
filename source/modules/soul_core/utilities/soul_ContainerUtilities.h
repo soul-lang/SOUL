@@ -174,7 +174,7 @@ struct LinkedList
     LinkedList (const LinkedList&) = default;
     LinkedList& operator= (const LinkedList&) = default;
 
-    struct Iterator
+    struct Iterator : public std::iterator<std::forward_iterator_tag, Type>
     {
         Iterator() = default;
         Iterator (decltype (nullptr)) {}
