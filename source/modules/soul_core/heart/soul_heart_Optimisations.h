@@ -495,7 +495,7 @@ private:
                                                                    module.allocator.get (inlinedFnName + "_retval"),
                                                                    heart::Variable::Role::mutableLocal);
 
-                postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.target, *returnValueVar));
+                postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.location, call.target, *returnValueVar));
             }
 
             {
@@ -539,7 +539,7 @@ private:
                 last = target.statements.insertAfter (last, cloneStatement (*s));
 
             if (auto returnValue = cast<heart::ReturnValue> (source.terminator))
-                target.statements.insertAfter (last, module.allocate<heart::AssignFromValue> (*returnValueVar,
+                target.statements.insertAfter (last, module.allocate<heart::AssignFromValue> (source.location, *returnValueVar,
                                                                                               getRemappedExpressionRef (*returnValue->returnValue)));
 
             target.terminator = cloneTerminator (*source.terminator);
@@ -580,13 +580,14 @@ private:
 
         heart::AssignFromValue& clone (const heart::AssignFromValue& old)
         {
-            return module.allocate<heart::AssignFromValue> (getRemappedExpressionRef (*old.target),
+            return module.allocate<heart::AssignFromValue> (old.location,
+                                                            getRemappedExpressionRef (*old.target),
                                                             getRemappedExpressionRef (*old.source));
         }
 
         heart::FunctionCall& clone (const heart::FunctionCall& old)
         {
-            auto& fc = module.allocate<heart::FunctionCall> (getRemappedExpression (old.target), old.getFunction());
+            auto& fc = module.allocate<heart::FunctionCall> (old.location, getRemappedExpression (old.target), old.getFunction());
 
             for (auto& arg : old.arguments)
                 fc.arguments.push_back (getRemappedExpression (arg));
@@ -616,19 +617,19 @@ private:
 
         heart::ReadStream& clone (const heart::ReadStream& old)
         {
-            return module.allocate<heart::ReadStream> (getRemappedExpressionRef (*old.target), *old.source);
+            return module.allocate<heart::ReadStream> (old.location, getRemappedExpressionRef (*old.target), *old.source);
         }
 
         heart::WriteStream& clone (const heart::WriteStream& old)
         {
-            return module.allocate<heart::WriteStream> (*old.target,
+            return module.allocate<heart::WriteStream> (old.location, *old.target,
                                                         getRemappedExpression (old.element),
                                                         getRemappedExpressionRef (*old.value));
         }
 
-        heart::AdvanceClock& clone (const heart::AdvanceClock&)
+        heart::AdvanceClock& clone (const heart::AdvanceClock& a)
         {
-            return module.allocate<heart::AdvanceClock>();
+            return module.allocate<heart::AdvanceClock> (a.location);
         }
 
         heart::Expression& getRemappedExpressionRef (heart::Expression& old)

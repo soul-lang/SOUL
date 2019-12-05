@@ -357,13 +357,15 @@ struct ModuleCloner
 
     heart::AssignFromValue& clone (const heart::AssignFromValue& old)
     {
-        return newModule.allocate<heart::AssignFromValue> (getRemappedExpressionRef (*old.target),
+        return newModule.allocate<heart::AssignFromValue> (old.location,
+                                                           getRemappedExpressionRef (*old.target),
                                                            getRemappedExpressionRef (*old.source));
     }
 
     heart::FunctionCall& clone (const heart::FunctionCall& old)
     {
-        auto& fc = newModule.allocate<heart::FunctionCall> (getRemappedExpression (old.target),
+        auto& fc = newModule.allocate<heart::FunctionCall> (old.location,
+                                                            getRemappedExpression (old.target),
                                                             getRemappedFunction (old.getFunction()));
 
         for (auto& arg : old.arguments)
@@ -374,7 +376,8 @@ struct ModuleCloner
 
     heart::PureFunctionCall& clone (const heart::PureFunctionCall& old)
     {
-        auto& fc = newModule.allocate<heart::PureFunctionCall> (old.location, getRemappedFunction (old.function));
+        auto& fc = newModule.allocate<heart::PureFunctionCall> (old.location,
+                                                                getRemappedFunction (old.function));
 
         for (auto& arg : old.arguments)
             fc.arguments.push_back (getRemappedExpression (arg));
@@ -394,20 +397,22 @@ struct ModuleCloner
 
     heart::ReadStream& clone (const heart::ReadStream& old)
     {
-        return newModule.allocate<heart::ReadStream> (getRemappedExpressionRef (*old.target),
+        return newModule.allocate<heart::ReadStream> (old.location,
+                                                      getRemappedExpressionRef (*old.target),
                                                       getRemappedInput (*old.source));
     }
 
     heart::WriteStream& clone (const heart::WriteStream& old)
     {
-        return newModule.allocate<heart::WriteStream> (getRemappedOutput (*old.target),
+        return newModule.allocate<heart::WriteStream> (old.location,
+                                                       getRemappedOutput (*old.target),
                                                        getRemappedExpression (old.element),
                                                        getRemappedExpressionRef (*old.value));
     }
 
-    heart::AdvanceClock& clone (const heart::AdvanceClock&)
+    heart::AdvanceClock& clone (const heart::AdvanceClock& a)
     {
-        return newModule.allocate<heart::AdvanceClock>();
+        return newModule.allocate<heart::AdvanceClock> (a.location);
     }
 
     heart::Function& createNewFunctionObject (const heart::Function& old)

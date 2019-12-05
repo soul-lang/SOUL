@@ -274,17 +274,6 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
     return {};
 }
 
-static void testHEARTRoundTrip (const Program& program)
-{
-    ignoreUnused (program);
-
-   #if SOUL_ENABLE_ASSERTIONS && (SOUL_TEST_HEART_ROUNDTRIP || (SOUL_DEBUG && ! defined (SOUL_TEST_HEART_ROUNDTRIP)))
-    auto dump = program.toHEART();
-    SOUL_ASSERT (dump == program.clone().toHEART());
-    SOUL_ASSERT (dump == heart::Parser::parse (CodeLocation::createFromString ("internal test dump", dump)).toHEART());
-   #endif
-}
-
 Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions,
                         pool_ptr<AST::ProcessorBase> processorToRun)
 {
@@ -303,13 +292,13 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
         Program program;
         program.getStringDictionary() = allocator.stringDictionary;  // Bring the existing string dictionary along so that the handles match
         compileAllModules (*topLevelNamespace, program, processorToRun);
-        sanityCheck (program);
+        heart::Checker::sanityCheck (program);
         reset();
 
         SOUL_LOG (program.getMainProcessorOrThrowError().getNameWithoutRootNamespace() + ": linked HEART",
                   [&] { return program.toHEART(); });
 
-        testHEARTRoundTrip (program);
+        heart::Checker::testHEARTRoundTrip (program);
         optimise (program);
         return program;
     }
@@ -597,138 +586,10 @@ void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program
         c.resolve();
 }
 
-void Compiler::sanityCheck (Program& program)
-{
-    program.getMainProcessorOrThrowError();
-    sanityCheckInputsAndOutputs (program);
-    sanityCheckRunFunctions (program);
-    checkForRecursiveFunctions (program);
-    checkForInfiniteLoops (program);
-}
-
 void Compiler::optimise (Program& program)
 {
     Optimisations::optimiseFunctionBlocks (program);
     Optimisations::removeUnusedVariables (program);
-}
-
-void Compiler::sanityCheckInputsAndOutputs (Program& program)
-{
-    auto& mainProcessor = program.getMainProcessorOrThrowError();
-
-    for (auto& input : mainProcessor.inputs)
-    {
-        if (input->arraySize != 1)
-            input->location.throwError (Errors::notYetImplemented ("top-level arrays of inputs"));
-
-        if (input->sampleTypes.size() != 1)
-            input->location.throwError (Errors::onlyOneTypeInTopLevelInputs());
-    }
-
-    for (auto& output : mainProcessor.outputs)
-    {
-        if (output->arraySize != 1)
-            output->location.throwError (Errors::notYetImplemented ("top-level arrays of outputs"));
-
-        if (output->sampleTypes.size() != 1)
-            output->location.throwError (Errors::onlyOneTypeInTopLevelOutputs());
-    }
-}
-
-void Compiler::sanityCheckRunFunctions (Program& program)
-{
-    for (auto& m : program.getModules())
-        if (m->isProcessor())
-            if (auto runFn = m->findRunFunction())
-                if (! CallFlowGraph::doesFunctionCallAdvance (*runFn))
-                    throwErrorForFunction (runFn, Errors::runFunctionMustCallAdvance());
-}
-
-void Compiler::checkForInfiniteLoops (Program& program)
-{
-    for (auto& m : program.getModules())
-        for (auto& f : m->functions)
-            if (CallFlowGraph::doesFunctionContainInfiniteLoops (*f))
-                throwErrorForFunction (f, Errors::functionContainsAnInfiniteLoop (getFunctionName (*f)));
-}
-
-void Compiler::throwErrorForFunction (heart::FunctionPtr f, const CompileMessage& error)
-{
-    if (auto originalFn = findASTFunction (f))
-        originalFn->context.throwError (error);
-    else
-        f->location.throwError (error);
-}
-
-std::string Compiler::getFunctionName (heart::Function& f)
-{
-    if (auto af = findASTFunction (f))
-        return af->name;
-
-    return f.name;
-}
-
-AST::FunctionPtr Compiler::findASTFunction (heart::FunctionPtr f)
-{
-    struct FunctionFinder  : public ASTVisitor
-    {
-        void visit (AST::Function& fn) override
-        {
-            if (targetFn == fn.generatedFunction)
-                result = fn;
-        }
-
-        heart::FunctionPtr targetFn;
-        AST::FunctionPtr result;
-    };
-
-    FunctionFinder finder;
-    finder.targetFn = f;
-    finder.visitObject (*topLevelNamespace);
-    return finder.result;
-}
-
-static std::string sanitiseFunctionName (const std::string& name)
-{
-    if (startsWith (name, "_"))
-    {
-        auto i = name.find ("_specialised_");
-
-        if (i != std::string::npos && i > 0)
-            return quoteName (name.substr (1, i - 1));
-    }
-
-    return quoteName (name);
-}
-
-void Compiler::checkForRecursiveFunctions (Program& program)
-{
-    auto recursiveCallSequence = CallFlowGraph::findRecursiveFunctionCallSequences (program);
-
-    if (! recursiveCallSequence.empty())
-    {
-        std::vector<std::string> functionNames;
-        AST::FunctionPtr astFunction;
-
-        for (auto& fn : recursiveCallSequence)
-        {
-            functionNames.push_back (sanitiseFunctionName (fn->name));
-
-            if (astFunction == nullptr)
-                astFunction = findASTFunction (fn);
-        }
-
-        auto location = astFunction != nullptr ? astFunction->context : AST::Context();
-
-        if (functionNames.size() == 1)
-            location.throwError (Errors::functionCallsItselfRecursively (functionNames.front()));
-
-        if (functionNames.size() == 2)
-            location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
-
-        if (functionNames.size() > 2)
-            location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
-    }
 }
 
 } // namespace soul

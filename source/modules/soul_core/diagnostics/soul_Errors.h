@@ -138,7 +138,7 @@ namespace soul
     X(runFunctionMustCallAdvance,           "The run() function must call advance()") \
     X(advanceIsNotAMethod,                  "The advance() function cannot be used as a method call") \
     X(advanceHasNoArgs,                     "The advance() function does not take any arguments") \
-    X(advanceMustBeCalledInRun,             "The advance() function can only be called inside the run() function") \
+    X(advanceCannotBeCalledHere,            "The advance() function cannot be called inside this function") \
     X(streamsCanOnlyBeUsedInRun,            "Streams can only be read or written inside the run() function") \
     X(streamsCannotBeUsedDuringInit,        "Streams are not available during init()") \
     X(noSuchInputEvent,                     "The event $Q0$ does not match an event input") \

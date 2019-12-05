@@ -76,6 +76,7 @@ struct heart
 
     struct Parser;
     struct Printer;
+    struct Checker;
 
     static constexpr const char* getRunFunctionName()       { return "run"; }
     static constexpr const char* getInitFunctionName()      { return "_soul_init"; }
@@ -841,6 +842,8 @@ struct heart
 
     struct Statement  : public Object
     {
+        Statement (CodeLocation l) : Object (std::move (l)) {}
+
         virtual bool readsVariable (VariablePtr) const          { return false; }
         virtual bool writesVariable (VariablePtr) const         { return false; }
         virtual void visitExpressions (ExpressionVisitorFn)     {}
@@ -913,7 +916,7 @@ struct heart
     //==============================================================================
     struct Assignment  : public Statement
     {
-        Assignment (ExpressionPtr dest) : target (dest)     {}
+        Assignment (CodeLocation l, ExpressionPtr dest)  : Statement (std::move (l)), target (dest)     {}
 
         bool readsVariable (VariablePtr v) const override   { return target != nullptr && target->readsVariable (v); }
         bool writesVariable (VariablePtr v) const override  { return target != nullptr && target->writesVariable (v); }
@@ -937,8 +940,8 @@ struct heart
 
     struct AssignFromValue  : public Assignment
     {
-        AssignFromValue (ExpressionPtr dest, Expression& src)
-            : Assignment (dest), source (src) {}
+        AssignFromValue (CodeLocation l, ExpressionPtr dest, Expression& src)
+            : Assignment (std::move (l), dest), source (src) {}
 
         bool readsVariable (VariablePtr v) const override
         {
@@ -957,7 +960,7 @@ struct heart
 
     struct FunctionCall  : public Assignment
     {
-        FunctionCall (ExpressionPtr dest, FunctionPtr f) : Assignment (dest), function (f)
+        FunctionCall (CodeLocation l, ExpressionPtr dest, FunctionPtr f) : Assignment (std::move (l), dest), function (f)
         {
         }
 
@@ -998,8 +1001,8 @@ struct heart
     //==============================================================================
     struct ReadStream  : public Assignment
     {
-        ReadStream (Expression& dest, InputDeclaration& src)
-            : Assignment (dest), source (src) {}
+        ReadStream (CodeLocation l, Expression& dest, InputDeclaration& src)
+            : Assignment (std::move (l), dest), source (src) {}
 
         bool mayHaveSideEffects() const override     { return true; }
 
@@ -1008,8 +1011,8 @@ struct heart
 
     struct WriteStream  : public Statement
     {
-        WriteStream (OutputDeclaration& output, ExpressionPtr e, Expression& v)
-            : target (output), element (e), value (v) {}
+        WriteStream (CodeLocation l, OutputDeclaration& output, ExpressionPtr e, Expression& v)
+            : Statement (std::move (l)), target (output), element (e), value (v) {}
 
         void visitExpressions (ExpressionVisitorFn fn) override
         {
@@ -1092,6 +1095,7 @@ struct heart
 
     struct AdvanceClock  : public Statement
     {
+        AdvanceClock (CodeLocation l) : Statement (std::move (l)) {}
     };
 
     //==============================================================================

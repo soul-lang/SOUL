@@ -835,7 +835,8 @@ private:
 
     void createFunctionCall (const AST::FunctionCall& call, heart::VariablePtr targetVariable)
     {
-        auto& fc = module.allocate<heart::FunctionCall> (targetVariable, call.targetFunction.generatedFunction);
+        auto& fc = module.allocate<heart::FunctionCall> (call.context.location, targetVariable,
+                                                         call.targetFunction.generatedFunction);
 
         if (call.targetFunction.generatedFunction == nullptr)
             unresolvedFunctionCalls.push_back ({ fc, call.targetFunction });
@@ -992,9 +993,9 @@ private:
         }
     }
 
-    void visit (AST::AdvanceClock&) override
+    void visit (AST::AdvanceClock& a) override
     {
-        builder.addAdvance();
+        builder.addAdvance (a.context.location);
     }
 
     void createSeriesOfWrites (AST::Expression& target, ArrayView<AST::ExpPtr> values)
@@ -1010,7 +1011,8 @@ private:
 
                 auto sampleType = output->output->getSampleType (*v);
 
-                builder.addWriteStream (*output->output->generatedOutput, nullptr,
+                builder.addWriteStream (output->context.location,
+                                        *output->output->generatedOutput, nullptr,
                                         evaluateAsExpression (*v, sampleType));
             }
 
@@ -1035,7 +1037,9 @@ private:
                         auto slice = arraySubscript->getResolvedSliceRange();
 
                         for (auto i = slice.start; i < slice.end; ++i)
-                            builder.addWriteStream (*outputRef->output->generatedOutput, builder.createConstantInt32 (i), value);
+                            builder.addWriteStream (outputRef->output->context.location,
+                                                    *outputRef->output->generatedOutput,
+                                                    builder.createConstantInt32 (i), value);
                     }
                     else
                     {
@@ -1049,14 +1053,17 @@ private:
                             auto fixedIndex = TypeRules::checkAndGetArrayIndex (context, constIndex);
                             TypeRules::checkConstantArrayIndex (context, fixedIndex, (Type::ArraySize) arraySize);
 
-                            builder.addWriteStream (*outputRef->output->generatedOutput, builder.createConstantInt32 (fixedIndex), value);
+                            builder.addWriteStream (outputRef->output->context.location,
+                                                    *outputRef->output->generatedOutput,
+                                                    builder.createConstantInt32 (fixedIndex), value);
                         }
                         else
                         {
                             auto indexType = Type::createWrappedInt ((Type::BoundedIntSize) arraySize);
                             auto& wrappedIndex = builder.createCast (context.location, index, indexType);
 
-                            builder.addWriteStream (*outputRef->output->generatedOutput, wrappedIndex, value);
+                            builder.addWriteStream (outputRef->output->context.location,
+                                                    *outputRef->output->generatedOutput, wrappedIndex, value);
                         }
                     }
                 }

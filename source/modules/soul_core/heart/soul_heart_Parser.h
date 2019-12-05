@@ -544,7 +544,7 @@ private:
     void scanFunction (ScannedTopLevelItem& item, bool isEventFunction)
     {
         auto& fn = module->allocate<heart::Function>();
-        
+
         fn.isEventFunction    = isEventFunction;
         fn.name               = parseIdentifier();
         fn.isRunFunction      = (fn.name == heart::getRunFunctionName());
@@ -731,11 +731,8 @@ private:
 
         if (matchIf ("advance"))
         {
-            if (! state.function.isRunFunction)
-                throwError (Errors::advanceMustBeCalledInRun());
-
             expectSemicolon();
-            builder.addAdvance();
+            builder.addAdvance (location);
             return true;
         }
 
@@ -899,9 +896,6 @@ private:
         if (state.function.isUserInitFunction)
             throwError (Errors::streamsCannotBeUsedDuringInit());
 
-        if (! state.function.isRunFunction)
-            throwError (Errors::streamsCanOnlyBeUsedInRun());
-
         auto name = parseIdentifier();
         auto src = module->findInput (name);
 
@@ -914,6 +908,7 @@ private:
 
     bool parseWriteStream (FunctionParseState& state, FunctionBuilder& builder)
     {
+        auto startLocation = location;
         auto name = parseIdentifier();
         auto target = module->findOutput (name);
 
@@ -955,7 +950,7 @@ private:
         if (! (state.function.isRunFunction || target->isEventEndpoint()))
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
-        builder.addWriteStream (*target, index, *value);
+        builder.addWriteStream (startLocation, *target, index, *value);
         expectSemicolon();
         return true;
     }

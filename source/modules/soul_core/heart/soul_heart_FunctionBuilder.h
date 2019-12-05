@@ -259,7 +259,7 @@ struct BlockBuilder
     void addAssignment (heart::ExpressionPtr dest, heart::Expression& source)
     {
         if (dest != nullptr)
-            createStatement<heart::AssignFromValue> (dest, source);
+            createStatement<heart::AssignFromValue> (CodeLocation(), dest, source);
     }
 
     void addAssignment (heart::ExpressionPtr dest, Value value)
@@ -324,7 +324,7 @@ struct BlockBuilder
     void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function,
                           std::vector<heart::ExpressionPtr>&& args)
     {
-        auto& call = module.allocate<heart::FunctionCall> (dest, function);
+        auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
         call.arguments = args;
         SOUL_ASSERT (call.arguments.size() == function.parameters.size());
         addStatement (call);
@@ -358,16 +358,16 @@ struct BlockBuilder
         auto sourceType = src.getSingleSampleType();
 
         if (dest.getType().isIdentical (sourceType))
-            return createStatement<heart::ReadStream> (dest, src);
+            return createStatement<heart::ReadStream> (std::move (l), dest, src);
 
         auto& temp = createRegisterVariable (sourceType);
-        createStatement<heart::ReadStream> (temp, src);
-        addAssignment (dest, createCast (std::move (l), temp, dest.getType()));
+        createStatement<heart::ReadStream> (l, temp, src);
+        addAssignment (dest, createCast (l, temp, dest.getType()));
     }
 
-    void addWriteStream (heart::OutputDeclaration& output, heart::ExpressionPtr element, heart::Expression& value)
+    void addWriteStream (CodeLocation l, heart::OutputDeclaration& output, heart::ExpressionPtr element, heart::Expression& value)
     {
-        createStatement<heart::WriteStream> (output, element, value);
+        createStatement<heart::WriteStream> (std::move (l), output, element, value);
     }
 
     void setTerminator (heart::Terminator& t)
@@ -613,9 +613,9 @@ struct FunctionBuilder  : public BlockBuilder
                                 subsequentBlock);
     }
 
-    void addAdvance()
+    void addAdvance (CodeLocation l)
     {
-        createStatement<heart::AdvanceClock>();
+        createStatement<heart::AdvanceClock> (std::move (l));
     }
 
     void createIfElse (const std::string& blockNamePrefix,

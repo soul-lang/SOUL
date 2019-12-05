@@ -58,6 +58,7 @@
 #include "types/soul_EndpointType.cpp"
 #include "heart/soul_heart_Printer.h"
 #include "heart/soul_heart_Parser.h"
+#include "heart/soul_heart_Checker.h"
 #include "types/soul_Type.cpp"
 #include "library/soul_library.h"
 #include "compiler/soul_ASTVisitor.h"

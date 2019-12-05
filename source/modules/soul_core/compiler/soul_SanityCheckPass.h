@@ -39,7 +39,6 @@ struct SanityCheckPass  final
         runDuplicateNameChecker (module);
         PostResolutionChecks().visitObject (module);
         PreAndPostIncOperatorCheck().ASTVisitor::visitObject (module);
-        ValidateFunctionsCheck().visitObject (module);
     }
 
     static void runDuplicateNameChecker (AST::ModuleBase& module)
@@ -646,46 +645,6 @@ private:
                 v.context.throwError (Errors::preIncDecCollision());
         }
     };
-
-    //==============================================================================
-    struct ValidateFunctionsCheck  : public ASTVisitor
-    {
-        using super = ASTVisitor;
-
-        void visit (AST::FunctionCall& f) override
-        {
-            if (f.targetFunction.isUserInitFunction() || f.targetFunction.isRunFunction())
-                f.context.throwError (Errors::cannotCallFunction (f.targetFunction.name.toString()));
-        }
-
-        void visit (AST::Function& f) override
-        {
-            currentFunction = &f;
-
-            super::visit (f);
-        }
-
-        void visit (AST::WriteToEndpoint& w) override
-        {
-            SOUL_ASSERT (currentFunction != nullptr);
-
-            if (currentFunction->isUserInitFunction())
-                w.context.throwError (Errors::streamsCannotBeUsedDuringInit());
-
-            if (! currentFunction->isRunFunction())
-            {
-                if (auto outputEndpoint = cast<AST::OutputEndpointRef> (w.target))
-                {
-                    if (isStream (outputEndpoint->output->kind))
-                        w.context.throwError (Errors::streamsCanOnlyBeUsedInRun());
-                }
-            }
-        }
-
-    private:
-        AST::Function* currentFunction = nullptr;
-    };
-
 };
 
 } // namespace soul

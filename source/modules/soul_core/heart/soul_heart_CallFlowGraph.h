@@ -42,15 +42,6 @@ struct CallFlowGraph
         return findUninitialisedVariableUse (function);
     }
 
-    static bool doesFunctionCallAdvance (const heart::Function& f)
-    {
-        for (auto& b : f.blocks)
-            if (doesBlockCallAdvance (*b))
-                return true;
-
-        return false;
-    }
-
     static bool doesFunctionContainInfiniteLoops (const heart::Function& f)
     {
         if (f.blocks.empty())

@@ -81,16 +81,7 @@ private:
     void removeModulesWithSpecialisationParams (pool_ptr<AST::Namespace>);
     void recursivelyResolve (pool_ptr<AST::Namespace>, bool ignoreErrors);
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, pool_ptr<AST::ProcessorBase> processorToRun);
-
-    void sanityCheck (Program&);
     void optimise (Program&);
-    void sanityCheckInputsAndOutputs (Program&);
-    void sanityCheckRunFunctions (Program&);
-    void checkForInfiniteLoops (Program&);
-    void throwErrorForFunction (heart::FunctionPtr, const CompileMessage&);
-    std::string getFunctionName (heart::Function&);
-    AST::FunctionPtr findASTFunction (heart::FunctionPtr);
-    void checkForRecursiveFunctions (Program& program);
 };
 
 } // namespace soul

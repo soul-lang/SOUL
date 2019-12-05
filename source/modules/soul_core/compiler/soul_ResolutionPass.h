@@ -1582,9 +1582,8 @@ private:
 
         AST::ExpPtr createAdvanceCall (AST::CallOrCast& c)
         {
-            if (c.isMethodCall)                            c.context.throwError (Errors::advanceIsNotAMethod());
-            if (c.getNumArguments() != 0)                  c.context.throwError (Errors::advanceHasNoArgs());
-            if (! c.getParentFunction()->isRunFunction())  c.context.throwError (Errors::advanceMustBeCalledInRun());
+            if (c.isMethodCall)             c.context.throwError (Errors::advanceIsNotAMethod());
+            if (c.getNumArguments() != 0)   c.context.throwError (Errors::advanceHasNoArgs());
 
             return allocator.allocate<AST::AdvanceClock> (c.context);
         }
