@@ -1700,7 +1700,8 @@ private:
 
             if (auto newFunction = getOrCreateSpecialisedFunction (call, genericFunction,
                                                                    allocator.get ("_" + genericFunction.name.toString()
-                                                                                    + "_specialised_" + call.getIDStringForArgumentTypes()),
+                                                                                    + heart::getGenericSpecialisationNameTag()
+                                                                                    + call.getIDStringForArgumentTypes()),
                                                                    call.getArgumentTypes(),
                                                                    shouldIgnoreErrors))
             {

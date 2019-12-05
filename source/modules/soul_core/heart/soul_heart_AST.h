@@ -78,9 +78,10 @@ struct heart
     struct Printer;
     struct Checker;
 
-    static constexpr const char* getRunFunctionName()       { return "run"; }
-    static constexpr const char* getInitFunctionName()      { return "_soul_init"; }
-    static constexpr const char* getUserInitFunctionName()  { return "init"; }
+    static constexpr const char* getRunFunctionName()               { return "run"; }
+    static constexpr const char* getInitFunctionName()              { return "_soul_init"; }
+    static constexpr const char* getUserInitFunctionName()          { return "init"; }
+    static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
 
     static std::string getExternalEventFunctionName (const std::string& endpointName)           { return "_external_event_" + endpointName; }
     static std::string getEventFunctionName (const std::string& endpointName, const Type& t)    { return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
@@ -731,6 +732,21 @@ struct heart
             return true;
         }
 
+        std::string getReadableName() const
+        {
+            auto nm = name.toString();
+
+            if (startsWith (nm, "_"))
+            {
+                auto i = nm.find (getGenericSpecialisationNameTag());
+
+                if (i != std::string::npos && i > 0)
+                    return nm.substr (1, i - 1);
+            }
+
+            return nm;
+        }
+
         bool mayHaveSideEffects() const
         {
             for (auto& b : blocks)
@@ -1096,6 +1112,7 @@ struct heart
     struct AdvanceClock  : public Statement
     {
         AdvanceClock (CodeLocation l) : Statement (std::move (l)) {}
+        bool mayHaveSideEffects() const override    { return true; }
     };
 
     //==============================================================================

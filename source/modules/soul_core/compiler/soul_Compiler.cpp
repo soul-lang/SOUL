@@ -274,6 +274,42 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
     return {};
 }
 
+static bool inlineFunctionsThatUseAdvanceOrStreams (Program& program, Module& module)
+{
+    for (auto& f : module.functions)
+    {
+        if (! f->isRunFunction)
+        {
+            auto w = heart::Checker::findFirstStreamWrite (*f);
+            auto a = heart::Checker::findFirstAdvanceCall (*f);
+
+            if (w != nullptr || a != nullptr)
+            {
+                if (Optimisations::inlineAllCallsToFunction (program, *f))
+                    return true;
+
+                if (a != nullptr)
+                    a->location.throwError (Errors::advanceCannotBeCalledHere());
+                else if (f->isUserInitFunction)
+                    w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
+                else
+                    w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
+            }
+        }
+    }
+
+    return false;
+}
+
+static void inlineFunctionsThatUseAdvanceOrStreams (Program& program)
+{
+    for (auto& m : program.getModules())
+    {
+        while (inlineFunctionsThatUseAdvanceOrStreams (program, *m))
+        {}
+    }
+}
+
 Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions,
                         pool_ptr<AST::ProcessorBase> processorToRun)
 {
@@ -292,6 +328,7 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
         Program program;
         program.getStringDictionary() = allocator.stringDictionary;  // Bring the existing string dictionary along so that the handles match
         compileAllModules (*topLevelNamespace, program, processorToRun);
+        inlineFunctionsThatUseAdvanceOrStreams (program);
         heart::Checker::sanityCheck (program);
         reset();
 

@@ -1095,7 +1095,6 @@ struct AST
         Annotation annotation;
         IntrinsicType intrinsic = IntrinsicType::none;
         bool eventFunction = false;
-        bool isPure = false;
 
         BlockPtr block;
         heart::FunctionPtr generatedFunction;

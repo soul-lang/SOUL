@@ -63,16 +63,8 @@ struct heart::Checker
             {
                 auto firstAdvanceCall = findFirstAdvanceCall (*f);
 
-                if (f->isRunFunction)
-                {
-                    if (firstAdvanceCall == nullptr)
-                        f->location.throwError (Errors::runFunctionMustCallAdvance());
-                }
-                else
-                {
-                    if (firstAdvanceCall != nullptr)
-                        firstAdvanceCall->location.throwError (Errors::advanceCannotBeCalledHere());
-                }
+                if (f->isRunFunction && findFirstAdvanceCall (*f) == nullptr)
+                    f->location.throwError (Errors::runFunctionMustCallAdvance());
 
                 if (! f->isSystemInitFunction)
                 {
@@ -81,17 +73,13 @@ struct heart::Checker
                         auto& target = *call.function;
 
                         if (target.isRunFunction || target.isUserInitFunction || target.isEventFunction)
-                            target.location.throwError (Errors::cannotCallFunction (getFunctionName (target)));
+                            target.location.throwError (Errors::cannotCallFunction (target.getReadableName()));
                     });
                 }
 
                 if (f->isUserInitFunction)
                     if (auto w = findFirstWrite (*f))
                         w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
-
-                if (! f->isRunFunction)
-                    if (auto w = findFirstStreamWrite (*f))
-                        w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
             }
         }
     }
@@ -137,28 +125,12 @@ struct heart::Checker
         return {};
     }
 
-
     static void checkForInfiniteLoops (Program& program)
     {
         for (auto& m : program.getModules())
             for (auto& f : m->functions)
                 if (CallFlowGraph::doesFunctionContainInfiniteLoops (*f))
-                    f->location.throwError (Errors::functionContainsAnInfiniteLoop (getFunctionName (*f)));
-    }
-
-    static std::string getFunctionName (const heart::Function& f)
-    {
-        auto name = f.name.toString();
-
-        if (startsWith (name, "_"))
-        {
-            auto i = name.find ("_specialised_");
-
-            if (i != std::string::npos && i > 0)
-                return name.substr (1, i - 1);
-        }
-
-        return name;
+                    f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
 
     static void checkForRecursiveFunctions (Program& program)
@@ -170,7 +142,7 @@ struct heart::Checker
             std::vector<std::string> functionNames;
 
             for (auto& fn : recursiveCallSequence)
-                functionNames.push_back (quoteName (getFunctionName (*fn)));
+                functionNames.push_back (quoteName (fn->getReadableName()));
 
             auto location = recursiveCallSequence.front()->location;
 

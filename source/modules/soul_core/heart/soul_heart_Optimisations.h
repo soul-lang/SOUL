@@ -172,6 +172,31 @@ struct Optimisations
                  parentFunction, blockIndex, call, call.getFunction()).perform();
     }
 
+    static bool inlineAllCallsToFunction (Program& program, heart::Function& functionToInline)
+    {
+        bool anyChanged = false;
+
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions)
+            {
+                auto result = inlineAllCallsToFunction (program, *f, functionToInline);
+
+                if (result == InlineResult::failed)
+                    return false;
+
+                if (result == InlineResult::ok)
+                    anyChanged = true;
+            }
+        }
+
+        if (! anyChanged)
+            return false;
+
+        removeItem (program.findModuleContainingFunction (functionToInline)->functions, std::addressof (functionToInline));
+        return true;
+    }
+
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {
@@ -504,7 +529,8 @@ private:
                 for (size_t i = 0; i < targetFunction.parameters.size(); ++i)
                 {
                     auto& param = *targetFunction.parameters[i];
-                    auto& localParamVar = builder.createMutableLocalVariable (param.type, inlinedFnName + "_param_" + param.name.toString());
+                    auto newParamName = inlinedFnName + "_param_" + makeSafeIdentifierName (param.name.toString());
+                    auto& localParamVar = builder.createMutableLocalVariable (param.type, newParamName);
                     builder.addAssignment (localParamVar, *call.arguments[i]);
                     remappedVariables[param] = localParamVar;
                 }
@@ -686,7 +712,8 @@ private:
                 if (v == nullptr)
                 {
                     v = module.allocate<heart::Variable> (old.location, old.type,
-                                                          old.name.isValid() ? module.allocator.get (inlinedFnName + "_" + old.name.toString()) : Identifier(),
+                                                          old.name.isValid() ? module.allocator.get (inlinedFnName + "_" + makeSafeIdentifierName (old.name.toString()))
+                                                                             : Identifier(),
                                                           old.role);
                     v->annotation = old.annotation;
                 }
@@ -722,6 +749,50 @@ private:
         heart::BlockPtr postCallResumeBlock;
         heart::VariablePtr returnValueVar;
     };
+
+    enum class InlineResult { ok, failed, noneFound };
+
+    static InlineResult inlineNextCall (Program& program, heart::Function& parentFunction, heart::Function& functionToInline)
+    {
+        for (size_t blockIndex = 0; blockIndex < parentFunction.blocks.size(); ++blockIndex)
+        {
+            for (auto s : parentFunction.blocks[blockIndex]->statements)
+            {
+                if (auto call = cast<heart::FunctionCall> (*s))
+                {
+                    if (call->function == functionToInline)
+                    {
+                        if (! canFunctionBeInlined (program, parentFunction, *call))
+                            return InlineResult::failed;
+
+                        makeFunctionCallInline (program, parentFunction, blockIndex, *call);
+                        return InlineResult::ok;
+                    }
+                }
+            }
+        }
+
+        return InlineResult::noneFound;
+    }
+
+    static InlineResult inlineAllCallsToFunction (Program& program, heart::Function& parentFunction, heart::Function& functionToInline)
+    {
+        bool anyChanged = false;
+
+        for (;;)
+        {
+            auto result = inlineNextCall (program, parentFunction, functionToInline);
+
+            if (result == InlineResult::failed)
+                return result;
+
+            if (result == InlineResult::noneFound)
+                return anyChanged ? InlineResult::ok
+                                  : InlineResult::noneFound;
+
+            anyChanged = true;
+        }
+    }
 };
 
 } // namespace soul
