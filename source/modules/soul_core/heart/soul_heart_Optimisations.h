@@ -143,29 +143,10 @@ struct Optimisations
         removeUnconnectedOutputs (module, epp);
     }
 
-    static bool canFunctionBeInlined (Program& program,
-                                      heart::Function& parentFunction,
-                                      heart::FunctionCall& call)
-    {
-        auto& targetFunction = call.getFunction();
-
-        if (targetFunction.isRunFunction || targetFunction.isSystemInitFunction
-             || targetFunction.isUserInitFunction || targetFunction.isEventFunction
-             || targetFunction.hasNoBody)
-            return false;
-
-        auto destModule   = program.findModuleContainingFunction (parentFunction);
-        auto sourceModule = program.findModuleContainingFunction (targetFunction);
-        SOUL_ASSERT (destModule != nullptr && sourceModule != nullptr);
-
-        // NB: cross-processor inlining is not allowed, to avoid confusion over endpoints, advances, etc
-        return destModule == sourceModule || sourceModule->isNamespace();
-    }
-
     static void makeFunctionCallInline (Program& program, heart::Function& parentFunction,
                                         size_t blockIndex, heart::FunctionCall& call)
     {
-        SOUL_ASSERT (canFunctionBeInlined (program, parentFunction, call));
+        SOUL_ASSERT (heart::Utilities::canFunctionBeInlined (program, parentFunction, call));
         SOUL_ASSERT (contains (parentFunction.blocks[blockIndex]->statements, std::addressof (call)));
 
         Inliner (*program.findModuleContainingFunction (call.getFunction()),
@@ -200,7 +181,7 @@ struct Optimisations
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {
-        return BlockHelpers::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
         {
             if (b->doNotOptimiseAway || b == f.blocks.front())
                 return false;
@@ -228,7 +209,7 @@ private:
                 for (auto pred : b->predecessors)
                 {
                     SOUL_ASSERT (pred->terminator != nullptr);
-                    BlockHelpers::replaceBlockDestination (*pred, b, *destinations.begin());
+                    heart::Utilities::replaceBlockDestination (*pred, b, *destinations.begin());
                 }
 
                 return true;
@@ -236,7 +217,7 @@ private:
 
             if (is_type<heart::ReturnVoid> (b->terminator))
             {
-                if (BlockHelpers::areAllTerminatorsUnconditional (b->predecessors))
+                if (heart::Utilities::areAllTerminatorsUnconditional (b->predecessors))
                 {
                     for (auto pred : b->predecessors)
                         pred->terminator = allocator.allocate<heart::ReturnVoid>();
@@ -252,7 +233,7 @@ private:
     //==============================================================================
     static bool eliminateUnreachableBlockCycles (heart::Function& f)
     {
-        return BlockHelpers::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
         {
             return f.blocks.front() != b
                     && ! isReachableFrom (f, *b, f.blocks.front());
@@ -276,7 +257,7 @@ private:
     //==============================================================================
     static bool mergeAdjacentBlocks (heart::Function& f)
     {
-        return BlockHelpers::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
         {
             if (b->predecessors.size() != 1 || b->doNotOptimiseAway)
                 return false;
@@ -502,13 +483,13 @@ private:
             inlinedFnName = addSuffixToMakeUnique ("_inlined_" + targetFunction.name.toString(),
                                                    [&] (const std::string& nm)
                                                    {
-                                                       return BlockHelpers::findBlock (parentFn, "@" + nm) != nullptr;
+                                                       return heart::Utilities::findBlock (parentFn, "@" + nm) != nullptr;
                                                    });
         }
 
         void perform()
         {
-            auto& postBlock = BlockHelpers::splitBlock (module, parentFunction, blockIndex, call, "@" + inlinedFnName + "_end");
+            auto& postBlock = heart::Utilities::splitBlock (module, parentFunction, blockIndex, call, "@" + inlinedFnName + "_end");
             postCallResumeBlock = postBlock;
             auto& preBlock = *parentFunction.blocks[blockIndex];
 
@@ -762,7 +743,7 @@ private:
                 {
                     if (call->function == functionToInline)
                     {
-                        if (! canFunctionBeInlined (program, parentFunction, *call))
+                        if (! heart::Utilities::canFunctionBeInlined (program, parentFunction, *call))
                             return InlineResult::failed;
 
                         makeFunctionCallInline (program, parentFunction, blockIndex, *call);

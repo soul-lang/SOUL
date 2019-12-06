@@ -61,14 +61,17 @@ struct heart::Checker
         {
             for (auto& f : m->functions)
             {
-                auto firstAdvanceCall = findFirstAdvanceCall (*f);
+                auto firstAdvanceCall = heart::Utilities::findFirstAdvanceCall (*f);
 
-                if (f->isRunFunction && findFirstAdvanceCall (*f) == nullptr)
+                if (f->isRunFunction && firstAdvanceCall == nullptr)
                     f->location.throwError (Errors::runFunctionMustCallAdvance());
+
+                if (firstAdvanceCall != nullptr && ! m->isProcessor())
+                    firstAdvanceCall->location.throwError (Errors::advanceCannotBeCalledHere());
 
                 if (! f->isSystemInitFunction)
                 {
-                    visitFunctionCalls (*f, [] (heart::FunctionCall& call)
+                    f->visitStatements<heart::FunctionCall> ([] (heart::FunctionCall& call)
                     {
                         auto& target = *call.function;
 
@@ -78,53 +81,13 @@ struct heart::Checker
                 }
 
                 if (f->isUserInitFunction)
-                    if (auto w = findFirstWrite (*f))
+                    if (auto w = heart::Utilities::findFirstWrite (*f))
                         w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
             }
         }
     }
 
     //==============================================================================
-    template <typename Visitor>
-    static void visitFunctionCalls (heart::Function& f, Visitor&& visit)
-    {
-        for (auto& b : f.blocks)
-            for (auto s : b->statements)
-                if (auto call = cast<heart::FunctionCall> (*s))
-                    visit (*call);
-    }
-
-    static heart::WriteStreamPtr findFirstWrite (heart::Function& f)
-    {
-        for (auto& b : f.blocks)
-            for (auto s : b->statements)
-                if (auto w = cast<heart::WriteStream> (*s))
-                    return w;
-
-        return {};
-    }
-
-    static heart::WriteStreamPtr findFirstStreamWrite (heart::Function& f)
-    {
-        for (auto& b : f.blocks)
-            for (auto s : b->statements)
-                if (auto w = cast<heart::WriteStream> (*s))
-                    if (w->target != nullptr && w->target->isStreamEndpoint())
-                        return w;
-
-        return {};
-    }
-
-    static heart::AdvanceClockPtr findFirstAdvanceCall (heart::Function& f)
-    {
-        for (auto& b : f.blocks)
-            for (auto s : b->statements)
-                if (auto a = cast<heart::AdvanceClock> (*s))
-                    return a;
-
-        return {};
-    }
-
     static void checkForInfiniteLoops (Program& program)
     {
         for (auto& m : program.getModules())

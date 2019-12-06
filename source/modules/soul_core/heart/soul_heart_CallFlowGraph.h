@@ -54,7 +54,7 @@ struct CallFlowGraph
 
         visitDownstreamBlocks (f, *f.blocks.front(), [&] (const heart::Block& b)
                                {
-                                   if (! (b.terminator->isReturn() || doesBlockCallAdvance (b)))
+                                   if (! (b.terminator->isReturn() || heart::Utilities::doesBlockCallAdvance (b)))
                                        return true;
 
                                    hasFoundTerminator = true;
@@ -298,15 +298,6 @@ private:
 
         callerFns.pop_back();
         return {};
-    }
-
-    static bool doesBlockCallAdvance (const heart::Block& b)
-    {
-        for (auto s : b.statements)
-            if (is_type<heart::AdvanceClock> (*s))
-                return true;
-
-        return false;
     }
 };
 

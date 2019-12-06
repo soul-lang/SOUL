@@ -77,6 +77,7 @@ struct heart
     struct Parser;
     struct Printer;
     struct Checker;
+    struct Utilities;
 
     static constexpr const char* getRunFunctionName()               { return "run"; }
     static constexpr const char* getInitFunctionName()              { return "_soul_init"; }
@@ -1051,6 +1052,7 @@ struct heart
         ExpressionPtr element, value;
     };
 
+    //==============================================================================
     struct ProcessorProperty  : public Expression
     {
         enum class Property

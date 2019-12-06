@@ -23,87 +23,6 @@ namespace soul
 
 //==============================================================================
 /**
-    Block manipulation helper functions
-*/
-namespace BlockHelpers
-{
-    static inline heart::Block& insertBlock (Module& module, heart::Function& f, size_t blockIndex, const std::string& name)
-    {
-        SOUL_ASSERT (blockIndex <= f.blocks.size());
-        auto& newBlock = module.allocate<heart::Block> (module.allocator.get (name));
-        f.blocks.insert (f.blocks.begin() + (ssize_t) blockIndex, newBlock);
-        return newBlock;
-    }
-
-    static inline heart::Block& splitBlock (Module& module, heart::Function& f, size_t blockIndex,
-                                            LinkedList<heart::Statement>::Iterator lastStatementOfFirstBlock,
-                                            const std::string& newSecondBlockName)
-    {
-        auto& oldBlock = *f.blocks[blockIndex];
-        auto& newBlock = insertBlock (module, f, blockIndex + 1, newSecondBlockName);
-
-        if (lastStatementOfFirstBlock != nullptr)
-        {
-            if (auto next = lastStatementOfFirstBlock.next())
-            {
-                newBlock.statements.append (*next);
-                lastStatementOfFirstBlock.removeAllSuccessors();
-            }
-        }
-        else
-        {
-            newBlock.statements = oldBlock.statements;
-            oldBlock.statements.clear();
-        }
-
-        newBlock.terminator = oldBlock.terminator;
-        oldBlock.terminator = module.allocate<heart::Branch> (newBlock);
-
-        return newBlock;
-    }
-
-    template <typename Pred>
-    static bool removeBlocks (heart::Function& f, Pred shouldRemove)
-    {
-        bool anyRemoved = false;
-
-        while (removeFirst (f.blocks, shouldRemove))
-        {
-            anyRemoved = true;
-            f.rebuildBlockPredecessors();
-        }
-
-        return anyRemoved;
-    }
-
-    static inline void replaceBlockDestination (heart::Block& block, heart::BlockPtr oldDest, heart::BlockPtr newDest)
-    {
-        for (auto& dest : block.terminator->getDestinationBlocks())
-            if (dest == oldDest)
-                dest = newDest;
-    }
-
-    static inline bool areAllTerminatorsUnconditional (ArrayView<heart::BlockPtr> blocks)
-    {
-        for (auto b : blocks)
-            if (b->terminator->isConditional())
-                return false;
-
-        return true;
-    }
-
-    static inline heart::BlockPtr findBlock (const heart::Function& f, const std::string& targetName) noexcept
-    {
-        for (auto b : f.blocks)
-            if (b->name == targetName)
-                return b;
-
-        return {};
-    }
-}
-
-//==============================================================================
-/**
     Helper class to build HEART blocks
 */
 struct BlockBuilder
@@ -571,7 +490,7 @@ struct FunctionBuilder  : public BlockBuilder
 
         if (b != nullptr)
         {
-            SOUL_ASSERT (BlockHelpers::findBlock (*currentFunction, b->name) == nullptr);
+            SOUL_ASSERT (heart::Utilities::findBlock (*currentFunction, b->name) == nullptr);
             currentFunction->blocks.push_back (b);
             lastStatementInCurrentBlock = b->statements.getLast();
         }
