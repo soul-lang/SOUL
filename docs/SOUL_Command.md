@@ -2,7 +2,7 @@
 
 This folder contains builds of the command (find it in the `soul_command` folder) lets you compile, play, and render soul code, and generate C++ and HEART code from it!
 
-[Click here to download binaries for various platforms.](https://github.com/soul-lang/SOUL-binaries/tree/master/soul_command)
+[Click here to download binaries for various platforms.](https://github.com/soul-lang/SOUL/releases/latest)
 
 
 ```

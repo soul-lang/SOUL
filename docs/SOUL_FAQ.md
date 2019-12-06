@@ -19,7 +19,7 @@
 
     The easiest way is to try the web playground at [soul.dev](https://soul.dev/lab)
     You can also load and live-code SOUL patches using the latest versions of [Tracktion Waveform](https://tracktion.com/products/waveform)
-    You can also compile and play patches using the [command-line tools](https://github.com/soul-lang/SOUL-binaries/tree/master/soul_command)
+    You can also compile and play patches using the [command-line tools](https://github.com/soul-lang/SOUL/releases/latest)
 
 - #### Where can I find more technical details?
 

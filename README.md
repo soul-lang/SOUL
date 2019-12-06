@@ -8,7 +8,7 @@ To read more about the project, please have a look through the files in the [doc
 - [FAQ](./docs/SOUL_FAQ.md)
 - [Syntax Guide](./docs/SOUL_Language.md)
 - [Code Examples](./examples) (or try them live in your browser [here!](https://soul.dev/examples))
-- [Command-line tools](https://github.com/soul-lang/SOUL-binaries/tree/master/soul_command)
+- [Command-line tools](https://github.com/soul-lang/SOUL/releases/latest)
 - [SOUL Patch format](./docs/SOUL_Patch_Format.md) - an overview of the SOUL plugin format
 - [SOUL Patch API](./source/API/soul_patch)
 - [C++ modules](./source/modules)
