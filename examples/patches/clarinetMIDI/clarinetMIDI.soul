@@ -2,7 +2,7 @@
 copyright: "(c)Romain Michon, CCRMA (Stanford University), GRAME"
 license: "MIT"
 name: "ClarinetMIDI"
-Code generated with Faust 2.19.7 (https://faust.grame.fr)
+Code generated with Faust 2.20.2 (https://faust.grame.fr)
 Compilation options: -lang soul-poly -scal -ftz 0
 ------------------------------------------------------------ */
 
@@ -206,8 +206,9 @@ processor clarinetMIDI
 		}
 	}
 
-	void init (int sample_rate)
+	void init()
 	{
+		let sample_rate = int(processor.frequency);
 		classInit (sample_rate);
 		instanceInit (sample_rate);
 	}
@@ -237,9 +238,6 @@ processor clarinetMIDI
 
 	void run()
 	{
-		// 'init' called once before starting the DSP loop
-		init (int(processor.frequency));
-
 		// DSP loop running forever...
 		loop
 		{
@@ -360,9 +358,9 @@ processor dsp_wrapper
 }
 
 /*
-	Connect the wrapper with the real processor.
-	This indirection is done since the "expose control event" model is not yet in place.
-	So we have some 'ad-hoc' code for now that may change in the future
+    Connect the wrapper with the real processor.
+    This indirection is done since the "expose control event" model is not yet in place.
+    So we have some 'ad-hoc' code for now that may change in the future
 */
 
 graph dsp_voice
