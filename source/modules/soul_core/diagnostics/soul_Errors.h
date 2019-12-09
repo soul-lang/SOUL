@@ -235,6 +235,7 @@ namespace soul
     X(ratioMustBeInteger,                   "Clock ratio must be an integer constant") \
     X(ratioOutOfRange,                      "Clock ratio out of range") \
     X(ratioMustBePowerOf2,                  "Clock ratio must be a power of 2") \
+    X(unsupportedSincClockRatio,            "Clock ratio not supported by sinc interpolator") \
     X(codeCacheConsistencyFail,             "Code cache consistency failure") \
     X(cannotAssignToDynamicElement,         "Cannot assign to an element of a dynamic array") \
     X(unresolvedExternal,                   "Failed to resolve external variable $Q0$") \
