@@ -32,11 +32,14 @@ struct ModuleCloner
     {
     }
 
-    void cloneStructAndFunctionPlaceholders()
+    void createStructPlaceholders()
     {
         for (auto& s : oldModule.structs)
             newModule.structs.push_back (createStructPlaceholder (*s));
+    }
 
+    void cloneStructAndFunctionPlaceholders()
+    {
         for (auto& s : oldModule.structs)
             populateClonedStruct (*s);
 

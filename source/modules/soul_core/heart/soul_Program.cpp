@@ -136,6 +136,9 @@ struct Program::ProgramImpl  : public RefCountedObject
         }
 
         for (auto& c : cloners)
+            c.createStructPlaceholders();
+
+        for (auto& c : cloners)
             c.cloneStructAndFunctionPlaceholders();
 
         for (auto& c : cloners)
