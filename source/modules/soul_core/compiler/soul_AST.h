@@ -1104,6 +1104,7 @@ struct AST
         bool isUserInitFunction() const    { return name == heart::getUserInitFunctionName(); }
         bool isSystemInitFunction() const  { return name == heart::getInitFunctionName(); }
         bool isGeneric() const             { return ! genericWildcards.empty(); }
+        bool isIntrinsic() const           { return intrinsic != IntrinsicType::none; }
 
         heart::Function& getGeneratedFunction() const
         {

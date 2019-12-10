@@ -719,7 +719,7 @@ private:
 
                 isUsedAsReference = savedIsUsedAsReference;
 
-                if (c.targetFunction.intrinsic != IntrinsicType::none)
+                if (c.targetFunction.isIntrinsic())
                 {
                     ArrayWithPreallocation<Value, 4> constantArgs;
 

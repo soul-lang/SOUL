@@ -69,8 +69,8 @@ struct heart::Utilities
     {
         auto& targetFunction = call.getFunction();
 
-        if (targetFunction.isRunFunction || targetFunction.isSystemInitFunction
-             || targetFunction.isUserInitFunction || targetFunction.isEventFunction
+        if (targetFunction.functionType.isRun() || targetFunction.functionType.isSystemInit()
+             || targetFunction.functionType.isUserInit() || targetFunction.functionType.isEvent()
              || targetFunction.hasNoBody)
             return false;
 
@@ -89,7 +89,7 @@ struct heart::Utilities
         {
             for (auto& f : module.functions)
             {
-                if (! f->isRunFunction)
+                if (! f->functionType.isRun())
                 {
                     auto w = findFirstStreamWrite (*f);
                     auto a = findFirstAdvanceCall (*f);
@@ -101,7 +101,7 @@ struct heart::Utilities
 
                         if (a != nullptr)
                             a->location.throwError (Errors::advanceCannotBeCalledHere());
-                        else if (f->isUserInitFunction)
+                        else if (f->functionType.isUserInit())
                             w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
                         else
                             w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());

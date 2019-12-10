@@ -688,13 +688,41 @@ struct heart
         std::vector<VariablePtr> parameters;
         std::vector<BlockPtr> blocks;
         Annotation annotation;
-        IntrinsicType intrinsic = IntrinsicType::none;
+        IntrinsicType intrinsicType = IntrinsicType::none;
         VariablePtr stateParameter = nullptr;
 
-        bool isRunFunction = false;
-        bool isSystemInitFunction = false;
-        bool isUserInitFunction = false;
-        bool isEventFunction = false;
+        struct FunctionType
+        {
+            enum Type
+            {
+                normal,
+                event,
+                run,
+                systemInit,
+                userInit,
+                intrinsic
+            };
+
+            void setNormal()        { functionType = Type::normal; }
+            void setEvent()         { SOUL_ASSERT (functionType == Type::normal); functionType = Type::event; }
+            void setRun()           { SOUL_ASSERT (functionType == Type::normal); functionType = Type::run; }
+            void setSystemInit()    { SOUL_ASSERT (functionType == Type::normal); functionType = Type::systemInit; }
+            void setUserInit()      { SOUL_ASSERT (functionType == Type::normal); functionType = Type::userInit; }
+            void setIntrinsic()     { SOUL_ASSERT (functionType == Type::normal); functionType = Type::intrinsic; }
+
+            bool isNormal() const       { return functionType == Type::normal; }
+            bool isEvent() const        { return functionType == Type::event; }
+            bool isRun() const          { return functionType == Type::run; }
+            bool isSystemInit() const   { return functionType == Type::systemInit; }
+            bool isUserInit() const     { return functionType == Type::userInit; }
+            bool isIntrinsic() const    { return functionType == Type::intrinsic; }
+
+        private:
+            Type functionType = Type::normal;
+        };
+
+        FunctionType functionType;
+
         bool isExported = false;
         bool hasNoBody = false;
         bool functionUseTestFlag = false;

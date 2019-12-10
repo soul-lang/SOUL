@@ -66,7 +66,7 @@ std::vector<heart::FunctionPtr> Module::getExportedFunctions() const
 heart::FunctionPtr Module::findRunFunction() const
 {
     for (auto& f : functions)
-        if (f->isRunFunction)
+        if (f->functionType.isRun())
             return f;
 
     return {};

@@ -310,11 +310,21 @@ private:
             af.name = getFunctionName (f);
             module.functions.push_back (af);
             f.generatedFunction = af;
-            af.intrinsic = f.intrinsic;
-            af.isRunFunction = f.isRunFunction();
-            af.isEventFunction = f.isEventFunction();
-            af.isUserInitFunction = f.isUserInitFunction();
-            af.isSystemInitFunction = f.isSystemInitFunction();
+
+            if (f.isIntrinsic())
+            {
+                af.functionType.setIntrinsic();
+                af.intrinsicType = f.intrinsic;
+            }
+            else if (f.isRunFunction())
+                af.functionType.setRun();
+            else if (f.isEventFunction())
+                af.functionType.setEvent();
+            else if (f.isUserInitFunction())
+                af.functionType.setUserInit();
+            else if (f.isSystemInitFunction())
+                af.functionType.setSystemInit();
+
             af.annotation = f.annotation.toPlainAnnotation();
             af.location = f.context.location;
         }
@@ -349,7 +359,7 @@ private:
         auto& af = module.allocate<heart::Function>();
 
         af.name = module.allocator.get (heart::getInitFunctionName());
-        af.isSystemInitFunction = true;
+        af.functionType.setSystemInit();
         af.returnType = soul::Type (soul::PrimitiveType::void_);
 
         module.functions.push_back (af);
@@ -382,7 +392,7 @@ private:
         {
             auto& v = createVariableDeclaration (*p, heart::Variable::Role::parameter);
 
-            if (af.isEventFunction && v.getType().isNonConstReference())
+            if (af.functionType.isEvent() && v.getType().isNonConstReference())
                 p->context.throwError (Errors::eventParamsCannotBeNonConstReference());
 
             builder.addParameter (v);

@@ -545,10 +545,14 @@ private:
     {
         auto& fn = module->allocate<heart::Function>();
 
-        fn.isEventFunction    = isEventFunction;
-        fn.name               = parseIdentifier();
-        fn.isRunFunction      = (fn.name == heart::getRunFunctionName());
-        fn.isUserInitFunction = (fn.name == heart::getUserInitFunctionName());
+        fn.name = parseIdentifier();
+
+        if (isEventFunction)
+            fn.functionType.setEvent();
+        else if (fn.name == heart::getRunFunctionName())
+            fn.functionType.setRun();
+        else if (fn.name == heart::getUserInitFunctionName())
+            fn.functionType.setUserInit();
 
         if (module->findFunction (fn.name) != nullptr)
             throwError (Errors::nameInUse (fn.name));
@@ -626,7 +630,7 @@ private:
             }
         }
 
-        if (! f.isEventFunction)
+        if (! f.functionType.isEvent())
         {
             expect (HEARTOperator::rightArrow);
             f.returnType = readValueType();
@@ -640,7 +644,7 @@ private:
         auto intrin = f.annotation.getValue ("intrin");
 
         if (intrin.getType().isStringLiteral())
-            f.intrinsic = getIntrinsicTypeFromName (program.getStringDictionary().getStringForHandle (intrin.getStringLiteral()));
+            f.intrinsicType = getIntrinsicTypeFromName (program.getStringDictionary().getStringForHandle (intrin.getStringLiteral()));
     }
 
     void parseFunctionBody (heart::Function& f)
@@ -893,7 +897,7 @@ private:
 
     void parseReadStream (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
-        if (state.function.isUserInitFunction)
+        if (state.function.functionType.isUserInit())
             throwError (Errors::streamsCannotBeUsedDuringInit());
 
         auto name = parseIdentifier();
@@ -914,7 +918,7 @@ private:
 
         heart::ExpressionPtr index;
 
-        if (state.function.isUserInitFunction)
+        if (state.function.functionType.isUserInit())
             throwError (Errors::streamsCannotBeUsedDuringInit());
 
         if (target == nullptr)
@@ -947,7 +951,7 @@ private:
                 throwError (Errors::wrongTypeForEndpoint());
         }
 
-        if (! (state.function.isRunFunction || target->isEventEndpoint()))
+        if (! (state.function.functionType.isRun() || target->isEventEndpoint()))
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
         builder.addWriteStream (startLocation, *target, index, *value);

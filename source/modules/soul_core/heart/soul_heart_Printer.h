@@ -234,7 +234,7 @@ private:
         {
             SOUL_ASSERT (f.name.isValid());
 
-            out << (f.isEventFunction ? "event " : "function ");
+            out << (f.functionType.isEvent() ? "event " : "function ");
             out << getFunctionName (f) << "(";
 
             {
@@ -253,7 +253,7 @@ private:
 
             out << ")";
 
-            if (! f.isEventFunction)
+            if (! f.functionType.isEvent())
                 out << " -> " << getTypeDescription (f.returnType);
 
             out << getDescription (f.annotation);

@@ -63,24 +63,24 @@ struct heart::Checker
             {
                 auto firstAdvanceCall = heart::Utilities::findFirstAdvanceCall (*f);
 
-                if (f->isRunFunction && firstAdvanceCall == nullptr)
+                if (f->functionType.isRun() && firstAdvanceCall == nullptr)
                     f->location.throwError (Errors::runFunctionMustCallAdvance());
 
                 if (firstAdvanceCall != nullptr && ! m->isProcessor())
                     firstAdvanceCall->location.throwError (Errors::advanceCannotBeCalledHere());
 
-                if (! f->isSystemInitFunction)
+                if (! f->functionType.isSystemInit())
                 {
                     f->visitStatements<heart::FunctionCall> ([] (heart::FunctionCall& call)
                     {
                         auto& target = *call.function;
 
-                        if (target.isRunFunction || target.isUserInitFunction || target.isEventFunction)
+                        if (target.functionType.isRun() || target.functionType.isUserInit() || target.functionType.isEvent())
                             target.location.throwError (Errors::cannotCallFunction (target.getReadableName()));
                     });
                 }
 
-                if (f->isUserInitFunction)
+                if (f->functionType.isUserInit())
                     if (auto w = heart::Utilities::findFirstWrite (*f))
                         w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
             }
