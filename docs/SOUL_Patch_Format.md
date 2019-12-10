@@ -84,14 +84,15 @@ The `externals` object in the manifest contains a set of values which need to be
 
 ### Hosting Support and Utilities
 
-***NB: we haven't yet publicly released the things described below - coming soon!***
-
 To let you create a host that can load and run SOUL patches, we have the following resources:
 
 - A shared library that can be imported into any C++ project (with some dependency-free vanilla C++ classes to interface to it). This provides the functionality to load and play instances of SOUL patches with very high performance using the LLVM JIT engine internally.
 - A set of header-only helper classes which make it easy to use this library in JUCE applications. These classes create an abstraction layer over the SOUL patches to present them using the juce::AudioPluginInstance class, which is easy to load into existing JUCE-based apps and plugins.
 - The `soul` command-line utility can load and play patches, hot-reloading them when the code is modified.
-- Tracktion Waveform provides SOUL patch support, allowing them to be live-recompiled while running inside a session.
+- The latest versions of Tracktion Waveform provide SOUL patch support, allowing them to be live-recompiled while running inside a session.
+
+The binaries and libraries can be downloaded as github releases: https://github.com/soul-lang/SOUL/releases/latest
+
 
 ### Annotations for parameters
 
