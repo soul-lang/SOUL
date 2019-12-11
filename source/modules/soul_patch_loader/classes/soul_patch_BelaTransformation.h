@@ -70,7 +70,7 @@ namespace soul::patch
                     connections << name << "Input.audioOut -> wrappedModule." << name << ";" << newLine;
                     connections << newLine;
 
-                    nextOutputChannel += channels;
+                    nextOutputChannel += static_cast<uint32_t> (channels);
                 }
                 else
                 {
