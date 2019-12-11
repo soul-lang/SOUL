@@ -64,7 +64,7 @@ struct InterleavedChannelSet
     InterleavedChannelSet getSlice (uint32_t start, uint32_t length) const
     {
         SOUL_ASSERT (start <= numFrames && start + length <= numFrames);
-        return { data + start * stride, numChannels, length - start, stride };
+        return { data + start * stride, numChannels, length, stride };
     }
 
     InterleavedChannelSet getChannelSet (uint32_t firstChannel, uint32_t numChans) const
@@ -183,7 +183,7 @@ struct DiscreteChannelSet
     DiscreteChannelSet getSlice (uint32_t start, uint32_t length) const
     {
         SOUL_ASSERT (start <= numFrames && start + length <= numFrames);
-        return { channels, numChannels, offset + start, length - start };
+        return { channels, numChannels, offset + start, length };
     }
 
     DiscreteChannelSet getChannelSet (uint32_t firstChannel, uint32_t numChans) const
