@@ -293,7 +293,6 @@ struct Value::PackedData
             if (type.isInteger64())      return negateAs<int64_t>();
             if (type.isFloat32())        return negateAs<float>();
             if (type.isFloat64())        return negateAs<double>();
-            if (type.isBool())           return negateAs<bool>();
         }
 
         SOUL_ASSERT_FALSE;
