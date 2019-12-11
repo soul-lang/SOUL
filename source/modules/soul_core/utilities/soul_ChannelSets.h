@@ -46,22 +46,25 @@ struct InterleavedChannelSet
         return *(data + channel + frame * stride);
     }
 
+    SampleType& getSample (uint32_t channel, uint32_t frame)
+    {
+        SOUL_ASSERT (channel < numChannels && frame < numFrames);
+        return *(data + channel + frame * stride);
+    }
+
     void getFrame (uint32_t frame, Sample* dest) const
     {
         SOUL_ASSERT (frame < numFrames);
         auto* src = data + frame * stride;
 
         for (uint32_t i = 0; i < numChannels; ++i)
-        {
-            dest[i] = *src;
-            src += stride;
-        }
+            dest[i] = src[i];
     }
 
     InterleavedChannelSet getSlice (uint32_t start, uint32_t length) const
     {
         SOUL_ASSERT (start <= numFrames && start + length <= numFrames);
-        return { data + start * stride, numChannels, length, stride };
+        return { data + start * stride, numChannels, length - start, stride };
     }
 
     InterleavedChannelSet getChannelSet (uint32_t firstChannel, uint32_t numChans) const
@@ -157,6 +160,12 @@ struct DiscreteChannelSet
         return channels[channel] + offset;
     }
 
+    SampleType& getSample (uint32_t channel, uint32_t frame)
+    {
+        SOUL_ASSERT (channel < numChannels && frame < numFrames);
+        return channels[channel][offset + frame];
+    }
+
     SampleType getSample (uint32_t channel, uint32_t frame) const
     {
         SOUL_ASSERT (channel < numChannels && frame < numFrames);
@@ -174,7 +183,7 @@ struct DiscreteChannelSet
     DiscreteChannelSet getSlice (uint32_t start, uint32_t length) const
     {
         SOUL_ASSERT (start <= numFrames && start + length <= numFrames);
-        return { channels, numChannels, offset + start, length };
+        return { channels, numChannels, offset + start, length - start };
     }
 
     DiscreteChannelSet getChannelSet (uint32_t firstChannel, uint32_t numChans) const
