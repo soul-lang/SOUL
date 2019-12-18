@@ -1088,7 +1088,8 @@ struct heart
             none,
             period,
             frequency,
-            id
+            id,
+            session
         };
 
         ProcessorProperty (CodeLocation l, Property prop)
@@ -1111,6 +1112,7 @@ struct heart
             if (name == "period")     return Property::period;
             if (name == "frequency")  return Property::frequency;
             if (name == "id")         return Property::id;
+            if (name == "session")    return Property::session;
 
             return Property::none;
         }
@@ -1120,6 +1122,7 @@ struct heart
             if (p == Property::period)     return "period";
             if (p == Property::frequency)  return "frequency";
             if (p == Property::id)         return "id";
+            if (p == Property::session)    return "session";
 
             SOUL_ASSERT_FALSE;
             return "";
@@ -1127,7 +1130,10 @@ struct heart
 
         static Type getPropertyType (Property p)
         {
-            return p == Property::id ? PrimitiveType::int32 : Type::getFrequencyType();
+            if (p == Property::id || p == Property::session)
+                return PrimitiveType::int32;
+
+            return Type::getFrequencyType();
         }
 
         const char* getPropertyName() const
