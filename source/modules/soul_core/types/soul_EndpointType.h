@@ -50,6 +50,15 @@ static EndpointKind parseEndpointKind (TokeniserType& tokeniser)
     return EndpointKind::null;
 }
 
+template <typename TokeniserType>
+static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
+{
+    return tokeniser.matches ("null")
+            || tokeniser.matches ("value")
+            || tokeniser.matches ("stream")
+            || tokeniser.matches ("event");
+}
+
 //==============================================================================
 using EndpointID = std::string;
 

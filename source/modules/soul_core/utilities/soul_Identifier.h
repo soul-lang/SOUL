@@ -30,14 +30,14 @@ struct Identifier  final
     Identifier& operator= (const Identifier&) = default;
 
     bool isValid() const noexcept                                   { return name != nullptr; }
-    operator const std::string&() const noexcept                    { SOUL_ASSERT (isValid()); return *name; }
-    const std::string& toString() const noexcept                    { SOUL_ASSERT (isValid()); return *name; }
+    operator const std::string&() const                             { SOUL_ASSERT (isValid()); return *name; }
+    const std::string& toString() const                             { SOUL_ASSERT (isValid()); return *name; }
     std::string toStringWithFallback (const std::string& fallback) const  { return isValid() ? *name : fallback; }
 
     bool operator== (const Identifier& other) const noexcept        { return name == other.name; }
     bool operator!= (const Identifier& other) const noexcept        { return name != other.name; }
-    bool operator== (const std::string& other) const noexcept       { SOUL_ASSERT (isValid()); return *name == other; }
-    bool operator!= (const std::string& other) const noexcept       { SOUL_ASSERT (isValid()); return *name != other; }
+    bool operator== (const std::string& other) const                { SOUL_ASSERT (isValid()); return *name == other; }
+    bool operator!= (const std::string& other) const                { SOUL_ASSERT (isValid()); return *name != other; }
 
     //==============================================================================
     struct Pool  final
@@ -239,6 +239,8 @@ struct IdentifierPath  final
     bool operator== (const Identifier& other) const         { return isUnqualifiedName (other); }
     bool operator!= (const IdentifierPath& other) const     { return pathSections != other.pathSections; }
     bool operator!= (const Identifier& other) const         { return ! isUnqualifiedName (other); }
+    bool operator== (const std::string& other) const        { return toString() == other; }
+    bool operator!= (const std::string& other) const        { return toString() != other; }
 
     size_t size() const                 { return pathSections.size(); }
     Identifier getFirstPart() const     { return pathSections.front(); }

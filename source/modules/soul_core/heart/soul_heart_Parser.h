@@ -438,7 +438,7 @@ private:
         c.interpolationType = parseInterpolationType (*this);
         auto src = readProcessorAndChannel();
         c.sourceProcessor = src.processor;
-        c.sourceChannel = src.channel;
+        c.sourceEndpoint = src.endpoint;
         expect (HEARTOperator::rightArrow);
 
         if (matchIf (HEARTOperator::openBracket))
@@ -457,14 +457,14 @@ private:
 
         auto dst = readProcessorAndChannel();
         c.destProcessor = dst.processor;
-        c.destChannel = dst.channel;
+        c.destEndpoint = dst.endpoint;
         expectSemicolon();
     }
 
     struct ProcessorAndChannel
     {
         heart::ProcessorInstancePtr processor;
-        std::string channel;
+        std::string endpoint;
     };
 
     ProcessorAndChannel readProcessorAndChannel()

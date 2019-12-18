@@ -154,38 +154,42 @@ private:
     }
 
     //==============================================================================
-    void visit (AST::InputDeclaration& io) override
+    void visit (AST::EndpointDeclaration& e) override
     {
-        auto& i = module.allocate<heart::InputDeclaration> (io.context.location);
-        i.name = convertIdentifier (io.name);
-        i.index = (uint32_t) module.inputs.size();
-        i.kind = io.kind;
-        i.sampleTypes = io.getResolvedSampleTypes();
-        i.annotation = io.annotation.toPlainAnnotation();
-        i.arraySize = getProcessorArraySize (io.arraySize);
-        io.generatedInput = i;
+        SOUL_ASSERT (e.details != nullptr);
 
-        SOUL_ASSERT (module.findOutput (io.name) == nullptr);
-        SOUL_ASSERT (module.findInput (io.name) == nullptr);
+        if (e.isInput)
+        {
+            auto& i = module.allocate<heart::InputDeclaration> (e.context.location);
+            i.name = convertIdentifier (e.name);
+            i.index = (uint32_t) module.inputs.size();
+            i.kind = e.details->kind;
+            i.sampleTypes = e.details->getResolvedSampleTypes();
+            i.annotation = e.annotation.toPlainAnnotation();
+            i.arraySize = getProcessorArraySize (e.details->arraySize);
+            e.generatedInput = i;
 
-        module.inputs.push_back (i);
-    }
+            SOUL_ASSERT (module.findOutput (e.name) == nullptr);
+            SOUL_ASSERT (module.findInput (e.name) == nullptr);
 
-    void visit (AST::OutputDeclaration& io) override
-    {
-        auto& o = module.allocate<heart::OutputDeclaration> (io.context.location);
-        o.name = convertIdentifier (io.name);
-        o.index = (uint32_t) module.outputs.size();
-        o.kind = io.kind;
-        o.sampleTypes = io.getResolvedSampleTypes();
-        o.annotation = io.annotation.toPlainAnnotation();
-        o.arraySize = getProcessorArraySize (io.arraySize);
-        io.generatedOutput = o;
+            module.inputs.push_back (i);
+        }
+        else
+        {
+            auto& o = module.allocate<heart::OutputDeclaration> (e.context.location);
+            o.name = convertIdentifier (e.name);
+            o.index = (uint32_t) module.outputs.size();
+            o.kind = e.details->kind;
+            o.sampleTypes = e.details->getResolvedSampleTypes();
+            o.annotation = e.annotation.toPlainAnnotation();
+            o.arraySize = getProcessorArraySize (e.details->arraySize);
+            e.generatedOutput = o;
 
-        SOUL_ASSERT (module.findOutput (io.name) == nullptr);
-        SOUL_ASSERT (module.findInput (io.name) == nullptr);
+            SOUL_ASSERT (module.findOutput (e.name) == nullptr);
+            SOUL_ASSERT (module.findInput (e.name) == nullptr);
 
-        module.outputs.push_back (o);
+            module.outputs.push_back (o);
+        }
     }
 
     void visit (AST::Connection& conn) override
@@ -195,8 +199,8 @@ private:
 
         c.sourceProcessor   = getOrAddProcessorInstance (*conn.source.processorName);
         c.destProcessor     = getOrAddProcessorInstance (*conn.dest.processorName);
-        c.sourceChannel     = conn.source.channel;
-        c.destChannel       = conn.dest.channel;
+        c.sourceEndpoint    = conn.source.endpoint;
+        c.destEndpoint      = conn.dest.endpoint;
         c.interpolationType = conn.interpolationType;
         c.delayLength       = getDelayLength (conn.delayLength);
     }
@@ -260,7 +264,7 @@ private:
                 auto& p = module.allocate<heart::ProcessorInstance>();
                 p.instanceName = processorName.path.toString();
                 p.sourceName = targetProcessor->getFullyQualifiedPath().toString();
-                p.arraySize = getProcessorArraySize (i->arrayArgument);
+                p.arraySize = getProcessorArraySize (i->arraySize);
 
                 if (i->clockMultiplierRatio != nullptr)
                 {
@@ -1015,15 +1019,22 @@ private:
         {
             for (auto v : values)
             {
-                if (! output->output->supportsSampleType (*v))
-                    target.context.throwError (Errors::cannotWriteTypeToEndpoint (v->getResultType().getDescription(),
-                                                                                  output->output->getSampleTypesDescription()));
+                if (auto details = output->output->details.get())
+                {
+                    if (! details->supportsSampleType (*v))
+                        target.context.throwError (Errors::cannotWriteTypeToEndpoint (v->getResultType().getDescription(),
+                                                                                      details->getSampleTypesDescription()));
 
-                auto sampleType = output->output->getSampleType (*v);
+                    auto sampleType = details->getSampleType (*v);
 
-                builder.addWriteStream (output->context.location,
-                                        *output->output->generatedOutput, nullptr,
-                                        evaluateAsExpression (*v, sampleType));
+                    builder.addWriteStream (output->context.location,
+                                            *output->output->generatedOutput, nullptr,
+                                            evaluateAsExpression (*v, sampleType));
+                }
+                else
+                {
+                    SOUL_ASSERT_FALSE;
+                }
             }
 
             return;
@@ -1033,52 +1044,57 @@ private:
         {
             if (auto outputRef = cast<AST::OutputEndpointRef> (arraySubscript->object))
             {
-                if (outputRef->output->arraySize == nullptr)
-                    arraySubscript->context.throwError (Errors::cannotUseBracketsOnNonArrayEndpoint());
-
-                for (auto v : values)
+                if (auto details = outputRef->output->details.get())
                 {
-                    // Find the element type that our expression will write to
-                    auto sampleType = outputRef->output->getElementSampleType (*v);
-                    auto& value = evaluateAsExpression (*v, sampleType);
+                    if (details->arraySize == nullptr)
+                        arraySubscript->context.throwError (Errors::cannotUseBracketsOnNonArrayEndpoint());
 
-                    if (arraySubscript->isSlice)
+                    for (auto v : values)
                     {
-                        auto slice = arraySubscript->getResolvedSliceRange();
+                        // Find the element type that our expression will write to
+                        auto sampleType = details->getElementSampleType (*v);
+                        auto& value = evaluateAsExpression (*v, sampleType);
 
-                        for (auto i = slice.start; i < slice.end; ++i)
-                            builder.addWriteStream (outputRef->output->context.location,
-                                                    *outputRef->output->generatedOutput,
-                                                    builder.createConstantInt32 (i), value);
-                    }
-                    else
-                    {
-                        auto& index = evaluateAsExpression (*arraySubscript->startIndex);
-                        auto& context = arraySubscript->startIndex->context;
-                        auto constIndex = index.getAsConstant();
-                        auto arraySize = outputRef->output->generatedOutput->arraySize;
-
-                        if (constIndex.isValid())
+                        if (arraySubscript->isSlice)
                         {
-                            auto fixedIndex = TypeRules::checkAndGetArrayIndex (context, constIndex);
-                            TypeRules::checkConstantArrayIndex (context, fixedIndex, (Type::ArraySize) arraySize);
+                            auto slice = arraySubscript->getResolvedSliceRange();
 
-                            builder.addWriteStream (outputRef->output->context.location,
-                                                    *outputRef->output->generatedOutput,
-                                                    builder.createConstantInt32 (fixedIndex), value);
+                            for (auto i = slice.start; i < slice.end; ++i)
+                                builder.addWriteStream (outputRef->output->context.location,
+                                                        *outputRef->output->generatedOutput,
+                                                        builder.createConstantInt32 (i), value);
                         }
                         else
                         {
-                            auto indexType = Type::createWrappedInt ((Type::BoundedIntSize) arraySize);
-                            auto& wrappedIndex = builder.createCast (context.location, index, indexType);
+                            auto& index = evaluateAsExpression (*arraySubscript->startIndex);
+                            auto& context = arraySubscript->startIndex->context;
+                            auto constIndex = index.getAsConstant();
+                            auto arraySize = outputRef->output->generatedOutput->arraySize;
 
-                            builder.addWriteStream (outputRef->output->context.location,
-                                                    *outputRef->output->generatedOutput, wrappedIndex, value);
+                            if (constIndex.isValid())
+                            {
+                                auto fixedIndex = TypeRules::checkAndGetArrayIndex (context, constIndex);
+                                TypeRules::checkConstantArrayIndex (context, fixedIndex, (Type::ArraySize) arraySize);
+
+                                builder.addWriteStream (outputRef->output->context.location,
+                                                        *outputRef->output->generatedOutput,
+                                                        builder.createConstantInt32 (fixedIndex), value);
+                            }
+                            else
+                            {
+                                auto indexType = Type::createWrappedInt ((Type::BoundedIntSize) arraySize);
+                                auto& wrappedIndex = builder.createCast (context.location, index, indexType);
+
+                                builder.addWriteStream (outputRef->output->context.location,
+                                                        *outputRef->output->generatedOutput, wrappedIndex, value);
+                            }
                         }
                     }
+
+                    return;
                 }
 
-                return;
+                SOUL_ASSERT_FALSE;
             }
         }
 

@@ -78,8 +78,7 @@ struct AST
         X(ProcessorAliasDeclaration) \
         X(Connection) \
         X(ProcessorInstance) \
-        X(InputDeclaration) \
-        X(OutputDeclaration) \
+        X(EndpointDeclaration) \
         SOUL_AST_STATEMENTS(X) \
 
     #define SOUL_AST_ALL_TYPES(X) \
@@ -141,7 +140,7 @@ struct AST
         Allocator (Allocator&&) = default;
 
         template <typename Type, typename... Args>
-        pool_ptr<Type> allocate (Args&&... args)   { return pool.allocate<Type> (std::forward<Args> (args)...); }
+        Type& allocate (Args&&... args)   { return pool.allocate<Type> (std::forward<Args> (args)...); }
 
         template <typename Type>
         Identifier get (const Type& newString)  { return identifiers.get (newString); }
@@ -232,13 +231,39 @@ struct AST
 
         std::vector<Property> properties;
 
-        const Property* findProperty (const std::string& name) const
+        template <typename StringType>
+        const Property* findProperty (const StringType& name) const
         {
             for (auto& p : properties)
-                if (p.name->path.toString() == name)
-                    return &p;
+                if (p.name->path == name)
+                    return std::addressof (p);
 
             return {};
+        }
+
+        void addProperty (const Property& newProperty)
+        {
+            properties.push_back (newProperty);
+        }
+
+        void setProperty (const Property& newProperty)
+        {
+            for (auto& p : properties)
+            {
+                if (p.name->path == newProperty.name->path)
+                {
+                    p.value = newProperty.value;
+                    return;
+                }
+            }
+
+            addProperty (newProperty);
+        }
+
+        void setProperties (const Annotation& other)
+        {
+            for (auto& p : other.properties)
+                setProperty (p);
         }
 
         soul::Annotation toPlainAnnotation() const
@@ -255,6 +280,7 @@ struct AST
 
             return a;
         }
+
     };
 
     //==============================================================================
@@ -499,13 +525,15 @@ struct AST
         virtual bool isNamespace() const            { return false; }
 
         virtual ArrayView<ASTObjectPtr>                 getSpecialisationParameters() const  { return {}; }
-        virtual ArrayView<InputDeclarationPtr>          getInputs() const                    { return {}; }
-        virtual ArrayView<OutputDeclarationPtr>         getOutputs() const                   { return {}; }
+        virtual ArrayView<EndpointDeclarationPtr>       getEndpoints() const                 { return {}; }
 
         virtual std::vector<StructDeclarationPtr>*      getStructList() = 0;
         virtual std::vector<UsingDeclarationPtr>*       getUsingList() = 0;
         virtual std::vector<VariableDeclarationPtr>*    getStateVariableList() = 0;
         virtual std::vector<FunctionPtr>*               getFunctionList() = 0;
+
+        size_t getNumInputs() const                 { return countEndpoints (true); }
+        size_t getNumOutputs() const                { return countEndpoints (false); }
 
         IdentifierPath getFullyQualifiedPath() const override
         {
@@ -542,10 +570,7 @@ struct AST
             }
 
             if (search.findEndpoints)
-            {
-                search.addFirstWithName (getInputs(), targetName);
-                search.addFirstWithName (getOutputs(), targetName);
-            }
+                search.addFirstWithName (getEndpoints(), targetName);
 
             if (search.findProcessorsAndNamespaces)
             {
@@ -557,6 +582,18 @@ struct AST
         //==============================================================================
         Identifier name;
         bool isFullyResolved = false;
+
+    private:
+        size_t countEndpoints (bool countInputs) const
+        {
+            size_t num = 0;
+
+            for (auto& e : getEndpoints())
+                if (e->isInput == countInputs)
+                    ++num;
+
+            return num;
+        }
     };
 
     //==============================================================================
@@ -574,17 +611,34 @@ struct AST
             return *processorNamespace;
         }
 
-        ArrayView<InputDeclarationPtr>      getInputs() const override                      { return inputs; }
-        ArrayView<OutputDeclarationPtr>     getOutputs() const override                     { return outputs; }
+        ArrayView<EndpointDeclarationPtr>   getEndpoints() const override                   { return endpoints; }
         ArrayView<ASTObjectPtr>             getSpecialisationParameters() const override    { return specialisationParams; }
+
+        template <typename StringType>
+        EndpointDeclarationPtr findEndpoint (const StringType& nameToFind, bool isInput) const
+        {
+            for (auto& e : endpoints)
+                if (e->isInput == isInput && e->name == nameToFind)
+                    return e;
+
+            return {};
+        }
+
+        template <typename StringType>
+        EndpointDeclarationPtr findEndpoint (const StringType& nameToFind) const
+        {
+            for (auto& e : endpoints)
+                if (e->name == nameToFind)
+                    return e;
+
+            return {};
+        }
 
         virtual void addSpecialisationParameter (VariableDeclaration&) = 0;
         virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
         virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
 
-        std::vector<InputDeclarationPtr> inputs;
-        std::vector<OutputDeclarationPtr> outputs;
-
+        std::vector<EndpointDeclarationPtr> endpoints;
         std::vector<ASTObjectPtr> specialisationParams;
 
         Annotation annotation;
@@ -676,6 +730,16 @@ struct AST
         std::vector<ConnectionPtr> connections;
         std::vector<VariableDeclarationPtr> constants;
         std::vector<ProcessorAliasDeclarationPtr> processorAliases;
+
+        template <typename StringType>
+        ProcessorInstancePtr findChildProcessor (const StringType& processorInstanceName) const
+        {
+            for (auto& i : processorInstances)
+                if (i->instanceName->path == processorInstanceName)
+                    return i;
+
+            return {};
+        }
 
         //==============================================================================
         struct RecursiveGraphDetector
@@ -866,18 +930,16 @@ struct AST
     };
 
     //==============================================================================
-    struct EndpointDeclaration  : public ASTObject
+    struct EndpointDetails
     {
-        EndpointDeclaration (ObjectType ot, const Context& c, EndpointKind ek)
-            : ASTObject (ot, c), kind (ek) {}
+        EndpointDetails (EndpointKind k) : kind (k) {}
+        EndpointDetails (const EndpointDetails&) = default;
 
-        Identifier name;
-        EndpointKind kind;
-        Annotation annotation;
+        const EndpointKind kind;
         std::vector<ExpPtr> sampleTypes;
         ExpPtr arraySize;
 
-        void checkSampleTypesValid()
+        void checkSampleTypesValid (const Context& context)
         {
             if (isStream (kind))
             {
@@ -895,11 +957,9 @@ struct AST
                 for (auto& sampleType : getResolvedSampleTypes())
                 {
                     for (auto& processedType : processedTypes)
-                    {
                         if (processedType.isEqual (sampleType, Type::ignoreVectorSize1))
                             context.throwError (Errors::duplicateTypesInList (processedType.getDescription(),
                                                                               sampleType.getDescription()));
-                    }
 
                     processedTypes.push_back (sampleType);
                 }
@@ -993,23 +1053,39 @@ struct AST
         }
     };
 
-    struct InputDeclaration  : public EndpointDeclaration
+    struct ChildEndpointPath
     {
-        InputDeclaration (const Context& c, EndpointKind ek) : EndpointDeclaration (ObjectType::InputDeclaration, c, ek) {}
+        struct PathSection
+        {
+            QualifiedIdentifierPtr name;
+            ExpPtr index;
+            bool isWildcard = false;
+        };
 
-        heart::InputDeclarationPtr generatedInput;
+        ArrayWithPreallocation<PathSection, 4> sections;
     };
 
-    struct OutputDeclaration  : public EndpointDeclaration
+    struct EndpointDeclaration  : public ASTObject
     {
-        OutputDeclaration (const Context& c, EndpointKind ek) : EndpointDeclaration (ObjectType::OutputDeclaration, c, ek) {}
+        EndpointDeclaration (const Context& c, bool isInputEndpoint)
+            : ASTObject (ObjectType::EndpointDeclaration, c), isInput (isInputEndpoint) {}
 
+        bool isResolved() const         { return details != nullptr && details->isResolved(); }
+
+        const bool isInput;
+        Identifier name;
+        std::unique_ptr<EndpointDetails> details;
+        std::unique_ptr<ChildEndpointPath> childPath;
+        Annotation annotation;
+
+        heart::InputDeclarationPtr generatedInput;
         heart::OutputDeclarationPtr generatedOutput;
     };
 
+    //==============================================================================
     struct InputEndpointRef  : public Expression
     {
-        InputEndpointRef (const Context& c, InputDeclarationPtr i)
+        InputEndpointRef (const Context& c, EndpointDeclarationPtr i)
             : Expression (ObjectType::InputEndpointRef, c, ExpressionKind::value), input (i)
         {
             SOUL_ASSERT (input != nullptr);
@@ -1019,19 +1095,21 @@ struct AST
 
         Type getResultType() const override
         {
-            if (isEvent (input->kind))
-                return (input->arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (input->getArraySize()));
+            auto& details = *input->details;
 
-            SOUL_ASSERT (input->sampleTypes.size() == 1);
-            return input->getSampleArrayTypes().front();
+            if (isEvent (details.kind))
+                return (details.arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (details.getArraySize()));
+
+            SOUL_ASSERT (details.sampleTypes.size() == 1);
+            return details.getSampleArrayTypes().front();
         }
 
-        InputDeclarationPtr input;
+        EndpointDeclarationPtr input;
     };
 
     struct OutputEndpointRef  : public Expression
     {
-        OutputEndpointRef (const Context& c, OutputDeclarationPtr o)
+        OutputEndpointRef (const Context& c, EndpointDeclarationPtr o)
             : Expression (ObjectType::OutputEndpointRef, c, ExpressionKind::endpoint), output (o)
         {
             SOUL_ASSERT (output != nullptr);
@@ -1040,27 +1118,27 @@ struct AST
         bool isOutputEndpoint() const override      { return true; }
         bool isResolved() const override            { return output->isResolved(); }
 
-        OutputDeclarationPtr output;
+        EndpointDeclarationPtr output;
     };
 
     //==============================================================================
     struct Connection  : public ASTObject
     {
-        struct NameAndChannel
+        struct NameAndEndpoint
         {
             QualifiedIdentifierPtr processorName;
             ExpPtr                 processorIndex;
-            Identifier             channel;
-            ExpPtr                 channelIndex;
+            Identifier             endpoint;
+            ExpPtr                 endpointIndex;
         };
 
         Connection (const Context& c, InterpolationType interpolation,
-                    NameAndChannel src, NameAndChannel dst, ExpPtr delay)
+                    NameAndEndpoint src, NameAndEndpoint dst, ExpPtr delay)
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
         InterpolationType interpolationType;
-        NameAndChannel source, dest;
+        NameAndEndpoint source, dest;
         ExpPtr delayLength;
     };
 
@@ -1073,7 +1151,7 @@ struct AST
         std::vector<ExpPtr> specialisationArgs;
         ExpPtr clockMultiplierRatio;
         ExpPtr clockDividerRatio;
-        ExpPtr arrayArgument;
+        ExpPtr arraySize;
         bool wasCreatedImplicitly = false;
     };
 
@@ -1704,13 +1782,13 @@ struct AST
 
     struct DotOperator  : public Expression
     {
-        DotOperator (const Context& c, ExpPtr a, QualifiedIdentifierPtr b)
+        DotOperator (const Context& c, ExpPtr a, QualifiedIdentifier& b)
            : Expression (ObjectType::DotOperator, c, ExpressionKind::unknown), lhs (a), rhs (b) {}
 
         bool isResolved() const override            { return false; }
 
         ExpPtr lhs;
-        QualifiedIdentifierPtr rhs;
+        QualifiedIdentifier& rhs;
     };
 
     //==============================================================================

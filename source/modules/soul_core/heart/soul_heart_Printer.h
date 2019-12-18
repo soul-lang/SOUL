@@ -188,13 +188,13 @@ private:
                 out << "connection "
                     << getInterpolationDescription (c->interpolationType)
                     << " "
-                    << printProcessorAndChannel (c->sourceProcessor, c->sourceChannel);
+                    << printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
 
                 if (c->delayLength > 0)
                     out << " -> [" << std::to_string (c->delayLength) << "]";
 
                 out << " -> "
-                    << printProcessorAndChannel (c->destProcessor, c->destChannel)
+                    << printProcessorAndChannel (c->destProcessor, c->destEndpoint)
                     << ";" << newLine;
             }
         }

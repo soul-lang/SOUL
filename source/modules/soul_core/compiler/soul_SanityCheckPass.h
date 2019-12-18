@@ -263,7 +263,7 @@ private:
 
     static void checkOverallStructureOfProcessor (pool_ptr<AST::ProcessorBase> processorOrGraph)
     {
-        if (processorOrGraph->outputs.empty())
+        if (processorOrGraph->getNumOutputs() == 0)
             processorOrGraph->context.throwError (Errors::processorNeedsAnOutput());
 
         if (auto processor = cast<AST::Processor> (processorOrGraph))
@@ -288,12 +288,8 @@ private:
             if (numRunFunctions == 0)
             {
                 // If the processor has non-event I/O then we need a run processor
-                for (auto i : processorOrGraph->inputs)
-                    if (! isEvent (i->kind))
-                        processor->context.throwError (Errors::processorNeedsRunFunction());
-
-                for (auto o : processorOrGraph->outputs)
-                    if (! isEvent (o->kind))
+                for (auto e : processorOrGraph->getEndpoints())
+                    if (e->details != nullptr && ! isEvent (e->details->kind))
                         processor->context.throwError (Errors::processorNeedsRunFunction());
             }
 
@@ -313,8 +309,7 @@ private:
 
             soul::DuplicateNameChecker duplicateNameChecker;
 
-            for (auto& io : p.inputs)          duplicateNameChecker.check (io->name, io->context);
-            for (auto& io : p.outputs)         duplicateNameChecker.check (io->name, io->context);
+            for (auto& e : p.getEndpoints())   duplicateNameChecker.check (e->name, e->context);
             for (auto& v : p.stateVariables)   duplicateNameChecker.check (v->name, v->context);
             for (auto& s : p.structures)       duplicateNameChecker.check (s->name, s->context);
             for (auto& u : p.usings)           duplicateNameChecker.check (u->name, u->context);
@@ -326,8 +321,8 @@ private:
                 {
                     bool nameFound = false;
 
-                    for (auto& io : p.inputs)
-                        if (io->name == f->name)
+                    for (auto& e : p.getEndpoints())
+                        if (e->isInput && e->name == f->name)
                             nameFound = true;
 
                     if (! nameFound)
@@ -356,8 +351,8 @@ private:
         {
             soul::DuplicateNameChecker duplicateNameChecker;
 
-            for (auto& io : g.inputs)       duplicateNameChecker.check (io->name, io->context);
-            for (auto& io : g.outputs)      duplicateNameChecker.check (io->name, io->context);
+            for (auto& e : g.getEndpoints())
+                duplicateNameChecker.check (e->name, e->context);
         }
 
         void visit (AST::Namespace& n) override
@@ -433,11 +428,9 @@ private:
             super::visit (p);
             checkForDuplicateFunctions (p.functions);
 
-            for (auto input : p.inputs)
-                input->checkSampleTypesValid();
-
-            for (auto output : p.outputs)
-                output->checkSampleTypesValid();
+            for (auto input : p.endpoints)
+                if (input->details != nullptr)
+                    input->details->checkSampleTypesValid (input->context);
 
             for (auto& v : p.stateVariables)
                 if (v->initialValue != nullptr && ! v->initialValue->isCompileTimeConstant())
@@ -448,11 +441,9 @@ private:
         {
             super::visit (g);
 
-            for (auto input : g.inputs)
-                input->checkSampleTypesValid();
-
-            for (auto output : g.outputs)
-                output->checkSampleTypesValid();
+            for (auto input : g.endpoints)
+                if (input->details != nullptr)
+                    input->details->checkSampleTypesValid (input->context);
 
             AST::Graph::RecursiveGraphDetector::check (g);
             AST::Graph::CycleDetector (g).check();
@@ -500,22 +491,18 @@ private:
 
         RecursiveTypeDeclVisitStack recursiveTypeDeclVisitStack;
 
-        void visit (AST::InputDeclaration& io) override
+        void visit (AST::EndpointDeclaration& e) override
         {
-            super::visit (io);
-            checkArraySize (io.arraySize, AST::maxEndpointArraySize);
-        }
+            super::visit (e);
 
-        void visit (AST::OutputDeclaration& io) override
-        {
-            super::visit (io);
-            checkArraySize (io.arraySize, AST::maxEndpointArraySize);
+            if (e.details != nullptr)
+                checkArraySize (e.details->arraySize, AST::maxEndpointArraySize);
         }
 
         void visit (AST::ProcessorInstance& i) override
         {
             super::visit (i);
-            checkArraySize (i.arrayArgument, AST::maxProcessorArraySize);
+            checkArraySize (i.arraySize, AST::maxProcessorArraySize);
         }
 
         void visit (AST::Connection& c) override

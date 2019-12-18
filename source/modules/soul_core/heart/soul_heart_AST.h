@@ -281,7 +281,7 @@ struct heart
 
         InterpolationType interpolationType = InterpolationType::none;
         ProcessorInstancePtr sourceProcessor, destProcessor;
-        std::string sourceChannel, destChannel;
+        std::string sourceEndpoint, destEndpoint;
         int64_t delayLength = 0;
     };
 

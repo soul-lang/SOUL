@@ -230,9 +230,9 @@ struct ModuleCloner
         auto& c = newModule.allocate<heart::Connection> (old.location);
         c.interpolationType = old.interpolationType;
         c.sourceProcessor   = getRemappedProcessorInstance (old.sourceProcessor);
-        c.sourceChannel     = old.sourceChannel;
+        c.sourceEndpoint    = old.sourceEndpoint;
         c.destProcessor     = getRemappedProcessorInstance (old.destProcessor);
-        c.destChannel       = old.destChannel;
+        c.destEndpoint      = old.destEndpoint;
         c.delayLength       = old.delayLength;
         return c;
     }

@@ -172,6 +172,142 @@ static void mergeDuplicateNamespaces (AST::Namespace& ns)
     {}
 }
 
+static AST::EndpointDeclaration& findEndpoint (AST::ProcessorBase& processor, AST::QualifiedIdentifier& name, bool isInput)
+{
+    auto result = processor.findEndpoint (name.path.getFirstPart(), isInput);
+
+    if (result == nullptr)
+        name.context.throwError (isInput ? Errors::cannotFindInput (name.toString())
+                                         : Errors::cannotFindOutput (name.toString()));
+
+    return *result;
+}
+
+//==============================================================================
+struct ChildEndpointResolution
+{
+    static void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
+    {
+        for (auto& m : module.getSubModules())
+            resolveHoistedEndpoints (allocator, *m);
+
+        if (auto graph = cast<AST::Graph> (module))
+        {
+            while (hoistFirstChildEndpoint (allocator, *graph))
+            {}
+        }
+    }
+
+private:
+    static bool hoistFirstChildEndpoint (AST::Allocator& allocator, AST::Graph& g)
+    {
+        for (size_t i = 0; i < g.endpoints.size(); ++i)
+        {
+            auto& e = *g.endpoints[i];
+
+            if (e.details == nullptr)
+            {
+                resolveEndpoint (allocator, g, e, e.childPath->sections);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static std::string makeUniqueEndpointName (AST::ProcessorBase& parent,
+                                               ArrayView<AST::ChildEndpointPath::PathSection> path)
+    {
+        std::string root = "expose";
+
+        for (auto& p : path)
+            root += "_" + p.name->path.toString();
+
+        return addSuffixToMakeUnique (makeSafeIdentifierName (root),
+                                      [&] (const std::string& nm) { return parent.findEndpoint (nm) != nullptr; });
+    }
+
+    static void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
+                                                   AST::Graph& parentGraph,
+                                                   AST::EndpointDeclaration& parentEndpoint,
+                                                   AST::ProcessorBase& childProcessor,
+                                                   AST::EndpointDeclaration& childEndpoint)
+    {
+        parentEndpoint.details = std::make_unique<AST::EndpointDetails> (*childEndpoint.details);
+        parentEndpoint.annotation.setProperties (childEndpoint.annotation);
+        parentEndpoint.childPath.reset();
+
+        AST::Connection::NameAndEndpoint parent, child;
+
+        parent.processorName = allocator.allocate<AST::QualifiedIdentifier> (AST::Context(), IdentifierPath());
+        parent.processorIndex = {};
+        parent.endpoint = parentEndpoint.name;
+        parent.endpointIndex = {};
+
+        child.processorName = allocator.allocate<AST::QualifiedIdentifier> (AST::Context(), IdentifierPath (childProcessor.name));
+        child.processorIndex = {};
+        child.endpoint = childEndpoint.name;
+        child.endpointIndex = {};
+
+        if (parentEndpoint.isInput)
+            parentGraph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none, parent, child, nullptr));
+        else
+            parentGraph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none, child, parent, nullptr));
+    }
+
+    static void resolveEndpoint (AST::Allocator& allocator,
+                                 AST::Graph& parentGraph,
+                                 AST::EndpointDeclaration& hoistedEndpoint,
+                                 ArrayView<AST::ChildEndpointPath::PathSection> path)
+    {
+        SOUL_ASSERT (path.size() > 1);
+
+        auto childProcessorQualName = path.front().name;
+        auto& nameContext = childProcessorQualName->context;
+        auto childProcessorName = childProcessorQualName->path.getFirstPart();
+        auto childProcessorInstance = parentGraph.findChildProcessor (childProcessorName);
+
+        if (childProcessorInstance == nullptr)
+            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName.toString()));
+
+        if (childProcessorInstance->arraySize != nullptr)
+            nameContext.throwError (Errors::notYetImplemented ("Exposing child endpoints involving processor arrays"));
+
+        if (path.front().index != nullptr)
+            nameContext.throwError (Errors::targetIsNotAnArray());
+
+        auto childProcessor = parentGraph.findSingleMatchingProcessor (*childProcessorInstance);
+        auto childGraph = cast<AST::Graph> (childProcessor);
+
+        if (path.size() == 2)
+        {
+            auto& childEndpoint = findEndpoint (*childProcessor, *path.back().name, hoistedEndpoint.isInput);
+
+            if (childEndpoint.details == nullptr)
+                resolveEndpoint (allocator, *childGraph, childEndpoint, childEndpoint.childPath->sections);
+
+            if (childEndpoint.details->arraySize != nullptr)
+                nameContext.throwError (Errors::notYetImplemented ("Exposing child endpoint arrays"));
+
+            if (path.back().index != nullptr)
+                nameContext.throwError (Errors::targetIsNotAnArray());
+
+            setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessor, childEndpoint);
+            return;
+        }
+
+        if (childGraph == nullptr)
+            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName.toString()));
+
+        auto& newEndpointInChild = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), hoistedEndpoint.isInput);
+        newEndpointInChild.name = allocator.get (makeUniqueEndpointName (*childGraph, path));
+        childGraph->endpoints.push_back (newEndpointInChild);
+
+        resolveEndpoint (allocator, *childGraph, newEndpointInChild, path.tail());
+        setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessor, newEndpointInChild);
+    }
+};
+
 //==============================================================================
 void Compiler::compile (CodeLocation code)
 {
@@ -283,6 +419,7 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
         ignoreUnused (linkOptions);
         CompileMessageHandler handler (messageList);
         resolveProcessorInstances (processorToRun);
+        ChildEndpointResolution::resolveHoistedEndpoints (allocator, *topLevelNamespace);
         mergeDuplicateNamespaces (*topLevelNamespace);
         removeModulesWithSpecialisationParams (topLevelNamespace);
         ResolutionPass::run (allocator, *topLevelNamespace, true);
@@ -393,11 +530,11 @@ void Compiler::createImplicitProcessorInstanceIfNeeded (AST::Graph& graph, AST::
 
     if (auto target = graph.findSingleMatchingProcessor (path))
     {
-        auto i = allocator.allocate<AST::ProcessorInstance> (path.context);
+        auto& i = allocator.allocate<AST::ProcessorInstance> (path.context);
         graph.processorInstances.push_back (i);
-        i->instanceName  = allocator.allocate<AST::QualifiedIdentifier> (path.context, path.path);
-        i->targetProcessor = allocator.allocate<AST::ProcessorRef> (path.context, *target);
-        i->wasCreatedImplicitly = true;
+        i.instanceName  = allocator.allocate<AST::QualifiedIdentifier> (path.context, path.path);
+        i.targetProcessor = allocator.allocate<AST::ProcessorRef> (path.context, *target);
+        i.wasCreatedImplicitly = true;
     }
 }
 

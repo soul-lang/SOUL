@@ -263,8 +263,8 @@ private:
 
             if (o.isOutputEndpoint())
             {
-                auto w = allocator.allocate<AST::WriteToEndpoint> (o.context, o.lhs, o.rhs);
-                visitObject (*w);
+                auto& w = allocator.allocate<AST::WriteToEndpoint> (o.context, o.lhs, o.rhs);
+                visitObject (w);
                 return w;
             }
 
@@ -364,11 +364,13 @@ private:
                     if (pa->targetProcessor != nullptr)
                         return allocator.allocate<AST::ProcessorRef> (qi.context, *pa->targetProcessor);
 
-                if (auto e = cast<AST::InputDeclaration> (item))
-                    return allocator.allocate<AST::InputEndpointRef> (qi.context, e);
+                if (auto e = cast<AST::EndpointDeclaration> (item))
+                {
+                    if (e->isInput)
+                        return allocator.allocate<AST::InputEndpointRef> (qi.context, e);
 
-                if (auto e = cast<AST::OutputDeclaration> (item))
                     return allocator.allocate<AST::OutputEndpointRef> (qi.context, e);
+                }
             }
 
             if (auto builtInConstant = getBuiltInConstant (qi))
@@ -500,11 +502,11 @@ private:
 
             if (AST::isResolvedAsType (d.lhs))
             {
-                if (d.rhs->path.isUnqualified())
+                if (d.rhs.path.isUnqualified())
                 {
                     auto lhsType = d.lhs->resolveAsType();
 
-                    if (auto metaFunction = createTypeMetaFunction (*d.rhs, *d.lhs))
+                    if (auto metaFunction = createTypeMetaFunction (d.rhs, *d.lhs))
                         return metaFunction;
                 }
             }
@@ -517,15 +519,15 @@ private:
                     auto& s = lhsType.getStructRef();
 
                     for (size_t i = 0; i < s.members.size(); ++i)
-                        if (d.rhs->path.isUnqualifiedName (s.members[i].name))
+                        if (d.rhs.path.isUnqualifiedName (s.members[i].name))
                             return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, i);
 
                     if (! ignoreErrors)
-                        d.rhs->context.throwError (Errors::unknownMemberInStruct (d.rhs->toString(), s.name));
+                        d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), s.name));
                 }
 
-                if (d.rhs->path.isUnqualified())
-                    if (auto metaFunction = createTypeMetaFunction (*d.rhs, *d.lhs))
+                if (d.rhs.path.isUnqualified())
+                    if (auto metaFunction = createTypeMetaFunction (d.rhs, *d.lhs))
                         return metaFunction;
             }
             else if (d.lhs->isOutputEndpoint())
@@ -1067,11 +1069,11 @@ private:
 
             if (c.isSizeOfUnsizedType())
             {
-                auto argList = allocator.allocate<AST::CommaSeparatedList> (c.context);
-                argList->items.push_back (c.source);
+                auto& argList = allocator.allocate<AST::CommaSeparatedList> (c.context);
+                argList.items.push_back (c.source);
 
                 auto name = allocator.identifiers.get ("get_array_size");
-                auto qi = allocator.allocate<AST::QualifiedIdentifier> (c.context, IdentifierPath (name));
+                auto& qi = allocator.allocate<AST::QualifiedIdentifier> (c.context, IdentifierPath (name));
                 return allocator.allocate<AST::CallOrCast> (qi, argList, true);
             }
 
@@ -1531,11 +1533,9 @@ private:
                 if (is_type<AST::Processor> (search.itemsFound.front()))
                     name.context.throwError (Errors::cannotUseProcessorAsFunction());
 
-                if (is_type<AST::InputDeclaration> (search.itemsFound.front()))
-                    name.context.throwError (Errors::cannotUseInputAsFunction());
-
-                if (is_type<AST::OutputDeclaration> (search.itemsFound.front()))
-                    name.context.throwError (Errors::cannotUseOutputAsFunction());
+                if (auto e = cast<AST::EndpointDeclaration> (search.itemsFound.front()))
+                    name.context.throwError (e->isInput ? Errors::cannotUseInputAsFunction()
+                                                        : Errors::cannotUseOutputAsFunction());
             }
 
             auto possibleFunction = findPossibleMisspeltFunction (name.path.getLastPart());
@@ -1627,24 +1627,31 @@ private:
             if (array->kind == AST::ExpressionKind::endpoint)
             {
                 SOUL_ASSERT (AST::isResolvedAsEndpoint (array));
-                pool_ptr<AST::EndpointDeclaration> endpoint;
+                AST::ExpPtr endpointArraySize;
 
                 if (auto i = cast<AST::InputEndpointRef> (array))
-                    endpoint = i->input;
+                {
+                    if (i->input == nullptr || i->input->details == nullptr)
+                        array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
+
+                    endpointArraySize = i->input->details->arraySize;
+                }
 
                 if (auto o = cast<AST::OutputEndpointRef> (array))
-                    endpoint = o->output;
+                {
+                    if (o->output == nullptr || o->output->details == nullptr)
+                        array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
-                if (endpoint == nullptr)
-                    array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
+                    endpointArraySize = o->output->details->arraySize;
+                }
 
                 Type::BoundedIntSize arraySize = 0;
 
-                if (endpoint->arraySize != nullptr)
+                if (endpointArraySize != nullptr)
                 {
-                    SOUL_ASSERT (AST::isResolvedAsConstant (endpoint->arraySize));
-                    arraySize = static_cast<Type::BoundedIntSize> (TypeRules::checkAndGetArraySize (endpoint->arraySize->context,
-                                                                                                    endpoint->arraySize->getAsConstant()->value));
+                    SOUL_ASSERT (AST::isResolvedAsConstant (endpointArraySize));
+                    arraySize = static_cast<Type::BoundedIntSize> (TypeRules::checkAndGetArraySize (endpointArraySize->context,
+                                                                                                    endpointArraySize->getAsConstant()->value));
                 }
 
                 if (arraySize == 0)
@@ -1658,8 +1665,8 @@ private:
                     call.context.throwError (Errors::wrongTypeForAtMethod());
             }
 
-            auto ref = allocator.allocate<AST::ArrayElementRef> (call.context, array, index, nullptr, false);
-            ref->suppressWrapWarning = true;
+            auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, array, index, nullptr, false);
+            ref.suppressWrapWarning = true;
             return ref;
         }
 
@@ -1705,7 +1712,7 @@ private:
                                                                    call.getArgumentTypes(),
                                                                    shouldIgnoreErrors))
             {
-                auto newCall = allocator.allocate<AST::FunctionCall> (call.context, *newFunction, call.arguments, call.isMethodCall);
+                auto& newCall = allocator.allocate<AST::FunctionCall> (call.context, *newFunction, call.arguments, call.isMethodCall);
                 newFunction->originalCallLeadingToSpecialisation = newCall;
                 return newCall;
             }
@@ -1800,8 +1807,8 @@ private:
                     return false;
                 }
 
-                auto type = allocator.allocate<AST::ConcreteType> (AST::Context(), resolvedType);
-                auto usingDecl = allocator.allocate<AST::UsingDeclaration> (wildcardToResolve->context, wildcardName, type);
+                auto& type = allocator.allocate<AST::ConcreteType> (AST::Context(), resolvedType);
+                auto& usingDecl = allocator.allocate<AST::UsingDeclaration> (wildcardToResolve->context, wildcardName, type);
                 function.genericSpecialisations.push_back (usingDecl);
             }
 
@@ -2127,6 +2134,20 @@ private:
             return p;
         }
 
+        static Type getSampleTypeOfEndpoint (AST::ExpPtr e)
+        {
+            if (auto outRef = cast<AST::OutputEndpointRef> (e))
+                if (auto* details = outRef->output->details.get())
+                    return details->getSampleArrayTypes().front();
+
+            if (auto inRef = cast<AST::InputEndpointRef> (e))
+                if (auto* details = inRef->input->details.get())
+                    return details->getSampleArrayTypes().front();
+
+            SOUL_ASSERT_FALSE;
+            return {};
+        }
+
         AST::ExpPtr visit (AST::ArrayElementRef& s) override
         {
             super::visit (s);
@@ -2134,18 +2155,9 @@ private:
             Type lhsType;
 
             if (AST::isResolvedAsEndpoint (s.object))
-            {
-                if (auto outRef = cast<AST::OutputEndpointRef> (s.object))
-                    lhsType = outRef->output->getSampleArrayTypes().front();
-                else if (auto inRef = cast<AST::InputEndpointRef> (s.object))
-                    lhsType = inRef->input->getSampleArrayTypes().front();
-                else
-                    SOUL_ASSERT_FALSE;
-            }
+                lhsType = getSampleTypeOfEndpoint (s.object);
             else
-            {
                 lhsType = s.object->getResultType();
-            }
 
             if (! lhsType.isArrayOrVector())
             {
@@ -2241,7 +2253,8 @@ private:
             // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
             if (auto outputEndpoint = cast<AST::OutputEndpointRef> (topLevelWrite.target))
             {
-                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->getSampleArrayTypes(), *w.value);
+                SOUL_ASSERT (outputEndpoint->output->details != nullptr);
+                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), *w.value);
                 return w;
             }
 
@@ -2249,7 +2262,8 @@ private:
             {
                 if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
                 {
-                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->getResolvedSampleTypes(), *w.value);
+                    SOUL_ASSERT (outputEndpoint->output->details != nullptr);
+                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedSampleTypes(), *w.value);
                     return w;
                 }
             }

@@ -170,7 +170,7 @@ private:
     ~StructuralParser() override = default;
 
     template <typename Type, typename... Args>
-    Type& allocate (Args&&... args) const    { return *allocator.allocate<Type> (std::forward<Args> (args)...); }
+    Type& allocate (Args&&... args) const    { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
     AST::Expression& matchCloseParen (AST::Expression& e)                 { expect (Operator::closeParen); return e; }
     AST::ExpPtr matchCloseParen (AST::ExpPtr e)                           { expect (Operator::closeParen); return e; }
@@ -525,7 +525,7 @@ private:
     {
         auto interpolationType = parseOptionalInterpolationType();
         auto context = getContext();
-        ArrayWithPreallocation<AST::Connection::NameAndChannel, 8> sources, dests;
+        ArrayWithPreallocation<AST::Connection::NameAndEndpoint, 8> sources, dests;
         AST::ExpPtr delayLength;
 
         for (;;)
@@ -583,12 +583,12 @@ private:
         return {};
     }
 
-    AST::Connection::NameAndChannel parseConnectionIdentifier()
+    AST::Connection::NameAndEndpoint parseConnectionIdentifier()
     {
         if (! matches (Token::identifier))
             getContext().throwError (Errors::expectedProcessorOrEndpoint());
 
-        AST::Connection::NameAndChannel result;
+        AST::Connection::NameAndEndpoint result;
         result.processorName = parseQualifiedIdentifier();
 
         if (matchIf (Operator::openBracket))
@@ -602,24 +602,24 @@ private:
 
         if (matchIf (Operator::dot))
         {
-            result.channel = parseIdentifier();
+            result.endpoint = parseIdentifier();
         }
         else
         {
             if (! result.processorName->path.isUnqualified())
-                result.processorName->context.throwError (Errors::qualifierOnChannel());
+                result.processorName->context.throwError (Errors::expectedUnqualifiedName());
 
-            result.channel = result.processorName->path.getFirstPart();
+            result.endpoint = result.processorName->path.getFirstPart();
             result.processorName->path = {};
         }
 
         if (matchIf (Operator::openBracket))
         {
-            result.channelIndex = parseExpression();
+            result.endpointIndex = parseExpression();
             expect (Operator::closeBracket);
         }
 
-        if (result.channelIndex)
+        if (result.endpointIndex)
             throwError (Errors::notYetImplemented ("Channel indexes"));
 
         return result;
@@ -632,7 +632,7 @@ private:
         u.instanceName = parseQualifiedIdentifier();
 
         if (! u.instanceName->path.isUnqualified())
-            u.instanceName->context.throwError (Errors::qualifierOnChannel());
+            u.instanceName->context.throwError (Errors::expectedUnqualifiedName());
 
         for (auto& i : graph.processorInstances)
             if (*i->instanceName == *u.instanceName)
@@ -646,7 +646,7 @@ private:
         // Array of processors
         if (matchIf (Operator::openBracket))
         {
-            u.arrayArgument = parseExpression();
+            u.arraySize = parseExpression();
             expect (Operator::closeBracket);
         }
 
@@ -698,15 +698,18 @@ private:
         return false;
     }
 
-    void parseEndpoint (AST::ProcessorBase& p, bool isInput)
+    void parseEndpoint (AST::ProcessorBase& p, bool isInput, bool alreadyInsideBracedExpression = false)
     {
-        if (matchIf (Operator::openBrace))
+        if (! alreadyInsideBracedExpression && matchIf (Operator::openBrace))
         {
             while (! matchIf (Operator::closeBrace))
-                parseEndpoint (p, isInput, parseEndpointKind (*this));
+                parseEndpoint (p, isInput, true);
         }
         else
         {
+            if (p.isGraph() && matches (Token::identifier) && ! isNextTokenEndpointKind (*this))
+                return parseChildEndpoint (p, isInput);
+
             auto kind = parseEndpointKind (*this);
 
             if (matchIf (Operator::openBrace))
@@ -723,54 +726,103 @@ private:
 
     void parseEndpoint (AST::ProcessorBase& p, bool isInput, EndpointKind kind)
     {
-        if (isInput)
-            parseEndpoints<AST::InputDeclaration> (p.inputs, kind);
-        else
-            parseEndpoints<AST::OutputDeclaration> (p.outputs, kind);
+        auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput);
+        first.details = std::make_unique<AST::EndpointDetails> (kind);
+        first.details->sampleTypes = parseEndpointTypeList (kind);
+        parseInputOrOutputName (first);
+        p.endpoints.push_back (first);
+
+        while (matchIf (Operator::comma))
+        {
+            auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
+            e.details = std::make_unique<AST::EndpointDetails> (kind);
+            e.details->sampleTypes = first.details->sampleTypes;
+            parseInputOrOutputName (e);
+            p.endpoints.push_back (e);
+        }
 
         expect (Operator::semicolon);
     }
 
-    template <typename InputOrOutput>
-    void parseEndpoints (std::vector<pool_ptr<InputOrOutput>>& list, EndpointKind kind)
+    void parseInputOrOutputName (AST::EndpointDeclaration& e)
     {
-        auto& first = allocate<InputOrOutput> (getContext(), kind);
-        parseInputOrOutputType (first);
-        parseInputOrOutputName (first);
-        list.push_back (first);
-
-        while (matchIf (Operator::comma))
-        {
-            auto& e = allocate<InputOrOutput> (getContext(), kind);
-            e.sampleTypes = first.sampleTypes;
-            parseInputOrOutputName (e);
-            list.push_back (e);
-        }
-    }
-
-    template <typename InputOrOutput>
-    void parseInputOrOutputType (InputOrOutput& io)
-    {
-        auto loc = location;
-
-        io.sampleTypes = parseEndpointTypeList();
-
-        if (! isEvent (io.kind) && io.sampleTypes.size() > 1)
-            loc.throwError (Errors::noMultipleTypesOnEndpoint());
-    }
-
-    template <typename InputOrOutput>
-    void parseInputOrOutputName (InputOrOutput& io)
-    {
-        io.name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
+        e.name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
 
         if (matchIf (Operator::openBracket))
         {
-            io.arraySize = parseExpression();
+            e.details->arraySize = parseExpression();
             expect (Operator::closeBracket);
         }
 
-        parseAnnotation (io.annotation);
+        parseAnnotation (e.annotation);
+    }
+
+    void parseChildEndpoint (AST::ProcessorBase& p, bool isInput)
+    {
+        for (;;)
+        {
+            auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
+            p.endpoints.push_back (e);
+            e.childPath = std::make_unique<AST::ChildEndpointPath>();
+            bool canParseName = true;
+
+            for (;;)
+            {
+                AST::ChildEndpointPath::PathSection path;
+
+                if (matchIf (Operator::times))
+                {
+                    throwError (Errors::notYetImplemented ("Wildcard child endpoint references"));
+                    path.isWildcard = true;
+                }
+                else
+                {
+                    path.name = parseQualifiedIdentifier();
+
+                    if (path.name->path.isQualified())
+                        path.name->context.throwError (Errors::expectedUnqualifiedName());
+                }
+
+                if (matchIf (Operator::openBracket))
+                {
+                    path.index = parseExpression();
+                    expect (Operator::closeBracket);
+                }
+
+                e.childPath->sections.push_back (path);
+
+                if (path.isWildcard)
+                {
+                    canParseName = false;
+                    break;
+                }
+
+                if (matchIf (Operator::dot))
+                    continue;
+
+                break;
+            }
+
+            if (canParseName)
+            {
+                if (matches (Token::identifier))
+                    e.name = parseIdentifier();
+                else
+                    e.name = e.childPath->sections.back().name->path.getLastPart();
+
+                parseAnnotation (e.annotation);
+
+                if (matchIf (Operator::comma))
+                    continue;
+            }
+
+            expect (Operator::semicolon);
+
+            if (e.childPath->sections.size() == 1)
+                e.context.throwError (Errors::expectedStreamType());
+
+            break;
+        }
     }
 
     void parseAnnotation (AST::Annotation& annotation)
@@ -784,18 +836,20 @@ private:
 
             do
             {
-                AST::Annotation::Property property;
+                auto context = getContext();
                 auto name = parseAnnotationKey();
                 checkLength (name, AST::maxIdentifierLength);
-                property.name = allocate<AST::QualifiedIdentifier> (getContext(), IdentifierPath (allocator.get (name)));
                 skip();
 
-                if (matchIf (Operator::colon))
-                    property.value = parseExpression();
-                else
-                    property.value = allocate<AST::Constant> (getContext(), Value (true));
+                if (annotation.findProperty (name) != nullptr)
+                    context.throwError (Errors::nameInUse (name));
 
-                annotation.properties.push_back (property);
+                auto& key = allocate<AST::QualifiedIdentifier> (context, IdentifierPath (allocator.get (name)));
+
+                if (matchIf (Operator::colon))
+                    annotation.addProperty ({ key, parseExpression() });
+                else
+                    annotation.addProperty ({ key, allocate<AST::Constant> (getContext(), Value (true)) });
             }
             while (matchIf (Operator::comma));
 
@@ -1685,9 +1739,10 @@ private:
         return *type;
     }
 
-    std::vector<AST::ExpPtr> parseEndpointTypeList()
+    std::vector<AST::ExpPtr> parseEndpointTypeList (EndpointKind kind)
     {
         std::vector<AST::ExpPtr> result;
+        auto loc = location;
 
         if (matchIf (Operator::openParen))
         {
@@ -1705,6 +1760,9 @@ private:
         {
             result.push_back (parseType (ParseTypeContext::eventType));
         }
+
+        if (! isEvent (kind) && result.size() > 1)
+            loc.throwError (Errors::noMultipleTypesOnEndpoint());
 
         return result;
     }

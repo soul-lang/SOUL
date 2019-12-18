@@ -416,7 +416,7 @@ private:
                   {
                       if (connection->sourceProcessor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection->sourceChannel == i->name.toString())
+                              if (connection->sourceEndpoint == i->name.toString())
                                   return true;
 
                       return false;
@@ -452,7 +452,7 @@ private:
                   {
                       if (connection->destProcessor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection->destChannel == i->name.toString())
+                              if (connection->destEndpoint == i->name.toString())
                                   return true;
 
                       return false;

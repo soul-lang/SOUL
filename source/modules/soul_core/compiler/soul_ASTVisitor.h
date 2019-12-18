@@ -81,8 +81,7 @@ struct ASTVisitor
 
     virtual void visit (AST::Processor& p)
     {
-        visitArray (p.inputs);
-        visitArray (p.outputs);
+        visitArray (p.endpoints);
         visitArray (p.structures);
         visitArray (p.usings);
         visitArray (p.stateVariables);
@@ -91,8 +90,7 @@ struct ASTVisitor
 
     virtual void visit (AST::Graph& g)
     {
-        visitArray (g.inputs);
-        visitArray (g.outputs);
+        visitArray (g.endpoints);
         visitArray (g.processorInstances);
         visitArray (g.processorAliases);
         visitArray (g.connections);
@@ -301,20 +299,23 @@ struct ASTVisitor
     {
     }
 
-    virtual void visit (AST::InputDeclaration& io)
+    virtual void visit (AST::EndpointDeclaration& e)
     {
-        for (auto& type : io.sampleTypes)
-            visitObject (*type);
+        if (e.details != nullptr)
+        {
+            for (auto& type : e.details->sampleTypes)
+                visitObject (*type);
 
-        visit (io.annotation);
-    }
+            if (e.details->arraySize != nullptr)
+                visitObject (*e.details->arraySize);
+        }
 
-    virtual void visit (AST::OutputDeclaration& io)
-    {
-        for (auto& type : io.sampleTypes)
-            visitObject (*type);
+        if (e.childPath != nullptr)
+            for (auto& p : e.childPath->sections)
+                if (p.index != nullptr)
+                    visitObject (*p.index);
 
-        visit (io.annotation);
+        visit (e.annotation);
     }
 
     virtual void visit (AST::InputEndpointRef&)
@@ -484,8 +485,7 @@ struct RewritingASTVisitor
     //==============================================================================
     virtual AST::ProcessorPtr visit (AST::Processor& p)
     {
-        visitArray (p.inputs);
-        visitArray (p.outputs);
+        visitArray (p.endpoints);
         visitArray (p.structures);
         visitArray (p.stateVariables);
         replaceArray (p.functions);
@@ -495,8 +495,7 @@ struct RewritingASTVisitor
 
     virtual AST::GraphPtr visit (AST::Graph& g)
     {
-        visitArray (g.inputs);
-        visitArray (g.outputs);
+        visitArray (g.endpoints);
         visitArray (g.processorInstances);
         visitArray (g.processorAliases);
         visitArray (g.connections);
@@ -732,24 +731,22 @@ struct RewritingASTVisitor
         return a;
     }
 
-    virtual AST::InputDeclarationPtr visit (AST::InputDeclaration& io)
+    virtual AST::ASTObjectPtr visit (AST::EndpointDeclaration& e)
     {
-        for (auto& type : io.sampleTypes)
-            replaceExpression (type);
+        if (e.details != nullptr)
+        {
+            for (auto& type : e.details->sampleTypes)
+                replaceExpression (type);
 
-        replaceExpression (io.arraySize);
-        visit (io.annotation);
-        return io;
-    }
+            replaceExpression (e.details->arraySize);
+        }
 
-    virtual AST::OutputDeclarationPtr visit (AST::OutputDeclaration& io)
-    {
-        for (auto& type : io.sampleTypes)
-            replaceExpression (type);
+        if (e.childPath != nullptr)
+            for (auto& p : e.childPath->sections)
+                replaceExpression (p.index);
 
-        replaceExpression (io.arraySize);
-        visit (io.annotation);
-        return io;
+        visit (e.annotation);
+        return e;
     }
 
     virtual AST::ExpPtr visit (AST::InputEndpointRef& e)

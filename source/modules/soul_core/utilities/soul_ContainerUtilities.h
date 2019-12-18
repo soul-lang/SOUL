@@ -142,6 +142,8 @@ struct ArrayView
     bool empty() const                          { return s == e; }
     size_t size() const                         { return static_cast<size_t> (e - s); }
 
+    ArrayView tail() const                      { SOUL_ASSERT (! empty()); return { s + 1, e }; }
+
     bool operator== (ArrayView other) const
     {
         if (size() != other.size())
