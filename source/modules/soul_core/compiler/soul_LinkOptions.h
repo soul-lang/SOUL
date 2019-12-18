@@ -57,6 +57,11 @@ struct LinkOptions  : public Annotation
     void setPlatform (const std::string& name)      { setPropertyAsString (getPlatformKey(), name); }
     std::string getPlatform() const                 { return getPropertyAsString (getPlatformKey()); }
 
+    //==============================================================================
+    static const char* getSessionIdKey()            { return "sessionId"; }
+    void setSessionId (int32_t sessionId)           { set (getSessionIdKey(), Value::createInt32 (sessionId)); }
+    int32_t getSessionId() const                    { return int32_t (getInt64 (getSessionIdKey())); }
+
     using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
                                                                          const char* name,
                                                                          const Type& requiredType,
