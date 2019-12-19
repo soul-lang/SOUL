@@ -36,6 +36,8 @@ struct Program::ProgramImpl  : public RefCountedObject
     ConstantTable constantTable;
     StringDictionary stringDictionary;
 
+    int nextModuleId = 1;
+
     pool_ptr<Module> getModuleWithName (const std::string& name) const
     {
         for (auto& m : modules)
@@ -109,14 +111,15 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    int getModuleID (const Module& m) const
+    int getModuleID (Module& m, uint32_t arraySize)
     {
-        for (size_t i = 0; i < modules.size(); ++i)
-            if (modules[i] == std::addressof (m))
-                return (int) i + 1;
+        if (m.moduleId == 0)
+        {
+            m.moduleId = nextModuleId;
+            nextModuleId += arraySize;
+        }
 
-        SOUL_ASSERT_FALSE;
-        return 0;
+        return m.moduleId;
     }
 
     Program clone() const
@@ -275,7 +278,7 @@ StringDictionary& Program::getStringDictionary()                                
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }
 ConstantTable& Program::getConstantTable()                                              { return pimpl->constantTable; }
 const ConstantTable& Program::getConstantTable() const                                  { return pimpl->constantTable; }
-int Program::getModuleID (const Module& m) const                                        { return pimpl->getModuleID (m); }
+int Program::getModuleID (Module& m, uint32_t arraySize)                                { return pimpl->getModuleID (m, arraySize); }
 const char* Program::getRootNamespaceName()                                             { return "_root"; }
 std::string Program::stripRootNamespaceFromQualifiedPath (std::string path)             { return TokenisedPathString::removeTopLevelNameIfPresent (path, getRootNamespaceName()); }
 

@@ -107,9 +107,10 @@ public:
     const ConstantTable& getConstantTable() const;
 
     /** Returns an ID for one of the modules in the program (which will be unique
-        within the program but not globally)
+        within the program but not globally). The arraySize indicates how many unique ids
+        are required for the module, as a range from the returned value
     */
-    int getModuleID (const Module&) const;
+    int getModuleID (Module&, uint32_t arraySize);
 
     //==============================================================================
     /** Returns the allocator used to hold all items in the program and its modules. */

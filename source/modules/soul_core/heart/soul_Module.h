@@ -92,6 +92,8 @@ public:
 private:
     friend class Program;
 
+    int moduleId = 0;
+
     enum class ModuleType
     {
         processorModule,
