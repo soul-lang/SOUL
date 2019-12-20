@@ -1532,7 +1532,9 @@ private:
 
     AST::StatementPtr parseIf()
     {
-        auto& s = allocate<AST::IfStatement> (getContext());
+        auto context = getContext();
+        bool isConst = matchIf (Keyword::const_);
+        auto& s = allocate<AST::IfStatement> (context, isConst);
         expect (Operator::openParen);
         s.condition = matchCloseParen (parseExpression());
         s.trueBranch = parseStatement();

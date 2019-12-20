@@ -1446,10 +1446,11 @@ struct AST
     //==============================================================================
     struct IfStatement  : public Statement
     {
-        IfStatement (const Context& c)  : Statement (ObjectType::IfStatement, c) {}
+        IfStatement (const Context& c, bool isConst)  : Statement (ObjectType::IfStatement, c), isConstIf (isConst) {}
 
         ExpPtr condition;
         StatementPtr trueBranch, falseBranch;
+        const bool isConstIf;
     };
 
     //==============================================================================

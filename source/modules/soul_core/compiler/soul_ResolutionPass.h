@@ -142,6 +142,30 @@ private:
             return a;
         }
 
+        AST::StatementPtr visit (AST::IfStatement& i) override
+        {
+            if (i.isConstIf)
+            {
+                replaceExpression (i.condition);
+
+                if (auto constant = i.condition->getAsConstant())
+                {
+                    if (constant->value.getAsBool())
+                        replaceStatement (i.trueBranch);
+                    else if (i.falseBranch != nullptr)
+                        replaceStatement (i.falseBranch);
+                }
+                else
+                {
+                    ++numFails;
+                }
+
+                return i;
+            }
+
+            return RewritingASTVisitor::visit (i);
+        }
+
         ResolutionPass& owner;
         AST::Allocator& allocator;
         AST::ModuleBase& module;
@@ -1971,18 +1995,30 @@ private:
 
         AST::StatementPtr visit (AST::IfStatement& i) override
         {
-            super::visit (i);
+            if (i.isConstIf)
+                replaceExpression (i.condition);
+            else
+                super::visit (i);
 
             if (auto constant = i.condition->getAsConstant())
             {
                 if (constant->value.getAsBool())
+                {
+                    replaceStatement (i.trueBranch);
                     return i.trueBranch;
+                }
 
                 if (i.falseBranch != nullptr)
+                {
+                    replaceStatement (i.falseBranch);
                     return i.falseBranch;
+                }
 
                 return allocator.allocate<AST::NoopStatement> (i.context);
             }
+
+            if (i.isConstIf)
+                i.condition->context.throwError (Errors::expectedConstant());
 
             return i;
         }
