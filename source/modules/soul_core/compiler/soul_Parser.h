@@ -891,12 +891,26 @@ private:
         f.nameLocation = context;
         f.eventFunction = true;
 
-        auto typeLocation = location;
-        auto& type = parseType (ParseTypeContext::functionParameter);
-        auto& v = allocate<AST::VariableDeclaration> (getContext(), type, nullptr, false);
-        f.parameters.push_back (v);
-        v.isFunctionParameter = true;
-        v.name = parseIdentifier();
+        // Event functions have either 1 argument (the type of the event) or two arguments
+        // (an index followed by the type of the event) if the input is an event array
+
+        {
+            auto& type = parseType (ParseTypeContext::functionParameter);
+            auto& v = allocate<AST::VariableDeclaration> (getContext(), type, nullptr, false);
+            f.parameters.push_back (v);
+            v.isFunctionParameter = true;
+            v.name = parseIdentifier();
+        }
+
+        if (matchIf (Operator::comma))
+        {
+            auto& type = parseType (ParseTypeContext::functionParameter);
+            auto& v = allocate<AST::VariableDeclaration> (getContext(), type, nullptr, false);
+            f.parameters.push_back (v);
+            v.isFunctionParameter = true;
+            v.name = parseIdentifier();
+        }
+
         expect (Operator::closeParen);
         f.block = parseBlock (f);
     }

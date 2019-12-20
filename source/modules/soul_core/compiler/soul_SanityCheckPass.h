@@ -36,9 +36,15 @@ struct SanityCheckPass  final
     /** After the AST is resolved, this pass checks for more subtle errors */
     static void runPostResolution (AST::ModuleBase& module)
     {
+        runEventFunctionChecker (module);
         runDuplicateNameChecker (module);
         PostResolutionChecks().visitObject (module);
         PreAndPostIncOperatorCheck().ASTVisitor::visitObject (module);
+    }
+
+    static void runEventFunctionChecker (AST::ModuleBase& module)
+    {
+        EventFunctionChecker().visitObject (module);
     }
 
     static void runDuplicateNameChecker (AST::ModuleBase& module)
@@ -299,7 +305,7 @@ private:
     }
 
     //==============================================================================
-    struct DuplicateNameChecker  : public ASTVisitor
+    struct EventFunctionChecker : public ASTVisitor
     {
         using super = ASTVisitor;
 
@@ -322,17 +328,65 @@ private:
                     bool nameFound = false;
 
                     for (auto& e : p.getEndpoints())
+                    {
                         if (e->isInput && e->name == f->name)
+                        {
                             nameFound = true;
+
+                            SOUL_ASSERT (e->details != nullptr);
+
+                            if (e->details->arraySize == nullptr && f->parameters.size() == 1)
+                            {
+                                auto eventType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
+                                auto types = e->details->getResolvedSampleTypes();
+
+                                if (! eventType.isPresentIn (types))
+                                    f->context.throwError (Errors::eventFunctionInvalidType (f->name, eventType.getDescription()));
+                            }
+                            else if (e->details->arraySize != nullptr && f->parameters.size() == 2)
+                            {
+                                auto indexType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
+                                auto eventType = f->parameters.back()->getType().removeConstIfPresent().removeReferenceIfPresent();
+                                auto types = e->details->getResolvedSampleTypes();
+
+                                if (! indexType.isInteger())
+                                    f->context.throwError (Errors::eventFunctionIndexInvalid());
+
+                               if (! eventType.isPresentIn (types))
+                                   f->context.throwError (Errors::eventFunctionInvalidType (f->name, eventType.getDescription()));
+                            }
+                            else
+                                f->context.throwError (Errors::eventFunctionInvalidArguments());
+                        }
+                   }
 
                     if (! nameFound)
                         f->context.throwError (Errors::noSuchInputEvent (f->name));
                 }
-                else
-                {
-                    duplicateNameChecker.checkWithoutAdding (f->name, f->nameLocation);
-                }
             }
+        }
+    };
+
+    //==============================================================================
+    struct DuplicateNameChecker  : public ASTVisitor
+    {
+        using super = ASTVisitor;
+
+        void visit (AST::Processor& p) override
+        {
+            super::visit (p);
+
+            soul::DuplicateNameChecker duplicateNameChecker;
+
+            for (auto& e : p.endpoints)        duplicateNameChecker.check (e->name, e->context);
+            for (auto& v : p.stateVariables)   duplicateNameChecker.check (v->name, v->context);
+            for (auto& s : p.structures)       duplicateNameChecker.check (s->name, s->context);
+            for (auto& u : p.usings)           duplicateNameChecker.check (u->name, u->context);
+
+            // (functions must be scanned last)
+            for (auto& f : p.functions)
+                if (! f->isEventFunction())
+                    duplicateNameChecker.checkWithoutAdding (f->name, f->nameLocation);
 
             for (auto& m : p.getSubModules())
                 duplicateNameChecker.check (m->name, m->context);

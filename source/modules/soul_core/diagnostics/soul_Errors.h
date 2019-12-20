@@ -181,6 +181,8 @@ namespace soul
     X(processorReferenceNotAllowed,         "Processor references are not allowed in this context") \
     X(cannotResolveSpecialisationValue,     "Cannot resolve value") \
     X(eventTypeCannotBeReference,           "Event types cannot be references") \
+    X(eventFunctionInvalidType,             "Event $Q0$ does not support type $Q1$") \
+    X(eventFunctionInvalidArguments,        "Event function arguments invalid") \
     X(eventParamsCannotBeNonConstReference, "Event parameters cannot be non-const references") \
     X(wrongTypeForInitialiseList,           "You can only create a multi-value initialiser list for an array, vector or struct") \
     X(wrongTypeForArrayElement,             "Cannot create an array with this element type") \
@@ -196,6 +198,7 @@ namespace soul
     X(cannotResolveBracketedExp,            "Cannot resolve bracketed expression in this context") \
     X(cannotResolveSourceType,              "Cannot resolve source type") \
     X(illegalTypesForBinaryOperator,        "Illegal types for binary operator $Q0$ ($Q1$ and $Q2$)") \
+    X(eventFunctionIndexInvalid,            "Event Handlers for event arrays need a first argument index integer type") \
     X(noMatchForFunctionCall,               "No suitable override found for function call: $0$") \
     X(ambiguousFunctionCall,                "Ambiguous function call: $0$") \
     X(noFunctionWithNumberOfArgs,           "Can't find a function $Q0$ with $1$ argument(s)") \
