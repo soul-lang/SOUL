@@ -932,7 +932,7 @@ graph ExampleGraph
 
     connection
     {
-        // Use sinc interpolation for the input to the waveshaper, and linear for it's output
+        // Use sinc interpolation for the input to the waveshaper, and linear for its output
         [sinc]   audioIn -> waveshaper.audioIn;
         [linear] waveshaper.audioOut -> audioOut;
     }
@@ -994,7 +994,7 @@ Each pattern name must be a single identifier, and the return type and parameter
 T negateSomeValue<T> (T x)    { return -x; }
 T addTwoValues<T> (T x, T y)  { return x + y; }
 
-elementType(ArrayType> get4thElement<ArrayType> (ArrayType array)     { return array[4]; }
+elementType<ArrayType> get4thElement<ArrayType> (ArrayType array)     { return array[4]; }
 
 void foo()
 {
