@@ -93,33 +93,109 @@ namespace soul::intrinsics
     }
 
     /** Returns the sum of an array or vector of scalar values. */
-    Array.elementType sum<Array> (Array n) [[intrin: "sum"]]
+    T.elementType sum<T> (T t)
     {
-        static_assert (Array.isFixedSizeArray || Array.isVector, "sum() only works with fixed-size arrays or vectors");
-        static_assert (Array.elementType.isScalar, "sum() only works with arrays of scalar values");
+        static_assert (T.isFixedSizeArray || T.isVector, "sum() only works with fixed-size arrays or vectors");
+        static_assert (T.elementType.isScalar, "sum() only works with arrays of scalar values");
 
-        var total = n[0];
-        wrap<Array.size> i;
+        T.elementType total;
 
-        loop (Array.size - 1)
-            total += n[++i];
+        if const (T.isVector)
+        {
+            if const (t.size <= 8)
+            {
+                wrap<t.size> i;
+
+                loop (t.size)
+                total += t[i++];
+            }
+            else
+            {
+                let n = t.size / 8;
+
+                let v = t[0:n] + t[n:2*n] + t[2*n:3*n] + t[3*n:4*n] + t[4*n:5*n] + t[5*n:6*n] + t[6*n:7*n] + t[7*n:8*n];
+
+                if const (n > 1)
+                    total += sum (v);
+                else
+                    total += v;
+
+                let remainder = t.size % 8;
+
+                if const (remainder == 1)
+                    total += t[8*n];
+
+                if const (remainder > 1)
+                {
+                    let r = t[8*n:];
+
+                    total += sum (r);
+                }
+            }
+        }
+        else
+        {
+            var total = n[0];
+            wrap<Array.size> i;
+
+            loop (Array.size - 1)
+                total += n[++i];
+        }
 
         return total;
     }
 
     /** Returns the product of an array or vector of scalar values. */
-    Array.elementType product<Array> (Array n) [[intrin: "product"]]
+    T.elementType product<T> (T t)
     {
-        static_assert (Array.isFixedSizeArray || Array.isVector, "product() only works with fixed-size arrays or vectors");
-        static_assert (Array.elementType.isScalar, "product() only works with arrays of scalar values");
+        static_assert (T.isFixedSizeArray || T.isVector, "product() only works with fixed-size arrays or vectors");
+        static_assert (T.elementType.isScalar, "product() only works with arrays of scalar values");
 
-        var product = n[0];
-        wrap<Array.size> i;
+        T.elementType total = 1.0f;
 
-        loop (Array.size - 1)
-            product *= n[++i];
+        if const (T.isVector)
+        {
+            if const (t.size <= 8)
+            {
+                wrap<t.size> i;
 
-        return product;
+                loop (t.size)
+                total *= t[i++];
+            }
+            else
+            {
+                let n = t.size / 8;
+
+                let v = t[0:n] * t[n:2*n] * t[2*n:3*n] * t[3*n:4*n] * t[4*n:5*n] * t[5*n:6*n] * t[6*n:7*n] * t[7*n:8*n];
+
+                if const (n > 1)
+                    total *= sum (v);
+                else
+                    total *= v;
+
+                let remainder = t.size % 8;
+
+                if const (remainder == 1)
+                    total *= t[8*n];
+
+                if const (remainder > 1)
+                {
+                    let r = t[8*n:];
+
+                    total *= sum (r);
+                }
+            }
+        }
+        else
+        {
+            var total = n[0];
+            wrap<Array.size> i;
+
+            loop (Array.size - 1)
+            total *= n[++i];
+        }
+
+        return total;
     }
 
     /** Reads an element from an array, allowing the index to be any type of floating point type.

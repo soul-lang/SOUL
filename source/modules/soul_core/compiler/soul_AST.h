@@ -2197,7 +2197,7 @@ struct AST
             auto type = object->getResultType();
 
             if (endIndex == nullptr)
-                end = (int64_t) type.getArraySize();
+                end = (int64_t) type.getArrayOrVectorSize();
             else if (auto c = endIndex->getAsConstant())
                 end = c->value.getAsInt64();
 
@@ -2218,7 +2218,7 @@ struct AST
 
                 if (endIndex == nullptr)
                 {
-                    end = (int64_t) object->getResultType().getArraySize();
+                    end = (int64_t) object->getResultType().getArrayOrVectorSize();
                 }
                 else
                 {
