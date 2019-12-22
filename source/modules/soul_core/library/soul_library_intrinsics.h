@@ -107,7 +107,7 @@ namespace soul::intrinsics
                 wrap<t.size> i;
 
                 loop (t.size)
-                total += t[i++];
+                    total += t[i++];
             }
             else
             {
@@ -135,11 +135,11 @@ namespace soul::intrinsics
         }
         else
         {
-            var total = n[0];
-            wrap<Array.size> i;
+            total = t[0];
+            wrap<T.size> i;
 
-            loop (Array.size - 1)
-                total += n[++i];
+            loop (T.size - 1)
+                total += t[++i];
         }
 
         return total;
@@ -151,25 +151,28 @@ namespace soul::intrinsics
         static_assert (T.isFixedSizeArray || T.isVector, "product() only works with fixed-size arrays or vectors");
         static_assert (T.elementType.isScalar, "product() only works with arrays of scalar values");
 
-        T.elementType total = 1.0f;
-
         if const (T.isVector)
         {
-            if const (t.size <= 8)
+            if const (T.size <= 8)
             {
-                wrap<t.size> i;
+                var total = t[0];
+                wrap<T.size> i;
 
-                loop (t.size)
-                total *= t[i++];
+                loop (T.size - 1)
+                    total *= t[++i];
+
+                return total;
             }
             else
             {
+                T.elementType total = 1;
+
                 let n = t.size / 8;
 
                 let v = t[0:n] * t[n:2*n] * t[2*n:3*n] * t[3*n:4*n] * t[4*n:5*n] * t[5*n:6*n] * t[6*n:7*n] * t[7*n:8*n];
 
                 if const (n > 1)
-                    total *= sum (v);
+                    total *= product (v);
                 else
                     total *= v;
 
@@ -182,20 +185,22 @@ namespace soul::intrinsics
                 {
                     let r = t[8*n:];
 
-                    total *= sum (r);
+                    total *= product (r);
                 }
+
+                return total;
             }
         }
         else
         {
-            var total = n[0];
-            wrap<Array.size> i;
+            var total = t[0];
+            wrap<T.size> i;
 
-            loop (Array.size - 1)
-            total *= n[++i];
+            loop (T.size - 1)
+                total *= t[++i];
+
+            return total;
         }
-
-        return total;
     }
 
     /** Reads an element from an array, allowing the index to be any type of floating point type.
