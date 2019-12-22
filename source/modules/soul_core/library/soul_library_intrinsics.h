@@ -98,51 +98,48 @@ namespace soul::intrinsics
         static_assert (T.isFixedSizeArray || T.isVector, "sum() only works with fixed-size arrays or vectors");
         static_assert (T.elementType.isScalar, "sum() only works with arrays of scalar values");
 
-        T.elementType total;
-
-        if const (T.isVector)
+        if const (T.isVector && t.size > 8)
         {
-            if const (t.size <= 8)
-            {
-                wrap<t.size> i;
+            T.elementType total;
+            let n = t.size / 8;
 
-                loop (t.size)
-                    total += t[i++];
-            }
+            let v = t[    0 :     n]
+                  + t[    n : 2 * n]
+                  + t[2 * n : 3 * n]
+                  + t[3 * n : 4 * n]
+                  + t[4 * n : 5 * n]
+                  + t[5 * n : 6 * n]
+                  + t[6 * n : 7 * n]
+                  + t[7 * n : 8 * n];
+
+            if const (n > 1)
+                total = sum (v);
             else
+                total = v;
+
+            let remainder = t.size % 8;
+
+            if const (remainder == 1)
+                total += t[8 * n];
+
+            if const (remainder > 1)
             {
-                let n = t.size / 8;
-
-                let v = t[0:n] + t[n:2*n] + t[2*n:3*n] + t[3*n:4*n] + t[4*n:5*n] + t[5*n:6*n] + t[6*n:7*n] + t[7*n:8*n];
-
-                if const (n > 1)
-                    total += sum (v);
-                else
-                    total += v;
-
-                let remainder = t.size % 8;
-
-                if const (remainder == 1)
-                    total += t[8*n];
-
-                if const (remainder > 1)
-                {
-                    let r = t[8*n:];
-
-                    total += sum (r);
-                }
+                let r = t[8 * n:];
+                total += sum (r);
             }
+
+            return total;
         }
         else
         {
-            total = t[0];
-            wrap<T.size> i;
+            var total = t[0];
+            wrap<t.size> i;
 
-            loop (T.size - 1)
+            loop (t.size - 1)
                 total += t[++i];
-        }
 
-        return total;
+            return total;
+        }
     }
 
     /** Returns the product of an array or vector of scalar values. */
@@ -151,55 +148,47 @@ namespace soul::intrinsics
         static_assert (T.isFixedSizeArray || T.isVector, "product() only works with fixed-size arrays or vectors");
         static_assert (T.elementType.isScalar, "product() only works with arrays of scalar values");
 
-        if const (T.isVector)
+        if const (T.isVector && t.size > 8)
         {
-            if const (T.size <= 8)
-            {
-                var total = t[0];
-                wrap<T.size> i;
+            T.elementType result;
+            let n = t.size / 8;
 
-                loop (T.size - 1)
-                    total *= t[++i];
+            let v = t[    0 :     n]
+                  * t[    n : 2 * n]
+                  * t[2 * n : 3 * n]
+                  * t[3 * n : 4 * n]
+                  * t[4 * n : 5 * n]
+                  * t[5 * n : 6 * n]
+                  * t[6 * n : 7 * n]
+                  * t[7 * n : 8 * n];
 
-                return total;
-            }
+            if const (n > 1)
+                result = product (v);
             else
+                result = v;
+
+            let remainder = t.size % 8;
+
+            if const (remainder == 1)
+                result *= t[8 * n];
+
+            if const (remainder > 1)
             {
-                T.elementType total = 1;
-
-                let n = t.size / 8;
-
-                let v = t[0:n] * t[n:2*n] * t[2*n:3*n] * t[3*n:4*n] * t[4*n:5*n] * t[5*n:6*n] * t[6*n:7*n] * t[7*n:8*n];
-
-                if const (n > 1)
-                    total *= product (v);
-                else
-                    total *= v;
-
-                let remainder = t.size % 8;
-
-                if const (remainder == 1)
-                    total *= t[8*n];
-
-                if const (remainder > 1)
-                {
-                    let r = t[8*n:];
-
-                    total *= product (r);
-                }
-
-                return total;
+                let r = t[8 * n:];
+                result *= product (r);
             }
+
+            return result;
         }
         else
         {
-            var total = t[0];
-            wrap<T.size> i;
+            var result = t[0];
+            wrap<t.size> i;
 
-            loop (T.size - 1)
-                total *= t[++i];
+            loop (t.size - 1)
+                result *= t[++i];
 
-            return total;
+            return result;
         }
     }
 
