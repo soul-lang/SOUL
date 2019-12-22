@@ -47,7 +47,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    pool_ptr<Module> findModuleContainingFunction (const heart::Function& f) const
+    pool_ptr<Module> getModuleContainingFunction (const heart::Function& f) const
     {
         for (auto& m : modules)
             if (contains (m->functions, std::addressof (f)))
@@ -172,7 +172,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     std::string getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function& f) const
     {
-        if (auto m = findModuleContainingFunction (f))
+        if (auto m = getModuleContainingFunction (f))
         {
             if (m == std::addressof (context))
                 return f.name.toString();
@@ -264,7 +264,7 @@ const std::vector<pool_ptr<Module>>& Program::getModules() const                
 void Program::removeModule (Module& module)                                             { return pimpl->removeModule (module); }
 
 pool_ptr<Module> Program::getModuleWithName (const std::string& name) const             { return pimpl->getModuleWithName (name); }
-pool_ptr<Module> Program::findModuleContainingFunction (const heart::Function& f) const { return pimpl->findModuleContainingFunction (f); }
+pool_ptr<Module> Program::getModuleContainingFunction (const heart::Function& f) const  { return pimpl->getModuleContainingFunction (f); }
 Module& Program::getOrCreateNamespace (const std::string& name)                         { return pimpl->getOrCreateNamespace (name); }
 pool_ptr<heart::Function> Program::getFunctionWithName (const std::string& name) const  { return pimpl->getFunctionWithName (name); }
 pool_ptr<heart::Variable> Program::getVariableWithName (const std::string& name) const  { return pimpl->getVariableWithName (name); }
