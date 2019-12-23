@@ -1062,6 +1062,25 @@ T addTwoNumbers<T> (T a, T b)
 }
 ```
 
+### Compile-time `if`
+
+The syntax `if const (condition)` allows you to check a compile-time constant and use its status to determine whether or not the parser should attempt to compile the true or false branches. (This feature is similar to C++'s `if constexpr`).
+
+e.g.
+
+```
+bool isVectorSize4<T> (T something)
+{
+    if const (T.isVector) // this condition must be a compile-time constant
+        if const (T.size == 4)
+            return true;
+
+    return false;
+}
+```
+
+Only the successful branch of the if statement will be checked for errors, and any errors in the other branch will be ignored. That makes it handy for use in a generic function where it can be used to guard code which will only work with a particular type of argument.
+
 ### References
 
 The only place where a reference to a variable may be used is in a function parameter, to allow the function to modify the caller's instance of that object rather than copying it.
