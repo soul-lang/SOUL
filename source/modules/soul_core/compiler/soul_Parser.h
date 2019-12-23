@@ -1096,19 +1096,12 @@ private:
 
     AST::ExpPtr tryToParseExpressionIgnoringErrors()
     {
-        struct FailedParse {};
-
         try
         {
-            CompileMessageHandler handler ([] (const CompileMessageGroup& messageGroup)
-                                           {
-                                               for (auto& m : messageGroup.messages)
-                                                   if (! m.isInternalCompilerError())
-                                                       throw FailedParse();
-                                           });
+            ParseErrorIgnoringMessageHandler errorIgnoringHandler;
             return parseExpression();
         }
-        catch (FailedParse) {}
+        catch (ParseErrorIgnoringMessageHandler::ErrorWasIgnoredException) {}
 
         return {};
     }

@@ -210,6 +210,17 @@ bool CompileMessageHandler::isHandlerEnabled()
 }
 
 //==============================================================================
+ParseErrorIgnoringMessageHandler::ParseErrorIgnoringMessageHandler()
+    : CompileMessageHandler ([] (const CompileMessageGroup& messageGroup)
+                             {
+                                 for (auto& m : messageGroup.messages)
+                                     if (! m.isInternalCompilerError())
+                                         throw ErrorWasIgnoredException();
+                             })
+{
+}
+
+//==============================================================================
 void emitMessage (const CompileMessageGroup& messageGroup)
 {
     if (messageHandler != nullptr)

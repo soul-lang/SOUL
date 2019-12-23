@@ -158,6 +158,17 @@ private:
                 else
                 {
                     ++numFails;
+
+                    if (ignoreErrors)
+                    {
+                        try
+                        {
+                            ParseErrorIgnoringMessageHandler errorIgnoringHandler;
+                            replaceStatement (i.trueBranch);
+                            replaceStatement (i.falseBranch);
+                        }
+                        catch (ParseErrorIgnoringMessageHandler::ErrorWasIgnoredException) {}
+                    }
                 }
 
                 return i;
