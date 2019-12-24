@@ -95,7 +95,7 @@ namespace soul::intrinsics
     /** Returns the sum of an array or vector of scalar values. */
     T.elementType sum<T> (T t)
     {
-        static_assert (T.isFixedSizeArray || T.isVector, "sum() only works with fixed-size arrays or vectors");
+        static_assert (T.isArray || T.isVector, "sum() only works with arrays or vectors");
         static_assert (T.elementType.isScalar, "sum() only works with arrays of scalar values");
 
         if const (T.isVector && t.size > 8)
@@ -130,7 +130,7 @@ namespace soul::intrinsics
 
             return total;
         }
-        else
+        else if const (T.isFixedSizeArray || T.isVector)
         {
             var total = t[0];
             wrap<t.size> i;
@@ -140,12 +140,24 @@ namespace soul::intrinsics
 
             return total;
         }
+        else
+        {
+            if (t.size == 0)
+                return T.elementType();
+
+            var total = t[0];
+
+            for (int i = 1; i < t.size; ++i)
+                total += t[i];
+
+            return total;
+        }
     }
 
     /** Returns the product of an array or vector of scalar values. */
     T.elementType product<T> (T t)
     {
-        static_assert (T.isFixedSizeArray || T.isVector, "product() only works with fixed-size arrays or vectors");
+        static_assert (T.isArray || T.isVector, "product() only works with arrays or vectors");
         static_assert (T.elementType.isScalar, "product() only works with arrays of scalar values");
 
         if const (T.isVector && t.size > 8)
@@ -180,13 +192,25 @@ namespace soul::intrinsics
 
             return result;
         }
-        else
+        else if const (T.isFixedSizeArray || T.isVector)
         {
             var result = t[0];
             wrap<t.size> i;
 
             loop (t.size - 1)
                 result *= t[++i];
+
+            return result;
+        }
+        else
+        {
+            if (t.size == 0)
+                return T.elementType();
+
+            var result = t[0];
+
+            for (int i = 1; i < t.size; ++i)
+                result *= t[i];
 
             return result;
         }
