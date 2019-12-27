@@ -207,11 +207,6 @@ namespace soul::VoiceAllocators
         int nextUnallocatedVoiceAge = 1;
 
         VoiceInfo[voiceCount] voiceInfo;
-
-        void run()
-        {
-            loop advance();
-        }
     }
 }
 

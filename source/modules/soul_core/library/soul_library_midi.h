@@ -106,11 +106,6 @@ namespace midi
             let bendRange = 48.0f;
             return float (value - 8192) / (8192.0f / bendRange);
         }
-
-        void run()
-        {
-            loop advance();
-        }
     }
 }
 
