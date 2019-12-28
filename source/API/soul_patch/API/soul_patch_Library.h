@@ -53,10 +53,8 @@ struct SOULPatchLibrary
     }
 
     /** Creates a new instance of a PatchInstance for a given file path.
-
-        The path can be either the folder containing a single .soulpatch file, or
-        a direct path to a .soulpatch file. Once you have a PatchInstance object, you
-        can use it to build and run instances of that patch.
+        The path should be that of a .soulpatch file. Once you have a PatchInstance object,
+        you can use it to build and run instances of that patch.
     */
     PatchInstance::Ptr createPatchFromFileBundle (const char* path) const
     {
@@ -64,10 +62,8 @@ struct SOULPatchLibrary
     }
 
     /** Creates a new instance of a PatchInstance for a given file path.
-
-        The path can be either the folder containing a single .soulpatch file, or
-        a direct path to a .soulpatch file. Once you have a PatchInstance object, you
-        can use it to build and run instances of that patch.
+        The file should point to a .soulpatch file. Once you have a PatchInstance object,
+        you can use it to build and run instances of that patch.
     */
     PatchInstance::Ptr createPatchFromFileBundle (VirtualFile::Ptr file) const
     {
