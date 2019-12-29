@@ -838,7 +838,7 @@ Each event input in a processor has a special event handler function, which is c
 processor EventToStream
 {
     input event float eventIn;
-    output stream float eventOut;
+    output stream float streamOut;
 
     event eventIn (float f)
     {
@@ -851,7 +851,7 @@ processor EventToStream
     {
         loop
         {
-            eventOut << lastReceivedValue;
+            streamOut << lastReceivedValue;
             advance();
         }
     }
@@ -861,10 +861,10 @@ processor EventToStream
 Event handlers can generate events themselves and write these to an output event endpoint, and can write multiple events. These will be seen as multiple events to the called processor event handler. e.g
 
 ```C++
-processor EventToStream
+processor EventGenerator
 {
     input event float eventIn;
-    output stream float eventOut;
+    output event float eventOut;
 
     event eventIn (float f)
     {
