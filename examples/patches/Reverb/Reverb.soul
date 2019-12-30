@@ -10,13 +10,13 @@ graph Reverb  [[ main ]]
     input  stream float    audioIn;
     output stream float<2> audioOut;
 
-    input event
+    input
     {
-        float roomSize [[ name: "Room Size", max: 100, init: 80, text: "tiny|small|medium|large|hall" ]];
-        float damping  [[ min: 0,  max: 100, init:  50,  name: "Damping Factor",  unit: "%",  step: 1 ]];
-        float wetLevel [[ min: 0,  max: 100, init:  33,  name: "Wet Level",       unit: "%",  step: 1 ]];
-        float dryLevel [[ min: 0,  max: 100, init:  40,  name: "Dry Level",       unit: "%",  step: 1 ]];
-        float width    [[ min: 0,  max: 100, init: 100,  name: "Width",           unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.roomSize  [[ name: "Room Size", max: 100, init: 80, text: "tiny|small|medium|large|hall" ]];
+        ReverbParameterProcessorParam.damping   [[ min: 0,  max: 100, init:  50,  name: "Damping Factor",  unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.wetLevel  [[ min: 0,  max: 100, init:  33,  name: "Wet Level",       unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.dryLevel  [[ min: 0,  max: 100, init:  40,  name: "Dry Level",       unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.width     [[ min: 0,  max: 100, init: 100,  name: "Width",           unit: "%",  step: 1 ]];
     }
 
     let
@@ -33,13 +33,6 @@ graph Reverb  [[ main ]]
 
     connection
     {
-        // Parameter events to the parameter handler
-        roomSize -> ReverbParameterProcessorParam.roomSize;
-        damping  -> ReverbParameterProcessorParam.damping;
-        wetLevel -> ReverbParameterProcessorParam.wetLevel;
-        dryLevel -> ReverbParameterProcessorParam.dryLevel;
-        width    -> ReverbParameterProcessorParam.width;
-
         // Parameter outputs to smoothing processors
         ReverbParameterProcessorParam.dryGainOut  -> dryGainParameterRamp.updateParameter;
         ReverbParameterProcessorParam.wetGain1Out -> wetGain1ParameterRamp.updateParameter;
@@ -122,7 +115,7 @@ processor CombFilter (int bufferSize)
             last = (out * (1.0f - dampingIn)) + (last * dampingIn);
 
             buffer[bufferIndex] = (gain * audioIn) + (last * feedbackLevelIn);
-            bufferIndex++;
+            ++bufferIndex;
 
             advance();
         }
@@ -186,7 +179,7 @@ processor ParameterRamp (float slewRate)
             if (rampSamples > 0)
             {
                 currentValue += rampIncrement;
-                rampSamples--;
+                --rampSamples;
             }
 
             parameterOut << currentValue;
@@ -199,35 +192,29 @@ processor ParameterRamp (float slewRate)
 // Correctly applies parameter changes to the streams of input to the algorithm
 processor ReverbParameterProcessorParam
 {
-    input event
-    {
-        float roomSize;
-        float damping;
-        float wetLevel;
-        float dryLevel;
-        float width;
-    }
+    input event float roomSize, 
+                      damping, 
+                      wetLevel,
+                      dryLevel, 
+                      width;
 
-    output event
-    {
-        float dryGainOut;
-        float wetGain1Out;
-        float wetGain2Out;
-        float dampingOut;
-        float feedbackOut;
-    }
+    output event float dryGainOut,
+                       wetGain1Out,
+                       wetGain2Out,
+                       dampingOut,
+                       feedbackOut;
 
-    event roomSize (float f)    { roomSize_ = f / 100.0f; onUpdate(); }
-    event damping (float f)     { damping_ = f / 100.0f; onUpdate(); }
-    event wetLevel (float f)    { wetLevel_ = f / 100.0f; onUpdate(); }
-    event dryLevel (float f)    { dryLevel_ = f / 100.0f; onUpdate(); }
-    event width (float f)       { width_ = f / 100.0f; onUpdate(); }
+    event roomSize (float newValue)    { roomSizeScaled = newValue / 100.0f; onUpdate(); }
+    event damping  (float newValue)    { dampingScaled  = newValue / 100.0f; onUpdate(); }
+    event wetLevel (float newValue)    { wetLevelScaled = newValue / 100.0f; onUpdate(); }
+    event dryLevel (float newValue)    { dryLevelScaled = newValue / 100.0f; onUpdate(); }
+    event width    (float newValue)    { widthScaled    = newValue / 100.0f; onUpdate(); }
 
-    float roomSize_ = 0.5f;
-    float damping_  = 0.5f;
-    float wetLevel_ = 0.33f;
-    float dryLevel_ = 0.4f;
-    float width_    = 1.0f;
+    float roomSizeScaled = 0.5f;
+    float dampingScaled  = 0.5f;
+    float wetLevelScaled = 0.33f;
+    float dryLevelScaled = 0.4f;
+    float widthScaled    = 1.0f;
 
     void onUpdate()
     {
@@ -240,19 +227,11 @@ processor ReverbParameterProcessorParam
             let dampScaleFactor = 0.4f;
 
             // Write updated values
-            dryGainOut  << dryLevel_ * dryScaleFactor;
-            wetGain1Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f + width_));
-            wetGain2Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f - width_));
-            dampingOut  << damping_ * dampScaleFactor;
-            feedbackOut << roomSize_ * roomScaleFactor + roomOffset;
-    }
-
-    void run()
-    {
-        loop
-        {
-            advance();
-        }
+            dryGainOut  << dryLevelScaled * dryScaleFactor;
+            wetGain1Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f + widthScaled);
+            wetGain2Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f - widthScaled);
+            dampingOut  << dampingScaled * dampScaleFactor;
+            feedbackOut << roomSizeScaled * roomScaleFactor + roomOffset;
     }
 }
 

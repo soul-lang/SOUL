@@ -13,9 +13,9 @@
 
 graph SOUL909  [[ main ]]
 {
-    input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, label: "Volume" ]];
-    input event midi::Message midiIn;
-    output stream float<2> audioOut;
+    input gainParameter.volume  volume   [[ min: -40, max: 0, init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input event midi::Message   midiIn;
+    output stream float<2>      audioOut;
 
     let
     {
@@ -34,7 +34,6 @@ graph SOUL909  [[ main ]]
 
         voiceAllocator.voiceEventOut -> voices.eventIn;
 
-        volume                       -> gainParameter.gainDb;
         gainParameter.parameterOut   -> gainProcessor.gain;
         voices.audioOut              -> gainProcessor.audioIn;
 
@@ -125,12 +124,12 @@ processor Gain
 // Converts an input event (as a gain in db) to a ramped stream
 processor GainParameterRamp (float slewRate)
 {
-    input event float gainDb;
+    input event float volume;
     output stream float parameterOut;
 
-    event gainDb (float targetDb)
+    event volume (float targetDB)
     {
-        targetValue = soul::dBtoGain (targetDb);
+        targetValue = soul::dBtoGain (targetDB);
 
         let diff = targetValue - currentValue;
         let rampSeconds = abs (diff) / slewRate;

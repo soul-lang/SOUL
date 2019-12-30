@@ -13,7 +13,7 @@
 //==============================================================================
 graph ElectoPiano  [[ main ]]
 {
-    input event midi::Message midiIn;
+    input midiParser.parseMIDI midiIn;
     output stream float audioOut;
 
     let
@@ -26,7 +26,6 @@ graph ElectoPiano  [[ main ]]
 
     connection
     {
-        midiIn                  -> midiParser.parseMIDI;
         midiParser.eventOut     -> voiceAllocator.eventIn;
         voiceAllocator.eventOut -> voices.eventIn;
         voices.audioOut         -> filter.audioIn;
@@ -496,10 +495,5 @@ namespace TX81Z
         int nextUnallocatedVoiceAge = 1;
 
         VoiceInfo[voiceCount] voiceInfo;
-
-        void run()
-        {
-            loop { advance(); }
-        }
     }
 }

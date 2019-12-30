@@ -261,7 +261,7 @@ processor PolyBlep
 
         if (t < normalisedPhaseIncrement)
         {
-            t = t / normalisedPhaseIncrement;
+            t /= normalisedPhaseIncrement;
             return (t + t) - (t * t) - 1.0f;
         }
 
@@ -307,13 +307,9 @@ processor PolyBlep
 // Runs an ADSR envelope using the input as a trigger
 processor ADSREnvelope
 {
-    input
-    {
-        stream float audioIn;
-        event float attack, decay, sustain, release, sensitivity;
-    }
-
-    output stream float audioOut;
+    input stream float triggerLevel;
+    output stream float envelopeLevel;
+    input event float attack, decay, sustain, release, sensitivity;
 
     event attack (float f)
     {
@@ -375,26 +371,25 @@ processor ADSREnvelope
     void run()
     {
         float64 value = 0;
-
         bool released = false;
 
         loop
         {
-            if (audioIn > 0)
+            if (triggerLevel > 0)
             {
                 // TODO: Shouldn't need this
                 released = false;
 
                 // Use the value of the trigger to modify our target value
-                calculateTargetValue (audioIn);
+                calculateTargetValue (triggerLevel);
 
                 while (! released && value < targetValue)
                 {
                     value += attackRamp;
-                    audioOut << float(value);
+                    envelopeLevel << float(value);
                     advance();
 
-                    released = (audioIn <= 0);
+                    released = (triggerLevel <= 0);
                 }
 
                 // Cap it to the target value
@@ -404,24 +399,24 @@ processor ADSREnvelope
                 while (! released && value > (targetValue * sustainLevel))
                 {
                     value = value * decayMultiplier;
-                    audioOut << float(value);
+                    envelopeLevel << float(value);
                     advance();
 
-                    released = (audioIn <= 0);
+                    released = (triggerLevel <= 0);
                 }
 
                 // Sustain stage
                 while (! released)
                 {
-                    audioOut << float(value);
+                    envelopeLevel << float(value);
                     advance();
-                    released = (audioIn <= 0);
+                    released = (triggerLevel <= 0);
                 }
             }
 
             value = value * releaseMultiplier;
 
-            audioOut << float(value);
+            envelopeLevel << float(value);
             advance();
         }
     }
@@ -519,9 +514,9 @@ processor LowPassFilter
                 let in = audioIn;
 
                 let f = factor_a1 * (in + in_1)
-                        + factor_a2 * in_2
-                        - factor_b1 * out_1
-                        - factor_b2 * out_2;
+                         + factor_a2 * in_2
+                         - factor_b1 * out_1
+                         - factor_b2 * out_2;
 
                 out_2 = out_1;
                 out_1 = f;
@@ -659,70 +654,70 @@ graph voice
 
     let
     {
-        Osc1                = PolyBlep;
-        Osc2                = PolyBlep;
-        AmplitudeEnvelope   = ADSREnvelope;
-        CutoffEnvelope      = ADSREnvelope;
-        VoiceController     = Controller;
-        VoiceOscillatorMix  = OscillatorMix;
-        VoiceCutoffHandler  = CutoffHandler;
-        VoiceLowPassFilter  = LowPassFilter;
+        osc1                = PolyBlep;
+        osc2                = PolyBlep;
+        amplitudeEnvelope   = ADSREnvelope;
+        cutoffEnvelope      = ADSREnvelope;
+        voiceController     = Controller;
+        voiceOscillatorMix  = OscillatorMix;
+        voiceCutoffHandler  = CutoffHandler;
+        voiceLowPassFilter  = LowPassFilter;
 
-        Cutoff              = ParameterStream;
-        Resonance           = ParameterStream;
-        OscillatorMixParam  = ParameterStream;
-        CutoffEnvMod        = ParameterStream;
-        CutoffKeytrackMod   = ParameterStream;
+        cutoff              = ParameterStream;
+        resonance           = ParameterStream;
+        oscillatorMixParam  = ParameterStream;
+        cutoffEnvMod        = ParameterStream;
+        cutoffKeytrackMod   = ParameterStream;
     }
 
     connection
     {
-        cutoffParam         -> Cutoff.parameterUpdate;
-        resonanceParam      -> Resonance.parameterUpdate;
-        ampAttack           -> AmplitudeEnvelope.attack;
-        ampDecay            -> AmplitudeEnvelope.decay;
-        ampSustain          -> AmplitudeEnvelope.sustain;
-        ampRelease          -> AmplitudeEnvelope.release;
-        ampSensitivity      -> AmplitudeEnvelope.sensitivity;
-        osc1waveshape       -> Osc1.waveshape;
-        osc1detuneSemitones -> Osc1.detuneSemitones;
-        osc1detune          -> Osc1.detune;
-        osc2waveshape       -> Osc2.waveshape;
-        osc2detuneSemitones -> Osc2.detuneSemitones;
-        osc2detune          -> Osc2.detune;
-        filterAttack        -> CutoffEnvelope.attack;
-        filterDecay         -> CutoffEnvelope.decay;
-        filterSustain       -> CutoffEnvelope.sustain;
-        filterRelease       -> CutoffEnvelope.release;
-        filterSensitivity   -> CutoffEnvelope.sensitivity;
-        oscillatorMix       -> OscillatorMixParam.parameterUpdate;
-        filterEnvMod        -> CutoffEnvMod.parameterUpdate;
-        filterCutoffTrack   -> CutoffKeytrackMod.parameterUpdate;
+        cutoffParam         -> cutoff.parameterUpdate;
+        resonanceParam      -> resonance.parameterUpdate;
+        ampAttack           -> amplitudeEnvelope.attack;
+        ampDecay            -> amplitudeEnvelope.decay;
+        ampSustain          -> amplitudeEnvelope.sustain;
+        ampRelease          -> amplitudeEnvelope.release;
+        ampSensitivity      -> amplitudeEnvelope.sensitivity;
+        osc1waveshape       -> osc1.waveshape;
+        osc1detuneSemitones -> osc1.detuneSemitones;
+        osc1detune          -> osc1.detune;
+        osc2waveshape       -> osc2.waveshape;
+        osc2detuneSemitones -> osc2.detuneSemitones;
+        osc2detune          -> osc2.detune;
+        filterAttack        -> cutoffEnvelope.attack;
+        filterDecay         -> cutoffEnvelope.decay;
+        filterSustain       -> cutoffEnvelope.sustain;
+        filterRelease       -> cutoffEnvelope.release;
+        filterSensitivity   -> cutoffEnvelope.sensitivity;
+        oscillatorMix       -> oscillatorMixParam.parameterUpdate;
+        filterEnvMod        -> cutoffEnvMod.parameterUpdate;
+        filterCutoffTrack   -> cutoffKeytrackMod.parameterUpdate;
 
-        eventIn -> VoiceController.eventIn;
+        eventIn -> voiceController.eventIn;
 
-        VoiceController.note1_frequencyOut -> Osc1.frequencyIn;
-        VoiceController.note2_frequencyOut -> Osc2.frequencyIn;
-        VoiceController.note1_active       -> AmplitudeEnvelope.audioIn;
-        VoiceController.note1_active       -> CutoffEnvelope.audioIn;
+        voiceController.note1_frequencyOut -> osc1.frequencyIn;
+        voiceController.note2_frequencyOut -> osc2.frequencyIn;
+        voiceController.note1_active       -> amplitudeEnvelope.triggerLevel, 
+                                              cutoffEnvelope.triggerLevel;
 
-        Osc1.audioOut                -> VoiceOscillatorMix.osc1In;
-        Osc2.audioOut                -> VoiceOscillatorMix.osc2In;
-        OscillatorMixParam.audioOut  -> VoiceOscillatorMix.mixIn;
+        osc1.audioOut                -> voiceOscillatorMix.osc1In;
+        osc2.audioOut                -> voiceOscillatorMix.osc2In;
+        oscillatorMixParam.audioOut  -> voiceOscillatorMix.mixIn;
 
-        Cutoff.audioOut                     -> VoiceCutoffHandler.cutoffIn;
-        CutoffEnvelope.audioOut             -> VoiceCutoffHandler.envelopeIn;
-        CutoffEnvMod.audioOut               -> VoiceCutoffHandler.envelopeModIn;
-        CutoffKeytrackMod.audioOut          -> VoiceCutoffHandler.trackModIn;
-        VoiceController.note1_noteOut       -> VoiceCutoffHandler.noteIn;
-        VoiceController.note1_slide         -> VoiceCutoffHandler.modIn;
+        cutoff.audioOut                     -> voiceCutoffHandler.cutoffIn;
+        cutoffEnvelope.envelopeLevel        -> voiceCutoffHandler.envelopeIn;
+        cutoffEnvMod.audioOut               -> voiceCutoffHandler.envelopeModIn;
+        cutoffKeytrackMod.audioOut          -> voiceCutoffHandler.trackModIn;
+        voiceController.note1_noteOut       -> voiceCutoffHandler.noteIn;
+        voiceController.note1_slide         -> voiceCutoffHandler.modIn;
 
-        VoiceOscillatorMix.audioOut  -> VoiceLowPassFilter.audioIn;
-        VoiceCutoffHandler.cutoffOut -> VoiceLowPassFilter.cutoffIn;
-        Resonance.audioOut           -> VoiceLowPassFilter.resonanceIn;
-        AmplitudeEnvelope.audioOut   -> VoiceLowPassFilter.gainIn;
+        voiceOscillatorMix.audioOut     -> voiceLowPassFilter.audioIn;
+        voiceCutoffHandler.cutoffOut    -> voiceLowPassFilter.cutoffIn;
+        resonance.audioOut              -> voiceLowPassFilter.resonanceIn;
+        amplitudeEnvelope.envelopeLevel -> voiceLowPassFilter.gainIn;
 
-        VoiceLowPassFilter.audioOut -> audioOut;
+        voiceLowPassFilter.audioOut -> audioOut;
     }
 }
 
@@ -730,7 +725,7 @@ graph voice
 graph Reverb
 {
     input  stream float audioIn;
-    output stream float audioOut;
+    output dryWetMixer.audioOut;
 
     let
     {
@@ -776,8 +771,6 @@ graph Reverb
         allPass_341.audioOut -> allPass_441.audioIn;
         allPass_441.audioOut -> allPass_556.audioIn;
         allPass_556.audioOut -> dryWetMixer.audioInWet;
-
-        dryWetMixer.audioOut -> audioOut;
     }
 }
 
@@ -873,17 +866,15 @@ processor Delay (int delay, float feedbackLevel)
 //==============================================================================
 graph Oscillators
 {
-    input event
-    {
-        midi::Message midiIn;
-        float cutoffParam, resonanceParam;
-        float ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity;
-        float osc1waveshape, osc1detuneSemitones, osc1detune;
-        float osc2waveshape, osc2detuneSemitones, osc2detune;
-        float filterAttack, filterDecay, filterSustain, filterRelease, filterSensitivity;
-        float oscillatorMix;
-        float filterEnvMod, filterCutoffTrack;
-    }
+    input midiParser.parseMIDI midiIn;
+
+    input event float cutoffParam, resonanceParam,
+                      ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity,
+                      osc1waveshape, osc1detuneSemitones, osc1detune,
+                      osc2waveshape, osc2detuneSemitones, osc2detune,
+                      filterAttack, filterDecay, filterSustain, filterRelease, filterSensitivity,
+                      oscillatorMix,
+                      filterEnvMod, filterCutoffTrack;
 
     output stream float audioOut;
 
@@ -921,7 +912,6 @@ graph Oscillators
         filterCutoffTrack   -> voices.filterCutoffTrack;
 
         // Pass the events to the voice allocator
-        midiIn               -> midiParser.parseMIDI;
         midiParser.eventOut  -> voiceAllocator.eventIn;
 
         // Pass the allocated events to the voice bank

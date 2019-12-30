@@ -496,10 +496,5 @@ namespace TX81Z
         int nextUnallocatedVoiceAge = 1;
 
         VoiceInfo[voiceCount] voiceInfo;
-
-        void run()
-        {
-            loop { advance(); }
-        }
     }
 }
