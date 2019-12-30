@@ -61,6 +61,7 @@ struct LinkOptions  : public Annotation
     static const char* getSessionIdKey()            { return "sessionId"; }
     void setSessionId (int32_t sessionId)           { set (getSessionIdKey(), Value::createInt32 (sessionId)); }
     int32_t getSessionId() const                    { return int32_t (getInt64 (getSessionIdKey())); }
+    bool hasSessionId() const                       { return hasValue (getSessionIdKey()); }
 
     using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
                                                                          const char* name,

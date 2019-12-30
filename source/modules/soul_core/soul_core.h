@@ -60,6 +60,7 @@
 #include <limits>
 #include <condition_variable>
 #include <cassert>
+#include <random>
 
 #include "utilities/soul_MiscUtilities.h"
 #include "utilities/soul_DebugUtilities.h"
