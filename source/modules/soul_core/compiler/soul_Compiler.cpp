@@ -230,7 +230,7 @@ private:
     static void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
                                                    AST::Graph& parentGraph,
                                                    AST::EndpointDeclaration& parentEndpoint,
-                                                   AST::ProcessorBase& childProcessor,
+                                                   AST::ProcessorInstance& childProcessor,
                                                    AST::EndpointDeclaration& childEndpoint)
     {
         parentEndpoint.details = std::make_unique<AST::EndpointDetails> (*childEndpoint.details);
@@ -244,7 +244,7 @@ private:
         parent.endpoint = parentEndpoint.name;
         parent.endpointIndex = {};
 
-        child.processorName = allocator.allocate<AST::QualifiedIdentifier> (AST::Context(), IdentifierPath (childProcessor.name));
+        child.processorName = childProcessor.instanceName;
         child.processorIndex = {};
         child.endpoint = childEndpoint.name;
         child.endpointIndex = {};
@@ -292,7 +292,7 @@ private:
             if (path.back().index != nullptr)
                 nameContext.throwError (Errors::targetIsNotAnArray());
 
-            setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessor, childEndpoint);
+            setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessorInstance, childEndpoint);
             return;
         }
 
@@ -304,7 +304,7 @@ private:
         childGraph->endpoints.push_back (newEndpointInChild);
 
         resolveEndpoint (allocator, *childGraph, newEndpointInChild, path.tail());
-        setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessor, newEndpointInChild);
+        setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessorInstance, newEndpointInChild);
     }
 };
 
