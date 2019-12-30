@@ -28,6 +28,7 @@ struct heart::Checker
         program.getMainProcessorOrThrowError();
         sanityCheckInputsAndOutputs (program);
         sanityCheckAdvanceAndStreamCalls (program);
+        checkConnections (program);
         checkForRecursiveFunctions (program);
         checkForInfiniteLoops (program);
     }
@@ -54,6 +55,95 @@ struct heart::Checker
                 output->location.throwError (Errors::onlyOneTypeInTopLevelOutputs());
         }
     }
+
+    static void checkConnections (Program& program)
+    {
+        for (auto& m : program.getModules())
+        {
+            if (m->isGraph())
+            {
+                for (auto& conn : m->connections)
+                {
+                    pool_ptr<heart::IODeclaration> sourceOutput, destInput;
+                    size_t sourceInstanceArraySize = 1, destInstanceArraySize = 1;
+                    auto sourceDescription = conn->sourceEndpoint;
+                    auto destDescription   = conn->destEndpoint;
+
+                    if (conn->sourceProcessor != nullptr)
+                    {
+                        sourceOutput = program.getModuleWithName (conn->sourceProcessor->sourceName)->findOutput (conn->sourceEndpoint);
+                        sourceInstanceArraySize = conn->sourceProcessor->arraySize;
+                        sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
+                    }
+                    else
+                    {
+                        sourceOutput = m->findInput (conn->sourceEndpoint);
+                    }
+
+                    if (conn->destProcessor != nullptr)
+                    {
+                        destInput = program.getModuleWithName (conn->destProcessor->sourceName)->findInput (conn->destEndpoint);
+                        destInstanceArraySize = conn->destProcessor->arraySize;
+                        destDescription = conn->destProcessor->instanceName + "." + destDescription;
+                    }
+                    else
+                    {
+                        destInput = m->findOutput (conn->destEndpoint);
+                    }
+
+                    if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindOutput (sourceDescription));
+                    if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindInput (destDescription));
+
+                    if (sourceOutput->kind != destInput->kind)
+                        conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointKindName (sourceOutput->kind),
+                                                                          destDescription, getEndpointKindName (destInput->kind)));
+
+                    if (! areConnectionTypesCompatible (isEvent (sourceOutput->kind),
+                                                        *sourceOutput, sourceInstanceArraySize,
+                                                        *destInput, destInstanceArraySize))
+                        conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getSampleTypesDescription(),
+                                                                          destDescription, destInput->getSampleTypesDescription()));
+                }
+            }
+        }
+    }
+
+    static bool areConnectionTypesCompatible (bool isEvent,
+                                              const heart::IODeclaration& sourceOutput, size_t sourceInstanceArraySize,
+                                              const heart::IODeclaration& destInput, size_t destInstanceArraySize)
+    {
+        // Different rules for different connection types
+        if (isEvent)
+        {
+            auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize;
+            auto destSize = destInstanceArraySize * destInput.arraySize;
+
+            // Sizes do not match - 1->1, 1->N, N->1 and N->N are only supported sizes
+            if (sourceSize != 1 && destSize != 1 && sourceSize != destSize)
+                return false;
+
+            // Now compare the underlying types, ignoring array sizes, at least 1 should match
+            for (auto& sourceType : sourceOutput.sampleTypes)
+                for (auto& destType : destInput.sampleTypes)
+                    if (TypeRules::canSilentlyCastTo (destType, sourceType))
+                        return true;
+
+            return false;
+        }
+
+        auto sourceSampleType = sourceOutput.getSingleSampleType();
+        auto destSampleType = destInput.getSingleSampleType();
+
+        if (sourceSampleType.isEqual (destSampleType, Type::ignoreVectorSize1))
+            return true;
+
+        if (sourceSampleType.isArray()
+             && sourceSampleType.getElementType().isEqual (destSampleType, Type::ignoreVectorSize1))
+            return true;
+
+        return false;
+    }
+
 
     static void sanityCheckAdvanceAndStreamCalls (Program& program)
     {
