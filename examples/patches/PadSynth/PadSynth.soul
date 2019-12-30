@@ -7,32 +7,32 @@
 
 graph PadSynth  [[main]]
 {
-    input event
+    input
     {
-        midi::Message midiIn;
+        event midi::Message midiIn;
 
-        float cutoff                [[ name: "Cutoff",                min: 0,       max: 127,    init: 80,    unit: "semi",   step: 0.1   ]];
-        float resonance             [[ name: "Resonance",             min: 0,       max: 100,    init: 20,    unit: "%",      step: 1     ]];
-        float ampAttack             [[ name: "Amp Attack",            min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
-        float ampDecay              [[ name: "Amp Decay",             min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
-        float ampSustain            [[ name: "Amp Sustain",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
-        float ampRelease            [[ name: "Amp Release",           min: 0,       max: 100,    init: 88,    unit: "%",      step: 1     ]];
-        float ampSensitivity        [[ name: "Amp Sensitivity",       min: 0,       max: 100,    init: 50,    unit: "%",      step: 1     ]];
-        float osc1waveshape         [[ name: "Osc1 Waveshape",        min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
-        float osc1detuneSemitones   [[ name: "Osc1 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
-        float osc1detune            [[ name: "Osc1 Detune",           min: -100,    max: 100,    init: 0,     unit: "cent",   step: 1     ]];
-        float osc2waveshape         [[ name: "Osc2 Waveshape",        min: 0,       max: 100,    init: 1.0,   unit: "%",      step: 1     ]];
-        float osc2detuneSemitones   [[ name: "Osc2 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
-        float osc2detune            [[ name: "Osc2 Detune",           min: -100,    max: 100,    init: 1,     unit: "cent",   step: 1     ]];
-        float oscillatorMix         [[ name: "Osc Mix",               min: 0,       max: 100,    init: 22,    unit: "%",      step: 1     ]];
-        float filterAttack          [[ name: "Filter Attack",         min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
-        float filterDecay           [[ name: "Filter Decay",          min: 0,       max: 100,    init: 74,    unit: "%",      step: 1     ]];
-        float filterSustain         [[ name: "Filter Sustain",        min: 0,       max: 100,    init: 75,    unit: "%",      step: 1     ]];
-        float filterRelease         [[ name: "Filter Release",        min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
-        float filterSensitivity     [[ name: "Filter Sensitivity",    min: 0,       max: 100,    init: 25,    unit: "%",      step: 1     ]];
-        float filterEnvMod          [[ name: "Filter Env Mod",        min: -24,     max: 24,     init: 12,    unit: "semi",   step: 1     ]];
-        float filterCutoffTrack     [[ name: "Filter Cutoff Track",   min: 0,       max: 1,      init: 1,     unit: "semi",   step: 0.01  ]];
-        float dryWetMix             [[ name: "Dry Wet Mix",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        event float      cutoff                [[ name: "Cutoff",                min: 0,       max: 127,    init: 80,    unit: "semi",   step: 0.1   ]];
+        event float      resonance             [[ name: "Resonance",             min: 0,       max: 100,    init: 20,    unit: "%",      step: 1     ]];
+        event float      ampAttack             [[ name: "Amp Attack",            min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
+        event float      ampDecay              [[ name: "Amp Decay",             min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
+        event float      ampSustain            [[ name: "Amp Sustain",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        event float      ampRelease            [[ name: "Amp Release",           min: 0,       max: 100,    init: 88,    unit: "%",      step: 1     ]];
+        event float      ampSensitivity        [[ name: "Amp Sensitivity",       min: 0,       max: 100,    init: 50,    unit: "%",      step: 1     ]];
+        event float      osc1waveshape         [[ name: "Osc1 Waveshape",        min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        event float      osc1detuneSemitones   [[ name: "Osc1 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
+        event float      osc1detune            [[ name: "Osc1 Detune",           min: -100,    max: 100,    init: 0,     unit: "cent",   step: 1     ]];
+        event float      osc2waveshape         [[ name: "Osc2 Waveshape",        min: 0,       max: 100,    init: 1.0,   unit: "%",      step: 1     ]];
+        event float      osc2detuneSemitones   [[ name: "Osc2 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
+        event float      osc2detune            [[ name: "Osc2 Detune",           min: -100,    max: 100,    init: 1,     unit: "cent",   step: 1     ]];
+        event float      oscillatorMix         [[ name: "Osc Mix",               min: 0,       max: 100,    init: 22,    unit: "%",      step: 1     ]];
+        event float      filterAttack          [[ name: "Filter Attack",         min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
+        event float      filterDecay           [[ name: "Filter Decay",          min: 0,       max: 100,    init: 74,    unit: "%",      step: 1     ]];
+        event float      filterSustain         [[ name: "Filter Sustain",        min: 0,       max: 100,    init: 75,    unit: "%",      step: 1     ]];
+        event float      filterRelease         [[ name: "Filter Release",        min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
+        event float      filterSensitivity     [[ name: "Filter Sensitivity",    min: 0,       max: 100,    init: 25,    unit: "%",      step: 1     ]];
+        event float      filterEnvMod          [[ name: "Filter Env Mod",        min: -24,     max: 24,     init: 12,    unit: "semi",   step: 1     ]];
+        event float      filterCutoffTrack     [[ name: "Filter Cutoff Track",   min: 0,       max: 1,      init: 1,     unit: "semi",   step: 0.01  ]];
+        dryWetMixer.mix  dryWetMix             [[ name: "Dry Wet Mix",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
     }
 
     output stream float audioOut;
@@ -41,6 +41,7 @@ graph PadSynth  [[main]]
     {
         delay = Delay (20000, 0.5f);
         oscillators = Oscillators;
+        dryWetMixer = soul::Mixers::DynamicMix (float, 100.0f);
     }
 
     connection
@@ -68,14 +69,13 @@ graph PadSynth  [[main]]
         oscillatorMix        -> oscillators.oscillatorMix;
         filterEnvMod         -> oscillators.filterEnvMod;
         filterCutoffTrack    -> oscillators.filterCutoffTrack;
-        dryWetMix            -> FxMix.dryWetMix;
 
         oscillators.audioOut -> delay.audioIn;
         delay.audioOut       -> Reverb.audioIn;
 
-        oscillators.audioOut -> FxMix.audioInDry;
-        Reverb.audioOut      -> FxMix.audioInWet;
-        FxMix.audioOut       -> audioOut;
+        oscillators.audioOut -> dryWetMixer.in1;
+        Reverb.audioOut      -> dryWetMixer.in2;
+        dryWetMixer.out      -> audioOut;
     }
 }
 
@@ -198,26 +198,6 @@ namespace NoteHandler
     float getCurrentSlide (NoteHandler& this)       { return this.currentSlide; }
 
     bool isNoteActive (NoteHandler& this)           { return int(this.activeNotes) != 0; }
-}
-
-
-//==============================================================================
-processor OscillatorMix
-{
-    input stream float osc1In, osc2In, mixIn;
-    output stream float audioOut;
-
-    void run()
-    {
-        loop
-        {
-            let mix2 = mixIn * 0.01f;
-            let mix1 = 1.0f - mix2;
-
-            audioOut << (osc2In * mix2) + (osc1In * mix1);
-            advance();
-        }
-    }
 }
 
 //==============================================================================
@@ -633,8 +613,8 @@ processor CutoffHandler
     }
 }
 
-
-graph voice
+//==============================================================================
+graph Voice
 {
     input event (soul::NoteEvents::NoteOn,
                  soul::NoteEvents::NoteOff,
@@ -659,7 +639,7 @@ graph voice
         amplitudeEnvelope   = ADSREnvelope;
         cutoffEnvelope      = ADSREnvelope;
         voiceController     = Controller;
-        voiceOscillatorMix  = OscillatorMix;
+        voiceOscillatorMix  = soul::Mixers::DynamicMix (float, 100.0f);
         voiceCutoffHandler  = CutoffHandler;
         voiceLowPassFilter  = LowPassFilter;
 
@@ -698,12 +678,12 @@ graph voice
 
         voiceController.note1_frequencyOut -> osc1.frequencyIn;
         voiceController.note2_frequencyOut -> osc2.frequencyIn;
-        voiceController.note1_active       -> amplitudeEnvelope.triggerLevel, 
+        voiceController.note1_active       -> amplitudeEnvelope.triggerLevel,
                                               cutoffEnvelope.triggerLevel;
 
-        osc1.audioOut                -> voiceOscillatorMix.osc1In;
-        osc2.audioOut                -> voiceOscillatorMix.osc2In;
-        oscillatorMixParam.audioOut  -> voiceOscillatorMix.mixIn;
+        osc1.audioOut                -> voiceOscillatorMix.in1;
+        osc2.audioOut                -> voiceOscillatorMix.in2;
+        oscillatorMixParam.audioOut  -> voiceOscillatorMix.mix;
 
         cutoff.audioOut                     -> voiceCutoffHandler.cutoffIn;
         cutoffEnvelope.envelopeLevel        -> voiceCutoffHandler.envelopeIn;
@@ -712,7 +692,7 @@ graph voice
         voiceController.note1_noteOut       -> voiceCutoffHandler.noteIn;
         voiceController.note1_slide         -> voiceCutoffHandler.modIn;
 
-        voiceOscillatorMix.audioOut     -> voiceLowPassFilter.audioIn;
+        voiceOscillatorMix.out          -> voiceLowPassFilter.audioIn;
         voiceCutoffHandler.cutoffOut    -> voiceLowPassFilter.cutoffIn;
         resonance.audioOut              -> voiceLowPassFilter.resonanceIn;
         amplitudeEnvelope.envelopeLevel -> voiceLowPassFilter.gainIn;
@@ -725,7 +705,7 @@ graph voice
 graph Reverb
 {
     input  stream float audioIn;
-    output dryWetMixer.audioOut;
+    output dryWetMixer.out audioOut;
 
     let
     {
@@ -743,7 +723,7 @@ graph Reverb
         comb_1557 = CombFilter(1557);
         comb_1617 = CombFilter(1617);
 
-        dryWetMixer = DryWetMixer (0.8f, 0.01485f);
+        dryWetMixer = soul::Mixers::FixedSum (float, 0.8f, 0.01485f);
     }
 
     connection
@@ -756,7 +736,7 @@ graph Reverb
                    comb_1491.audioIn,
                    comb_1557.audioIn,
                    comb_1617.audioIn,
-                   dryWetMixer.audioInDry;
+                   dryWetMixer.in1;
 
         comb_1116.audioOut,
         comb_1188.audioOut,
@@ -770,7 +750,7 @@ graph Reverb
         allPass_225.audioOut -> allPass_341.audioIn;
         allPass_341.audioOut -> allPass_441.audioIn;
         allPass_441.audioOut -> allPass_556.audioIn;
-        allPass_556.audioOut -> dryWetMixer.audioInWet;
+        allPass_556.audioOut -> dryWetMixer.in2;
     }
 }
 
@@ -825,22 +805,6 @@ processor CombFilter (int bufferLength)
 }
 
 //==============================================================================
-processor DryWetMixer (float dryFactor, float wetFactor)
-{
-    input stream float audioInDry, audioInWet;
-    output stream float audioOut;
-
-    void run()
-    {
-        loop
-        {
-            audioOut << (audioInDry * dryFactor) + (audioInWet * wetFactor);
-            advance();
-        }
-    }
-}
-
-//==============================================================================
 processor Delay (int delay, float feedbackLevel)
 {
     input  stream float audioIn;
@@ -882,7 +846,7 @@ graph Oscillators
     {
         midiParser = midi::MPEParser;
 
-        voices = voice[8];
+        voices = Voice[8];
         voiceAllocator = soul::VoiceAllocators::Basic(8);
     }
 
@@ -919,29 +883,5 @@ graph Oscillators
 
         // Now pass through reverb
         voices.audioOut -> audioOut;
-    }
-}
-
-processor FxMix
-{
-    input event float dryWetMix;
-
-    input stream float audioInDry, audioInWet;
-    output stream float audioOut;
-
-    event dryWetMix (float f)
-    {
-        currentMix = f * 0.01f;
-    }
-
-    float currentMix = 1.0f;
-
-    void run()
-    {
-        loop
-        {
-            audioOut << (audioInDry * (1.0f - currentMix)) + (audioInWet * currentMix);
-            advance();
-        }
     }
 }

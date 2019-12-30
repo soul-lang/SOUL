@@ -52,6 +52,10 @@ static inline const char* getSystemModuleCode (const std::string& moduleName)
         #include "soul_library_frequency.h"
         ;
 
+    if (moduleName == "soul.mixing") return
+        #include "soul_library_mixing.h"
+        ;
+
     if (moduleName == "soul.noise") return
         #include "soul_library_noise.h"
         ;

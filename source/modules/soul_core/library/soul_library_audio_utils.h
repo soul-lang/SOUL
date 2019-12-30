@@ -95,7 +95,7 @@ namespace soul::PanLaw
     */
     float<2> centre3dB (float pan)
     {
-        let quarterPi = float (pi) * 0.25f;
+        let quarterPi = float (pi / 4);
 
         return (sin ((1.0f - pan) * quarterPi),
                 sin ((1.0f + pan) * quarterPi));

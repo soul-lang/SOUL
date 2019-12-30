@@ -135,14 +135,10 @@ processor Mixer
     {
         loop
         {
-            let wet1 = wet1In;
-            let wet2 = wet2In;
-            let dry = dryIn;
+            let left  = (audioInLeftWet  * wet1In) + (audioInRightWet * wet2In);
+            let right = (audioInRightWet * wet1In) + (audioInLeftWet  * wet2In);
 
-            let left  = (audioInLeftWet  * wet1) + (audioInRightWet * wet2);
-            let right = (audioInRightWet * wet1) + (audioInLeftWet  * wet2);
-
-            audioOut << float<2> (left, right) + audioInDry * dry;
+            audioOut << float<2> (left, right) + audioInDry * dryIn;
             advance();
         }
     }
@@ -192,10 +188,10 @@ processor ParameterRamp (float slewRate)
 // Correctly applies parameter changes to the streams of input to the algorithm
 processor ReverbParameterProcessorParam
 {
-    input event float roomSize, 
-                      damping, 
+    input event float roomSize,
+                      damping,
                       wetLevel,
-                      dryLevel, 
+                      dryLevel,
                       width;
 
     output event float dryGainOut,
@@ -218,20 +214,20 @@ processor ReverbParameterProcessorParam
 
     void onUpdate()
     {
-            // Various tuning factors for the reverb
-            let wetScaleFactor  = 3.0f;
-            let dryScaleFactor  = 2.0f;
+        // Various tuning factors for the reverb
+        let wetScaleFactor  = 3.0f;
+        let dryScaleFactor  = 2.0f;
 
-            let roomScaleFactor = 0.28f;
-            let roomOffset      = 0.7f;
-            let dampScaleFactor = 0.4f;
+        let roomScaleFactor = 0.28f;
+        let roomOffset      = 0.7f;
+        let dampScaleFactor = 0.4f;
 
-            // Write updated values
-            dryGainOut  << dryLevelScaled * dryScaleFactor;
-            wetGain1Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f + widthScaled);
-            wetGain2Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f - widthScaled);
-            dampingOut  << dampingScaled * dampScaleFactor;
-            feedbackOut << roomSizeScaled * roomScaleFactor + roomOffset;
+        // Write updated values
+        dryGainOut  << dryLevelScaled * dryScaleFactor;
+        wetGain1Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f + widthScaled);
+        wetGain2Out << 0.5f * wetLevelScaled * wetScaleFactor * (1.0f - widthScaled);
+        dampingOut  << dampingScaled * dampScaleFactor;
+        feedbackOut << roomSizeScaled * roomScaleFactor + roomOffset;
     }
 }
 

@@ -24,7 +24,7 @@ graph SOUL909  [[ main ]]
         voices          = DrumHitPlayer[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);
         gainParameter   = GainParameterRamp (1.0f);
-        gainProcessor   = Gain;
+        gainProcessor   = soul::Gain::DynamicGain (float<2>);
     }
 
     connection
@@ -35,9 +35,9 @@ graph SOUL909  [[ main ]]
         voiceAllocator.voiceEventOut -> voices.eventIn;
 
         gainParameter.parameterOut   -> gainProcessor.gain;
-        voices.audioOut              -> gainProcessor.audioIn;
+        voices.audioOut              -> gainProcessor.in;
 
-        gainProcessor.audioOut       -> audioOut;
+        gainProcessor.out            -> audioOut;
     }
 }
 
@@ -98,23 +98,6 @@ processor DrumHitPlayer
                     positionIncrement = 0;
             }
 
-            advance();
-        }
-    }
-}
-
-//==============================================================================
-processor Gain
-{
-    input  stream float    gain;
-    input  stream float<2> audioIn;
-    output stream float<2> audioOut;
-
-    void run()
-    {
-        loop
-        {
-            audioOut << audioIn * gain;
             advance();
         }
     }

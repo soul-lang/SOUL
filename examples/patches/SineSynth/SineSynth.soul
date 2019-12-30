@@ -19,7 +19,7 @@ graph SineSynth  [[ main ]]
         voiceAllocator = soul::VoiceAllocators::Basic(8);
 
         gainParameter = GainParameterRamp (1.0f);
-        volumeProcessor = Gain;
+        gainProcessor = soul::Gain::DynamicGain (float);
     }
 
     connection
@@ -34,11 +34,9 @@ graph SineSynth  [[ main ]]
                                         voices.pitchBend;
 
         // Sum the voices audio out to the output
-        voices.audioOut -> volumeProcessor.audioIn;
-
-        gainParameter.parameterOut -> volumeProcessor.gain;
-
-        volumeProcessor.audioOut -> audioOut;
+        voices.audioOut -> gainProcessor.in;
+        gainParameter.parameterOut -> gainProcessor.gain;
+        gainProcessor.out -> audioOut;
     }
 }
 
@@ -165,22 +163,6 @@ processor Envelope (float targetLevel, float attackSeconds, float releaseSeconds
 }
 
 //==============================================================================
-processor Gain
-{
-    input  stream float audioIn, gain;
-    output stream float audioOut;
-
-    void run()
-    {
-        loop
-        {
-            audioOut << audioIn * gain;
-            advance();
-        }
-    }
-}
-
-//==============================================================================
 graph Voice
 {
     input event
@@ -194,22 +176,22 @@ graph Voice
 
     let
     {
-        Osc = SineOsc;
-        AmplitudeEnvelope = Envelope(0.2f, 0.02f, 0.1f);
+        osc = SineOsc;
+        amplitudeEnvelope = Envelope (0.2f, 0.02f, 0.1f);
+        gain = soul::Gain::DynamicGain (float);
     }
 
     connection
     {
-        noteOn    -> Osc.noteOn;
-        noteOff   -> Osc.noteOff;
-        pitchBend -> Osc.pitchBend;
-        noteOn    -> AmplitudeEnvelope.noteOn;
-        noteOff   -> AmplitudeEnvelope.noteOff;
+        noteOn    -> osc.noteOn;
+        noteOff   -> osc.noteOff;
+        pitchBend -> osc.pitchBend;
+        noteOn    -> amplitudeEnvelope.noteOn;
+        noteOff   -> amplitudeEnvelope.noteOff;
 
-        Osc.audioOut               -> Gain.audioIn;
-        AmplitudeEnvelope.audioOut -> Gain.gain;
-
-        Gain.audioOut -> audioOut;
+        osc.audioOut               -> gain.in;
+        amplitudeEnvelope.audioOut -> gain.gain;
+        gain.out  -> audioOut;
     }
 }
 
