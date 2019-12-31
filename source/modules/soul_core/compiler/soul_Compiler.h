@@ -78,8 +78,6 @@ private:
     pool_ptr<AST::ProcessorBase> createSpecialisedInstance (AST::Graph&, AST::ProcessorInstance&, AST::ProcessorBase& target, bool mustCreateClone);
 
     pool_ptr<AST::ProcessorBase> addClone (const AST::ProcessorBase&, const std::string& nameRoot);
-    void removeModulesWithSpecialisationParams (pool_ptr<AST::Namespace>);
-    void recursivelyResolve (pool_ptr<AST::Namespace>, bool ignoreErrors);
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, pool_ptr<AST::ProcessorBase> processorToRun);
     void optimise (Program&);
 };

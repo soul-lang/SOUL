@@ -66,6 +66,7 @@
 #include "compiler/soul_Parser.h"
 #include "compiler/soul_ResolutionPass.h"
 #include "compiler/soul_HeartGenerator.h"
+#include "compiler/soul_ASTUtilities.h"
 #include "compiler/soul_Compiler.cpp"
 #include "heart/soul_Intrinsics.cpp"
 #include "heart/soul_ModuleCloner.h"
