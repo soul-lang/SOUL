@@ -250,7 +250,7 @@ struct Value::PackedData
 
         if (type.isStruct())
         {
-            SOUL_ASSERT (values.size() == type.getStruct()->members.size());
+            SOUL_ASSERT (values.size() == type.getStructRef().members.size());
             auto src = values.begin();
 
             for (StructIterator dst (*this); dst.next();)

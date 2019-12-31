@@ -393,8 +393,7 @@ struct heart
             {
                 SOUL_ASSERT (! isDynamic());
                 SOUL_ASSERT (isSingleElement());
-                SOUL_ASSERT (fixedStartIndex < aggregateType.getStruct()->members.size());
-                return aggregateType.getStruct()->members[fixedStartIndex].type;
+                return aggregateType.getStructRef().members[fixedStartIndex].type;
             }
 
             auto sliceSize = getSliceSize();
@@ -1040,7 +1039,8 @@ struct heart
         }
 
         FunctionPtr function; // may be temporarily null while building the program
-        ArrayWithPreallocation<ExpressionPtr, 4> arguments;
+        using ArgListType = ArrayWithPreallocation<ExpressionPtr, 4>;
+        ArgListType arguments;
     };
 
     //==============================================================================

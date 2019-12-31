@@ -175,32 +175,28 @@ struct BlockBuilder
     template <typename Type, typename... Args>
     void createStatement (Args&&... args)   { addStatement (module.allocate<Type> (std::forward<Args> (args)...)); }
 
-    void addAssignment (heart::ExpressionPtr dest, heart::Expression& source)
+    void addAssignment (heart::Expression& dest, heart::Expression& source)
     {
-        if (dest != nullptr)
-            createStatement<heart::AssignFromValue> (CodeLocation(), dest, source);
+        createStatement<heart::AssignFromValue> (CodeLocation(), dest, source);
     }
 
-    void addAssignment (heart::ExpressionPtr dest, Value value)
+    void addAssignment (heart::Expression& dest, Value value)
     {
-        if (dest != nullptr)
-            addAssignment (dest, createConstant (value));
+        addAssignment (dest, createConstant (value));
     }
 
-    void addZeroAssignment (heart::ExpressionPtr dest)
+    void addZeroAssignment (heart::Expression& dest)
     {
-        if (dest != nullptr)
-            addAssignment (dest, createZeroInitialiser (dest->getType()));
+        addAssignment (dest, createZeroInitialiser (dest.getType()));
     }
 
-    void addCastOrAssignment (heart::ExpressionPtr dest, heart::Expression& source)
+    void addCastOrAssignment (heart::Expression& dest, heart::Expression& source)
     {
-        if (dest != nullptr)
-            addAssignment (dest, createCastIfNeeded (source, dest->getType()));
+        addAssignment (dest, createCastIfNeeded (source, dest.getType()));
     }
 
     template <typename SourceArray>
-    void assignSumOfValues (heart::ExpressionPtr dest, const SourceArray& values)
+    void assignSumOfValues (heart::Expression& dest, const SourceArray& values)
     {
         if (values.empty())
         {
@@ -209,7 +205,7 @@ struct BlockBuilder
         }
 
         heart::ExpressionPtr total = values.front();
-        auto type = dest->getType();
+        auto type = dest.getType();
 
         for (size_t i = 1; i < values.size(); ++i)
             total = createBinaryOp (CodeLocation(), *total, *values[i], BinaryOp::Op::add, type);
@@ -240,11 +236,27 @@ struct BlockBuilder
         changeIntegerByOne (dest, BinaryOp::Op::subtract);
     }
 
-    void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function,
-                          std::vector<heart::ExpressionPtr>&& args)
+    void addFunctionCall (heart::Function& function, std::initializer_list<heart::ExpressionPtr> args)
+    {
+        addFunctionCall (nullptr, function, args);
+    }
+
+    void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function, std::initializer_list<heart::ExpressionPtr> args)
     {
         auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
-        call.arguments = args;
+        call.arguments.reserve (args.size());
+
+        for (auto& a : args)
+            call.arguments.push_back (a);
+
+        SOUL_ASSERT (call.arguments.size() == function.parameters.size());
+        addStatement (call);
+    }
+
+    void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function, heart::FunctionCall::ArgListType&& args)
+    {
+        auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
+        call.arguments = std::move (args);
         SOUL_ASSERT (call.arguments.size() == function.parameters.size());
         addStatement (call);
     }
@@ -304,7 +316,7 @@ struct BlockBuilder
         setTerminator (module.allocate<heart::ReturnValue> (value));
     }
 
-    void setBranchTerminator (heart::BlockPtr target)
+    void setBranchTerminator (heart::Block& target)
     {
         setTerminator (module.allocate<heart::Branch> (target));
     }
@@ -484,7 +496,7 @@ struct FunctionBuilder  : public BlockBuilder
         SOUL_ASSERT (currentBlock != b);
 
         if (b != nullptr && currentBlock != nullptr && ! currentBlock->isTerminated())
-            return addBranch (b, b);
+            return addBranch (*b, b);
 
         currentBlock = b;
 
@@ -519,10 +531,9 @@ struct FunctionBuilder  : public BlockBuilder
         addTerminatorStatement (module.allocate<heart::ReturnValue> (value), nullptr);
     }
 
-    void addBranch (heart::BlockPtr target, heart::BlockPtr subsequentBlock)
+    void addBranch (heart::Block& target, heart::BlockPtr subsequentBlock)
     {
-        addTerminatorStatement (module.allocate<heart::Branch> (target),
-                                subsequentBlock);
+        addTerminatorStatement (module.allocate<heart::Branch> (target), subsequentBlock);
     }
 
     void addBranchIf (heart::Expression& condition, heart::Block& trueBranch,

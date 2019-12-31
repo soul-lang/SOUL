@@ -372,7 +372,7 @@ private:
         addStateVariableInitialisationCode();
 
         if (auto initFunction = module.findFunction (heart::getUserInitFunctionName()))
-            builder.addFunctionCall (nullptr, *initFunction, {});
+            builder.addFunctionCall (*initFunction, {});
 
         builder.endFunction();
         builder.checkFunctionBlocksForTermination();
@@ -436,7 +436,7 @@ private:
                 if (v->initialValue != nullptr)
                     visitWithDestination (v->generatedVariable, v->initialValue);
                 else if (! v->isExternal)
-                    builder.addZeroAssignment (v->generatedVariable);
+                    builder.addZeroAssignment (*v->generatedVariable);
             }
         }
     }
@@ -769,14 +769,12 @@ private:
 
     void visit (AST::BreakStatement&) override
     {
-        SOUL_ASSERT (breakTarget != nullptr);
-        builder.addBranch (breakTarget, builder.createNewBlock());
+        builder.addBranch (*breakTarget, builder.createNewBlock());
     }
 
     void visit (AST::ContinueStatement&) override
     {
-        SOUL_ASSERT (continueTarget != nullptr);
-        builder.addBranch (continueTarget, builder.createNewBlock());
+        builder.addBranch (*continueTarget, builder.createNewBlock());
     }
 
     void visit (AST::TernaryOp& t) override
@@ -808,7 +806,7 @@ private:
     void visit (AST::Constant& o) override
     {
         if (currentTargetVariable != nullptr)
-            builder.addAssignment (currentTargetVariable, o.value.castToTypeWithError (currentTargetVariable->getType(), o.context));
+            builder.addAssignment (*currentTargetVariable, o.value.castToTypeWithError (currentTargetVariable->getType(), o.context));
     }
 
     void visit (AST::VariableDeclaration& v) override
@@ -844,7 +842,8 @@ private:
 
     void visit (AST::VariableRef& v) override
     {
-        builder.addCastOrAssignment (currentTargetVariable, v.variable->getGeneratedVariable());
+        if (currentTargetVariable != nullptr)
+            builder.addCastOrAssignment (*currentTargetVariable, v.variable->getGeneratedVariable());
     }
 
     void createFunctionCall (const AST::FunctionCall& call, heart::VariablePtr targetVariable)
@@ -880,7 +879,7 @@ private:
             {
                 auto& temp = builder.createRegisterVariable (returnType);
                 createFunctionCall (call, temp);
-                builder.addAssignment (currentTargetVariable, builder.createCast (call.context.location, temp, targetType));
+                builder.addAssignment (*currentTargetVariable, builder.createCast (call.context.location, temp, targetType));
                 return;
             }
         }
@@ -958,23 +957,29 @@ private:
         if (a.isSlice)
         {
             auto sliceRange = a.getResolvedSliceRange();
-            builder.addCastOrAssignment (currentTargetVariable,
-                                         builder.createSubElementSlice (a.context.location,
-                                                                        source, sliceRange.start, sliceRange.end));
+
+            if (currentTargetVariable != nullptr)
+                builder.addCastOrAssignment (*currentTargetVariable,
+                                             builder.createSubElementSlice (a.context.location,
+                                                                            source, sliceRange.start, sliceRange.end));
             return;
         }
 
         auto& index = evaluateAsExpression (*a.startIndex);
-        builder.addCastOrAssignment (currentTargetVariable,
-                                     builder.createDynamicSubElement (a.context.location, source, index,
-                                                                      false, a.suppressWrapWarning));
+
+        if (currentTargetVariable != nullptr)
+            builder.addCastOrAssignment (*currentTargetVariable,
+                                         builder.createDynamicSubElement (a.context.location, source, index,
+                                                                          false, a.suppressWrapWarning));
     }
 
     void visit (AST::StructMemberRef& a) override
     {
         auto structType = getStructType (a);
         auto& source = evaluateAsExpression (*a.object, structType);
-        builder.addCastOrAssignment (currentTargetVariable, builder.createFixedSubElement (source, a.index));
+
+        if (currentTargetVariable != nullptr)
+            builder.addCastOrAssignment (*currentTargetVariable, builder.createFixedSubElement (source, a.index));
     }
 
     void visit (AST::PreOrPostIncOrDec& p) override

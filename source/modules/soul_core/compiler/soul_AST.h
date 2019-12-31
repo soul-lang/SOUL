@@ -1790,7 +1790,7 @@ struct AST
 
     struct DotOperator  : public Expression
     {
-        DotOperator (const Context& c, ExpPtr a, QualifiedIdentifier& b)
+        DotOperator (const Context& c, Expression& a, QualifiedIdentifier& b)
            : Expression (ObjectType::DotOperator, c, ExpressionKind::unknown), lhs (a), rhs (b) {}
 
         bool isResolved() const override            { return false; }

@@ -1766,17 +1766,17 @@ private:
                 if (f->name == specialisedFunctionName && f->orginalGenericFunction == genericFunction)
                     return *f;
 
-            auto newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
-            newFunction->name = specialisedFunctionName;
-            newFunction->orginalGenericFunction = genericFunction;
+            auto& newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
+            newFunction.name = specialisedFunctionName;
+            newFunction.orginalGenericFunction = genericFunction;
 
-            SOUL_ASSERT (callerArgumentTypes.size() == newFunction->parameters.size());
+            SOUL_ASSERT (callerArgumentTypes.size() == newFunction.parameters.size());
 
-            if (! resolveGenericFunctionTypes (call, genericFunction, *newFunction, callerArgumentTypes, shouldIgnoreErrors))
+            if (! resolveGenericFunctionTypes (call, genericFunction, newFunction, callerArgumentTypes, shouldIgnoreErrors))
             {
                 auto parentModule = genericFunction.getParentScope()->getAsModule();
                 SOUL_ASSERT (parentModule != nullptr);
-                removeItem (*parentModule->getFunctionList(), newFunction);
+                removeItem (*parentModule->getFunctionList(), std::addressof (newFunction));
                 return {};
             }
 

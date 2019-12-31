@@ -451,7 +451,7 @@ size_t Type::getPackedSizeInBytes() const
     if (isVector())         return primitiveType.getPackedSizeInBytes() * (size_t) getVectorSize();
     if (isUnsizedArray())   return sizeof (void*);
     if (isArray())          return arrayElementType->getPackedSizeInBytes() * (size_t) getArraySize();
-    if (isStruct())         return getStruct()->getPackedSizeInBytes();
+    if (isStruct())         return structure->getPackedSizeInBytes();
     if (isStringLiteral())  return sizeof (StringDictionary::Handle);
 
     return primitiveType.getPackedSizeInBytes();
@@ -491,7 +491,7 @@ SubElementPath::TypeAndOffset SubElementPath::getElement (const Type& parentType
 
         if (e.type.isStruct())
         {
-            auto& members = e.type.getStruct()->members;
+            auto& members = e.type.getStructRef().members;
             SOUL_ASSERT (index < members.size());
             e.type = members[index].type;
 

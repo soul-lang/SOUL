@@ -88,14 +88,6 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         return parentNamespace.subModules;
     }
 
-    static AST::ModuleBasePtr parseFirstTopLevelDeclarationWithNewName (AST::Allocator& allocator, CodeLocation code,
-                                                                        AST::NamespacePtr parentNamespace, Identifier newName)
-    {
-        StructuralParser p (allocator, code, parentNamespace);
-        p.newNameForFirstDecl = &newName;
-        return p.parseTopLevelDecl (parentNamespace);
-    }
-
     static pool_ptr<AST::ProcessorBase> cloneProcessorWithNewName (AST::Allocator& allocator,
                                                                    AST::Namespace& parentNamespace,
                                                                    const AST::ProcessorBase& itemToClone,
@@ -112,8 +104,8 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         return {};
     }
 
-    static pool_ptr<AST::Function> cloneFunction (AST::Allocator& allocator,
-                                                  const AST::Function& functionToClone)
+    static AST::Function& cloneFunction (AST::Allocator& allocator,
+                                         const AST::Function& functionToClone)
     {
         auto parentModule = functionToClone.getParentScope()->getAsModule();
         SOUL_ASSERT (parentModule != nullptr);
@@ -127,7 +119,7 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         p.parseFunctionOrStateVariable();
         SOUL_ASSERT (functionList->size() == oldSize + 1);
         ignoreUnused (oldSize);
-        return functionList->back();
+        return *functionList->back();
     }
 
     [[noreturn]] void throwError (const CompileMessage& message) const override
@@ -162,8 +154,8 @@ private:
     AST::Statement& getNoop()     { if (noop == nullptr) noop = allocate<AST::NoopStatement> (AST::Context()); return *noop; }
 
     //==============================================================================
-    StructuralParser (AST::Allocator& a, const CodeLocation& code, AST::ModuleBasePtr parentScope)
-        : Tokeniser (code), allocator (a), currentScope (parentScope.get())
+    StructuralParser (AST::Allocator& a, const CodeLocation& code, AST::ModuleBase& parentScope)
+        : Tokeniser (code), allocator (a), currentScope (std::addressof (parentScope))
     {
     }
 
@@ -173,7 +165,6 @@ private:
     Type& allocate (Args&&... args) const    { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
     AST::Expression& matchCloseParen (AST::Expression& e)                 { expect (Operator::closeParen); return e; }
-    AST::ExpPtr matchCloseParen (AST::ExpPtr e)                           { expect (Operator::closeParen); return e; }
     template<typename ExpType> ExpType& matchEndOfStatement (ExpType& e)  { expect (Operator::semicolon);  return e; }
 
     AST::Context getContext() const             { return { location, currentScope }; }
@@ -189,16 +180,15 @@ private:
     };
 
     //==============================================================================
-    void parseTopLevelDecls (AST::NamespacePtr parentNamespace)
+    void parseTopLevelDecls (AST::Namespace& parentNamespace)
     {
         while (! matchIf (Token::eof))
             parseTopLevelDecl (parentNamespace);
     }
 
-    AST::ModuleBasePtr parseTopLevelDecl (AST::NamespacePtr parentNamespace)
+    AST::ModuleBasePtr parseTopLevelDecl (AST::Namespace& parentNamespace)
     {
-        if (parentNamespace != nullptr)
-            parseImports (*parentNamespace);
+        parseImports (parentNamespace);
 
         if (matchIf (Keyword::processor))      return parseProcessorDecl (parentNamespace);
         if (matchIf (Keyword::graph))          return parseGraphDecl     (parentNamespace);
@@ -209,12 +199,12 @@ private:
         return {};
     }
 
-    AST::ProcessorPtr  parseProcessorDecl (AST::NamespacePtr ns)   { return parseTopLevelItem<AST::Processor> (ns); }
-    AST::GraphPtr      parseGraphDecl     (AST::NamespacePtr ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
-    AST::NamespacePtr  parseNamespaceDecl (AST::NamespacePtr ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
+    AST::Processor&  parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
+    AST::Graph&      parseGraphDecl     (AST::Namespace& ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
+    AST::Namespace&  parseNamespaceDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
 
     template <typename ModuleType>
-    pool_ptr<ModuleType> parseTopLevelItem (AST::NamespacePtr parentNamespace)
+    ModuleType& parseTopLevelItem (AST::Namespace& parentNamespace)
     {
         auto context = getContext();
         auto name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
@@ -226,9 +216,7 @@ private:
         }
 
         auto& newModule = allocate<ModuleType> (context, name);
-
-        if (parentNamespace != nullptr)
-            parentNamespace->subModules.push_back (newModule);
+        parentNamespace.subModules.push_back (newModule);
 
         auto newNamespace = cast<AST::Namespace> (newModule);
         ScopedScope scope (*this, newModule);
@@ -399,7 +387,7 @@ private:
             if (auto stateVariables = module->getStateVariableList())
             {
                 parseVariableDeclaration (*type, name, isExternal, context,
-                                          [&] (AST::VariableDeclarationPtr v)  { stateVariables->push_back (v); });
+                                          [&] (AST::VariableDeclaration& v)  { stateVariables->push_back (v); });
             }
             else
             {
@@ -963,9 +951,9 @@ private:
         v.visitObject (target);
     }
 
-    AST::FunctionPtr parseFunctionDeclaration (const AST::Context& context,
-                                               AST::Expression& returnType, Identifier name, const AST::Context& nameLocation,
-                                               std::vector<AST::QualifiedIdentifierPtr> genericWildcards)
+    AST::Function& parseFunctionDeclaration (const AST::Context& context, AST::Expression& returnType,
+                                             Identifier name, const AST::Context& nameLocation,
+                                             std::vector<AST::QualifiedIdentifierPtr> genericWildcards)
     {
         if (AST::isResolvedAsType (returnType) && returnType.getConstness() == AST::Constness::definitelyConst)
             throwError (Errors::functionReturnTypeCannotBeConst());
@@ -1031,7 +1019,7 @@ private:
         return f;
     }
 
-    AST::BlockPtr parseBlock (AST::FunctionPtr ownerFunction)
+    AST::Block& parseBlock (AST::FunctionPtr ownerFunction)
     {
         expect (Operator::openBrace);
         auto& newBlock = allocate<AST::Block> (getContext(), ownerFunction);
@@ -1078,7 +1066,7 @@ private:
 
                     auto context = getContext();
                     parseVariableDeclaration (*type, parseIdentifier(), false, context,
-                                              [this] (AST::VariableDeclarationPtr v) { getCurrentBlock().addStatement (v); });
+                                              [this] (AST::VariableDeclaration& v) { getCurrentBlock().addStatement (v); });
                     return getNoop();
                 }
             }
@@ -1165,10 +1153,10 @@ private:
         return {};
     }
 
-    AST::Expression& createBinaryOperator (const AST::Context& c, AST::ExpPtr a, AST::ExpPtr b, BinaryOp::Op op)
+    AST::Expression& createBinaryOperator (const AST::Context& c, AST::Expression& a, AST::Expression& b, BinaryOp::Op op)
     {
-        if (! AST::isPossiblyValue (a))  a->context.throwError (Errors::expectedValueOrEndpoint());
-        if (! AST::isPossiblyValue (b))  b->context.throwError (Errors::expectedValueOrEndpoint());
+        if (! AST::isPossiblyValue (a))  a.context.throwError (Errors::expectedValueOrEndpoint());
+        if (! AST::isPossiblyValue (b))  b.context.throwError (Errors::expectedValueOrEndpoint());
 
         return allocate<AST::BinaryOperator> (c, a, b, op);
     }
@@ -1230,7 +1218,7 @@ private:
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, a, parseBitwiseXor(), BinaryOp::Op::bitwiseOr);
+            a = createBinaryOperator (context, *a, parseBitwiseXor(), BinaryOp::Op::bitwiseOr);
         }
     }
 
@@ -1243,7 +1231,7 @@ private:
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, a, parseBitwiseAnd(), BinaryOp::Op::bitwiseXor);
+            a = createBinaryOperator (context, *a, parseBitwiseAnd(), BinaryOp::Op::bitwiseXor);
         }
     }
 
@@ -1256,7 +1244,7 @@ private:
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, a, parseEqualityOperator(), BinaryOp::Op::bitwiseAnd);
+            a = createBinaryOperator (context, *a, parseEqualityOperator(), BinaryOp::Op::bitwiseAnd);
         }
     }
 
@@ -1269,7 +1257,7 @@ private:
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, a, parseComparisonOperator(), type);
+            a = createBinaryOperator (context, *a, parseComparisonOperator(), type);
         }
     }
 
@@ -1283,7 +1271,7 @@ private:
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, a, parseShiftOperator(), type);
+            a = createBinaryOperator (context, *a, parseShiftOperator(), type);
         }
     }
 
@@ -1296,7 +1284,7 @@ private:
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, a, parseAdditionSubtraction(), type);
+            a = createBinaryOperator (context, *a, parseAdditionSubtraction(), type);
         }
     }
 
@@ -1312,7 +1300,7 @@ private:
                      || (matchesAny (Token::literalFloat64, Token::literalFloat32) && literalDoubleValue < 0))
                 {
                     auto context = getContext();
-                    a = createBinaryOperator (context, a, parseMultiplyDivide(), BinaryOp::Op::add);
+                    a = createBinaryOperator (context, *a, parseMultiplyDivide(), BinaryOp::Op::add);
                     continue;
                 }
 
@@ -1321,7 +1309,7 @@ private:
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, a, parseMultiplyDivide(), type);
+            a = createBinaryOperator (context, *a, parseMultiplyDivide(), type);
         }
     }
 
@@ -1334,7 +1322,7 @@ private:
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, a, parseUnary(), type);
+            a = createBinaryOperator (context, *a, parseUnary(), type);
         }
     }
 
@@ -1482,29 +1470,24 @@ private:
         if (matchIf (Operator::openParen))
         {
             auto& args = parseCommaSeparatedListOfExpressions (false, false);
-            bool isMethodCall = false;
-            AST::ExpPtr name (expression);
 
-            if (auto dot = cast<AST::DotOperator> (AST::ExpPtr (expression)))
+            if (auto dot = cast<AST::DotOperator> (expression))
             {
-                isMethodCall = true;
                 args.items.insert (args.items.begin(), dot->lhs);
-                name = dot->rhs;
+                return parseSuffixes (allocate<AST::CallOrCast> (dot->rhs, args, true));
             }
 
-            return parseSuffixes (allocate<AST::CallOrCast> (name, args, isMethodCall));
+            return parseSuffixes (allocate<AST::CallOrCast> (expression, args, false));
         }
 
-        if (matchIf (Operator::openBracket))
-            return parseSubscriptWithBrackets (expression);
-
-        if (matchIf (Operator::plusplus))   return parsePostIncDec (expression, true);
-        if (matchIf (Operator::minusminus)) return parsePostIncDec (expression, false);
+        if (matchIf (Operator::openBracket))  return parseSubscriptWithBrackets (expression);
+        if (matchIf (Operator::plusplus))     return parsePostIncDec (expression, true);
+        if (matchIf (Operator::minusminus))   return parsePostIncDec (expression, false);
 
         return expression;
     }
 
-    AST::Expression& parseInPlaceOpExpression (AST::ExpPtr lhs, BinaryOp::Op opType)
+    AST::Expression& parseInPlaceOpExpression (AST::Expression& lhs, BinaryOp::Op opType)
     {
         auto context = getContext();
         auto& rhs = parseExpression();
@@ -1523,7 +1506,7 @@ private:
         return allocate<AST::PreOrPostIncOrDec> (getContext(), lhs, isIncrement, true);
     }
 
-    AST::StatementPtr parseIf()
+    AST::Statement& parseIf()
     {
         auto context = getContext();
         bool isConst = matchIf (Keyword::const_);
@@ -1535,7 +1518,7 @@ private:
         return s;
     }
 
-    AST::StatementPtr parseReturn()
+    AST::Statement& parseReturn()
     {
         auto& r = allocate<AST::ReturnStatement> (getContext());
 
@@ -1547,14 +1530,14 @@ private:
 
         auto& e = parseSuffixes (parseExpression());
         expect (Operator::semicolon);
-        r.returnValue = castExpressionToTargetType (returnType, e);
+        r.returnValue = castExpressionToTargetType (*returnType, e);
         return r;
     }
 
-    AST::ExpPtr checkAndCreateArrayElementRef (const AST::Context& c, AST::ExpPtr lhs, AST::ExpPtr start, AST::ExpPtr end)
+    AST::Expression& checkAndCreateArrayElementRef (const AST::Context& c, AST::Expression& lhs, AST::ExpPtr start, AST::ExpPtr end)
     {
         if (! (AST::isPossiblyValue (lhs) || AST::isPossiblyEndpoint (lhs)))
-            lhs->context.throwError (Errors::expectedValueOrEndpoint());
+            lhs.context.throwError (Errors::expectedValueOrEndpoint());
 
         if (start != nullptr && ! AST::isPossiblyValue (start))   start->context.throwError (Errors::expectedValue());
         if (end != nullptr   && ! AST::isPossiblyValue (end))     end->context.throwError (Errors::expectedValue());
@@ -1577,7 +1560,7 @@ private:
         return allocate<AST::ArrayElementRef> (c, lhs, start, end, true);
     }
 
-    AST::Expression& parseSubscriptWithBrackets (AST::ExpPtr lhs)
+    AST::Expression& parseSubscriptWithBrackets (AST::Expression& lhs)
     {
         auto context = getContext();
         AST::ExpPtr e, end;
@@ -1662,7 +1645,6 @@ private:
                     skip();
                     return allocate<AST::TypeMetaFunction> (t.context, t, AST::TypeMetaFunction::Op::makeReference);
             }
-
         }
 
         if (matches (Operator::dot))
@@ -1839,21 +1821,21 @@ private:
         }
     }
 
-    AST::StatementPtr parseLocalLetOrVar (bool isConst)
+    AST::Statement& parseLocalLetOrVar (bool isConst)
     {
-        parseLetOrVarDeclaration (isConst, [this] (AST::VariableDeclarationPtr v) { getCurrentBlock().addStatement (v); });
+        parseLetOrVarDeclaration (isConst, [this] (AST::VariableDeclaration& v) { getCurrentBlock().addStatement (v); });
         return getNoop();
     }
 
     void parseTopLevelLetOrVar (bool isLet)
     {
         if (auto stateVariables = module->getStateVariableList())
-            parseLetOrVarDeclaration (isLet, [&] (AST::VariableDeclarationPtr v) { stateVariables->push_back (v); });
+            parseLetOrVarDeclaration (isLet, [&] (AST::VariableDeclaration& v) { stateVariables->push_back (v); });
         else
             throwError (Errors::noVariableInThisScope());
     }
 
-    AST::ExpPtr castExpressionToTargetType (AST::ExpPtr targetType, AST::ExpPtr source)
+    AST::Expression& castExpressionToTargetType (AST::Expression& targetType, AST::Expression& source)
     {
         auto list = cast<AST::CommaSeparatedList> (source);
 
@@ -1861,15 +1843,15 @@ private:
         {
             if (AST::isResolvedAsType (targetType) && AST::isResolvedAsValue (source))
             {
-                auto type = targetType->resolveAsType();
+                auto type = targetType.resolveAsType();
 
-                if (source->getResultType().isIdentical (type))
+                if (source.getResultType().isIdentical (type))
                     return source;
 
-                return allocate<AST::TypeCast> (source->context, type, source);
+                return allocate<AST::TypeCast> (source.context, type, source);
             }
 
-            list = allocate<AST::CommaSeparatedList> (source->context);
+            list = allocate<AST::CommaSeparatedList> (source.context);
             list->items.push_back (source);
         }
 
@@ -1884,7 +1866,7 @@ private:
         return (size_t) arrayOrVectorType.getArrayOrVectorSize();
     }
 
-    AST::StatementPtr parseForLoop()
+    AST::Statement& parseForLoop()
     {
         expect (Operator::openParen);
         auto& block = allocate<AST::Block> (getContext(), nullptr);
@@ -1905,7 +1887,7 @@ private:
         return block;
     }
 
-    AST::StatementPtr parseLoopStatement()
+    AST::Statement& parseLoopStatement()
     {
         auto& loopStatement = allocate<AST::LoopStatement> (getContext(), false);
 
@@ -1916,7 +1898,7 @@ private:
         return loopStatement;
     }
 
-    AST::StatementPtr parseDoOrWhileLoop (bool isDoLoop)
+    AST::Statement& parseDoOrWhileLoop (bool isDoLoop)
     {
         auto& loopStatement = allocate<AST::LoopStatement> (getContext(), isDoLoop);
 

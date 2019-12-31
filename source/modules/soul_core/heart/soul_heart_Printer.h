@@ -389,7 +389,7 @@ private:
                     return desc + "[" + getDesc (*subElement->dynamicIndex) + "]";
 
                 if (subElement->parent->getType().isStruct())
-                    return desc + "." + subElement->parent->getType().getStruct()->members[subElement->fixedStartIndex].name;
+                    return desc + "." + subElement->parent->getType().getStructRef().members[subElement->fixedStartIndex].name;
 
                 if (subElement->isSingleElement())
                     return desc + "[" + std::to_string (subElement->fixedStartIndex) + "]";

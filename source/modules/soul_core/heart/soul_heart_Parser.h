@@ -780,12 +780,13 @@ private:
             errorLocation.throwError (Errors::incompatibleTargetType());
 
         expectSemicolon();
-        builder.addAssignment (target.create (state, builder, sourceValue->getType()), *sourceValue);
+
+        if (auto v = target.create (state, builder, sourceValue->getType()))
+            builder.addAssignment (*v, *sourceValue);
     }
 
-    void parseFunctionArguments (const FunctionParseState& state,
-                                 std::vector<Type>& argTypes,
-                                 std::vector<heart::ExpressionPtr>& args)
+    template <typename ArgTypeArray, typename ArgArray>
+    void parseFunctionArguments (const FunctionParseState& state, ArgTypeArray& argTypes, ArgArray& args)
     {
         expect (HEARTOperator::openParen);
 
@@ -811,8 +812,8 @@ private:
         auto errorLocation = location;
         auto name = readQualifiedIdentifier();
 
-        std::vector<Type> argTypes;
-        std::vector<heart::ExpressionPtr> args;
+        ArrayWithPreallocation<Type, 8> argTypes;
+        heart::FunctionCall::ArgListType args;
         parseFunctionArguments (state, argTypes, args);
 
         expectSemicolon();
@@ -862,7 +863,7 @@ private:
         {
             auto dest = readBlockNameAndFind (state);
             expectSemicolon();
-            builder.addBranch (dest, {});
+            builder.addBranch (*dest, {});
             return true;
         }
 
