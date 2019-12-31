@@ -23,7 +23,7 @@ namespace soul
 
 //==============================================================================
 /** A base class for intrusively-reference-counted objects, suitable for use by RefCountedPtr.
-    Note that the counter in non-atomic!
+    Note that the counter is non-atomic!
 */
 struct RefCountedObject
 {

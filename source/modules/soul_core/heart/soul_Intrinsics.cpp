@@ -208,7 +208,8 @@ const char* getIntrinsicName (IntrinsicType target)
 
 std::string getFullyQualifiedIntrinsicName (IntrinsicType intrinsic)
 {
-    return std::string (getIntrinsicsNamespaceName()) + "::" + getIntrinsicName (intrinsic);
+    return TokenisedPathString::join (getIntrinsicsNamespaceName(),
+                                      getIntrinsicName (intrinsic));
 }
 
 } // namespace soul

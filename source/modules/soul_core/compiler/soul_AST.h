@@ -172,7 +172,7 @@ struct AST
 
             for (auto p = parentScope; p != nullptr && messages.messages.size() < 10; p = p->getParentScope())
             {
-                if (auto f = dynamic_cast<Function*> (p))
+                if (auto f = p->getAsFunction())
                 {
                     if (f->originalCallLeadingToSpecialisation != nullptr)
                     {
@@ -317,7 +317,10 @@ struct AST
         }
 
         virtual Scope* getParentScope() const = 0;
-        virtual ModuleBase* getAsModule()                { return nullptr; }
+        virtual ModuleBase* getAsModule()               { return nullptr; }
+        virtual Namespace* getAsNamespace()             { return nullptr; }
+        virtual Function* getAsFunction()               { return nullptr; }
+        virtual Block* getAsBlock()                     { return nullptr; }
 
         virtual FunctionPtr getParentFunction() const
         {
@@ -606,7 +609,7 @@ struct AST
 
         Namespace& getNamespace() const
         {
-            auto processorNamespace = dynamic_cast<Namespace*> (getParentScope());
+            auto processorNamespace = getParentScope()->getAsNamespace();
             SOUL_ASSERT (processorNamespace != nullptr);
             return *processorNamespace;
         }
@@ -867,6 +870,7 @@ struct AST
         Namespace (const Context& c, Identifier moduleName) : ModuleBase (ObjectType::Namespace, c, moduleName) {}
 
         bool isNamespace() const override                                       { return true; }
+        Namespace* getAsNamespace() override                                    { return this; }
 
         ArrayView<VariableDeclarationPtr> getVariables() const override         { return constants; }
         ArrayView<FunctionPtr> getFunctions() const override                    { return functions; }
@@ -1177,12 +1181,14 @@ struct AST
         BlockPtr block;
         heart::FunctionPtr generatedFunction;
 
-        bool isEventFunction() const       { return eventFunction; }
-        bool isRunFunction() const         { return name == heart::getRunFunctionName(); }
-        bool isUserInitFunction() const    { return name == heart::getUserInitFunctionName(); }
-        bool isSystemInitFunction() const  { return name == heart::getInitFunctionName(); }
-        bool isGeneric() const             { return ! genericWildcards.empty(); }
-        bool isIntrinsic() const           { return intrinsic != IntrinsicType::none; }
+        Function* getAsFunction() override  { return this; }
+
+        bool isEventFunction() const        { return eventFunction; }
+        bool isRunFunction() const          { return name == heart::getRunFunctionName(); }
+        bool isUserInitFunction() const     { return name == heart::getUserInitFunctionName(); }
+        bool isSystemInitFunction() const   { return name == heart::getInitFunctionName(); }
+        bool isGeneric() const              { return ! genericWildcards.empty(); }
+        bool isIntrinsic() const            { return intrinsic != IntrinsicType::none; }
 
         heart::Function& getGeneratedFunction() const
         {
@@ -1399,6 +1405,7 @@ struct AST
             return Scope::getParentFunction();
         }
 
+        Block* getAsBlock() override                    { return this; }
         Scope* getParentScope() const override          { return ASTObject::getParentScope(); }
         bool isFunctionMainBlock() const                { return functionForWhichThisIsMain != nullptr; }
         void addStatement (StatementPtr s)              { SOUL_ASSERT (s != nullptr); statements.push_back (s); }
@@ -1927,7 +1934,7 @@ struct AST
             if (isMethodCall)
             {
                 SOUL_ASSERT (! argTypes.empty());
-                name = argTypes.front().getDescription() + "::" + name;
+                name = TokenisedPathString::join (argTypes.front().getDescription(), name);
 
                 for (size_t i = 1; i < argTypes.size(); ++i)
                     types.push_back (argTypes[i].getDescription());

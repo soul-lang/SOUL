@@ -1411,7 +1411,7 @@ private:
         auto part1 = readIdentifier();
 
         if (matchIf (HEARTOperator::doubleColon))
-            return part1 + "::" + readQualifiedIdentifier();
+            return TokenisedPathString::join (part1, readQualifiedIdentifier());
 
         return part1;
     }

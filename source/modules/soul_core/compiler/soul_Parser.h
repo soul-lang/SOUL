@@ -115,7 +115,7 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
     static pool_ptr<AST::Function> cloneFunction (AST::Allocator& allocator,
                                                   const AST::Function& functionToClone)
     {
-        auto parentModule = dynamic_cast<AST::ModuleBase*> (functionToClone.getParentScope());
+        auto parentModule = functionToClone.getParentScope()->getAsModule();
         SOUL_ASSERT (parentModule != nullptr);
 
         parentModule->isFullyResolved = false;
@@ -177,7 +177,7 @@ private:
     template<typename ExpType> ExpType& matchEndOfStatement (ExpType& e)  { expect (Operator::semicolon);  return e; }
 
     AST::Context getContext() const             { return { location, currentScope }; }
-    AST::Block& getCurrentBlock() const         { SOUL_ASSERT (dynamic_cast<AST::Block*> (currentScope) != nullptr); return *static_cast<AST::Block*> (currentScope); }
+    AST::Block& getCurrentBlock() const         { auto b = currentScope->getAsBlock(); SOUL_ASSERT (b != nullptr); return *b; }
 
     struct ScopedScope
     {

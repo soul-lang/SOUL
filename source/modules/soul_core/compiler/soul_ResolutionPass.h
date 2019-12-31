@@ -1774,7 +1774,7 @@ private:
 
             if (! resolveGenericFunctionTypes (call, genericFunction, *newFunction, callerArgumentTypes, shouldIgnoreErrors))
             {
-                auto parentModule = dynamic_cast<AST::ModuleBase*> (genericFunction.getParentScope());
+                auto parentModule = genericFunction.getParentScope()->getAsModule();
                 SOUL_ASSERT (parentModule != nullptr);
                 removeItem (*parentModule->getFunctionList(), newFunction);
                 return {};
