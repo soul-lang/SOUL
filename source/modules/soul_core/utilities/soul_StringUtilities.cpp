@@ -311,6 +311,11 @@ bool isSafeIdentifierName (std::string s)
     return s == makeSafeIdentifierName (s);
 }
 
+std::string makeIdentifierRemovingColons (std::string s)
+{
+    return makeSafeIdentifierName (replaceSubString (trimCharacterAtStart (s, ':'), "::", "_"));
+}
+
 std::string toStringWithDecPlaces (double n, size_t numDecPlaces)
 {
     auto s = std::to_string (n);

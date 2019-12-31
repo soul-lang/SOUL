@@ -83,6 +83,7 @@ std::string loadFileAsString (const char* filename);
 std::string replaceLine (const std::string& text, size_t line, const std::string& replacementLine);
 std::string makeSafeIdentifierName (std::string);
 bool isSafeIdentifierName (std::string);
+std::string makeIdentifierRemovingColons (std::string);
 
 template <typename IsAlreadyUsedFn>
 static std::string addSuffixToMakeUnique (const std::string& name, IsAlreadyUsedFn&& isUsed)
