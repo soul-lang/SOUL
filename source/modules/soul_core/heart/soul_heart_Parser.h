@@ -472,7 +472,10 @@ private:
         auto name = readQualifiedIdentifier();
 
         if (matchIf (HEARTOperator::dot))
-            return { findProcessorInstance (name), readIdentifier() };
+        {
+            auto channel = readIdentifier();
+            return { findProcessorInstance (name), channel };
+        }
 
         return { nullptr, name };
     }
@@ -773,16 +776,15 @@ private:
             return parseReadStream (state, builder, target);
 
         auto errorLocation = location;
-        auto sourceValue = parseExpression (state);
-        SOUL_ASSERT (sourceValue != nullptr);
+        auto& sourceValue = parseExpression (state);
 
-        if (! target.checkType (sourceValue->getType()))
+        if (! target.checkType (sourceValue.getType()))
             errorLocation.throwError (Errors::incompatibleTargetType());
 
         expectSemicolon();
 
-        if (auto v = target.create (state, builder, sourceValue->getType()))
-            builder.addAssignment (*v, *sourceValue);
+        if (auto v = target.create (state, builder, sourceValue.getType()))
+            builder.addAssignment (*v, sourceValue);
     }
 
     template <typename ArgTypeArray, typename ArgArray>
@@ -794,9 +796,9 @@ private:
         {
             for (;;)
             {
-                auto arg = parseExpression (state);
+                auto& arg = parseExpression (state);
                 args.push_back (arg);
-                argTypes.push_back (arg->getType());
+                argTypes.push_back (arg.getType());
 
                 if (matchIf (HEARTOperator::comma))
                     continue;
@@ -861,21 +863,21 @@ private:
     {
         if (matchIf ("branch"))
         {
-            auto dest = readBlockNameAndFind (state);
+            auto& dest = readBlockNameAndFind (state);
             expectSemicolon();
-            builder.addBranch (*dest, {});
+            builder.addBranch (dest, {});
             return true;
         }
 
         if (matchIf ("branch_if"))
         {
-            auto condition = parseExpression (state, PrimitiveType::bool_);
+            auto& condition = parseExpression (state, PrimitiveType::bool_);
             expect (HEARTOperator::question);
-            auto trueBranch = readBlockNameAndFind (state);
+            auto& trueBranch = readBlockNameAndFind (state);
             expect (HEARTOperator::colon);
-            auto falseBranch = readBlockNameAndFind (state);
+            auto& falseBranch = readBlockNameAndFind (state);
             expectSemicolon();
-            builder.addBranchIf (*condition, *trueBranch, *falseBranch, {});
+            builder.addBranchIf (condition, trueBranch, falseBranch, {});
             return true;
         }
 
@@ -887,9 +889,9 @@ private:
                 return true;
             }
 
-            auto value = parseExpression (state, state.function.returnType);
+            auto& value = parseExpression (state, state.function.returnType);
             expectSemicolon();
-            builder.addReturn (*value);
+            builder.addReturn (value);
             return true;
         }
 
@@ -931,8 +933,8 @@ private:
             expect (HEARTOperator::closeBracket);
         }
 
-        auto value = parseExpression (state);
-        const auto& type = value->getType();
+        auto& value = parseExpression (state);
+        const auto& type = value.getType();
 
         // Check that we are using indexes for array types
         if (index == nullptr)
@@ -955,22 +957,22 @@ private:
         if (! (state.function.functionType.isRun() || target->isEventEndpoint()))
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
-        builder.addWriteStream (startLocation, *target, index, *value);
+        builder.addWriteStream (startLocation, *target, index, value);
         expectSemicolon();
         return true;
     }
 
-    heart::BlockPtr findBlock (const FunctionParseState& state, Identifier name)
+    heart::Block& findBlock (const FunctionParseState& state, Identifier name)
     {
         for (auto& b : state.blocks)
             if (b.block->name == name)
-                return b.block;
+                return *b.block;
 
         throwError (Errors::cannotFind (name));
-        return {};
+        return *state.blocks.front().block;
     }
 
-    heart::BlockPtr readBlockNameAndFind (const FunctionParseState& state)
+    heart::Block& readBlockNameAndFind (const FunctionParseState& state)
     {
         return findBlock (state, readBlockName());
     }
@@ -993,7 +995,7 @@ private:
         return program.getVariableWithName (name);
     }
 
-    heart::ExpressionPtr parseArraySlice (const FunctionParseState& state, heart::Expression& lhs, int64_t start, int64_t end)
+    heart::Expression& parseArraySlice (const FunctionParseState& state, heart::Expression& lhs, int64_t start, int64_t end)
     {
         if (! lhs.getType().isValidArrayOrVectorRange (start, end))
             throwError (Errors::illegalSliceSize());
@@ -1002,7 +1004,7 @@ private:
         return parseVariableSuffixes (state, s);
     }
 
-    heart::ExpressionPtr parseVariableSuffixes (const FunctionParseState& state, heart::Expression& lhs)
+    heart::Expression& parseVariableSuffixes (const FunctionParseState& state, heart::Expression& lhs)
     {
         if (matchIf (HEARTOperator::dot))
         {
@@ -1031,11 +1033,11 @@ private:
 
             const auto& arrayOrVectorType = lhs.getType();
 
-            auto startIndex = parseExpression (state);
+            auto& startIndex = parseExpression (state);
 
             if (matchIf (HEARTOperator::colon))
             {
-                auto constStart = startIndex->getAsConstant();
+                auto constStart = startIndex.getAsConstant();
 
                 if (! constStart.getType().isPrimitiveInteger())
                     throwError (Errors::nonConstArraySize());
@@ -1044,10 +1046,10 @@ private:
                     return parseArraySlice (state, lhs, constStart.getAsInt64(),
                                             (int64_t) arrayOrVectorType.getArrayOrVectorSize());
 
-                auto endIndex = parseExpression (state);
+                auto& endIndex = parseExpression (state);
                 expect (HEARTOperator::closeBracket);
 
-                auto constEnd = endIndex->getAsConstant();
+                auto constEnd = endIndex.getAsConstant();
 
                 if (! constEnd.getType().isPrimitiveInteger())
                     throwError (Errors::nonConstArraySize());
@@ -1055,7 +1057,7 @@ private:
                 return parseArraySlice (state, lhs, constStart.getAsInt64(), constEnd.getAsInt64());
             }
 
-            if (! (startIndex->getType().isPrimitiveInteger() || startIndex->getType().isBoundedInt()))
+            if (! (startIndex.getType().isPrimitiveInteger() || startIndex.getType().isBoundedInt()))
                 throwError (Errors::nonIntegerArrayIndex());
 
             if (matchAndReplaceIf (Operator::closeDoubleBracket, Operator::closeBracket))
@@ -1072,10 +1074,10 @@ private:
     {
         auto errorPos = location;
         expect (HEARTOperator::openParen);
-        auto source = parseExpression (state);
+        auto& source = parseExpression (state);
         expect (HEARTOperator::closeParen);
 
-        if (! UnaryOp::isTypeSuitable (opType, source->getType()))
+        if (! UnaryOp::isTypeSuitable (opType, source.getType()))
             throwError (Errors::wrongTypeForUnary());
 
         return module->allocate<heart::UnaryOperator> (location, source, opType);
@@ -1085,23 +1087,24 @@ private:
     {
         auto pos = location;
         expect (HEARTOperator::openParen);
-        auto lhs = parseExpression (state);
+        auto& lhs = parseExpression (state);
         expect (HEARTOperator::comma);
-        auto rhs = parseExpression (state);
+        auto& rhs = parseExpression (state);
         expect (HEARTOperator::closeParen);
+        const auto& lhsType = lhs.getType();
 
-        if (! lhs->getType().isEqual (rhs->getType(), Type::ignoreReferences))
+        if (! lhsType.isEqual (rhs.getType(), Type::ignoreReferences))
             pos.throwError (Errors::illegalTypesForBinaryOperator (BinaryOp::getSymbol (opType),
-                                                                   lhs->getType().getDescription(),
-                                                                   rhs->getType().getDescription()));
+                                                                   lhs.getType().getDescription(),
+                                                                   rhs.getType().getDescription()));
 
-        auto operandType = lhs->getType();
+        const auto& operandType = lhsType;
         auto binOpTypes = BinaryOp::getTypes (opType, operandType, operandType);
 
         if (! binOpTypes.operandType.isEqual (operandType, Type::ignoreReferences))
             pos.throwError (Errors::illegalTypesForBinaryOperator (BinaryOp::getSymbol (opType),
-                                                                   lhs->getType().getDescription(),
-                                                                   rhs->getType().getDescription()));
+                                                                   lhs.getType().getDescription(),
+                                                                   rhs.getType().getDescription()));
 
         return module->allocate<heart::BinaryOperator> (pos, lhs, rhs, opType, binOpTypes.resultType);
     }
@@ -1111,13 +1114,13 @@ private:
         auto pos = location;
         auto destType = readValueType();
         expect (HEARTOperator::openParen);
-        auto source = parseExpression (state);
+        auto& source = parseExpression (state);
         expect (HEARTOperator::closeParen);
 
         return module->allocate<heart::TypeCast> (pos, source, destType);
     }
 
-    heart::ExpressionPtr parseExpression (const FunctionParseState& state)
+    heart::Expression& parseExpression (const FunctionParseState& state)
     {
         #define SOUL_MATCH_BINARY_OP_NAME(name, op) \
             if (matchIf (#name)) return parseBinaryOp (state, BinaryOp::Op::name);
@@ -1177,13 +1180,13 @@ private:
         return {};
     }
 
-    heart::ExpressionPtr parseExpression (const FunctionParseState& state, const Type& requiredType)
+    heart::Expression& parseExpression (const FunctionParseState& state, const Type& requiredType)
     {
         auto errorPos = location;
-        return checkExpressionType (*parseExpression (state), requiredType, errorPos);
+        return checkExpressionType (parseExpression (state), requiredType, errorPos);
     }
 
-    heart::ExpressionPtr checkExpressionType (heart::Expression& r, const Type& requiredType, const CodeLocation& errorPos)
+    heart::Expression& checkExpressionType (heart::Expression& r, const Type& requiredType, const CodeLocation& errorPos)
     {
         auto constValue = r.getAsConstant();
 
@@ -1233,7 +1236,7 @@ private:
         return v.negated();
     }
 
-    heart::ExpressionPtr parseConstantAsValue (const FunctionParseState& state, const Type& requiredType, bool throwOnError)
+    heart::Expression& parseConstantAsValue (const FunctionParseState& state, const Type& requiredType, bool throwOnError)
     {
         auto c = parseConstant (requiredType, throwOnError);
         return parseVariableSuffixes (state, program.getAllocator().allocateConstant (c));
@@ -1296,10 +1299,7 @@ private:
 
         if (requiredType.isFloat64())
         {
-            if (matchIf (Token::literalInt32))
-                return Value ((double) literalIntValue);
-
-            if (matchIf (Token::literalInt64))
+            if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
                 return Value ((double) literalIntValue);
 
             auto val = literalDoubleValue;
@@ -1309,10 +1309,7 @@ private:
 
         if (requiredType.isFloat32())
         {
-            if (matchIf (Token::literalInt32))
-                return Value ((float) literalIntValue);
-
-            if (matchIf (Token::literalInt64))
+            if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
                 return Value ((float) literalIntValue);
 
             auto val = literalDoubleValue;
@@ -1417,7 +1414,10 @@ private:
         return part1;
     }
 
-    Identifier parseIdentifier()            { return program.getAllocator().get (readIdentifier()); }
+    Identifier parseIdentifier()
+    {
+        return program.getAllocator().get (readIdentifier());
+    }
 
     int64_t parseLiteralInt()
     {

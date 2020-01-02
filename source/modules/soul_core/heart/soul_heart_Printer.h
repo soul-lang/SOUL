@@ -62,7 +62,9 @@ private:
             if (module.isGraph())       out << "graph ";
             if (module.isNamespace())   out << "namespace ";
 
-            out << module.moduleName << getDescription (module.annotation) << newLine;
+            out << module.moduleName;
+            printDescription (module.annotation);
+            out << newLine;
 
             {
                 auto indent = out.createBracedIndent (2);
@@ -88,35 +90,35 @@ private:
             out << blankLine;
         }
 
-        std::string getDescription (const std::vector<Type>& types)
+        void printDescription (const std::vector<Type>& types)
         {
             if (types.size() == 1)
-                return getTypeDescription (types[0]);
+            {
+                out << getTypeDescription (types[0]);
+                return;
+            }
 
-            std::ostringstream oss;
-            oss << "(";
-
+            out << "(";
             bool first = true;
 
             for (auto& type : types)
             {
                 if (! first)
-                    oss << ", ";
+                    out << ", ";
 
-                oss << getTypeDescription (type);
+                out << getTypeDescription (type);
                 first = false;
             }
 
-            oss << ")";
-            return oss.str();
+            out << ")";
         }
 
-        std::string getDescription (const Annotation& annotation)
+        void printDescription (const Annotation& annotation)
         {
-            return annotation.toHEART (program.getStringDictionary());
+            out << annotation.toHEART (program.getStringDictionary());
         }
 
-        std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
+        static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
         {
             if (arraySize > 1)
                 return name.toString() + "[" + std::to_string (arraySize) + "]";
@@ -127,21 +129,29 @@ private:
         void printInputs()
         {
             for (auto io : module.inputs)
+            {
                 out << "input   "
                     << padded (nameWithArray (io->name, io->arraySize), 20)
-                    << padded (getEndpointKindName (io->kind), 8)
-                    << getDescription (io->sampleTypes)
-                    << getDescription (io->annotation) << ";" << newLine;
+                    << padded (getEndpointKindName (io->kind), 8);
+
+                printDescription (io->sampleTypes);
+                printDescription (io->annotation);
+                out << ";" << newLine;
+            }
         }
 
         void printOutputs()
         {
             for (auto io : module.outputs)
+            {
                 out << "output  "
                     << padded (nameWithArray (io->name, io->arraySize), 20)
-                    << padded (getEndpointKindName (io->kind), 8)
-                    << getDescription (io->sampleTypes)
-                    << getDescription (io->annotation) << ";" << newLine;
+                    << padded (getEndpointKindName (io->kind), 8);
+
+                printDescription (io->sampleTypes);
+                printDescription (io->annotation);
+                out << ";" << newLine;
+            }
         }
 
         void printNodes()
@@ -187,24 +197,25 @@ private:
             {
                 out << "connection "
                     << getInterpolationDescription (c->interpolationType)
-                    << " "
-                    << printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
+                    << " ";
+
+                printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
 
                 if (c->delayLength > 0)
                     out << " -> [" << std::to_string (c->delayLength) << "]";
 
-                out << " -> "
-                    << printProcessorAndChannel (c->destProcessor, c->destEndpoint)
-                    << ";" << newLine;
+                out << " -> ";
+                printProcessorAndChannel (c->destProcessor, c->destEndpoint);
+                out << ";" << newLine;
             }
         }
 
-        std::string printProcessorAndChannel (const heart::ProcessorInstancePtr m, const std::string& channel)
+        void printProcessorAndChannel (const heart::ProcessorInstancePtr m, const std::string& channel)
         {
-            if (m == nullptr)
-                return channel;
+            if (m != nullptr)
+                out << m->instanceName << ".";
 
-            return m->instanceName + "." + channel;
+            out << channel;
         }
 
         void printStateVariables()
@@ -212,10 +223,15 @@ private:
             heart::VariableListByType list (module.stateVariables);
 
             for (auto& type : list.types)
+            {
                 for (auto& v : type.variables)
-                    out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type)
-                        << " " << addVarPrefix (v->name.toString())
-                        << getDescription (v->annotation) << ";" << newLine;
+                {
+                    out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << " ";
+                    printVarWithPrefix (v->name.toString());
+                    printDescription (v->annotation);
+                    out << ";" << newLine;
+                }
+            }
         }
 
         void printStructs()
@@ -247,7 +263,8 @@ private:
                     else
                         out << ", ";
 
-                    out << getTypeDescription (p->type) + " " + addVarPrefix (p->name.toString());
+                    out << getTypeDescription (p->type) << " ";
+                    printVarWithPrefix (p->name.toString());
                 }
             }
 
@@ -256,7 +273,7 @@ private:
             if (! f.functionType.isEvent())
                 out << " -> " << getTypeDescription (f.returnType);
 
-            out << getDescription (f.annotation);
+            printDescription (f.annotation);
 
             if (f.hasNoBody)
             {
@@ -272,14 +289,18 @@ private:
             for (auto b : f.blocks)
             {
                 auto labelIndent = out.createIndent (2);
-                out << getBlockName (b) << ":" << newLine;
+                out << getBlockName (*b) << ":" << newLine;
 
                 auto statementIndent = out.createIndent (2);
 
                 for (auto s : b->statements)
-                    out << getStatementDescription (*s) << ";" << newLine;
+                {
+                    printStatementDescription (*s);
+                    out << ";" << newLine;
+                }
 
-                out << getStatementDescription (b->terminator) << ";" << newLine;
+                printStatementDescription (b->terminator);
+                out << ";" << newLine;
             }
 
             out << "}" << blankLine;
@@ -291,6 +312,7 @@ private:
             localVariableNames.clear();
             auto localVars = f.getAllLocalVariables();
             std::vector<std::string> usedNames;
+            usedNames.reserve (localVars.size());
 
             for (auto& v : localVars)
             {
@@ -310,7 +332,7 @@ private:
                     name = std::to_string (unnamedVariableIndex++);
                 }
 
-                localVariableNames[v] = addVarPrefix (name);
+                localVariableNames[v] = name;
             }
         }
 
@@ -333,32 +355,36 @@ private:
             out << blankLine;
         }
 
-        std::string getDesc (const Value& v)
+        void printValue (const Value& v)
         {
-            if (v.getType().isPrimitiveInteger())
-                return v.getDescription();
-
-            if (v.getType().isStringLiteral())
-                return getTypeDescription (v.getType()) + " "
-                         + addDoubleQuotes (program.getStringDictionary().getStringForHandle (v.getStringLiteral()));
-
-            if (v.getType().isPrimitiveFloat())
+            struct Printer  : public ValuePrinter
             {
-                if (v.isZero())
-                    return v.getType().isFloat32() ? "0.0f" : "0.0";
+                Printer (IndentedStream& s) : outStream (s) {}
 
-                return v.getDescription();
+                void print (const std::string& s) override  { outStream << s; }
+                void printFloat32 (float value) override    { if (value == 0) print ("0.0f"); else ValuePrinter::printFloat32 (value); }
+                void printFloat64 (double value) override   { if (value == 0) print ("0.0");  else ValuePrinter::printFloat64 (value); }
+
+                IndentedStream& outStream;
+            };
+
+            Printer p { out };
+
+            if (! (v.getType().isPrimitiveInteger() || v.getType().isPrimitiveFloat()))
+            {
+                out << getTypeDescription (v.getType()) << " ";
+                p.dictionary = std::addressof (program.getStringDictionary());
             }
 
-            return getTypeDescription (v.getType()) + " "  + v.getDescription();
+            v.print (p);
         }
 
-        std::string getDesc (heart::Expression& e)
+        void printExpression (heart::Expression& e)
         {
             auto constValue = e.getAsConstant();
 
             if (constValue.isValid())
-                return getDesc (constValue);
+                return printValue (constValue);
 
             if (auto v = cast<heart::Variable> (e))
             {
@@ -368,61 +394,103 @@ private:
 
                     if (nm != localVariableNames.end())
                     {
-                        SOUL_ASSERT (! nm->second.empty());
-                        SOUL_ASSERT (nm->second[0] == '$');
-                        return nm->second;
+                        printVarWithPrefix (nm->second);
+                        return;
                     }
 
                     SOUL_ASSERT (v->name.isValid());
-                    return addVarPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
+                    return printVarWithPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
                 }
 
                 SOUL_ASSERT (v->name.isValid());
-                return addVarPrefix (v->name);
+                return printVarWithPrefix (v->name);
             }
 
             if (auto subElement = cast<heart::SubElement> (e))
             {
-                auto desc = getDesc (*subElement->parent);
+                printExpression (*subElement->parent);
 
                 if (subElement->dynamicIndex != nullptr)
-                    return desc + "[" + getDesc (*subElement->dynamicIndex) + "]";
+                {
+                    out << "[";
+                    printExpression (*subElement->dynamicIndex);
+                    out << "]";
+                    return;
+                }
 
                 if (subElement->parent->getType().isStruct())
-                    return desc + "." + subElement->parent->getType().getStructRef().members[subElement->fixedStartIndex].name;
+                {
+                    out << "." << subElement->parent->getType().getStructRef().members[subElement->fixedStartIndex].name;
+                    return;
+                }
 
                 if (subElement->isSingleElement())
-                    return desc + "[" + std::to_string (subElement->fixedStartIndex) + "]";
+                {
+                    out << "[" << std::to_string (subElement->fixedStartIndex) << "]";
+                    return;
+                }
 
-                return desc + "[" + std::to_string (subElement->fixedStartIndex) + ":" + std::to_string (subElement->fixedEndIndex) + "]";
+                out << "[" + std::to_string (subElement->fixedStartIndex) << ":" << std::to_string (subElement->fixedEndIndex) << "]";
+                return;
             }
 
             if (auto c = cast<heart::TypeCast> (e))
-                return "cast " + getTypeDescription (c->destType) + " (" + getDesc (*c->source) + ")";
+            {
+                out << "cast " << getTypeDescription (c->destType) << " (";
+                printExpression (*c->source);
+                out << ")";
+                return;
+            }
 
             if (auto u = cast<heart::UnaryOperator> (e))
-                return getUnaryOpName (u->operation) + std::string (" (") + getDesc (*u->source) + ")";
+            {
+                out << getUnaryOpName (u->operation) << " (";
+                printExpression (*u->source);
+                out << ")";
+                return;
+            }
 
             if (auto b = cast<heart::BinaryOperator> (e))
-                return getBinaryOpName (b->operation) + std::string (" (") + getDesc (*b->lhs)
-                          + ", " + getDesc (*b->rhs) + ")";
+            {
+                out << getBinaryOpName (b->operation) << " (";
+                printExpression (*b->lhs);
+                out << ", ";
+                printExpression (*b->rhs);
+                out << ")";
+                return;
+            }
 
             if (auto fc = cast<heart::PureFunctionCall> (e))
-                return getFunctionName (fc->function) + getArgListDescription (fc->arguments);
+            {
+                out << getFunctionName (fc->function);
+                printArgList (fc->arguments);
+                return;
+            }
 
             if (auto fc = cast<heart::PlaceholderFunctionCall> (e))
-                return fc->name + " " + getTypeDescription (fc->returnType) + getArgListDescription (fc->arguments);
+            {
+                out << fc->name << " " << getTypeDescription (fc->returnType);
+                printArgList (fc->arguments);
+                return;
+            }
 
             if (auto pp = cast<heart::ProcessorProperty> (e))
-                return std::string ("processor.") + pp->getPropertyName();
+            {
+                out << "processor." << pp->getPropertyName();
+                return;
+            }
 
             SOUL_ASSERT_FALSE;
-            return {};
         }
 
-        std::string addVarPrefix (std::string name)
+        void printVarWithPrefix (const std::string& name)
         {
-            return name[0] == '$' ? name : "$" + name;
+            SOUL_ASSERT (! name.empty());
+
+            if (name[0] != '$')
+                out << "$";
+
+            out << name;
         }
 
         std::string getTypeDescription (const Type& type) const
@@ -448,7 +516,7 @@ private:
             return "";
         }
 
-        const char* getAssignmentRole (heart::ExpressionPtr e)
+        const char* getAssignmentRole (heart::Expression& e)
         {
             if (auto v = cast<heart::Variable> (e))
                 if (v->isConstant())
@@ -457,63 +525,63 @@ private:
             return "";
         }
 
-        std::string getAssignmentSyntax (heart::Expression& e)
+        void printAssignmentSyntax (heart::Expression& e)
         {
-            return getAssignmentRole (e) + getDesc (e) + " = ";
+            out << getAssignmentRole (e);
+            printExpression (e);
+            out << " = ";
         }
 
-        std::string getFunctionName (const heart::Function& f)
-        {
-            return program.getFunctionNameWithQualificationIfNeeded (module, f);
-        }
+        std::string getFunctionName (const heart::Function& f)   { return program.getFunctionNameWithQualificationIfNeeded (module, f); }
+        static std::string getBlockName (heart::Block& b)        { return b.name; }
 
-        static std::string getBlockName (heart::BlockPtr b)
+        void printStatementDescription (heart::ObjectPtr s)
         {
-            return b->name;
-        }
-
-        std::string getStatementDescription (heart::ObjectPtr s)
-        {
-            #define SOUL_GET_STATEMENT_DESC(Type)     if (auto t = cast<const heart::Type> (s)) return getDescription (*t);
+            #define SOUL_GET_STATEMENT_DESC(Type)     if (auto t = cast<const heart::Type> (s)) return printDescription (*t);
             SOUL_HEART_STATEMENTS (SOUL_GET_STATEMENT_DESC)
             SOUL_HEART_TERMINATORS (SOUL_GET_STATEMENT_DESC)
 
             SOUL_ASSERT_FALSE;
-            return "<unknown>";
         }
 
-        std::string getDescription (const heart::Branch& b) const
+        void printDescription (const heart::Branch& b) const
         {
-            return "branch " + getBlockName (b.target);
+            out << "branch " << getBlockName (*b.target);
         }
 
-        std::string getDescription (const heart::BranchIf& b)
+        void printDescription (const heart::BranchIf& b)
         {
-            return "branch_if " + getDesc (*b.condition)
-                     + " ? " + getBlockName (b.targets[0]) + " : " + getBlockName (b.targets[1]);
+            out << "branch_if ";
+            printExpression (*b.condition);
+            out << " ? " << getBlockName (*b.targets[0]) << " : " << getBlockName (*b.targets[1]);
         }
 
-        std::string getDescription (const heart::ReturnVoid&) const
+        void printDescription (const heart::ReturnVoid&) const
         {
-            return "return";
+            out << "return";
         }
 
-        std::string getDescription (const heart::ReturnValue& r)
+        void printDescription (const heart::ReturnValue& r)
         {
-            return "return " + getDesc (*r.returnValue);
+            out << "return ";
+            printExpression (*r.returnValue);
         }
 
-        std::string getDescription (const heart::AssignFromValue& a)
+        void printDescription (const heart::AssignFromValue& a)
         {
-            return getAssignmentSyntax (*a.target) + getDesc (*a.source);
+            printAssignmentSyntax (*a.target);
+            printExpression (*a.source);
         }
 
-        std::string getArgListDescription (ArrayView<heart::ExpressionPtr> args)
+        void printArgList (ArrayView<heart::ExpressionPtr> args)
         {
             if (args.empty())
-                return "()";
+            {
+                out << "()";
+                return;
+            }
 
-            std::string desc (" (");
+            out << " (";
             bool isFirst = true;
 
             for (auto& arg : args)
@@ -521,36 +589,48 @@ private:
                 if (isFirst)
                     isFirst = false;
                 else
-                    desc += ", ";
+                    out << ", ";
 
-                desc += getDesc (*arg);
+                printExpression (*arg);
             }
 
-            return desc + ")";
+            out << ")";
         }
 
-        std::string getDescription (const heart::FunctionCall& f)
+        void printDescription (const heart::FunctionCall& f)
         {
-            return (f.target == nullptr ? std::string() : getAssignmentSyntax (*f.target))
-                     + "call " + getFunctionName (f.getFunction()) + getArgListDescription (f.arguments);
+            if (f.target != nullptr)
+                printAssignmentSyntax (*f.target);
+
+            out << "call " << getFunctionName (f.getFunction());
+            printArgList (f.arguments);
         }
 
-        std::string getDescription (const heart::ReadStream& r)
+        void printDescription (const heart::ReadStream& r)
         {
-            return getAssignmentRole (r.target) + getDesc (*r.target) + " = read " + r.source->name.toString();
+            out << getAssignmentRole (*r.target);
+            printExpression (*r.target);
+            out << " = read " << r.source->name;
         }
 
-        std::string getDescription (const heart::WriteStream& w)
+        void printDescription (const heart::WriteStream& w)
         {
-            if (w.element == nullptr)
-                return "write " + w.target->name.toString() + " " + getDesc (*w.value);
+            out << "write " << w.target->name;
 
-            return "write " + w.target->name.toString() + "[" + getDesc (*w.element) + "]" + " " + getDesc (*w.value);
+            if (w.element != nullptr)
+            {
+                out << "[";
+                printExpression (*w.element);
+                out << "]";
+            }
+
+            out << " ";
+            printExpression (*w.value);
         }
 
-        std::string getDescription (const heart::AdvanceClock&) const
+        void printDescription (const heart::AdvanceClock&) const
         {
-            return "advance";
+            out << "advance";
         }
     };
 };
