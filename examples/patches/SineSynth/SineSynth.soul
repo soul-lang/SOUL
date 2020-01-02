@@ -1,8 +1,8 @@
 /*
     == SOUL example code ==
 
-    A simple sine-wave synthesiser, featuring pitch-bend support, a simple voice
-    allocator and envelope generator.
+    A simple sine-wave synthesiser featuring pitch-bend support, using a basic
+    envelope and voice-allocator.
 */
 
 graph SineSynth  [[ main ]]
@@ -86,78 +86,8 @@ processor SineOsc
             while (phase > 1.0f)
                 phase = phase - 1.0f;
 
-            audioOut << sin(float(2.0f * pi * phase));
+            audioOut << sin (float (2.0f * pi * phase));
             advance();
-        }
-    }
-}
-
-//==============================================================================
-processor Envelope (float targetLevel, float attackSeconds, float releaseSeconds)
-{
-    input event
-    {
-        soul::NoteEvents::NoteOn noteOn;
-        soul::NoteEvents::NoteOff noteOff;
-    }
-
-    output stream float audioOut;
-
-    event noteOn (soul::NoteEvents::NoteOn e)       { active = true; }
-    event noteOff (soul::NoteEvents::NoteOff e)     { active = false; }
-
-    bool active = false;
-
-    // Calculate the multiplier that gives the required release milliseconds
-    float calculateReleaseMultiplier()
-    {
-        let inverse = 1.0 / (processor.frequency * releaseSeconds);
-        return float(pow(0.0001, inverse));
-    }
-
-    void run()
-    {
-        let attackSamples = attackSeconds * float(processor.frequency);
-        let attackIncrement = targetLevel / attackSamples;
-        let releaseMultiplier = calculateReleaseMultiplier();
-
-        var value = 0.0f;
-
-        loop
-        {
-            // Waiting for note on
-            while (! active)
-            {
-                audioOut << value;
-                advance();
-            }
-
-            // Attacking
-            while (active && value < targetLevel)
-            {
-                value += attackIncrement;
-                audioOut << value;
-                advance();
-            }
-
-            // Sustaining
-            while (active)
-            {
-                audioOut << value;
-                advance();
-            }
-
-            // Releasing
-            while (! active && value > 0.00001f)
-            {
-                value *= releaseMultiplier;
-                audioOut << value;
-                advance();
-            }
-
-            // If we're still not active, ensure the value is pulled to 0
-            if (! active)
-                value = 0.0f;
         }
     }
 }
@@ -177,21 +107,20 @@ graph Voice
     let
     {
         osc = SineOsc;
-        amplitudeEnvelope = Envelope (0.2f, 0.02f, 0.1f);
-        gain = soul::Gain::DynamicGain (float);
+        amplitudeEnvelope = soul::Envelope::FixedAttackReleaseEnvelope (0.2f, 0.02f, 0.1f);
+        attenuator = soul::Gain::DynamicGain (float);
     }
 
     connection
     {
-        noteOn    -> osc.noteOn;
-        noteOff   -> osc.noteOff;
-        pitchBend -> osc.pitchBend;
-        noteOn    -> amplitudeEnvelope.noteOn;
-        noteOff   -> amplitudeEnvelope.noteOff;
+        noteOn          -> osc.noteOn;
+        noteOff         -> osc.noteOff;
+        pitchBend       -> osc.pitchBend;
+        noteOn, noteOff -> amplitudeEnvelope.noteIn;
 
-        osc.audioOut               -> gain.in;
-        amplitudeEnvelope.audioOut -> gain.gain;
-        gain.out  -> audioOut;
+        osc.audioOut                -> attenuator.in;
+        amplitudeEnvelope.levelOut  -> attenuator.gain;
+        attenuator.out              -> audioOut;
     }
 }
 

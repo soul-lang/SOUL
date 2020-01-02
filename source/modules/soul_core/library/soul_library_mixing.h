@@ -23,6 +23,7 @@
 */
 R"library(
 
+/** Utility processors for common tasks like mixing together sources. */
 namespace soul::Mixers
 {
     //==============================================================================
@@ -91,6 +92,8 @@ namespace soul::Mixers
     }
 }
 
+//==============================================================================
+/** Utility processors for common tasks like applying gain in various ways. */
 namespace soul::Gain
 {
     //==============================================================================
@@ -124,6 +127,87 @@ namespace soul::Gain
             {
                 out << in * gain;
                 advance();
+            }
+        }
+    }
+}
+
+//==============================================================================
+/** Generators for common envelope shapes. */
+namespace soul::Envelope
+{
+    //==============================================================================
+    /** Creates an envelope which applies convex attack and release curves based
+        on a stream of NoteOn and NoteOff events.
+
+        The envelope implements fixed-length attack and release ramps where the hold
+        level is based on the velocity of the triggering NoteOn event, multiplied
+        by the holdLevelMultiplier parameter.
+    */
+    processor FixedAttackReleaseEnvelope (float holdLevelMultiplier,
+                                          float attackTimeSeconds,
+                                          float releaseTimeSeconds)
+    {
+        input event (soul::NoteEvents::NoteOn,
+                     soul::NoteEvents::NoteOff) noteIn;
+
+        output stream float levelOut;
+
+        event noteIn (soul::NoteEvents::NoteOn e)      { active = true; targetLevel = e.velocity; }
+        event noteIn (soul::NoteEvents::NoteOff e)     { active = false; }
+
+        bool active = false;
+        float targetLevel;
+
+        void run()
+        {
+            let silenceThreshold = 0.00001f;
+
+            loop
+            {
+                // Waiting for note-on
+                while (! active)
+                    advance();
+
+                float level;
+
+                // Attacking
+                if const (attackTimeSeconds <= 0)
+                {
+                    level = targetLevel;
+                }
+                else
+                {
+                    let attackSamples = int (processor.frequency * attackTimeSeconds);
+                    let attackMultiplier = float (pow (2.0, -1.0 / attackSamples) * pow (targetLevel + 2.0, 1.0 / attackSamples));
+
+                    for (var attackLevel = 2.0f; active && level < targetLevel; attackLevel *= attackMultiplier)
+                    {
+                        level = attackLevel - 2.0f;
+                        levelOut << level;
+                        advance();
+                    }
+                }
+
+                // Sustaining
+                while (active)
+                {
+                    levelOut << level;
+                    advance();
+                }
+
+                // Releasing
+                if const (releaseTimeSeconds > 0)
+                {
+                    let releaseMultiplier = float (pow (0.0001, processor.period / releaseTimeSeconds));
+
+                    while (! active && level > silenceThreshold)
+                    {
+                        levelOut << level;
+                        level *= releaseMultiplier;
+                        advance();
+                    }
+                }
             }
         }
     }

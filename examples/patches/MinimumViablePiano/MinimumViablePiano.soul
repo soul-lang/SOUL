@@ -130,47 +130,6 @@ processor PianoSamplePlayer
 }
 
 //==============================================================================
-processor Envelope (float targetLevel, float releaseSeconds)
-{
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff) eventIn;
-
-    output stream float audioOut;
-
-    event eventIn (soul::NoteEvents::NoteOn e)      { active = true; gain = e.velocity; }
-    event eventIn (soul::NoteEvents::NoteOff e)     { active = false; }
-
-    bool active = false;
-    float gain;
-
-    void run()
-    {
-        let releaseMultiplier = float (pow (0.0001, processor.period / releaseSeconds));
-
-        loop
-        {
-            // Waiting for note-on
-            while (! active)
-                advance();
-
-            // Sustaining
-            while (active)
-            {
-                audioOut << gain;
-                advance();
-            }
-
-            // Releasing
-            for (float level = gain; ! active && level > 0.00001f; level *= releaseMultiplier)
-            {
-                audioOut << level;
-                advance();
-            }
-        }
-    }
-}
-
-//==============================================================================
 processor Gain
 {
     input  stream float audioIn, gain;
@@ -197,16 +156,16 @@ graph Voice
     let
     {
         samplePlayer = PianoSamplePlayer;
-        envelope = Envelope (0.2f, 0.3f);
+        envelope = soul::Envelope::FixedAttackReleaseEnvelope (1.0f, 0.0f, 0.3f);
     }
 
     connection
     {
         eventIn -> samplePlayer.eventIn,
-                   envelope.eventIn;
+                   envelope.noteIn;
 
         samplePlayer.audioOut  -> Gain.audioIn;
-        envelope.audioOut      -> Gain.gain;
+        envelope.levelOut      -> Gain.gain;
 
         Gain.audioOut -> audioOut;
     }
