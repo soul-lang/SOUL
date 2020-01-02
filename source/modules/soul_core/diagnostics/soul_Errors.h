@@ -24,6 +24,7 @@ namespace soul
 #define SOUL_ERRORS_SYNTAX(X) \
     X(staticAssertionFailure,               "Static assertion failure") \
     X(staticAssertionFailureWithMessage,    "$0$") \
+    X(staticAssertionNotAllowed,            "static_assert must be used inside a function") \
     X(identifierTooLong,                    "Identifier too long") \
     X(invalidUTF8,                          "Invalid UTF8 data") \
     X(noLeadingUnderscoreAllowed,           "Identifiers beginning with an underscore are reserved for system use") \

@@ -1307,8 +1307,7 @@ private:
                         return createStaticAssert (call);
 
                     if (name->path.isUnqualifiedName ("at"))
-                        if (auto atCall = createAtCall (call))
-                            return atCall;
+                        return createAtCall (call);
 
                     if (call.arguments != nullptr)
                     {
@@ -1615,7 +1614,7 @@ private:
                 findLeastMisspeltFunction (*sub, name, nearest, lowestDistance);
         }
 
-        AST::ExpPtr createAdvanceCall (AST::CallOrCast& c)
+        AST::Expression& createAdvanceCall (AST::CallOrCast& c)
         {
             if (c.isMethodCall)             c.context.throwError (Errors::advanceIsNotAMethod());
             if (c.getNumArguments() != 0)   c.context.throwError (Errors::advanceHasNoArgs());
@@ -1623,7 +1622,7 @@ private:
             return allocator.allocate<AST::AdvanceClock> (c.context);
         }
 
-        AST::StaticAssertionPtr createStaticAssert (AST::CallOrCast& c)
+        AST::StaticAssertion& createStaticAssert (AST::CallOrCast& c)
         {
             auto numArgs = c.getNumArguments();
 
@@ -1649,7 +1648,7 @@ private:
             return {};
         }
 
-        AST::ExpPtr createAtCall (AST::CallOrCast& call)
+        AST::Expression& createAtCall (AST::CallOrCast& call)
         {
             if (call.getNumArguments() != 2)
                 call.context.throwError (Errors::atMethodTakes1Arg());
@@ -2181,7 +2180,7 @@ private:
             return p;
         }
 
-        static Type getSampleTypeOfEndpoint (AST::ExpPtr e)
+        static Type getSampleTypeOfEndpoint (AST::Expression& e)
         {
             if (auto outRef = cast<AST::OutputEndpointRef> (e))
                 if (auto* details = outRef->output->details.get())
@@ -2202,7 +2201,7 @@ private:
             Type lhsType;
 
             if (AST::isResolvedAsEndpoint (s.object))
-                lhsType = getSampleTypeOfEndpoint (s.object);
+                lhsType = getSampleTypeOfEndpoint (*s.object);
             else
                 lhsType = s.object->getResultType();
 

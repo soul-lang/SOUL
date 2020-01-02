@@ -356,6 +356,10 @@ private:
     {
         auto declarationContext = getContext();
         bool isExternal = matchIf (Keyword::external);
+
+        if (matches ("static_assert"))
+            declarationContext.throwError (Errors::staticAssertionNotAllowed());
+
         auto type = tryParsingType (ParseTypeContext::variableType);
 
         if (type == nullptr)
@@ -1669,11 +1673,8 @@ private:
 
         if (matchIf (Keyword::const_))
         {
-            switch (parseContext)
-            {
-                case ParseTypeContext::structMember:     throwError (Errors::memberCannotBeConst()); break;
-                default: break;
-            }
+            if (parseContext == ParseTypeContext::structMember)
+                throwError (Errors::memberCannotBeConst());
 
             auto& type = parseType (parseContext);
             return allocate<AST::TypeMetaFunction> (context, type, AST::TypeMetaFunction::Op::makeConst);
