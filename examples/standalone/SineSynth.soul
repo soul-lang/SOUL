@@ -7,7 +7,7 @@
 
 graph SineSynth  [[ main ]]
 {
-    input gainParameter.volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input smoothedGain.volume [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
     input event midi::Message midiIn;
     output stream float audioOut;
 
@@ -18,7 +18,7 @@ graph SineSynth  [[ main ]]
         voices = Voice[8];
         voiceAllocator = soul::VoiceAllocators::Basic(8);
 
-        gainParameter = GainParameterRamp (1.0f);
+        smoothedGain = soul::Gain::SmoothedGainParameter (0.5f);
         gainProcessor = soul::Gain::DynamicGain (float);
     }
 
@@ -35,7 +35,7 @@ graph SineSynth  [[ main ]]
 
         // Sum the voices audio out to the output
         voices.audioOut -> gainProcessor.in;
-        gainParameter.parameterOut -> gainProcessor.gain;
+        smoothedGain.gain -> gainProcessor.gain;
         gainProcessor.out -> audioOut;
     }
 }
@@ -67,26 +67,20 @@ processor SineOsc
         calculatePhaseIncrement();
     }
 
-    float bendSemitones, notePitch, phase, phaseIncrement;
+    float notePitch, bendSemitones, phase, phaseIncrement;
 
     void calculatePhaseIncrement()
     {
-        let noteFrequency = soul::noteNumberToFrequency (notePitch + bendSemitones);
-        phaseIncrement = noteFrequency / float (processor.frequency);
+        let noteFrequency  = soul::noteNumberToFrequency (notePitch + bendSemitones);
+        phaseIncrement = float (noteFrequency * twoPi * processor.period);
     }
 
     void run()
     {
-        phaseIncrement = 0.1f;
-
         loop
         {
-            phase = phase + phaseIncrement;
-
-            while (phase > 1.0f)
-                phase = phase - 1.0f;
-
-            audioOut << sin (float (2.0f * pi * phase));
+            phase = addModulo2Pi (phase, phaseIncrement);
+            audioOut << sin (phase);
             advance();
         }
     }
@@ -121,44 +115,5 @@ graph Voice
         osc.audioOut                -> attenuator.in;
         amplitudeEnvelope.levelOut  -> attenuator.gain;
         attenuator.out              -> audioOut;
-    }
-}
-
-//==============================================================================
-// Converts an input event (as a gain in db) to a ramped stream
-processor GainParameterRamp (float slewRate)
-{
-    input event float volume;
-    output stream float parameterOut;
-
-    event volume (float targetDb)
-    {
-        targetValue = soul::dBtoGain (targetDb);
-
-        let diff = targetValue - currentValue;
-        let rampSeconds = abs (diff) / slewRate;
-
-        rampSamples   = int (processor.frequency * rampSeconds);
-        rampIncrement = diff / float (rampSamples);
-    }
-
-    float targetValue;
-    float currentValue;
-    float rampIncrement;
-    int rampSamples;
-
-    void run()
-    {
-        loop
-        {
-            if (rampSamples > 0)
-            {
-                currentValue += rampIncrement;
-                --rampSamples;
-            }
-
-            parameterOut << currentValue;
-            advance();
-        }
     }
 }

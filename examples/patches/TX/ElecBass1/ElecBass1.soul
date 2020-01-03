@@ -44,11 +44,11 @@ graph ElecBass1Voice
 
     let
     {
-        // Oscillator Parameters -        Waveshape, Volume, Freq(fixed), Freq (multiplier), Feedback
-        osc1         = TX81Z::Oscillator (        1,     99,        0.0f,              1.0f,        0);
-        osc2         = TX81Z::Oscillator (        1,     67,        0.0f,              0.5f,        0);
-        osc3         = TX81Z::Oscillator (        1,     70,        0.0f,              9.0f,        0);
-        osc4         = TX81Z::Oscillator (        1,     61,        0.0f,              3.0f,        7);
+        // Oscillator Parameters -  Waveshape, Volume, Freq(fixed), Freq (multiplier), Feedback
+        osc1   = TX81Z::Oscillator (        1,     99,        0.0f,              1.0f,        0);
+        osc2   = TX81Z::Oscillator (        1,     67,        0.0f,              0.5f,        0);
+        osc3   = TX81Z::Oscillator (        1,     70,        0.0f,              9.0f,        0);
+        osc4   = TX81Z::Oscillator (        1,     61,        0.0f,              3.0f,        7);
 
         // Envelope Parameters -                A, D1R, D1L, D2R,  R, KVS, Rate Scaling
         amplitudeEnvelope1  = TX81Z::Envelope (31,   9,   9,   0,  9,   1,            0);
@@ -87,7 +87,7 @@ namespace TX81Z
     // Tuning for how much operator modulation occurs
     let operatorFactor = 4.0f;
 
-    const float[] feedbackValues        = (0.0f, 0.008f, 0.015f, 0.024f, 0.07f, 0.12f, 0.19f, 0.26f);
+    const float[] feedbackValues = (0.0f, 0.008f, 0.015f, 0.024f, 0.07f, 0.12f, 0.19f, 0.26f);
 
     const float[] keyVelocityMapFactor1 = (0,  -34.2f,  -59.6f, -110.5f, -145.5f, -184.7f, -147.4f,  -98.8f);
     const float[] keyVelocityMapFactor2 = (0,   83.9f,  146.5f,  266.3f,  351.8f,  447.4f,  366.2f,  259.8f);

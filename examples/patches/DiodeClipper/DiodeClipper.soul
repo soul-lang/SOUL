@@ -52,15 +52,15 @@ processor DiodeClipper
     void run()
     {
         // internal constants (1N4148)
-        let Is = 2.52e-9;
-        let mu = 1.752;
-        let Vt = 26e-3;
-        let R = 2.2e3;
-        let tolerance = 1e-12;
+        let Is          = 2.52e-9;
+        let mu          = 1.752;
+        let Vt          = 26e-3;
+        let R           = 2.2e3;
+        let tolerance   = 1e-12;
 
         // state variables
-        float32 s1 = 0.0f;
-        float64 out = 0.0;
+        float32 s1;
+        float64 out;
 
         let updateInterval = 8;   // number of samples between calls to updateFilterVariables()
         let maxNewtonRaphsonIterations = 64;

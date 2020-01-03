@@ -23,7 +23,7 @@ graph Piano  [[ main ]]
         voices          = Voice[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);
         gainParameter   = GainParameterRamp (1.0f);
-        volumeProcessor = Gain;
+        masterVolume    = soul::Gain::DynamicGain (float);
     }
 
     connection
@@ -37,11 +37,9 @@ graph Piano  [[ main ]]
         voiceAllocator.voiceEventOut -> voices.eventIn;
 
         // Sum the voices audio out to the output
-        voices.audioOut -> volumeProcessor.audioIn;
-
-        gainParameter.parameterOut -> volumeProcessor.gain;
-
-        volumeProcessor.audioOut -> audioOut;
+        voices.audioOut -> masterVolume.in;
+        gainParameter.parameterOut -> masterVolume.gain;
+        masterVolume.out -> audioOut;
     }
 }
 
@@ -130,22 +128,6 @@ processor PianoSamplePlayer
 }
 
 //==============================================================================
-processor Gain
-{
-    input  stream float audioIn, gain;
-    output stream float audioOut;
-
-    void run()
-    {
-        loop
-        {
-            audioOut << audioIn * gain;
-            advance();
-        }
-    }
-}
-
-//==============================================================================
 graph Voice
 {
     input event (soul::NoteEvents::NoteOn,
@@ -157,6 +139,7 @@ graph Voice
     {
         samplePlayer = PianoSamplePlayer;
         envelope = soul::Envelope::FixedAttackReleaseEnvelope (1.0f, 0.0f, 0.3f);
+        attenuator = soul::Gain::DynamicGain (float);
     }
 
     connection
@@ -164,10 +147,10 @@ graph Voice
         eventIn -> samplePlayer.eventIn,
                    envelope.noteIn;
 
-        samplePlayer.audioOut  -> Gain.audioIn;
-        envelope.levelOut      -> Gain.gain;
+        samplePlayer.audioOut  -> attenuator.in;
+        envelope.levelOut      -> attenuator.gain;
 
-        Gain.audioOut -> audioOut;
+        attenuator.out -> audioOut;
     }
 }
 

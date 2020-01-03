@@ -130,6 +130,44 @@ namespace soul::Gain
             }
         }
     }
+
+    //==============================================================================
+    /** Converts an input event parameter in decibels to a smoothed stream of
+        raw gain levels.
+    */
+    processor SmoothedGainParameter (float slewRateSeconds)
+    {
+        input event float volume   [[ label: "Volume", unit: "dB", min: -85, max: 6 ]];
+        output stream float gain;
+
+        event volume (float targetDB)
+        {
+            targetGain = soul::dBtoGain (targetDB);
+            let maxDelta = float (processor.period / slewRateSeconds);
+            remainingRampSamples = max (1, int (abs (targetGain - currentGain) / maxDelta));
+            increment = (targetGain - currentGain) / remainingRampSamples;
+        }
+
+        float targetGain, currentGain, increment;
+        int remainingRampSamples;
+
+        void run()
+        {
+            loop
+            {
+                if (remainingRampSamples != 0)
+                {
+                    if (--remainingRampSamples == 0)
+                        currentGain = targetGain;
+                    else
+                        currentGain += increment;
+                }
+
+                gain << currentGain;
+                advance();
+            }
+        }
+    }
 }
 
 //==============================================================================

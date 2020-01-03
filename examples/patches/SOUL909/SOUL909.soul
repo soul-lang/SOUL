@@ -13,7 +13,7 @@
 
 graph SOUL909  [[ main ]]
 {
-    input gainParameter.volume  volume   [[ min: -40, max: 0, init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input smoothedGain.volume   volume   [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
     input event midi::Message   midiIn;
     output stream float<2>      audioOut;
 
@@ -23,7 +23,7 @@ graph SOUL909  [[ main ]]
 
         voices          = DrumHitPlayer[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);
-        gainParameter   = GainParameterRamp (1.0f);
+        smoothedGain    = soul::Gain::SmoothedGainParameter (0.5f);
         gainProcessor   = soul::Gain::DynamicGain (float<2>);
     }
 
@@ -34,9 +34,8 @@ graph SOUL909  [[ main ]]
 
         voiceAllocator.voiceEventOut -> voices.eventIn;
 
-        gainParameter.parameterOut   -> gainProcessor.gain;
+        smoothedGain.gain            -> gainProcessor.gain;
         voices.audioOut              -> gainProcessor.in;
-
         gainProcessor.out            -> audioOut;
     }
 }
@@ -98,43 +97,6 @@ processor DrumHitPlayer
                     positionIncrement = 0;
             }
 
-            advance();
-        }
-    }
-}
-
-//==============================================================================
-// Converts an input event (as a gain in db) to a ramped stream
-processor GainParameterRamp (float slewRate)
-{
-    input event float volume;
-    output stream float parameterOut;
-
-    event volume (float targetDB)
-    {
-        targetValue = soul::dBtoGain (targetDB);
-
-        let diff = targetValue - currentValue;
-        let rampSeconds = abs (diff) / slewRate;
-
-        rampSamples   = int (processor.frequency * rampSeconds);
-        rampIncrement = diff / float (rampSamples);
-    }
-
-    float targetValue, currentValue, rampIncrement;
-    int rampSamples;
-
-    void run()
-    {
-        loop
-        {
-            if (rampSamples > 0)
-            {
-                currentValue += rampIncrement;
-                --rampSamples;
-            }
-
-            parameterOut << currentValue;
             advance();
         }
     }

@@ -1,8 +1,8 @@
 /*
     == SOUL example code ==
 
-    A more complex implementation of freeverb, where events are used for sending
-    parameter changes.
+    A simple implementation of a delay, where the length and feedback level can
+    be dynamically set using event parameters.
 */
 
 processor Delay  [[ main ]]
@@ -12,8 +12,8 @@ processor Delay  [[ main ]]
 
     input event
     {
-        float delayLength    [[ min: 0,  max: 1000, init:  50,  name: "Length",  unit: "ms",  step: 1 ]];
-        float delayFeedback  [[ min: 0,  max: 100, init:  25,  name: "Feedback", unit: "%",  step: 1 ]];
+        float delayLength    [[ min: 0,  max: 1000, init:  50,  name: "Length",   unit: "ms", step: 1 ]];
+        float delayFeedback  [[ min: 0,  max: 100,  init:  25,  name: "Feedback", unit: "%",  step: 1 ]];
     }
 
     event delayLength (float delayMs)
@@ -28,13 +28,11 @@ processor Delay  [[ main ]]
         feedback = f * 0.01f;
     }
 
+    let maxDelayLength = 100000;
+
     float feedback;
-
-    let bufferLength = 100000;
-
-    float[bufferLength] buffer;
-    wrap<bufferLength> readPos;
-    wrap<bufferLength> writePos;
+    float[maxDelayLength] buffer;
+    wrap<maxDelayLength> readPos, writePos;
 
     void run()
     {
@@ -42,8 +40,9 @@ processor Delay  [[ main ]]
         {
             buffer[writePos] = audioIn + feedback * buffer[readPos];
             audioOut << buffer[readPos];
-            readPos++;
-            writePos++;
+
+            ++readPos;
+            ++writePos;
 
             advance();
         }
