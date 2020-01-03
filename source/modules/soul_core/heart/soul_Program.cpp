@@ -284,8 +284,10 @@ std::string Program::stripRootNamespaceFromQualifiedPath (std::string path)     
 
 std::string Program::getHash() const
 {
+    IndentedStream dump;
+    heart::Printer::print (*this, dump);
     HashBuilder hash;
-    hash << toHEART();
+    hash << dump.getContent();
     return hash.toString();
 }
 

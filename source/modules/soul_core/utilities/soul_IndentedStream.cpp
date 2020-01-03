@@ -31,7 +31,7 @@ IndentedStream::ScopedIndent::ScopedIndent (IndentedStream& s, int numChars, boo
     : owner (s), amount (numChars), isBraced (braced)
 {
     if (isBraced)
-        owner << "{" << newLine;
+        owner << '{' << newLine;
 
     owner.indent (numChars);
 }
@@ -41,12 +41,13 @@ IndentedStream::ScopedIndent::~ScopedIndent()
     owner.indent (-amount);
 
     if (isBraced)
-        owner << "}";
+        owner << '}';
 }
 
-IndentedStream::IndentedStream() = default;
+IndentedStream::IndentedStream()                                                { content.reserve (4096); }
 
-std::string IndentedStream::toString() const                                    { return content.str(); }
+std::string IndentedStream::toString() const                                    { return { content.begin(), content.end() }; }
+ArrayView<char> IndentedStream::getContent() const                              { return content; }
 void IndentedStream::setTotalIndent (int numChars)                              { indentSize = numChars; }
 int IndentedStream::getTotalIndent() const noexcept                             { return currentIndent; }
 IndentedStream::ScopedIndent IndentedStream::createIndent()                     { return createIndent (indentSize); }
@@ -55,6 +56,14 @@ IndentedStream::ScopedIndent IndentedStream::createBracedIndent()               
 IndentedStream::ScopedIndent IndentedStream::createBracedIndent (int numChars)  { return ScopedIndent (*this, numChars, true); }
 static constexpr size_t maxLineLength = 150;
 
+void IndentedStream::writeRaw (const std::string& text)
+{
+    writeIndentIfNeeded();
+    lastLineWasBlank = false;
+    currentLineIsEmpty = false;
+    content.insert (content.end(), text.begin(), text.end());
+}
+
 void IndentedStream::write (const std::string& text)
 {
     if (! text.empty())
@@ -62,11 +71,22 @@ void IndentedStream::write (const std::string& text)
         if (! startsWith (text, "}"))
             printSectionBreakIfNeeded();
 
-        writeIndentIfNeeded();
-        lastLineWasBlank = false;
-        currentLineIsEmpty = false;
-        content << text;
+        writeRaw (text);
     }
+}
+
+IndentedStream& IndentedStream::operator<< (char c)
+{
+    SOUL_ASSERT (c != 0);
+
+    if (c != '}')
+        printSectionBreakIfNeeded();
+
+    writeIndentIfNeeded();
+    lastLineWasBlank = false;
+    currentLineIsEmpty = false;
+    content.push_back (c);
+    return *this;
 }
 
 void IndentedStream::writeLines (ArrayView<std::string> lines)
@@ -87,12 +107,8 @@ void IndentedStream::writeLines (ArrayView<std::string> lines)
 IndentedStream& IndentedStream::operator<< (const std::string& text)
 {
     if (contains (text, '\n'))
-    {
         writeLines (splitAtDelimiter (text, '\n'));
-        return *this;
-    }
-
-    if (text.length() > maxLineLength)
+    else if (text.length() > maxLineLength)
         writeLines (splitLinesOfCode (text, maxLineLength));
     else
         write (text);
@@ -103,21 +119,17 @@ IndentedStream& IndentedStream::operator<< (const std::string& text)
 IndentedStream& IndentedStream::operator<< (const char* text)
 {
     SOUL_ASSERT (text != nullptr);
-    SOUL_ASSERT (! contains (ArrayView<char> (text, strlen (text)), '\n'));
-
-    if (*text != 0)
-        *this << std::string (text);
-
-    return *this;
+    return *this << std::string (text);
 }
 
-IndentedStream& IndentedStream::operator<< (double value)   { return *this << doubleToAccurateString (value); }
-IndentedStream& IndentedStream::operator<< (float value)    { return *this << floatToAccurateString (value); }
-IndentedStream& IndentedStream::operator<< (size_t value)   { return *this << std::to_string (value); }
+IndentedStream& IndentedStream::operator<< (double value)   { writeRaw (doubleToAccurateString (value)); return *this; }
+IndentedStream& IndentedStream::operator<< (float value)    { writeRaw (floatToAccurateString (value));  return *this; }
+IndentedStream& IndentedStream::operator<< (size_t value)   { writeRaw (std::to_string (value));         return *this; }
+IndentedStream& IndentedStream::operator<< (int64_t value)  { writeRaw (std::to_string (value));         return *this; }
 
 IndentedStream& IndentedStream::operator<< (const NewLine&)
 {
-    content << std::endl;
+    content.push_back ('\n');
     indentNeeded = true;
     lastLineWasBlank = currentLineIsEmpty;
     currentLineIsEmpty = true;
@@ -130,12 +142,6 @@ IndentedStream& IndentedStream::operator<< (const BlankLine&)
         *this << newLine;
 
     return *this;
-}
-
-IndentedStream& IndentedStream::operator<< (char c)
-{
-    char n[2] = { c, 0 };
-    return operator<< ((const char*) n);
 }
 
 void IndentedStream::writeMultipleLines (const std::string& text)

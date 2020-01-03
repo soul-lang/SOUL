@@ -26,8 +26,7 @@ struct heart::Printer
 {
     static void print (const Program& p, IndentedStream& out)
     {
-        out << "#" << getHEARTFormatVersionPrefix()
-            << " " << std::to_string (getHEARTFormatVersion()) << blankLine;
+        out << '#' << getHEARTFormatVersionPrefix() << ' ' << getHEARTFormatVersion() << blankLine;
 
         for (auto& module : p.getModules())
             PrinterStream (p, *module, out).printAll();
@@ -98,7 +97,7 @@ private:
                 return;
             }
 
-            out << "(";
+            out << '(';
             bool first = true;
 
             for (auto& type : types)
@@ -110,7 +109,7 @@ private:
                 first = false;
             }
 
-            out << ")";
+            out << ')';
         }
 
         void printDescription (const Annotation& annotation)
@@ -121,7 +120,7 @@ private:
         static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
         {
             if (arraySize > 1)
-                return name.toString() + "[" + std::to_string (arraySize) + "]";
+                return name.toString() + '[' + std::to_string (arraySize) + ']';
 
             return name.toString();
         }
@@ -136,7 +135,7 @@ private:
 
                 printDescription (io->sampleTypes);
                 printDescription (io->annotation);
-                out << ";" << newLine;
+                out << ';' << newLine;
             }
         }
 
@@ -150,7 +149,7 @@ private:
 
                 printDescription (io->sampleTypes);
                 printDescription (io->annotation);
-                out << ";" << newLine;
+                out << ';' << newLine;
             }
         }
 
@@ -161,11 +160,11 @@ private:
                 out << "node " << padded (mi->instanceName, 16) << " = " << mi->sourceName;
 
                 if (mi->arraySize > 1)
-                    out << "[" << std::to_string (mi->arraySize) << "]";
+                    out << '[' << (size_t) mi->arraySize << ']';
 
                 if (! mi->specialisationArgs.empty())
                 {
-                    out << "(";
+                    out << '(';
                     bool first = true;
 
                     for (auto& a : mi->specialisationArgs)
@@ -178,16 +177,16 @@ private:
                         out << a.toString();
                     }
 
-                    out << ")";
+                    out << ')';
                 }
 
                 // Can't have both
                 SOUL_ASSERT (! (mi->hasClockMultiplier() && mi->hasClockDivider()));
 
-                if (mi->hasClockMultiplier())   out << " * " << std::to_string (mi->clockMultiplier);
-                if (mi->hasClockDivider())      out << " / " << std::to_string (mi->clockDivider);
+                if (mi->hasClockMultiplier())   out << " * " << mi->clockMultiplier;
+                if (mi->hasClockDivider())      out << " / " << mi->clockDivider;
 
-                out << ";" << newLine;
+                out << ';' << newLine;
             }
         }
 
@@ -197,16 +196,16 @@ private:
             {
                 out << "connection "
                     << getInterpolationDescription (c->interpolationType)
-                    << " ";
+                    << ' ';
 
                 printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
 
                 if (c->delayLength > 0)
-                    out << " -> [" << std::to_string (c->delayLength) << "]";
+                    out << " -> [" << c->delayLength << ']';
 
                 out << " -> ";
                 printProcessorAndChannel (c->destProcessor, c->destEndpoint);
-                out << ";" << newLine;
+                out << ';' << newLine;
             }
         }
 
@@ -226,10 +225,10 @@ private:
             {
                 for (auto& v : type.variables)
                 {
-                    out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << " ";
+                    out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << ' ';
                     printVarWithPrefix (v->name.toString());
                     printDescription (v->annotation);
-                    out << ";" << newLine;
+                    out << ';' << newLine;
                 }
             }
         }
@@ -251,7 +250,7 @@ private:
             SOUL_ASSERT (f.name.isValid());
 
             out << (f.functionType.isEvent() ? "event " : "function ");
-            out << getFunctionName (f) << "(";
+            out << getFunctionName (f) << '(';
 
             {
                 bool isFirst = true;
@@ -263,12 +262,12 @@ private:
                     else
                         out << ", ";
 
-                    out << getTypeDescription (p->type) << " ";
+                    out << getTypeDescription (p->type) << ' ';
                     printVarWithPrefix (p->name.toString());
                 }
             }
 
-            out << ")";
+            out << ')';
 
             if (! f.functionType.isEvent())
                 out << " -> " << getTypeDescription (f.returnType);
@@ -277,12 +276,12 @@ private:
 
             if (f.hasNoBody)
             {
-                out << ";" << blankLine;
+                out << ';' << blankLine;
                 return;
             }
 
             out << newLine
-                << "{" << newLine;
+                << '{' << newLine;
 
             buildLocalVariableList (f);
 
@@ -296,14 +295,14 @@ private:
                 for (auto s : b->statements)
                 {
                     printStatementDescription (*s);
-                    out << ";" << newLine;
+                    out << ';' << newLine;
                 }
 
                 printStatementDescription (b->terminator);
-                out << ";" << newLine;
+                out << ';' << newLine;
             }
 
-            out << "}" << blankLine;
+            out << '}' << blankLine;
         }
 
         void buildLocalVariableList (const heart::Function& f)
@@ -349,7 +348,7 @@ private:
                 auto indent = out.createBracedIndent (2);
 
                 for (auto& m : s.members)
-                    out << padded (getTypeDescription (m.type), maxTypeLen + 2) << m.name << ";" << newLine;
+                    out << padded (getTypeDescription (m.type), maxTypeLen + 2) << m.name << ';' << newLine;
             }
 
             out << blankLine;
@@ -372,7 +371,7 @@ private:
 
             if (! (v.getType().isPrimitiveInteger() || v.getType().isPrimitiveFloat()))
             {
-                out << getTypeDescription (v.getType()) << " ";
+                out << getTypeDescription (v.getType()) << ' ';
                 p.dictionary = std::addressof (program.getStringDictionary());
             }
 
@@ -412,9 +411,9 @@ private:
 
                 if (subElement->dynamicIndex != nullptr)
                 {
-                    out << "[";
+                    out << '[';
                     printExpression (*subElement->dynamicIndex);
-                    out << "]";
+                    out << ']';
                     return;
                 }
 
@@ -426,11 +425,11 @@ private:
 
                 if (subElement->isSingleElement())
                 {
-                    out << "[" << std::to_string (subElement->fixedStartIndex) << "]";
+                    out << '[' << subElement->fixedStartIndex << ']';
                     return;
                 }
 
-                out << "[" + std::to_string (subElement->fixedStartIndex) << ":" << std::to_string (subElement->fixedEndIndex) << "]";
+                out << '[' << subElement->fixedStartIndex << ":" << subElement->fixedEndIndex << ']';
                 return;
             }
 
@@ -438,7 +437,7 @@ private:
             {
                 out << "cast " << getTypeDescription (c->destType) << " (";
                 printExpression (*c->source);
-                out << ")";
+                out << ')';
                 return;
             }
 
@@ -446,7 +445,7 @@ private:
             {
                 out << getUnaryOpName (u->operation) << " (";
                 printExpression (*u->source);
-                out << ")";
+                out << ')';
                 return;
             }
 
@@ -456,7 +455,7 @@ private:
                 printExpression (*b->lhs);
                 out << ", ";
                 printExpression (*b->rhs);
-                out << ")";
+                out << ')';
                 return;
             }
 
@@ -469,7 +468,7 @@ private:
 
             if (auto fc = cast<heart::PlaceholderFunctionCall> (e))
             {
-                out << fc->name << " " << getTypeDescription (fc->returnType);
+                out << fc->name << ' ' << getTypeDescription (fc->returnType);
                 printArgList (fc->arguments);
                 return;
             }
@@ -594,7 +593,7 @@ private:
                 printExpression (*arg);
             }
 
-            out << ")";
+            out << ')';
         }
 
         void printDescription (const heart::FunctionCall& f)
@@ -619,12 +618,12 @@ private:
 
             if (w.element != nullptr)
             {
-                out << "[";
+                out << '[';
                 printExpression (*w.element);
-                out << "]";
+                out << ']';
             }
 
-            out << " ";
+            out << ' ';
             printExpression (*w.value);
         }
 

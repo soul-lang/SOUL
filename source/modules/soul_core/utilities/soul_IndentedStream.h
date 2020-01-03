@@ -55,6 +55,7 @@ struct IndentedStream
 
     /** Returns the finished string */
     std::string toString() const;
+    ArrayView<char> getContent() const;
 
     ScopedIndent createIndent();
     ScopedIndent createIndent (int numSpacesToIndent);
@@ -72,6 +73,7 @@ struct IndentedStream
     IndentedStream& operator<< (const NewLine&);
     IndentedStream& operator<< (const BlankLine&);
     IndentedStream& operator<< (size_t value);
+    IndentedStream& operator<< (int64_t value);
 
     void writeMultipleLines (const std::string& text);
     void writeMultipleLines (const char* text);
@@ -83,9 +85,10 @@ private:
     int currentIndent = 0, indentSize = 4;
     bool indentNeeded = false, currentLineIsEmpty = false,
          lastLineWasBlank = false, sectionBreakNeeded = false;
-    std::ostringstream content;
+    std::vector<char> content;
 
     void write (const std::string&);
+    void writeRaw (const std::string&);
     void writeLines (ArrayView<std::string>);
     void indent (int amount);
     void writeIndentIfNeeded();

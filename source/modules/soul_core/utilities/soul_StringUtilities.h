@@ -133,8 +133,9 @@ std::string quoteName (const IdentifierPath& name);
 */
 struct HashBuilder
 {
-    HashBuilder& operator<< (char c) noexcept;
-    HashBuilder& operator<< (const std::string& s) noexcept;
+    HashBuilder& operator<< (char) noexcept;
+    HashBuilder& operator<< (const std::string&) noexcept;
+    HashBuilder& operator<< (ArrayView<char>) noexcept;
 
     std::string toString() const;
 

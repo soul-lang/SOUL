@@ -476,6 +476,14 @@ HashBuilder& HashBuilder::operator<< (const std::string& s) noexcept
     return *this;
 }
 
+HashBuilder& HashBuilder::operator<< (ArrayView<char> s) noexcept
+{
+    for (auto c : s)
+        *this << c;
+
+    return *this;
+}
+
 std::string HashBuilder::toString() const
 {
     char result[32] = {};
@@ -516,7 +524,6 @@ std::string toCppStringLiteral (const std::string& text,
 
         switch (c)
         {
-
             case '\t':  out << "\\t";  trigraphDetected = false; lastWasHexEscapeCode = false; charsOnLine += 2; break;
             case '\r':  out << "\\r";  trigraphDetected = false; lastWasHexEscapeCode = false; charsOnLine += 2; break;
             case '\n':  out << "\\n";  trigraphDetected = false; lastWasHexEscapeCode = false; charsOnLine += 2; startNewLine = breakAtNewLines; break;
