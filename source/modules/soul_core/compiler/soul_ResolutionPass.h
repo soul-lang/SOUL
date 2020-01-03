@@ -584,12 +584,16 @@ private:
 
         AST::ConstantPtr getBuiltInConstant (AST::QualifiedIdentifier& u)
         {
-            if (u.path.isUnqualifiedName ("pi"))     return allocator.allocate<AST::Constant> (u.context, Value (pi));
-            if (u.path.isUnqualifiedName ("twoPi"))  return allocator.allocate<AST::Constant> (u.context, Value (twoPi));
-            if (u.path.isUnqualifiedName ("nan"))    return allocator.allocate<AST::Constant> (u.context, Value (std::numeric_limits<float>::quiet_NaN()));
-            if (u.path.isUnqualifiedName ("inf"))    return allocator.allocate<AST::Constant> (u.context, Value (std::numeric_limits<float>::infinity()));
+            AST::ConstantPtr result;
 
-            return {};
+            if (u.path.isUnqualified())
+                matchBuiltInConstant (u.path.getFirstPart(),
+                                      [&] (Value&& value)
+                                      {
+                                          result = allocator.allocate<AST::Constant> (u.context, std::move (value));
+                                      });
+
+            return result;
         }
 
         AST::StatementPtr currentStatement;

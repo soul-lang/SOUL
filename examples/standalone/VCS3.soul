@@ -84,11 +84,11 @@ processor EMSVCS3Filter
             let ih = 0.5f * (in + zi);
 
             // evaluate the non-linear gains
-            let t0 = f * tanhXdX ((ih - r * s3) *g0inv) * g0inv;
-            let t1 = f * tanhXdX ((s1 - s0) * g1inv) * g1inv;
-            let t2 = f * tanhXdX ((s2 - s1) * g1inv) * g1inv;
-            let t3 = f * tanhXdX ((s3 - s2) * g1inv) * g1inv;
-            let t4 = f * tanhXdX ((s3) * g2inv) * g2inv;
+            let t0 = f * g0inv * tanhXdX (g0inv * (ih - r * s3));
+            let t1 = f * g1inv * tanhXdX (g1inv * (s1 - s0));
+            let t2 = f * g1inv * tanhXdX (g1inv * (s2 - s1));
+            let t3 = f * g1inv * tanhXdX (g1inv * (s3 - s2));
+            let t4 = f * g2inv * tanhXdX (g2inv * s3);
 
             // This formula gives the result for y3 thanks to MATLAB
             var y3 = (s2 + s3 + t2 * (s1 + s2 + s3 + t1 * (s0 + s1 + s2 + s3 + t0 * in))

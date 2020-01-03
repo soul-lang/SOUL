@@ -25,8 +25,9 @@
 namespace soul
 {
 
-bool isWhitespace (char c)      { return c == ' ' || (c <= 13 && c >= 9); }
-bool isDigit (char c)           { return c >= '0' && c <= '9'; }
+bool isWhitespace (char c)           { return c == ' ' || (c <= 13 && c >= 9); }
+bool isDigit (char c)                { return c >= '0' && c <= '9'; }
+bool isSafeIdentifierChar (char c)   { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || isDigit (c); }
 
 std::string repeatedCharacter (char c, size_t num)
 {
@@ -297,13 +298,13 @@ std::string makeSafeIdentifierName (std::string s)
         if (containsChar (" ,./;", c))
             c = '_';
 
-    auto r = retainCharacters (s, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+    s.erase (std::remove_if (s.begin(), s.end(), [&] (char c) { return ! isSafeIdentifierChar (c); }), s.end());
 
     // Identifiers can't start with a digit
-    if (isDigit (r[0]))
-        r = "_" + r;
+    if (isDigit (s[0]))
+        s = "_" + s;
 
-    return r;
+    return s;
 }
 
 bool isSafeIdentifierName (std::string s)
