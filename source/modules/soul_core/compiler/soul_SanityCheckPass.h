@@ -75,36 +75,36 @@ struct SanityCheckPass  final
         }
     };
 
-    static void throwErrorIfNotReadableValue (AST::ExpPtr e)
+    static void throwErrorIfNotReadableValue (AST::Expression& e)
     {
         if (! AST::isResolvedAsValue (e))
         {
             if (is_type<AST::OutputEndpointRef> (e))
-                e->context.throwError (Errors::cannotReadFromOutput());
+                e.context.throwError (Errors::cannotReadFromOutput());
 
             if (is_type<AST::ProcessorRef> (e))
-                e->context.throwError (Errors::cannotUseProcessorAsOutput());
+                e.context.throwError (Errors::cannotUseProcessorAsOutput());
 
-            e->context.throwError (Errors::expectedValue());
+            e.context.throwError (Errors::expectedValue());
         }
     }
 
-    static void throwErrorIfNotArrayOrVector (AST::ExpPtr e)
+    static void throwErrorIfNotArrayOrVector (AST::Expression& e)
     {
         throwErrorIfNotReadableValue (e);
 
-        if (! e->getResultType().isArrayOrVector())
-            e->context.throwError (Errors::expectedArrayOrVector());
+        if (! e.getResultType().isArrayOrVector())
+            e.context.throwError (Errors::expectedArrayOrVector());
     }
 
-    static void throwErrorIfNotReadableType (AST::ExpPtr e)
+    static void throwErrorIfNotReadableType (AST::Expression& e)
     {
         if (! AST::isResolvedAsType (e))
         {
             if (is_type<AST::ProcessorRef> (e))
-                e->context.throwError (Errors::cannotUseProcessorAsType());
+                e.context.throwError (Errors::cannotUseProcessorAsType());
 
-            e->context.throwError (Errors::expectedType());
+            e.context.throwError (Errors::expectedType());
         }
     }
 
@@ -212,7 +212,7 @@ struct SanityCheckPass  final
     static void checkArraySubscript (AST::ArrayElementRef& s)
     {
         if (! s.object->isOutputEndpoint())
-            throwErrorIfNotArrayOrVector (s.object);
+            throwErrorIfNotArrayOrVector (*s.object);
     }
 
     static void throwErrorIfWrongNumberOfElements (const AST::Context& c, const Type& type, size_t numberAvailable)
@@ -237,7 +237,7 @@ struct SanityCheckPass  final
         return value;
     }
 
-    static void checkForDuplicateFunctions (ArrayView<AST::FunctionPtr> functions)
+    static void checkForDuplicateFunctions (ArrayView<pool_ptr<AST::Function>> functions)
     {
         std::vector<std::string> functionSigs;
         functionSigs.reserve (functions.size());
@@ -460,9 +460,9 @@ private:
             super::visit (v);
 
             if (v.declaredType == nullptr)
-                throwErrorIfNotReadableValue (v.initialValue);
+                throwErrorIfNotReadableValue (*v.initialValue);
             else
-                throwErrorIfNotReadableType (v.declaredType);
+                throwErrorIfNotReadableType (*v.declaredType);
 
             auto type = v.getType();
             auto context = (v.declaredType != nullptr ? v.declaredType->context : v.context);
@@ -565,7 +565,7 @@ private:
 
             if (c.delayLength != nullptr)
             {
-                throwErrorIfNotReadableValue (c.delayLength);
+                throwErrorIfNotReadableValue (*c.delayLength);
 
                 if (auto cv = c.delayLength->getAsConstant())
                     checkDelayLineLength (cv->context, cv->value);
@@ -602,7 +602,7 @@ private:
             }
         }
 
-        void checkArraySize (const AST::ExpPtr& arraySize, int64_t maxSize)
+        void checkArraySize (pool_ptr<AST::Expression> arraySize, int64_t maxSize)
         {
             if (arraySize != nullptr)
             {
@@ -633,7 +633,7 @@ private:
     struct PreAndPostIncOperatorCheck  : public ASTVisitor
     {
         using super = ASTVisitor;
-        using VariableList = ArrayWithPreallocation<AST::VariableDeclarationPtr, 16>;
+        using VariableList = ArrayWithPreallocation<pool_ptr<AST::VariableDeclaration>, 16>;
         VariableList* variablesModified = nullptr;
         VariableList* variablesReferenced = nullptr;
         bool isInsidePreIncOp = false;
@@ -643,8 +643,8 @@ private:
             VariableList modified, referenced;
             auto oldMod = variablesModified;
             auto oldRef = variablesReferenced;
-            variablesModified = &modified;
-            variablesReferenced = &referenced;
+            variablesModified = std::addressof (modified);
+            variablesReferenced = std::addressof (referenced);
             super::visitObject (s);
             variablesModified = oldMod;
             variablesReferenced = oldRef;

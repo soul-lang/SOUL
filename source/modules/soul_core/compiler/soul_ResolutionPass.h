@@ -298,7 +298,7 @@ private:
 
             if (o.isOutputEndpoint())
             {
-                auto& w = allocator.allocate<AST::WriteToEndpoint> (o.context, o.lhs, o.rhs);
+                auto& w = allocator.allocate<AST::WriteToEndpoint> (o.context, *o.lhs, *o.rhs);
                 visitObject (w);
                 return w;
             }
@@ -389,7 +389,7 @@ private:
                 if (auto v = cast<AST::VariableDeclaration> (item))
                 {
                     ++numVariablesResolved;
-                    return allocator.allocate<AST::VariableRef> (qi.context, v);
+                    return allocator.allocate<AST::VariableRef> (qi.context, *v);
                 }
 
                 if (auto p = cast<AST::Processor> (item))
@@ -402,9 +402,9 @@ private:
                 if (auto e = cast<AST::EndpointDeclaration> (item))
                 {
                     if (e->isInput)
-                        return allocator.allocate<AST::InputEndpointRef> (qi.context, e);
+                        return allocator.allocate<AST::InputEndpointRef> (qi.context, *e);
 
-                    return allocator.allocate<AST::OutputEndpointRef> (qi.context, e);
+                    return allocator.allocate<AST::OutputEndpointRef> (qi.context, *e);
                 }
             }
 
@@ -559,7 +559,7 @@ private:
 
                     for (size_t i = 0; i < s.members.size(); ++i)
                         if (d.rhs.path.isUnqualifiedName (s.members[i].name))
-                            return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, i);
+                            return allocator.allocate<AST::StructMemberRef> (d.context, *d.lhs, s, i);
 
                     if (! ignoreErrors)
                         d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), s.name));
@@ -920,7 +920,7 @@ private:
             if (failIfNotResolved (b))
                 return b;
 
-            SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
 
             if (b.isOutputEndpoint())
             {
@@ -928,7 +928,7 @@ private:
                 return b;
             }
 
-            SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
             auto resultType = b.getOperandType();
 
             if (resultType.isValid())
@@ -993,7 +993,7 @@ private:
             super::visit (s);
 
             if (AST::isResolvedAsValue (s.lhs))
-                return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
+                return allocator.allocate<AST::ArrayElementRef> (s.context, *s.lhs, s.rhs, nullptr, false);
 
             if (AST::isResolvedAsType (s.lhs))
             {
@@ -1023,7 +1023,7 @@ private:
             }
 
             if (AST::isResolvedAsEndpoint (s.lhs))
-                return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
+                return allocator.allocate<AST::ArrayElementRef> (s.context, *s.lhs, s.rhs, nullptr, false);
 
             if (ignoreErrors)
                 ++numFails;
@@ -1217,7 +1217,7 @@ private:
 
             if (b.isResolved())
             {
-                SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
+                SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
 
                 if (b.isOutputEndpoint())
                 {
@@ -1225,7 +1225,7 @@ private:
                     return b;
                 }
 
-                SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
+                SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
                 auto resultType = b.getOperandType();
 
                 if (! resultType.isValid() && ! ignoreErrors)
@@ -1326,7 +1326,7 @@ private:
                                 if (ignoreErrors)
                                     return call;
 
-                                SanityCheckPass::throwErrorIfNotReadableValue (arg);
+                                SanityCheckPass::throwErrorIfNotReadableValue (*arg);
                             }
                         }
                     }
@@ -1642,7 +1642,7 @@ private:
             if (numArgs == 2)
                 error = getErrorMessageArgument (c.arguments->items[1]);
 
-            return allocator.allocate<AST::StaticAssertion> (c.context, c.arguments->items.front(), error);
+            return allocator.allocate<AST::StaticAssertion> (c.context, *c.arguments->items.front(), error);
         }
 
         std::string getErrorMessageArgument (AST::ExpPtr e)
@@ -1707,7 +1707,7 @@ private:
                     call.context.throwError (Errors::wrongTypeForAtMethod());
             }
 
-            auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, array, index, nullptr, false);
+            auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, *array, index, nullptr, false);
             ref.suppressWrapWarning = true;
             return ref;
         }
@@ -2044,9 +2044,9 @@ private:
         AST::ExpPtr visit (AST::TernaryOp& t) override
         {
             super::visit (t);
-            SanityCheckPass::throwErrorIfNotReadableValue (t.condition);
-            SanityCheckPass::throwErrorIfNotReadableValue (t.trueBranch);
-            SanityCheckPass::throwErrorIfNotReadableValue (t.falseBranch);
+            SanityCheckPass::throwErrorIfNotReadableValue (*t.condition);
+            SanityCheckPass::throwErrorIfNotReadableValue (*t.trueBranch);
+            SanityCheckPass::throwErrorIfNotReadableValue (*t.falseBranch);
             SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), *t.condition);
             return t;
         }
@@ -2075,12 +2075,12 @@ private:
         {
             super::visit (b);
 
-            SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
 
             if (b.isOutputEndpoint())
                 return b;
 
-            SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
 
             auto operandType = b.getOperandType();
 
@@ -2301,7 +2301,7 @@ private:
         {
             super::visit (w);
 
-            SanityCheckPass::throwErrorIfNotReadableValue (w.value);
+            SanityCheckPass::throwErrorIfNotReadableValue (*w.value);
             auto& topLevelWrite = getTopLevelWriteToEndpoint (w);
 
             // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
@@ -2331,20 +2331,20 @@ private:
             super::visit (i);
 
             if (i.clockMultiplierRatio != nullptr)
-                validateClockRatio (i.clockMultiplierRatio);
+                validateClockRatio (*i.clockMultiplierRatio);
 
             if (i.clockDividerRatio != nullptr)
-                validateClockRatio (i.clockDividerRatio);
+                validateClockRatio (*i.clockDividerRatio);
 
             return i;
         }
 
-        static void validateClockRatio (AST::ExpPtr ratio)
+        static void validateClockRatio (AST::Expression& ratio)
         {
-            if (auto c = ratio->getAsConstant())
-                heart::getClockRatioFromValue (ratio->context, c->value);
+            if (auto c = ratio.getAsConstant())
+                heart::getClockRatioFromValue (ratio.context, c->value);
             else
-                ratio->context.throwError (Errors::ratioMustBeConstant());
+                ratio.context.throwError (Errors::ratioMustBeConstant());
         }
     };
 };

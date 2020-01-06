@@ -121,15 +121,15 @@ struct AST
 
     enum class ExpressionKind  { value, type, endpoint, processor, unknown };
 
-    static bool isPossiblyType (ExpPtr e)          { return e != nullptr && (e->kind == ExpressionKind::type     || e->kind == ExpressionKind::unknown); }
-    static bool isPossiblyValue (ExpPtr e)         { return e != nullptr && (e->kind == ExpressionKind::value    || e->kind == ExpressionKind::unknown); }
-    static bool isPossiblyEndpoint (ExpPtr e)      { return e != nullptr && (e->kind == ExpressionKind::endpoint || e->kind == ExpressionKind::unknown); }
+    static bool isPossiblyType (pool_ptr<Expression> e)          { return e != nullptr && (e->kind == ExpressionKind::type     || e->kind == ExpressionKind::unknown); }
+    static bool isPossiblyValue (pool_ptr<Expression> e)         { return e != nullptr && (e->kind == ExpressionKind::value    || e->kind == ExpressionKind::unknown); }
+    static bool isPossiblyEndpoint (pool_ptr<Expression> e)      { return e != nullptr && (e->kind == ExpressionKind::endpoint || e->kind == ExpressionKind::unknown); }
 
-    static bool isResolvedAsType (ExpPtr e)        { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::type; }
-    static bool isResolvedAsValue (ExpPtr e)       { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::value; }
-    static bool isResolvedAsConstant (ExpPtr e)    { return isResolvedAsValue (e) && e->getAsConstant() != nullptr; }
-    static bool isResolvedAsEndpoint (ExpPtr e)    { return e != nullptr && e->isResolved() && e->isOutputEndpoint(); }
-    static bool isResolvedAsProcessor (ExpPtr e)   { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::processor; }
+    static bool isResolvedAsType (pool_ptr<Expression> e)        { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::type; }
+    static bool isResolvedAsValue (pool_ptr<Expression> e)       { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::value; }
+    static bool isResolvedAsConstant (pool_ptr<Expression> e)    { return isResolvedAsValue (e) && e->getAsConstant() != nullptr; }
+    static bool isResolvedAsEndpoint (pool_ptr<Expression> e)    { return e != nullptr && e->isResolved() && e->isOutputEndpoint(); }
+    static bool isResolvedAsProcessor (pool_ptr<Expression> e)   { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::processor; }
 
     enum class Constness  { definitelyConst, notConst, unknown };
 
@@ -226,8 +226,8 @@ struct AST
     {
         struct Property
         {
-            QualifiedIdentifierPtr name;
-            ExpPtr value;
+            pool_ptr<QualifiedIdentifier> name;
+            pool_ptr<Expression> value;
         };
 
         std::vector<Property> properties;
@@ -324,7 +324,7 @@ struct AST
         virtual Function* getAsFunction()               { return nullptr; }
         virtual Block* getAsBlock()                     { return nullptr; }
 
-        virtual FunctionPtr getParentFunction() const
+        virtual pool_ptr<Function> getParentFunction() const
         {
             if (auto p = getParentScope())
                 return p->getParentFunction();
@@ -332,7 +332,7 @@ struct AST
             return {};
         }
 
-        ModuleBasePtr findModule()
+        pool_ptr<ModuleBase> findModule()
         {
             for (auto p = this; p != nullptr; p = p->getParentScope())
                 if (auto m = p->getAsModule())
@@ -341,7 +341,7 @@ struct AST
             return {};
         }
 
-        ProcessorBasePtr findProcessor()
+        pool_ptr<ProcessorBase> findProcessor()
         {
             for (auto s = this; s != nullptr; s = s->getParentScope())
                 if (auto p = s->getAsProcessor())
@@ -350,18 +350,18 @@ struct AST
             return {};
         }
 
-        virtual ArrayView<VariableDeclarationPtr>        getVariables() const            { return {}; }
-        virtual ArrayView<FunctionPtr>                   getFunctions() const            { return {}; }
-        virtual ArrayView<StructDeclarationPtr>          getStructDeclarations() const   { return {}; }
-        virtual ArrayView<UsingDeclarationPtr>           getUsingDeclarations() const    { return {}; }
-        virtual ArrayView<ModuleBasePtr>                 getSubModules() const           { return {}; }
-        virtual ArrayView<ProcessorAliasDeclarationPtr>  getProcessorAliases() const     { return {}; }
+        virtual ArrayView<pool_ptr<VariableDeclaration>>        getVariables() const            { return {}; }
+        virtual ArrayView<pool_ptr<Function>>                   getFunctions() const            { return {}; }
+        virtual ArrayView<pool_ptr<StructDeclaration>>          getStructDeclarations() const   { return {}; }
+        virtual ArrayView<pool_ptr<UsingDeclaration>>           getUsingDeclarations() const    { return {}; }
+        virtual ArrayView<pool_ptr<ModuleBase>>                 getSubModules() const           { return {}; }
+        virtual ArrayView<pool_ptr<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
 
         virtual const Statement* getAsStatement() const      { return nullptr; }
 
         struct NameSearch
         {
-            ArrayWithPreallocation<ASTObjectPtr, 8> itemsFound;
+            ArrayWithPreallocation<pool_ptr<ASTObject>, 8> itemsFound;
             IdentifierPath partiallyQualifiedPath;
             bool stopAtFirstScopeWithResults = false;
             int requiredNumFunctionArgs = -1;
@@ -413,7 +413,7 @@ struct AST
 
         virtual void performLocalNameSearch (NameSearch& search, const Statement* statementToSearchUpTo) const = 0;
 
-        ModuleBasePtr findSubModuleNamed (Identifier name) const
+        pool_ptr<ModuleBase> findSubModuleNamed (Identifier name) const
         {
             for (auto& m : getSubModules())
                 if (m->name == name)
@@ -437,7 +437,7 @@ struct AST
             return s;
         }
 
-        std::vector<ModuleBasePtr> getMatchingSubModules (IdentifierPath partiallyQualifiedName) const
+        std::vector<pool_ptr<ModuleBase>> getMatchingSubModules (IdentifierPath partiallyQualifiedName) const
         {
             Scope::NameSearch search;
             search.partiallyQualifiedPath = partiallyQualifiedName;
@@ -450,7 +450,7 @@ struct AST
 
             performFullNameSearch (search, nullptr);
 
-            std::vector<ModuleBasePtr> found;
+            std::vector<pool_ptr<ModuleBase>> found;
 
             for (auto& o : search.itemsFound)
                 if (auto m = cast<ModuleBase> (o))
@@ -538,13 +538,13 @@ struct AST
         virtual bool isGraph() const                { return false; }
         virtual bool isNamespace() const            { return false; }
 
-        virtual ArrayView<ASTObjectPtr>                 getSpecialisationParameters() const  { return {}; }
-        virtual ArrayView<EndpointDeclarationPtr>       getEndpoints() const                 { return {}; }
+        virtual ArrayView<pool_ptr<ASTObject>>                 getSpecialisationParameters() const  { return {}; }
+        virtual ArrayView<pool_ptr<EndpointDeclaration>>       getEndpoints() const                 { return {}; }
 
-        virtual std::vector<StructDeclarationPtr>*      getStructList() = 0;
-        virtual std::vector<UsingDeclarationPtr>*       getUsingList() = 0;
-        virtual std::vector<VariableDeclarationPtr>*    getStateVariableList() = 0;
-        virtual std::vector<FunctionPtr>*               getFunctionList() = 0;
+        virtual std::vector<pool_ptr<StructDeclaration>>*      getStructList() = 0;
+        virtual std::vector<pool_ptr<UsingDeclaration>>*       getUsingList() = 0;
+        virtual std::vector<pool_ptr<VariableDeclaration>>*    getStateVariableList() = 0;
+        virtual std::vector<pool_ptr<Function>>*               getFunctionList() = 0;
 
         size_t getNumInputs() const                 { return countEndpoints (true); }
         size_t getNumOutputs() const                { return countEndpoints (false); }
@@ -627,11 +627,11 @@ struct AST
 
         ProcessorBase* getAsProcessor() override        { return this; }
 
-        ArrayView<EndpointDeclarationPtr>   getEndpoints() const override                   { return endpoints; }
-        ArrayView<ASTObjectPtr>             getSpecialisationParameters() const override    { return specialisationParams; }
+        ArrayView<pool_ptr<EndpointDeclaration>>  getEndpoints() const override                   { return endpoints; }
+        ArrayView<pool_ptr<ASTObject>>            getSpecialisationParameters() const override    { return specialisationParams; }
 
         template <typename StringType>
-        EndpointDeclarationPtr findEndpoint (const StringType& nameToFind, bool isInput) const
+        pool_ptr<EndpointDeclaration> findEndpoint (const StringType& nameToFind, bool isInput) const
         {
             for (auto& e : endpoints)
                 if (e->isInput == isInput && e->name == nameToFind)
@@ -641,7 +641,7 @@ struct AST
         }
 
         template <typename StringType>
-        EndpointDeclarationPtr findEndpoint (const StringType& nameToFind) const
+        pool_ptr<EndpointDeclaration> findEndpoint (const StringType& nameToFind) const
         {
             for (auto& e : endpoints)
                 if (e->name == nameToFind)
@@ -654,8 +654,8 @@ struct AST
         virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
         virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
 
-        std::vector<EndpointDeclarationPtr> endpoints;
-        std::vector<ASTObjectPtr> specialisationParams;
+        std::vector<pool_ptr<EndpointDeclaration>> endpoints;
+        std::vector<pool_ptr<ASTObject>> specialisationParams;
 
         Annotation annotation;
     };
@@ -665,7 +665,7 @@ struct AST
     {
         Processor (const Context& c, Identifier moduleName) : ProcessorBase (ObjectType::Processor, c, moduleName) {}
 
-        FunctionPtr getRunFunction() const
+        pool_ptr<Function> getRunFunction() const
         {
             for (auto& f : functions)
                 if (f->isRunFunction())
@@ -676,15 +676,15 @@ struct AST
 
         bool isProcessor() const override   { return true; }
 
-        ArrayView<VariableDeclarationPtr>     getVariables() const override           { return stateVariables; }
-        ArrayView<FunctionPtr>                getFunctions() const override           { return functions; }
-        ArrayView<StructDeclarationPtr>       getStructDeclarations() const override  { return structures; }
-        ArrayView<UsingDeclarationPtr>        getUsingDeclarations() const override   { return usings; }
+        ArrayView<pool_ptr<VariableDeclaration>>     getVariables() const override           { return stateVariables; }
+        ArrayView<pool_ptr<Function>>                getFunctions() const override           { return functions; }
+        ArrayView<pool_ptr<StructDeclaration>>       getStructDeclarations() const override  { return structures; }
+        ArrayView<pool_ptr<UsingDeclaration>>        getUsingDeclarations() const override   { return usings; }
 
-        std::vector<StructDeclarationPtr>*    getStructList() override                { return &structures; }
-        std::vector<UsingDeclarationPtr>*     getUsingList() override                 { return &usings; }
-        std::vector<VariableDeclarationPtr>*  getStateVariableList() override         { return &stateVariables; }
-        std::vector<FunctionPtr>*             getFunctionList() override              { return &functions; }
+        std::vector<pool_ptr<StructDeclaration>>*    getStructList() override                { return &structures; }
+        std::vector<pool_ptr<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
+        std::vector<pool_ptr<VariableDeclaration>>*  getStateVariableList() override         { return &stateVariables; }
+        std::vector<pool_ptr<Function>>*             getFunctionList() override              { return &functions; }
 
         void addSpecialisationParameter (VariableDeclaration& v) override
         {
@@ -704,10 +704,10 @@ struct AST
             SOUL_ASSERT_FALSE;
         }
 
-        std::vector<StructDeclarationPtr> structures;
-        std::vector<UsingDeclarationPtr> usings;
-        std::vector<FunctionPtr> functions;
-        std::vector<VariableDeclarationPtr> stateVariables;
+        std::vector<pool_ptr<StructDeclaration>> structures;
+        std::vector<pool_ptr<UsingDeclaration>> usings;
+        std::vector<pool_ptr<Function>> functions;
+        std::vector<pool_ptr<VariableDeclaration>> stateVariables;
     };
 
     //==============================================================================
@@ -732,23 +732,23 @@ struct AST
             SOUL_ASSERT_FALSE;
         }
 
-        bool isGraph() const override                                                 { return true; }
+        bool isGraph() const override                                                        { return true; }
 
-        ArrayView<ProcessorAliasDeclarationPtr> getProcessorAliases() const override  { return processorAliases; }
-        ArrayView<VariableDeclarationPtr> getVariables() const override               { return constants; }
+        ArrayView<pool_ptr<ProcessorAliasDeclaration>> getProcessorAliases() const override  { return processorAliases; }
+        ArrayView<pool_ptr<VariableDeclaration>> getVariables() const override               { return constants; }
 
-        std::vector<StructDeclarationPtr>* getStructList() override                   { return {}; }
-        std::vector<UsingDeclarationPtr>* getUsingList() override                     { return {}; }
-        std::vector<VariableDeclarationPtr>* getStateVariableList() override          { return {}; }
-        std::vector<FunctionPtr>* getFunctionList() override                          { return {}; }
+        std::vector<pool_ptr<StructDeclaration>>* getStructList() override                   { return {}; }
+        std::vector<pool_ptr<UsingDeclaration>>* getUsingList() override                     { return {}; }
+        std::vector<pool_ptr<VariableDeclaration>>* getStateVariableList() override          { return {}; }
+        std::vector<pool_ptr<Function>>* getFunctionList() override                          { return {}; }
 
-        std::vector<ProcessorInstancePtr> processorInstances;
-        std::vector<ConnectionPtr> connections;
-        std::vector<VariableDeclarationPtr> constants;
-        std::vector<ProcessorAliasDeclarationPtr> processorAliases;
+        std::vector<pool_ptr<ProcessorInstance>> processorInstances;
+        std::vector<pool_ptr<Connection>> connections;
+        std::vector<pool_ptr<VariableDeclaration>> constants;
+        std::vector<pool_ptr<ProcessorAliasDeclaration>> processorAliases;
 
         template <typename StringType>
-        ProcessorInstancePtr findChildProcessor (const StringType& processorInstanceName) const
+        pool_ptr<ProcessorInstance> findChildProcessor (const StringType& processorInstanceName) const
         {
             for (auto& i : processorInstances)
                 if (i->instanceName->path == processorInstanceName)
@@ -823,10 +823,10 @@ struct AST
                 struct Source
                 {
                     Node* node;
-                    ConnectionPtr connection;
+                    pool_ptr<Connection> connection;
                 };
 
-                ProcessorInstancePtr processor;
+                pool_ptr<ProcessorInstance> processor;
                 ArrayWithPreallocation<Source, 4> sources;
             };
 
@@ -882,26 +882,26 @@ struct AST
     {
         Namespace (const Context& c, Identifier moduleName) : ModuleBase (ObjectType::Namespace, c, moduleName) {}
 
-        bool isNamespace() const override                                       { return true; }
-        Namespace* getAsNamespace() override                                    { return this; }
+        bool isNamespace() const override                                              { return true; }
+        Namespace* getAsNamespace() override                                           { return this; }
 
-        ArrayView<VariableDeclarationPtr> getVariables() const override         { return constants; }
-        ArrayView<FunctionPtr> getFunctions() const override                    { return functions; }
-        ArrayView<StructDeclarationPtr> getStructDeclarations() const override  { return structures; }
-        ArrayView<UsingDeclarationPtr> getUsingDeclarations() const override    { return usings; }
-        ArrayView<ModuleBasePtr> getSubModules() const override                 { return subModules; }
+        ArrayView<pool_ptr<VariableDeclaration>> getVariables() const override         { return constants; }
+        ArrayView<pool_ptr<Function>> getFunctions() const override                    { return functions; }
+        ArrayView<pool_ptr<StructDeclaration>> getStructDeclarations() const override  { return structures; }
+        ArrayView<pool_ptr<UsingDeclaration>> getUsingDeclarations() const override    { return usings; }
+        ArrayView<pool_ptr<ModuleBase>> getSubModules() const override                 { return subModules; }
 
-        std::vector<FunctionPtr>* getFunctionList() override                    { return &functions; }
-        std::vector<StructDeclarationPtr>* getStructList() override             { return &structures; }
-        std::vector<UsingDeclarationPtr>* getUsingList() override               { return &usings; }
-        std::vector<VariableDeclarationPtr>* getStateVariableList() override    { return &constants; }
+        std::vector<pool_ptr<Function>>* getFunctionList() override                    { return &functions; }
+        std::vector<pool_ptr<StructDeclaration>>* getStructList() override             { return &structures; }
+        std::vector<pool_ptr<UsingDeclaration>>* getUsingList() override               { return &usings; }
+        std::vector<pool_ptr<VariableDeclaration>>* getStateVariableList() override    { return &constants; }
 
         ImportsList importsList;
-        std::vector<FunctionPtr> functions;
-        std::vector<StructDeclarationPtr> structures;
-        std::vector<UsingDeclarationPtr> usings;
-        std::vector<ModuleBasePtr> subModules;
-        std::vector<VariableDeclarationPtr> constants;
+        std::vector<pool_ptr<Function>> functions;
+        std::vector<pool_ptr<StructDeclaration>> structures;
+        std::vector<pool_ptr<UsingDeclaration>> usings;
+        std::vector<pool_ptr<ModuleBase>> subModules;
+        std::vector<pool_ptr<VariableDeclaration>> constants;
     };
 
     //==============================================================================
@@ -911,7 +911,7 @@ struct AST
 
         virtual const Statement* getAsStatement() const  { return this; }
 
-        FunctionPtr getParentFunction() const
+        pool_ptr<Function> getParentFunction() const
         {
             if (auto pn = getParentScope())
                 return pn->getParentFunction();
@@ -928,16 +928,16 @@ struct AST
 
         virtual bool isResolved() const = 0;
 
-        virtual Type getResultType() const               { SOUL_ASSERT_FALSE; return {}; }
-        virtual Type resolveAsType() const               { SOUL_ASSERT_FALSE; return {}; }
-        virtual ProcessorBasePtr getAsProcessor() const  { return {}; }
-        virtual bool isOutputEndpoint() const            { return false; }
-        virtual Constness getConstness() const           { return Constness::unknown; }
-        virtual const Type* getConcreteType() const      { return {}; }
-        virtual StructDeclarationPtr getAsStruct()       { return {}; }
-        virtual ConstantPtr getAsConstant()              { return {}; }
-        virtual bool isCompileTimeConstant() const       { return false; }
-        virtual bool isAssignable() const                { return false; }
+        virtual Type getResultType() const                     { SOUL_ASSERT_FALSE; return {}; }
+        virtual Type resolveAsType() const                     { SOUL_ASSERT_FALSE; return {}; }
+        virtual pool_ptr<ProcessorBase> getAsProcessor() const { return {}; }
+        virtual bool isOutputEndpoint() const                  { return false; }
+        virtual Constness getConstness() const                 { return Constness::unknown; }
+        virtual const Type* getConcreteType() const            { return {}; }
+        virtual pool_ptr<StructDeclaration> getAsStruct()      { return {}; }
+        virtual pool_ptr<Constant> getAsConstant()             { return {}; }
+        virtual bool isCompileTimeConstant() const             { return false; }
+        virtual bool isAssignable() const                      { return false; }
 
         virtual bool canSilentlyCastTo (const Type& targetType) const
         {
@@ -954,8 +954,8 @@ struct AST
         EndpointDetails (const EndpointDetails&) = default;
 
         const EndpointKind kind;
-        std::vector<ExpPtr> sampleTypes;
-        ExpPtr arraySize;
+        std::vector<pool_ptr<Expression>> sampleTypes;
+        pool_ptr<Expression> arraySize;
 
         void checkSampleTypesValid (const Context& context)
         {
@@ -1075,8 +1075,8 @@ struct AST
     {
         struct PathSection
         {
-            QualifiedIdentifierPtr name;
-            ExpPtr index;
+            pool_ptr<QualifiedIdentifier> name;
+            pool_ptr<Expression> index;
             bool isWildcard = false;
         };
 
@@ -1104,10 +1104,9 @@ struct AST
     //==============================================================================
     struct InputEndpointRef  : public Expression
     {
-        InputEndpointRef (const Context& c, EndpointDeclarationPtr i)
+        InputEndpointRef (const Context& c, EndpointDeclaration& i)
             : Expression (ObjectType::InputEndpointRef, c, ExpressionKind::value), input (i)
         {
-            SOUL_ASSERT (input != nullptr);
         }
 
         bool isResolved() const override            { return input->isResolved(); }
@@ -1123,12 +1122,12 @@ struct AST
             return details.getSampleArrayTypes().front();
         }
 
-        EndpointDeclarationPtr input;
+        pool_ptr<EndpointDeclaration> input;
     };
 
     struct OutputEndpointRef  : public Expression
     {
-        OutputEndpointRef (const Context& c, EndpointDeclarationPtr o)
+        OutputEndpointRef (const Context& c, EndpointDeclaration& o)
             : Expression (ObjectType::OutputEndpointRef, c, ExpressionKind::endpoint), output (o)
         {
             SOUL_ASSERT (output != nullptr);
@@ -1137,7 +1136,7 @@ struct AST
         bool isOutputEndpoint() const override      { return true; }
         bool isResolved() const override            { return output->isResolved(); }
 
-        EndpointDeclarationPtr output;
+        pool_ptr<EndpointDeclaration> output;
     };
 
     //==============================================================================
@@ -1145,32 +1144,32 @@ struct AST
     {
         struct NameAndEndpoint
         {
-            QualifiedIdentifierPtr processorName;
-            ExpPtr                 processorIndex;
-            Identifier             endpoint;
-            ExpPtr                 endpointIndex;
+            pool_ptr<QualifiedIdentifier>  processorName;
+            pool_ptr<Expression>           processorIndex;
+            Identifier                     endpoint;
+            pool_ptr<Expression>           endpointIndex;
         };
 
         Connection (const Context& c, InterpolationType interpolation,
-                    NameAndEndpoint src, NameAndEndpoint dst, ExpPtr delay)
+                    NameAndEndpoint src, NameAndEndpoint dst, pool_ptr<Expression> delay)
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
         InterpolationType interpolationType;
         NameAndEndpoint source, dest;
-        ExpPtr delayLength;
+        pool_ptr<Expression> delayLength;
     };
 
     struct ProcessorInstance  : public ASTObject
     {
         ProcessorInstance (const Context& c) : ASTObject (ObjectType::ProcessorInstance, c) {}
 
-        QualifiedIdentifierPtr instanceName;
-        ExpPtr targetProcessor;
-        std::vector<ExpPtr> specialisationArgs;
-        ExpPtr clockMultiplierRatio;
-        ExpPtr clockDividerRatio;
-        ExpPtr arraySize;
+        pool_ptr<QualifiedIdentifier> instanceName;
+        pool_ptr<Expression> targetProcessor;
+        std::vector<pool_ptr<Expression>> specialisationArgs;
+        pool_ptr<Expression> clockMultiplierRatio;
+        pool_ptr<Expression> clockDividerRatio;
+        pool_ptr<Expression> arraySize;
         bool wasCreatedImplicitly = false;
     };
 
@@ -1181,19 +1180,19 @@ struct AST
     {
         Function (const Context& c) : ASTObject (ObjectType::Function, c) {}
 
-        ExpPtr returnType;
+        pool_ptr<Expression> returnType;
         Identifier name;
         Context nameLocation;
-        std::vector<VariableDeclarationPtr> parameters;
-        std::vector<QualifiedIdentifierPtr> genericWildcards;
-        std::vector<UsingDeclarationPtr> genericSpecialisations;
-        FunctionPtr orginalGenericFunction;
-        FunctionCallPtr originalCallLeadingToSpecialisation;
+        std::vector<pool_ptr<VariableDeclaration>> parameters;
+        std::vector<pool_ptr<QualifiedIdentifier>> genericWildcards;
+        std::vector<pool_ptr<UsingDeclaration>> genericSpecialisations;
+        pool_ptr<Function> orginalGenericFunction;
+        pool_ptr<FunctionCall> originalCallLeadingToSpecialisation;
         Annotation annotation;
         IntrinsicType intrinsic = IntrinsicType::none;
         bool eventFunction = false;
 
-        BlockPtr block;
+        pool_ptr<Block> block;
         heart::FunctionPtr generatedFunction;
 
         Function* getAsFunction() override  { return this; }
@@ -1242,8 +1241,8 @@ struct AST
             return types;
         }
 
-        Scope* getParentScope() const override                                { return ASTObject::getParentScope(); }
-        ArrayView<UsingDeclarationPtr> getUsingDeclarations() const override  { return genericSpecialisations; }
+        Scope* getParentScope() const override                                       { return ASTObject::getParentScope(); }
+        ArrayView<pool_ptr<UsingDeclaration>> getUsingDeclarations() const override  { return genericSpecialisations; }
 
         void performLocalNameSearch (NameSearch& search, const Statement*) const override
         {
@@ -1296,13 +1295,13 @@ struct AST
 
         struct Member
         {
-            ExpPtr type;
+            pool_ptr<Expression> type;
             Identifier name;
         };
 
         ArrayView<Member> getMembers() const     { return members; }
 
-        void addMember (ExpPtr type, Identifier memberName)
+        void addMember (Expression& type, Identifier memberName)
         {
             SOUL_ASSERT (structure == nullptr);
             members.push_back ({ type, memberName });
@@ -1317,7 +1316,7 @@ struct AST
             return true;
         }
 
-        StructDeclarationPtr getAsStruct() override   { return *this; }
+        pool_ptr<StructDeclaration> getAsStruct() override   { return *this; }
         Constness getConstness() const override       { return Constness::notConst; }
         Type resolveAsType() const override           { return Type::createStruct (getStruct()); }
 
@@ -1341,18 +1340,18 @@ struct AST
 
     struct UsingDeclaration  : public TypeDeclarationBase
     {
-        UsingDeclaration (const Context& c, Identifier usingName, ExpPtr target)
+        UsingDeclaration (const Context& c, Identifier usingName, pool_ptr<Expression> target)
             : TypeDeclarationBase (ObjectType::UsingDeclaration, c, usingName), targetType (target)
         {
             SOUL_ASSERT (targetType == nullptr || isPossiblyType (targetType));
         }
 
-        StructDeclarationPtr getAsStruct() override    { return targetType->getAsStruct(); }
+        pool_ptr<StructDeclaration> getAsStruct() override    { return targetType->getAsStruct(); }
         bool isResolved() const override               { return targetType != nullptr && targetType->isResolved(); }
         Type resolveAsType() const override            { return targetType->resolveAsType(); }
         Constness getConstness() const override        { return targetType == nullptr ? Constness::unknown : targetType->getConstness(); }
 
-        ExpPtr targetType;
+        pool_ptr<Expression> targetType;
     };
 
     //==============================================================================
@@ -1376,16 +1375,16 @@ struct AST
 
         bool isResolved() const override                    { return true; }
         bool isCompileTimeConstant() const override         { return true; }
-        ProcessorBasePtr getAsProcessor() const override    { return processor; }
+        pool_ptr<ProcessorBase> getAsProcessor() const override    { return processor; }
 
-        ProcessorBasePtr processor;
+        pool_ptr<ProcessorBase> processor;
     };
 
     //==============================================================================
     struct Block  : public Statement,
                     public Scope
     {
-        Block (const Context& c, FunctionPtr f)
+        Block (const Context& c, pool_ptr<Function> f)
             : Statement (ObjectType::Block, c), functionForWhichThisIsMain (f)
         {
         }
@@ -1413,7 +1412,7 @@ struct AST
             }
         }
 
-        FunctionPtr getParentFunction() const override
+        pool_ptr<Function> getParentFunction() const override
         {
             if (isFunctionMainBlock())
                 return functionForWhichThisIsMain;
@@ -1421,13 +1420,13 @@ struct AST
             return Scope::getParentFunction();
         }
 
-        Block* getAsBlock() override                    { return this; }
-        Scope* getParentScope() const override          { return ASTObject::getParentScope(); }
-        bool isFunctionMainBlock() const                { return functionForWhichThisIsMain != nullptr; }
-        void addStatement (StatementPtr s)              { SOUL_ASSERT (s != nullptr); statements.push_back (s); }
+        Block* getAsBlock() override              { return this; }
+        Scope* getParentScope() const override    { return ASTObject::getParentScope(); }
+        bool isFunctionMainBlock() const          { return functionForWhichThisIsMain != nullptr; }
+        void addStatement (Statement& s)          { statements.push_back (s); }
 
-        FunctionPtr functionForWhichThisIsMain;
-        std::vector<StatementPtr> statements;
+        pool_ptr<Function> functionForWhichThisIsMain;
+        std::vector<pool_ptr<Statement>> statements;
     };
 
     //==============================================================================
@@ -1441,8 +1440,8 @@ struct AST
     {
         LoopStatement (const Context& c, bool isDo)  : Statement (ObjectType::LoopStatement, c), isDoLoop (isDo) {}
 
-        StatementPtr iterator, body;
-        ExpPtr condition, numIterations;
+        pool_ptr<Statement> iterator, body;
+        pool_ptr<Expression> condition, numIterations;
         bool isDoLoop;
     };
 
@@ -1451,7 +1450,7 @@ struct AST
     {
         ReturnStatement (const Context& c)  : Statement (ObjectType::ReturnStatement, c) {}
 
-        ExpPtr returnValue;
+        pool_ptr<Expression> returnValue;
     };
 
     //==============================================================================
@@ -1471,8 +1470,8 @@ struct AST
     {
         IfStatement (const Context& c, bool isConst)  : Statement (ObjectType::IfStatement, c), isConstIf (isConst) {}
 
-        ExpPtr condition;
-        StatementPtr trueBranch, falseBranch;
+        pool_ptr<Expression> condition;
+        pool_ptr<Statement> trueBranch, falseBranch;
         const bool isConstIf;
     };
 
@@ -1497,7 +1496,7 @@ struct AST
 
         Type getResultType() const override         { return trueBranch->getResultType(); }
 
-        ExpPtr condition, trueBranch, falseBranch;
+        pool_ptr<Expression> condition, trueBranch, falseBranch;
     };
 
     //==============================================================================
@@ -1511,7 +1510,7 @@ struct AST
 
         bool isResolved() const override                    { return true; }
         Type getResultType() const override                 { return value.getType(); }
-        ConstantPtr getAsConstant() override                { return *this; }
+        pool_ptr<Constant> getAsConstant() override         { return *this; }
         bool isCompileTimeConstant() const override         { return true; }
 
         bool canSilentlyCastTo (const Type& targetType) const override
@@ -1539,23 +1538,23 @@ struct AST
 
     struct SubscriptWithBrackets  : public Expression
     {
-        SubscriptWithBrackets (const Context& c, ExpPtr objectOrType, ExpPtr optionalSize)
+        SubscriptWithBrackets (const Context& c, Expression& objectOrType, pool_ptr<Expression> optionalSize)
             : Expression (ObjectType::SubscriptWithBrackets, c, ExpressionKind::unknown), lhs (objectOrType), rhs (optionalSize) {}
 
         bool isResolved() const override         { return false; }
         Constness getConstness() const override  { return lhs->getConstness(); }
 
-        ExpPtr lhs, rhs;
+        pool_ptr<Expression> lhs, rhs;
     };
 
     struct SubscriptWithChevrons  : public Expression
     {
-        SubscriptWithChevrons (const Context& c, ExpPtr type, ExpPtr size)
+        SubscriptWithChevrons (const Context& c, Expression& type, Expression& size)
             : Expression (ObjectType::SubscriptWithChevrons, c, ExpressionKind::unknown), lhs (type), rhs (size) {}
 
         bool isResolved() const override            { return false; }
 
-        ExpPtr lhs, rhs;
+        pool_ptr<Expression> lhs, rhs;
     };
 
     struct TypeMetaFunction  : public Expression
@@ -1589,7 +1588,7 @@ struct AST
             isConst
         };
 
-        TypeMetaFunction (const Context& c, ExpPtr type, Op op)
+        TypeMetaFunction (const Context& c, Expression& type, Op op)
             : Expression (ObjectType::TypeMetaFunction, c,
                           operationReturnsAType (op) ? ExpressionKind::type : ExpressionKind::value),
                           source (type), operation (op)
@@ -1687,7 +1686,7 @@ struct AST
 
         Constness getConstness() const override  { return isMakingConst() ? Constness::definitelyConst : source->getConstness(); }
 
-        StructDeclarationPtr getAsStruct() override
+        pool_ptr<StructDeclaration> getAsStruct() override
         {
             if (operation == Op::makeConst || operation == Op::makeConstSilent
                  || operation == Op::makeReference || operation == Op::removeReference)
@@ -1800,7 +1799,7 @@ struct AST
             return operation == Op::size && source->isResolved() && getSourceType().isUnsizedArray();
         }
 
-        ExpPtr source;
+        pool_ptr<Expression> source;
         const Op operation;
     };
 
@@ -1811,14 +1810,14 @@ struct AST
 
         bool isResolved() const override            { return false; }
 
-        ExpPtr lhs;
+        pool_ptr<Expression> lhs;
         QualifiedIdentifier& rhs;
     };
 
     //==============================================================================
     struct VariableDeclaration  : public Statement
     {
-        VariableDeclaration (const Context& c, ExpPtr type, ExpPtr initialiser, bool isConst)
+        VariableDeclaration (const Context& c, pool_ptr<Expression> type, pool_ptr<Expression> initialiser, bool isConst)
             : Statement (ObjectType::VariableDeclaration, c), declaredType (type), initialValue (initialiser),
               isConstant (isConst)
         {
@@ -1827,7 +1826,7 @@ struct AST
             SOUL_ASSERT (initialValue == nullptr || isPossiblyValue (initialValue));
         }
 
-        static VariableDeclarationPtr getFrom (ExpPtr e)
+        static pool_ptr<VariableDeclaration> getFrom (pool_ptr<Expression> e)
         {
             if (auto vr = cast<VariableRef> (e))
                 return vr->variable;
@@ -1871,7 +1870,7 @@ struct AST
         }
 
         Identifier name;
-        ExpPtr declaredType, initialValue;
+        pool_ptr<Expression> declaredType, initialValue;
         Annotation annotation;
         bool isFunctionParameter = false;
         bool isConstant = false;
@@ -1890,18 +1889,16 @@ struct AST
     //==============================================================================
     struct VariableRef  : public Expression
     {
-        VariableRef (const Context& c, VariableDeclarationPtr v)
+        VariableRef (const Context& c, VariableDeclaration& v)
            : Expression (ObjectType::VariableRef, c, ExpressionKind::value), variable (v)
-        {
-            SOUL_ASSERT (variable != nullptr);
-        }
+        {}
 
         bool isResolved() const override             { return variable->isResolved(); }
         Type getResultType() const override          { return variable->getType(); }
         bool isAssignable() const override           { return variable->isAssignable(); }
         bool isCompileTimeConstant() const override  { return variable->isCompileTimeConstant(); }
 
-        ConstantPtr getAsConstant() override
+        pool_ptr<Constant> getAsConstant() override
         {
             if (isCompileTimeConstant() && variable->initialValue != nullptr)
                 return variable->initialValue->getAsConstant();
@@ -1909,13 +1906,13 @@ struct AST
             return Expression::getAsConstant();
         }
 
-        VariableDeclarationPtr variable;
+        pool_ptr<VariableDeclaration> variable;
     };
 
     //==============================================================================
     struct CallOrCastBase  : public Expression
     {
-        CallOrCastBase (ObjectType ot, const Context& c, CommaSeparatedListPtr args, bool isMethod)
+        CallOrCastBase (ObjectType ot, const Context& c, pool_ptr<CommaSeparatedList> args, bool isMethod)
             : Expression (ot, c, ExpressionKind::value), arguments (args), isMethodCall (isMethod)
         {}
 
@@ -1964,24 +1961,24 @@ struct AST
             return name + "(" + joinStrings (types, ", ") + ")";
         }
 
-        CommaSeparatedListPtr arguments;
+        pool_ptr<CommaSeparatedList> arguments;
         bool isMethodCall;
     };
 
     struct CallOrCast  : public CallOrCastBase
     {
-        CallOrCast (ExpPtr nameOrTargetType, CommaSeparatedListPtr args, bool isMethod)
-            : CallOrCastBase (ObjectType::CallOrCast, nameOrTargetType->context, args, isMethod), nameOrType (nameOrTargetType)
+        CallOrCast (Expression& nameOrTargetType, pool_ptr<CommaSeparatedList> args, bool isMethod)
+            : CallOrCastBase (ObjectType::CallOrCast, nameOrTargetType.context, args, isMethod), nameOrType (nameOrTargetType)
         {
             SOUL_ASSERT (nameOrType != nullptr);
         }
 
-        ExpPtr nameOrType;
+        pool_ptr<Expression> nameOrType;
     };
 
     struct FunctionCall  : public CallOrCastBase
     {
-        FunctionCall (const Context& c, Function& function, CommaSeparatedListPtr args, bool isMethod)
+        FunctionCall (const Context& c, Function& function, pool_ptr<CommaSeparatedList> args, bool isMethod)
             : CallOrCastBase (ObjectType::FunctionCall, c, args, isMethod), targetFunction (function)
         {}
 
@@ -1993,7 +1990,7 @@ struct AST
 
     struct TypeCast  : public Expression
     {
-        TypeCast (const Context& c, Type destType, ExpPtr optionalSource)
+        TypeCast (const Context& c, Type destType, pool_ptr<Expression> optionalSource)
             : Expression (ObjectType::TypeCast, c, ExpressionKind::value),
               targetType (std::move (destType)), source (optionalSource)
         {
@@ -2016,7 +2013,7 @@ struct AST
         }
 
         Type targetType;
-        ExpPtr source;
+        pool_ptr<Expression> source;
     };
 
     //==============================================================================
@@ -2027,7 +2024,7 @@ struct AST
         {
         }
 
-        CommaSeparatedList (const Context& c, std::vector<ExpPtr> itemsToUse)
+        CommaSeparatedList (const Context& c, std::vector<pool_ptr<Expression>> itemsToUse)
             : Expression (ObjectType::CommaSeparatedList, c, ExpressionKind::unknown), items (std::move (itemsToUse))
         {
             SOUL_ASSERT (! contains (items, nullptr));
@@ -2062,13 +2059,13 @@ struct AST
             return types;
         }
 
-        std::vector<ExpPtr> items;
+        std::vector<pool_ptr<Expression>> items;
     };
 
     //==============================================================================
     struct UnaryOperator  : public Expression
     {
-        UnaryOperator (const Context& c, ExpPtr s, UnaryOp::Op op)
+        UnaryOperator (const Context& c, Expression& s, UnaryOp::Op op)
            : Expression (ObjectType::UnaryOperator, c, ExpressionKind::value), source (s), operation (op) {}
 
         bool isResolved() const override                { return source->isResolved(); }
@@ -2086,14 +2083,14 @@ struct AST
             return source->getResultType();
         }
 
-        ExpPtr source;
+        pool_ptr<Expression> source;
         UnaryOp::Op operation;
     };
 
     //==============================================================================
     struct BinaryOperator  : public Expression
     {
-        BinaryOperator (const Context& c, ExpPtr a, ExpPtr b, BinaryOp::Op op)
+        BinaryOperator (const Context& c, Expression& a, Expression& b, BinaryOp::Op op)
            : Expression (ObjectType::BinaryOperator, c, ExpressionKind::value), lhs (a), rhs (b), operation (op)
         {
             SOUL_ASSERT (isPossiblyValue (lhs) && isPossiblyValue (rhs));
@@ -2112,7 +2109,7 @@ struct AST
             return const1 == const2 ? const1 : Constness::unknown;
         }
 
-        ExpPtr lhs, rhs;
+        pool_ptr<Expression> lhs, rhs;
         BinaryOp::Op operation;
 
     private:
@@ -2133,7 +2130,7 @@ struct AST
     //==============================================================================
     struct Assignment  : public Expression
     {
-        Assignment (const Context& c, ExpPtr dest, ExpPtr source)
+        Assignment (const Context& c, Expression& dest, Expression& source)
             : Expression (ObjectType::Assignment, c, ExpressionKind::value), target (dest), newValue (source)
         {
             SOUL_ASSERT (isPossiblyValue (target) && isPossiblyValue (newValue));
@@ -2142,13 +2139,13 @@ struct AST
         bool isResolved() const override            { return target->isResolved() && newValue->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        ExpPtr target, newValue;
+        pool_ptr<Expression> target, newValue;
     };
 
     //==============================================================================
     struct PreOrPostIncOrDec  : public Expression
     {
-        PreOrPostIncOrDec (const Context& c, ExpPtr input, bool inc, bool post)
+        PreOrPostIncOrDec (const Context& c, Expression& input, bool inc, bool post)
             : Expression (ObjectType::PreOrPostIncOrDec, c, ExpressionKind::value), target (input), isIncrement (inc), isPost (post)
         {
             SOUL_ASSERT (isPossiblyValue (input));
@@ -2157,14 +2154,14 @@ struct AST
         bool isResolved() const override            { return target->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        ExpPtr target;
+        pool_ptr<Expression> target;
         bool isIncrement, isPost;
     };
 
     //==============================================================================
     struct ArrayElementRef  : public Expression
     {
-        ArrayElementRef (const Context& c, ExpPtr o, ExpPtr start, ExpPtr end, bool slice)
+        ArrayElementRef (const Context& c, Expression& o, pool_ptr<Expression> start, pool_ptr<Expression> end, bool slice)
             : Expression (ObjectType::ArrayElementRef, c, ExpressionKind::value),
               object (o), startIndex (start), endIndex (end), isSlice (slice)
         {
@@ -2263,7 +2260,7 @@ struct AST
             return false;
         }
 
-        ExpPtr object, startIndex, endIndex;
+        pool_ptr<Expression> object, startIndex, endIndex;
         bool isSlice = false;
         bool suppressWrapWarning = false;
     };
@@ -2271,7 +2268,7 @@ struct AST
     //==============================================================================
     struct StructMemberRef  : public Expression
     {
-        StructMemberRef (const Context& c, ExpPtr o, StructurePtr s, size_t memberIndex)
+        StructMemberRef (const Context& c, Expression& o, StructurePtr s, size_t memberIndex)
             : Expression (ObjectType::StructMemberRef, c, ExpressionKind::value),
               object (o), structure (s), index (memberIndex)
         {
@@ -2287,7 +2284,7 @@ struct AST
             return structure->members[index].type;
         }
 
-        ExpPtr object;
+        pool_ptr<Expression> object;
         StructurePtr structure;
         size_t index;
     };
@@ -2304,14 +2301,14 @@ struct AST
     //==============================================================================
     struct WriteToEndpoint  : public Expression
     {
-        WriteToEndpoint (const Context& c, ExpPtr endpoint, ExpPtr v)
+        WriteToEndpoint (const Context& c, Expression& endpoint, Expression& v)
             : Expression (ObjectType::WriteToEndpoint, c, ExpressionKind::endpoint), target (endpoint), value (v) {}
 
         bool isOutputEndpoint() const override      { return true; }
         bool isResolved() const override            { return value->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        ExpPtr target, value;
+        pool_ptr<Expression> target, value;
     };
 
     //==============================================================================
@@ -2333,7 +2330,7 @@ struct AST
     //==============================================================================
     struct StaticAssertion  : public Expression
     {
-        StaticAssertion (const Context& c, ExpPtr failureCondition, std::string error)
+        StaticAssertion (const Context& c, Expression& failureCondition, std::string error)
             : Expression (ObjectType::StaticAssertion, c, ExpressionKind::unknown),
               condition (failureCondition), errorMessage (std::move (error))
         {
@@ -2352,7 +2349,7 @@ struct AST
                                                                  : Errors::staticAssertionFailureWithMessage (errorMessage), true);
         }
 
-        ExpPtr condition;
+        pool_ptr<Expression> condition;
         std::string errorMessage;
     };
 

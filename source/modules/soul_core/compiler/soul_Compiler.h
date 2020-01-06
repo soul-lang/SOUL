@@ -74,7 +74,7 @@ private:
 
     void recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase>, std::vector<pool_ptr<AST::ProcessorBase>>& usedProcessorInstances);
     void createImplicitProcessorInstanceIfNeeded (AST::Graph&, AST::QualifiedIdentifier& path);
-    void createImplicitProcessorInstances (AST::ModuleBasePtr);
+    void createImplicitProcessorInstances (AST::ModuleBase&);
     pool_ptr<AST::ProcessorBase> createSpecialisedInstance (AST::Graph&, AST::ProcessorInstance&, AST::ProcessorBase& target, bool mustCreateClone);
 
     pool_ptr<AST::ProcessorBase> addClone (const AST::ProcessorBase&, const std::string& nameRoot);

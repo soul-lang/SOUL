@@ -99,7 +99,7 @@ struct BlockBuilder
         heart::SubElementPtr result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
 
         while (i != indexes.end())
-            result = module.allocate<heart::SubElement> (result->location, result, *i++);
+            result = module.allocate<heart::SubElement> (result->location, *result, *i++);
 
         return *result;
     }
@@ -435,7 +435,7 @@ struct FunctionBuilder  : public BlockBuilder
                 }
                 else
                 {
-                    b->terminator = module.allocate<heart::Branch> (blocks[i + 1]);
+                    b->terminator = module.allocate<heart::Branch> (*blocks[i + 1]);
                 }
             }
         }

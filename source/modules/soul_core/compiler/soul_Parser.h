@@ -186,17 +186,16 @@ private:
             parseTopLevelDecl (parentNamespace);
     }
 
-    AST::ModuleBasePtr parseTopLevelDecl (AST::Namespace& parentNamespace)
+    void parseTopLevelDecl (AST::Namespace& parentNamespace)
     {
         parseImports (parentNamespace);
 
-        if (matchIf (Keyword::processor))      return parseProcessorDecl (parentNamespace);
-        if (matchIf (Keyword::graph))          return parseGraphDecl     (parentNamespace);
-        if (matchIf (Keyword::namespace_))     return parseNamespaceDecl (parentNamespace);
+        if (matchIf (Keyword::processor))      { parseProcessorDecl (parentNamespace); return; }
+        if (matchIf (Keyword::graph))          { parseGraphDecl     (parentNamespace); return; }
+        if (matchIf (Keyword::namespace_))     { parseNamespaceDecl (parentNamespace); return; }
         if (matches (Keyword::import))         throwError (Errors::importsMustBeAtStart());
 
         throwError (Errors::expectedTopLevelDecl());
-        return {};
     }
 
     AST::Processor&  parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
@@ -518,7 +517,7 @@ private:
         auto interpolationType = parseOptionalInterpolationType();
         auto context = getContext();
         ArrayWithPreallocation<AST::Connection::NameAndEndpoint, 8> sources, dests;
-        AST::ExpPtr delayLength;
+        pool_ptr<AST::Expression> delayLength;
 
         for (;;)
         {
@@ -562,7 +561,7 @@ private:
         return type;
     }
 
-    AST::ExpPtr parseDelayLength()
+    pool_ptr<AST::Expression> parseDelayLength()
     {
         if (matchIf (Operator::openBracket))
         {
@@ -1035,7 +1034,7 @@ private:
         return newBlock;
     }
 
-    AST::StatementPtr parseStatement()
+    AST::Statement& parseStatement()
     {
         if (matches (Operator::openBrace))     return parseBlock ({});
         if (matchIf (Keyword::if_))            return parseIf();
@@ -1078,15 +1077,16 @@ private:
             resetPosition (oldPos);
         }
 
-        if (matches (Token::identifier))
-            return parseExpressionAsStatement (true);
+        if (! matches (Token::identifier))
+        {
+            giveErrorOnExternalKeyword();
+            throwError (Errors::expectedStatement());
+        }
 
-        giveErrorOnExternalKeyword();
-        throwError (Errors::expectedStatement());
-        return {};
+        return parseExpressionAsStatement (true);
     }
 
-    AST::ExpPtr tryToParseExpressionIgnoringErrors()
+    pool_ptr<AST::Expression> tryToParseExpressionIgnoringErrors()
     {
         try
         {
@@ -1183,7 +1183,7 @@ private:
 
     AST::Expression& parseLogicalOr()
     {
-        for (AST::ExpPtr a = parseLogicalAnd();;)
+        for (pool_ptr<AST::Expression> a = parseLogicalAnd();;)
         {
             if (! matches (Operator::logicalOr))
                 return *a;
@@ -1199,7 +1199,7 @@ private:
 
     AST::Expression& parseLogicalAnd()
     {
-        for (AST::ExpPtr a = parseBitwiseOr();;)
+        for (pool_ptr<AST::Expression> a = parseBitwiseOr();;)
         {
             if (! matches (Operator::logicalAnd))
                 return *a;
@@ -1215,7 +1215,7 @@ private:
 
     AST::Expression& parseBitwiseOr()
     {
-        for (AST::ExpPtr a = parseBitwiseXor();;)
+        for (pool_ptr<AST::Expression> a = parseBitwiseXor();;)
         {
             if (! matches (Operator::bitwiseOr))
                 return *a;
@@ -1228,7 +1228,7 @@ private:
 
     AST::Expression& parseBitwiseXor()
     {
-        for (AST::ExpPtr a = parseBitwiseAnd();;)
+        for (pool_ptr<AST::Expression> a = parseBitwiseAnd();;)
         {
             if (! matches (Operator::bitwiseXor))
                 return *a;
@@ -1241,7 +1241,7 @@ private:
 
     AST::Expression& parseBitwiseAnd()
     {
-        for (AST::ExpPtr a = parseEqualityOperator();;)
+        for (pool_ptr<AST::Expression> a = parseEqualityOperator();;)
         {
             if (! matches (Operator::bitwiseAnd))
                 return *a;
@@ -1254,7 +1254,7 @@ private:
 
     AST::Expression& parseEqualityOperator()
     {
-        for (AST::ExpPtr a = parseComparisonOperator();;)
+        for (pool_ptr<AST::Expression> a = parseComparisonOperator();;)
         {
             if (! matchesAny (Operator::equals, Operator::notEquals))
                 return *a;
@@ -1267,7 +1267,7 @@ private:
 
     AST::Expression& parseComparisonOperator()
     {
-        for (AST::ExpPtr a = parseShiftOperator();;)
+        for (pool_ptr<AST::Expression> a = parseShiftOperator();;)
         {
             if (! (matchesAny (Operator::lessThan, Operator::lessThanOrEqual, Operator::greaterThanOrEqual)
                     || (matches (Operator::greaterThan) && ignoreGreaterThanToken == 0)))
@@ -1281,7 +1281,7 @@ private:
 
     AST::Expression& parseShiftOperator()
     {
-        for (AST::ExpPtr a = parseAdditionSubtraction();;)
+        for (pool_ptr<AST::Expression> a = parseAdditionSubtraction();;)
         {
             if (! matchesAny (Operator::leftShift, Operator::rightShift, Operator::rightShiftUnsigned))
                 return *a;
@@ -1294,7 +1294,7 @@ private:
 
     AST::Expression& parseAdditionSubtraction()
     {
-        for (AST::ExpPtr a = parseMultiplyDivide();;)
+        for (pool_ptr<AST::Expression> a = parseMultiplyDivide();;)
         {
             if (! matchesAny (Operator::plus, Operator::minus))
             {
@@ -1319,7 +1319,7 @@ private:
 
     AST::Expression& parseMultiplyDivide()
     {
-        for (AST::ExpPtr a = parseUnary();;)
+        for (pool_ptr<AST::Expression> a = parseUnary();;)
         {
             if (! matchesAny (Operator::times, Operator::divide, Operator::modulo))
                 return *a;
@@ -1518,7 +1518,10 @@ private:
         expect (Operator::openParen);
         s.condition = matchCloseParen (parseExpression());
         s.trueBranch = parseStatement();
-        s.falseBranch = matchIf (Keyword::else_) ? parseStatement() : nullptr;
+
+        if (matchIf (Keyword::else_))
+            s.falseBranch = parseStatement();
+
         return s;
     }
 
@@ -1538,7 +1541,9 @@ private:
         return r;
     }
 
-    AST::Expression& checkAndCreateArrayElementRef (const AST::Context& c, AST::Expression& lhs, AST::ExpPtr start, AST::ExpPtr end)
+    AST::Expression& checkAndCreateArrayElementRef (const AST::Context& c, AST::Expression& lhs,
+                                                    pool_ptr<AST::Expression> start,
+                                                    pool_ptr<AST::Expression> end)
     {
         if (! (AST::isPossiblyValue (lhs) || AST::isPossiblyEndpoint (lhs)))
             lhs.context.throwError (Errors::expectedValueOrEndpoint());
@@ -1567,7 +1572,7 @@ private:
     AST::Expression& parseSubscriptWithBrackets (AST::Expression& lhs)
     {
         auto context = getContext();
-        AST::ExpPtr e, end;
+        pool_ptr<AST::Expression> e, end;
 
         if (matchIf (Operator::colon))
         {
@@ -1624,7 +1629,7 @@ private:
             return elementType;
         }
 
-        auto& e = allocate<AST::SubscriptWithChevrons> (context, elementType, size);
+        auto& e = allocate<AST::SubscriptWithChevrons> (context, elementType, *size);
         return parseArrayTypeSuffixes (e, parseContext);
     }
 
@@ -1657,7 +1662,7 @@ private:
         return t;
     }
 
-    AST::ExpPtr tryParsingType (ParseTypeContext parseContext)
+    pool_ptr<AST::Expression> tryParsingType (ParseTypeContext parseContext)
     {
         auto context = getContext();
 
@@ -1731,9 +1736,9 @@ private:
         return *type;
     }
 
-    std::vector<AST::ExpPtr> parseEndpointTypeList (EndpointKind kind)
+    std::vector<pool_ptr<AST::Expression>> parseEndpointTypeList (EndpointKind kind)
     {
-        std::vector<AST::ExpPtr> result;
+        std::vector<pool_ptr<AST::Expression>> result;
         auto loc = location;
 
         if (matchIf (Operator::openParen))
@@ -1768,7 +1773,7 @@ private:
             if (AST::isResolvedAsType (declaredType) && declaredType.resolveAsType().isVoid())
                 declaredType.context.throwError (Errors::variableCannotBeVoid());
 
-            AST::ExpPtr initialValue;
+            pool_ptr<AST::Expression> initialValue;
             bool isConst = declaredType.getConstness() == AST::Constness::definitelyConst;
 
             if (matchIf (Operator::assign))
@@ -1856,7 +1861,7 @@ private:
             list->items.push_back (source);
         }
 
-        return allocate<AST::CallOrCast> (targetType, list, false);
+        return allocate<AST::CallOrCast> (targetType, *list, false);
     }
 
     static size_t getMaxNumElements (const Type& arrayOrVectorType)

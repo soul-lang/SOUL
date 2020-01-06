@@ -280,7 +280,7 @@ struct heart
         Connection (CodeLocation l) : Object (std::move (l)) {}
 
         InterpolationType interpolationType = InterpolationType::none;
-        ProcessorInstancePtr sourceProcessor, destProcessor;
+        pool_ptr<ProcessorInstance> sourceProcessor, destProcessor;
         std::string sourceEndpoint, destEndpoint;
         int64_t delayLength = 0;
     };
@@ -318,9 +318,9 @@ struct heart
 
         virtual const Type& getType() const = 0;
         virtual void visitExpressions (ExpressionVisitorFn, AccessType) = 0;
-        virtual bool readsVariable (VariablePtr) const = 0;
-        virtual bool writesVariable (VariablePtr) const = 0;
-        virtual VariablePtr getRootVariable() = 0;
+        virtual bool readsVariable (Variable&) const = 0;
+        virtual bool writesVariable (Variable&) const = 0;
+        virtual pool_ptr<Variable> getRootVariable() = 0;
         virtual Value getAsConstant() const = 0;
         virtual bool isMutable() const = 0;
         virtual bool isAssignable() const = 0;
@@ -348,25 +348,25 @@ struct heart
         Annotation annotation;
         ConstantTable::Handle externalHandle = {};
 
-        const Type& getType() const override        { return type; }
-        VariablePtr getRootVariable() override      { return *this; }
+        const Type& getType() const override           { return type; }
+        pool_ptr<Variable> getRootVariable() override  { return *this; }
 
-        bool isAssignable() const override          { return ! (isExternal() || type.isConst()); }
-        bool isState() const                        { return role == Role::state || isExternal(); }
-        bool isParameter() const                    { return role == Role::parameter; }
-        bool isMutable() const override             { return role != Role::constant; }
-        bool isMutableLocal() const                 { return role == Role::mutableLocal; }
-        bool isConstant() const                     { return role == Role::constant; }
-        bool isFunctionLocal() const                { return isMutableLocal() || isConstant(); }
-        bool isExternal() const                     { return role == Role::external; }
-        bool isExternalToFunction() const           { return isState() || (isParameter() && type.isReference()); }
+        bool isAssignable() const override             { return ! (isExternal() || type.isConst()); }
+        bool isState() const                           { return role == Role::state || isExternal(); }
+        bool isParameter() const                       { return role == Role::parameter; }
+        bool isMutable() const override                { return role != Role::constant; }
+        bool isMutableLocal() const                    { return role == Role::mutableLocal; }
+        bool isConstant() const                        { return role == Role::constant; }
+        bool isFunctionLocal() const                   { return isMutableLocal() || isConstant(); }
+        bool isExternal() const                        { return role == Role::external; }
+        bool isExternalToFunction() const              { return isState() || (isParameter() && type.isReference()); }
 
         void visitExpressions (ExpressionVisitorFn, AccessType) override    {}
 
-        void resetUseCount()                                         { numReads = numWrites = 0; }
-        bool readsVariable (VariablePtr v) const override            { return this == v; }
-        bool writesVariable (VariablePtr v) const override           { return this == v; }
-        Value getAsConstant() const override                         { return {}; }
+        void resetUseCount()                                { numReads = numWrites = 0; }
+        bool readsVariable (Variable& v) const override     { return this == std::addressof (v); }
+        bool writesVariable (Variable& v) const override    { return this == std::addressof (v); }
+        Value getAsConstant() const override                { return {}; }
 
         uint32_t numReads = 0, numWrites = 0;
     };
@@ -375,15 +375,15 @@ struct heart
     struct SubElement  : public Expression
     {
         SubElement() = delete;
-        SubElement (CodeLocation l, ExpressionPtr v) : Expression (std::move (l)), parent (v) {}
-        SubElement (CodeLocation l, ExpressionPtr v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) {}
-        SubElement (CodeLocation l, ExpressionPtr v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) {}
-        SubElement (CodeLocation l, ExpressionPtr v, ExpressionPtr elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) {}
+        SubElement (CodeLocation l, Expression& v) : Expression (std::move (l)), parent (v) {}
+        SubElement (CodeLocation l, Expression& v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) {}
+        SubElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) {}
+        SubElement (CodeLocation l, Expression& v, ExpressionPtr elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) {}
 
-        VariablePtr getRootVariable() override      { return parent->getRootVariable(); }
-        bool isMutable() const override             { return parent->isMutable(); }
-        bool isAssignable() const override          { return parent->isAssignable(); }
-        bool isDynamic() const                      { return dynamicIndex != nullptr; }
+        pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
+        bool isMutable() const override                 { return parent->isMutable(); }
+        bool isAssignable() const override              { return parent->isAssignable(); }
+        bool isDynamic() const                          { return dynamicIndex != nullptr; }
 
         const Type& getType() const override
         {
@@ -428,8 +428,8 @@ struct heart
             SOUL_ASSERT (parent != this);
         }
 
-        bool readsVariable (VariablePtr v) const override    { return parent->readsVariable (v) || (isDynamic() && dynamicIndex->readsVariable (v)); }
-        bool writesVariable (VariablePtr v) const override   { return parent->writesVariable (v); }
+        bool readsVariable (Variable& v) const override    { return parent->readsVariable (v) || (isDynamic() && dynamicIndex->readsVariable (v)); }
+        bool writesVariable (Variable& v) const override   { return parent->writesVariable (v); }
 
         bool isSingleElement() const        { return getSliceSize() == 1; }
         bool isSlice() const                { return getSliceSize() != 1; }
@@ -501,9 +501,9 @@ struct heart
         Value getAsConstant() const override               { return value; }
         bool isMutable() const override                    { return false; }
         bool isAssignable() const override                 { return false; }
-        VariablePtr getRootVariable() override             { return {}; }
-        bool readsVariable (VariablePtr) const override    { return false; }
-        bool writesVariable (VariablePtr) const override   { return false; }
+        pool_ptr<Variable> getRootVariable() override      { return {}; }
+        bool readsVariable (Variable&) const override      { return false; }
+        bool writesVariable (Variable&) const override     { return false; }
         void visitExpressions (ExpressionVisitorFn, AccessType) override {}
 
         Value value;
@@ -519,9 +519,9 @@ struct heart
         }
 
         const Type& getType() const override                 { return destType; }
-        VariablePtr getRootVariable() override               { SOUL_ASSERT_FALSE; return {}; }
-        bool readsVariable (VariablePtr v) const override    { return source->readsVariable (v); }
-        bool writesVariable (VariablePtr) const override     { return false; }
+        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        bool readsVariable (Variable& v) const override      { return source->readsVariable (v); }
+        bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
         bool isAssignable() const override                   { return false; }
 
@@ -548,16 +548,15 @@ struct heart
     //==============================================================================
     struct UnaryOperator  : public Expression
     {
-        UnaryOperator (CodeLocation l, ExpressionPtr src, UnaryOp::Op op)
+        UnaryOperator (CodeLocation l, Expression& src, UnaryOp::Op op)
             : Expression (std::move (l)), source (src), operation (op)
         {
-            SOUL_ASSERT (source != nullptr);
         }
 
         const Type& getType() const override                 { return source->getType(); }
-        VariablePtr getRootVariable() override               { SOUL_ASSERT_FALSE; return {}; }
-        bool readsVariable (VariablePtr v) const override    { return source->readsVariable (v); }
-        bool writesVariable (VariablePtr) const override     { return false; }
+        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        bool readsVariable (Variable& v) const override      { return source->readsVariable (v); }
+        bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
         bool isAssignable() const override                   { return false; }
 
@@ -585,16 +584,16 @@ struct heart
     //==============================================================================
     struct BinaryOperator  : public Expression
     {
-        BinaryOperator (CodeLocation l, ExpressionPtr a, ExpressionPtr b, BinaryOp::Op op, const Type& resultType)
+        BinaryOperator (CodeLocation l, Expression& a, Expression& b, BinaryOp::Op op, const Type& resultType)
             : Expression (std::move (l)), lhs (a), rhs (b), operation (op), destType (resultType)
         {
-            SOUL_ASSERT (lhs != nullptr && rhs != nullptr && destType.isValid());
+            SOUL_ASSERT (destType.isValid());
         }
 
         const Type& getType() const override                 { return destType; }
-        VariablePtr getRootVariable() override               { SOUL_ASSERT_FALSE; return {}; }
-        bool readsVariable (VariablePtr v) const override    { return lhs->readsVariable (v) || rhs->readsVariable (v); }
-        bool writesVariable (VariablePtr) const override     { return false; }
+        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        bool readsVariable (Variable& v) const override      { return lhs->readsVariable (v) || rhs->readsVariable (v); }
+        bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
         bool isAssignable() const override                   { return false; }
 
@@ -633,9 +632,9 @@ struct heart
     {
         FunctionCallExpression (CodeLocation l) : Expression (std::move (l)) {}
 
-        VariablePtr getRootVariable() override               { SOUL_ASSERT_FALSE; return {}; }
-        bool readsVariable (VariablePtr v) const override    { return contains (arguments, v); }
-        bool writesVariable (VariablePtr) const override     { return false; }
+        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        bool readsVariable (Variable& v) const override      { return contains (arguments, std::addressof (v)); }
+        bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
         bool isAssignable() const override                   { return false; }
 
@@ -684,11 +683,11 @@ struct heart
     {
         Type returnType;
         Identifier name;
-        std::vector<VariablePtr> parameters;
+        std::vector<pool_ptr<Variable>> parameters;
         std::vector<BlockPtr> blocks;
         Annotation annotation;
         IntrinsicType intrinsicType = IntrinsicType::none;
-        VariablePtr stateParameter = nullptr;
+        pool_ptr<Variable> stateParameter;
 
         struct FunctionType
         {
@@ -726,16 +725,16 @@ struct heart
         bool hasNoBody = false;
         bool functionUseTestFlag = false;
 
-        BlockPtr findBlockByName (const std::string& blockName) const
+        pool_ptr<Block> findBlockByName (const std::string& blockName) const
         {
             for (auto b : blocks)
                 if (b->name == blockName)
                     return b;
 
-            return nullptr;
+            return {};
         }
 
-        void addStateParameter (VariablePtr param)
+        void addStateParameter (Variable& param)
         {
             SOUL_ASSERT (! hasStateParameter());
 
@@ -843,9 +842,9 @@ struct heart
                         fn (*t);
         }
 
-        std::vector<VariablePtr> getAllLocalVariables() const
+        std::vector<pool_ptr<Variable>> getAllLocalVariables() const
         {
-            std::vector<VariablePtr> locals;
+            std::vector<pool_ptr<Variable>> locals;
 
             for (auto& b : blocks)
                 for (auto s : b->statements)
@@ -877,7 +876,7 @@ struct heart
 
         Identifier name;
         LinkedList<Statement> statements;
-        TerminatorPtr terminator;
+        pool_ptr<Terminator> terminator;
 
         std::vector<BlockPtr> predecessors;
         bool doNotOptimiseAway = false;
@@ -888,8 +887,8 @@ struct heart
     {
         Statement (CodeLocation l) : Object (std::move (l)) {}
 
-        virtual bool readsVariable (VariablePtr) const          { return false; }
-        virtual bool writesVariable (VariablePtr) const         { return false; }
+        virtual bool readsVariable (Variable&) const            { return false; }
+        virtual bool writesVariable (Variable&) const           { return false; }
         virtual void visitExpressions (ExpressionVisitorFn)     {}
         virtual bool mayHaveSideEffects() const                 { return false; }
 
@@ -902,29 +901,29 @@ struct heart
         virtual ArrayView<BlockPtr> getDestinationBlocks()      { return {}; }
         virtual bool isConditional() const                      { return false; }
         virtual bool isReturn() const                           { return false; }
-        virtual bool readsVariable (VariablePtr) const          { return false; }
+        virtual bool readsVariable (Variable&) const            { return false; }
         virtual void visitExpressions (ExpressionVisitorFn)     {}
     };
 
     struct Branch  : public Terminator
     {
-        Branch (BlockPtr b)  : target (b) {}
+        Branch (Block& b)  : target (b) {}
         ArrayView<BlockPtr> getDestinationBlocks() override  { return { &target, &target + 1 }; }
 
-        BlockPtr target;
+        pool_ptr<Block> target;
     };
 
     struct BranchIf  : public Terminator
     {
-        BranchIf (ExpressionPtr cond, BlockPtr trueJump, BlockPtr falseJump)
+        BranchIf (Expression& cond, Block& trueJump, Block& falseJump)
             : condition (cond)
         {
-            SOUL_ASSERT (trueJump != falseJump && trueJump != nullptr && falseJump != nullptr);
+            SOUL_ASSERT (std::addressof (trueJump) != std::addressof (falseJump));
             targets[0] = trueJump;
             targets[1] = falseJump;
         }
 
-        ArrayView<BlockPtr> getDestinationBlocks() override           { return { targets, targets + (isConditional() ? 2 : 1) }; }
+        ArrayView<pool_ptr<Block>> getDestinationBlocks() override    { return { targets, targets + (isConditional() ? 2 : 1) }; }
         bool isConditional() const override                           { return targets[0] != targets[1]; }
 
         void visitExpressions (ExpressionVisitorFn fn) override
@@ -933,8 +932,8 @@ struct heart
             fn (condition, AccessType::read);
         }
 
-        ExpressionPtr condition;
-        BlockPtr targets[2];   // index 0 = true, 1 = false
+        pool_ptr<Expression> condition;
+        pool_ptr<Block> targets[2];   // index 0 = true, 1 = false
     };
 
     struct ReturnVoid  : public Terminator
@@ -954,7 +953,7 @@ struct heart
             fn (returnValue, AccessType::read);
         }
 
-        ExpressionPtr returnValue;
+        pool_ptr<Expression> returnValue;
     };
 
     //==============================================================================
@@ -962,8 +961,8 @@ struct heart
     {
         Assignment (CodeLocation l, ExpressionPtr dest)  : Statement (std::move (l)), target (dest)     {}
 
-        bool readsVariable (VariablePtr v) const override   { return target != nullptr && target->readsVariable (v); }
-        bool writesVariable (VariablePtr v) const override  { return target != nullptr && target->writesVariable (v); }
+        bool readsVariable (Variable& v) const override   { return target != nullptr && target->readsVariable (v); }
+        bool writesVariable (Variable& v) const override  { return target != nullptr && target->writesVariable (v); }
 
         void visitExpressions (ExpressionVisitorFn fn) override
         {
@@ -984,10 +983,10 @@ struct heart
 
     struct AssignFromValue  : public Assignment
     {
-        AssignFromValue (CodeLocation l, ExpressionPtr dest, Expression& src)
+        AssignFromValue (CodeLocation l, Expression& dest, Expression& src)
             : Assignment (std::move (l), dest), source (src) {}
 
-        bool readsVariable (VariablePtr v) const override
+        bool readsVariable (Variable& v) const override
         {
             return source->readsVariable (v) || Assignment::readsVariable (v);
         }
@@ -1004,13 +1003,13 @@ struct heart
 
     struct FunctionCall  : public Assignment
     {
-        FunctionCall (CodeLocation l, ExpressionPtr dest, FunctionPtr f) : Assignment (std::move (l), dest), function (f)
+        FunctionCall (CodeLocation l, ExpressionPtr dest, pool_ptr<Function> f) : Assignment (std::move (l), dest), function (f)
         {
         }
 
-        bool readsVariable (VariablePtr v) const override
+        bool readsVariable (Variable& v) const override
         {
-            return contains (arguments, v) || Assignment::readsVariable (v);
+            return contains (arguments, std::addressof (v)) || Assignment::readsVariable (v);
         }
 
         void visitExpressions (ExpressionVisitorFn fn) override
@@ -1038,7 +1037,7 @@ struct heart
             return *function;
         }
 
-        FunctionPtr function; // may be temporarily null while building the program
+        pool_ptr<Function> function; // may be temporarily null while building the program
         using ArgListType = ArrayWithPreallocation<ExpressionPtr, 4>;
         ArgListType arguments;
     };
@@ -1100,9 +1099,9 @@ struct heart
 
         const Type& getType() const override                              { return type; }
         void visitExpressions (ExpressionVisitorFn, AccessType) override  {}
-        bool readsVariable (VariablePtr) const override                   { return false; }
-        bool writesVariable (VariablePtr) const override                  { return false; }
-        VariablePtr getRootVariable() override                            { return {}; }
+        bool readsVariable (Variable&) const override                     { return false; }
+        bool writesVariable (Variable&) const override                    { return false; }
+        pool_ptr<Variable> getRootVariable() override                     { return {}; }
         Value getAsConstant() const override                              { return {}; }
         bool isMutable() const override                                   { return false; }
         bool isAssignable() const override                                { return false; }
@@ -1154,7 +1153,7 @@ struct heart
     //==============================================================================
     struct VariableListByType
     {
-        VariableListByType (ArrayView<VariablePtr> variables)
+        VariableListByType (ArrayView<pool_ptr<Variable>> variables)
         {
             for (auto& v : variables)
                 getType (v->type).variables.push_back (v);
@@ -1163,7 +1162,7 @@ struct heart
         struct VariablesWithType
         {
             Type type;
-            std::vector<VariablePtr> variables;
+            std::vector<pool_ptr<Variable>> variables;
         };
 
         std::vector<VariablesWithType> types;

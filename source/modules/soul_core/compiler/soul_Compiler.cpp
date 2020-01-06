@@ -95,9 +95,8 @@ Program Compiler::build (CompileMessageList& messageList, CodeLocation code, con
     return {};
 }
 
-std::vector<AST::ModuleBasePtr> Compiler::parseTopLevelDeclarations (AST::Allocator& allocator,
-                                                                     CodeLocation code,
-                                                                     AST::Namespace& parentNamespace)
+std::vector<pool_ptr<AST::ModuleBase>> Compiler::parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
+                                                                            AST::Namespace& parentNamespace)
 {
     return StructuralParser::parseTopLevelDeclarations (allocator, code, parentNamespace);
 }
@@ -185,7 +184,7 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
         ASTUtilities::removeModulesWithSpecialisationParams (*topLevelNamespace);
         ResolutionPass::run (allocator, *topLevelNamespace, true);
         ResolutionPass::run (allocator, *topLevelNamespace, false);
-        createImplicitProcessorInstances (topLevelNamespace);
+        createImplicitProcessorInstances (*topLevelNamespace);
         ASTUtilities::connectAnyChildEndpointsNeedingToBeExposed (allocator, processorToRun);
 
         Program program;
@@ -215,7 +214,7 @@ void Compiler::optimise (Program& program)
 
 void Compiler::resolveProcessorInstances (pool_ptr<AST::ProcessorBase> processor)
 {
-    createImplicitProcessorInstances (topLevelNamespace);
+    createImplicitProcessorInstances (*topLevelNamespace);
 
     std::vector<pool_ptr<AST::ProcessorBase>> usedProcessorInstances;
     recursivelyResolveProcessorInstances (processor, usedProcessorInstances);
@@ -289,9 +288,9 @@ void Compiler::createImplicitProcessorInstanceIfNeeded (AST::Graph& graph, AST::
     i.wasCreatedImplicitly = true;
 }
 
-void Compiler::createImplicitProcessorInstances (AST::ModuleBasePtr module)
+void Compiler::createImplicitProcessorInstances (AST::ModuleBase& module)
 {
-    for (auto& m : module->getSubModules())
+    for (auto& m : module.getSubModules())
         createImplicitProcessorInstances (*m);
 
     if (auto graph = cast<AST::Graph> (module))

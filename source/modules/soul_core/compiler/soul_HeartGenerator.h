@@ -94,21 +94,26 @@ private:
                              trueBranch, falseBranch, subsequentBranch);
     }
 
-    void visitWithDestination (heart::VariablePtr destVar, AST::StatementPtr s)
+    void visitWithDestination (heart::VariablePtr destVar, AST::Statement& s)
     {
         auto oldTarget = currentTargetVariable;
         auto oldDepth = expressionDepth;
         currentTargetVariable = destVar;
         expressionDepth = 0;
-        visitObject (*s);
+        visitObject (s);
         currentTargetVariable = oldTarget;
         expressionDepth = oldDepth;
     }
 
-    void visitAsStatement (AST::StatementPtr s)
+    void visitAsStatement (AST::Statement& s)
+    {
+        visitWithDestination (nullptr, s);
+    }
+
+    void visitAsStatement (pool_ptr<AST::Statement> s)
     {
         if (s != nullptr)
-            visitWithDestination (nullptr, s);
+            visitAsStatement (*s);
     }
 
     //==============================================================================
@@ -205,7 +210,7 @@ private:
         c.delayLength       = getDelayLength (conn.delayLength);
     }
 
-    static int64_t getDelayLength (AST::ExpPtr delay)
+    static int64_t getDelayLength (pool_ptr<AST::Expression> delay)
     {
         if (delay != nullptr)
         {
@@ -218,7 +223,7 @@ private:
         return 0;
     }
 
-    static uint32_t getProcessorArraySize (AST::ExpPtr size)
+    static uint32_t getProcessorArraySize (pool_ptr<AST::Expression> size)
     {
         if (size != nullptr)
         {
@@ -433,7 +438,7 @@ private:
             if (v->generatedVariable != nullptr)
             {
                 if (v->initialValue != nullptr)
-                    visitWithDestination (v->generatedVariable, v->initialValue);
+                    visitWithDestination (v->generatedVariable, *v->initialValue);
                 else if (! v->isExternal)
                     builder.addZeroAssignment (*v->generatedVariable);
             }
@@ -449,7 +454,7 @@ private:
         {
             builder.ensureBlockIsReady();
             expressionDepth = 0;
-            visitAsStatement (s);
+            visitAsStatement (*s);
         }
     }
 
@@ -663,13 +668,13 @@ private:
 
         addBranchIf (*i.condition, trueBlock, falseBlock, trueBlock);
 
-        visitAsStatement (i.trueBranch);
+        visitAsStatement (*i.trueBranch);
 
         if (i.falseBranch != nullptr)
         {
             auto& endBlock = builder.createBlock ("@ifend_", labelIndex);
             builder.addBranch (endBlock, falseBlock);
-            visitAsStatement (i.falseBranch);
+            visitAsStatement (*i.falseBranch);
             builder.beginBlock (endBlock);
         }
         else
@@ -795,9 +800,9 @@ private:
         builder.addZeroAssignment (tempVar);
 
         addBranchIf (*t.condition, trueBlock, falseBlock, trueBlock);
-        visitWithDestination (tempVar, t.trueBranch);
+        visitWithDestination (tempVar, *t.trueBranch);
         builder.addBranch (endBlock, falseBlock);
-        visitWithDestination (tempVar, t.falseBranch);
+        visitWithDestination (tempVar, *t.falseBranch);
         builder.beginBlock (endBlock);
         builder.addAssignment (targetVar, tempVar);
     }
@@ -833,7 +838,7 @@ private:
             auto& target = createVariableDeclaration (v, heart::Variable::Role::mutableLocal);
 
             if (v.initialValue != nullptr)
-                visitWithDestination (target, v.initialValue);
+                visitWithDestination (target, *v.initialValue);
             else
                 builder.addZeroAssignment (target);
         }
@@ -895,7 +900,7 @@ private:
         createAssignmentToCurrentTarget (c);
     }
 
-    void initialiseArrayOrStructElements (heart::Expression& target, ArrayView<AST::ExpPtr> list,
+    void initialiseArrayOrStructElements (heart::Expression& target, ArrayView<pool_ptr<AST::Expression>> list,
                                           const AST::Context& errorLocation)
     {
         const auto& targetType = target.getType();
@@ -1016,7 +1021,7 @@ private:
         builder.addAdvance (a.context.location);
     }
 
-    void createSeriesOfWrites (AST::Expression& target, ArrayView<AST::ExpPtr> values)
+    void createSeriesOfWrites (AST::Expression& target, ArrayView<pool_ptr<AST::Expression>> values)
     {
         // Two choices - the target can be an output declaration, or an element of an output declaration
         if (auto output = cast<AST::OutputEndpointRef> (target))
@@ -1105,7 +1110,7 @@ private:
         target.context.throwError (Errors::targetMustBeOutput());
     }
 
-    static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws, ArrayWithPreallocation<AST::ExpPtr, 4>& values)
+    static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws, ArrayWithPreallocation<pool_ptr<AST::Expression>, 4>& values)
     {
         values.insert (values.begin(), ws.value);
 
@@ -1117,7 +1122,7 @@ private:
 
     void visit (AST::WriteToEndpoint& ws) override
     {
-        ArrayWithPreallocation<AST::ExpPtr, 4> values;
+        ArrayWithPreallocation<pool_ptr<AST::Expression>, 4> values;
         auto& topLevelWrite = getTopLevelWriteToEndpoint (ws, values);
         createSeriesOfWrites (*topLevelWrite.target, values);
     }

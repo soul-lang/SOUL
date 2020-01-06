@@ -501,7 +501,7 @@ private:
                                                                    module.allocator.get (inlinedFnName + "_retval"),
                                                                    heart::Variable::Role::mutableLocal);
 
-                postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.location, call.target, *returnValueVar));
+                postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.location, *call.target, *returnValueVar));
             }
 
             {
@@ -532,7 +532,7 @@ private:
             parentFunction.blocks.insert (parentFunction.blocks.begin() + (ssize_t) (blockIndex + 1),
                                           newBlocks.begin(), newBlocks.end());
 
-            preBlock.terminator = module.allocate<heart::Branch> (newBlocks.front());
+            preBlock.terminator = module.allocate<heart::Branch> (*newBlocks.front());
 
             for (size_t i = 0; i < newBlocks.size(); ++i)
                 cloneBlock (*newBlocks[i], *targetFunction.blocks[i]);
