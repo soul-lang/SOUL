@@ -36,16 +36,30 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                                     private juce::Thread,
                                     private juce::AsyncUpdater
 {
-    /** Creates a SOULPatchAudioProcessor from a PatchInstance. */
+    /** Creates a SOULPatchAudioProcessor from a PatchInstance.
+
+        @param patchToLoad          the instance to load - this must not be null
+        @param compilerCache        if non-null, this is a user-provided class that can store and reload
+                                    cached binaries to avoid re-compiling the same code multiple times
+        @param sourcePreprocessor   if non-null, this class is given a chance to pre-parse any source code
+                                    before it gets passed to the soul compiler
+        @param externalDataProvider if non-null, this allows the user to provide their own custom loader
+                                    for external variable data
+        @param millisecondsBetweenFileChangeChecks determines how often the class will re-scan the source
+                                    files to see whether they've changed and might need to be re-compiled.
+                                    Set this to 0 or less to disable checking.
+    */
     SOULPatchAudioProcessor (soul::patch::PatchInstance::Ptr patchToLoad,
                              soul::patch::CompilerCache::Ptr compilerCache = {},
                              soul::patch::SourceFilePreprocessor::Ptr sourcePreprocessor = {},
-                             soul::patch::ExternalDataProvider::Ptr externalDataProvider = {})
+                             soul::patch::ExternalDataProvider::Ptr externalDataProvider = {},
+                             int millisecondsBetweenFileChangeChecks = 1000)
        : juce::Thread ("SOUL Compiler"),
          patch (std::move (patchToLoad)),
          cache (std::move (compilerCache)),
          preprocessor (std::move (sourcePreprocessor)),
-         externalData (externalDataProvider)
+         externalData (externalDataProvider),
+         millisecsBetweenFileChecks (millisecondsBetweenFileChangeChecks <= 0 ? -1 : millisecondsBetweenFileChangeChecks)
     {
         jassert (patch != nullptr);
         startThread (3);
@@ -459,6 +473,7 @@ private:
     std::vector<soul::patch::MIDIMessage> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
+    const int millisecsBetweenFileChecks;
 
     juce::MidiKeyboardState midiKeyboardState;
     bool showMIDIKeyboard = false;
@@ -531,7 +546,7 @@ private:
                 }
             }
 
-            wait (1000);
+            wait (millisecsBetweenFileChecks);
         }
     }
 
