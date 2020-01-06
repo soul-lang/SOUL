@@ -298,7 +298,7 @@ private:
                     out << ';' << newLine;
                 }
 
-                printStatementDescription (b->terminator);
+                printStatementDescription (*b->terminator);
                 out << ';' << newLine;
             }
 
@@ -534,7 +534,7 @@ private:
         std::string getFunctionName (const heart::Function& f)   { return program.getFunctionNameWithQualificationIfNeeded (module, f); }
         static std::string getBlockName (heart::Block& b)        { return b.name; }
 
-        void printStatementDescription (heart::ObjectPtr s)
+        void printStatementDescription (const heart::Object& s)
         {
             #define SOUL_GET_STATEMENT_DESC(Type)     if (auto t = cast<const heart::Type> (s)) return printDescription (*t);
             SOUL_HEART_STATEMENTS (SOUL_GET_STATEMENT_DESC)

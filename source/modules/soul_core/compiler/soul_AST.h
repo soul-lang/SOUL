@@ -111,10 +111,11 @@ struct AST
     struct Expression;
     struct Statement;
 
-    using ASTObjectPtr  = pool_ptr<ASTObject>;
-    using ExpPtr        = pool_ptr<Expression>;
-    using StatementPtr  = pool_ptr<Statement>;
-    using ModuleBasePtr = pool_ptr<ModuleBase>;
+    using ASTObjectPtr     = pool_ptr<ASTObject>;
+    using ExpPtr           = pool_ptr<Expression>;
+    using StatementPtr     = pool_ptr<Statement>;
+    using ModuleBasePtr    = pool_ptr<ModuleBase>;
+    using ProcessorBasePtr = pool_ptr<ProcessorBase>;
 
     using TypeArray = ArrayWithPreallocation<Type, 8>;
 
@@ -318,6 +319,7 @@ struct AST
 
         virtual Scope* getParentScope() const = 0;
         virtual ModuleBase* getAsModule()               { return nullptr; }
+        virtual ProcessorBase* getAsProcessor()         { return nullptr; }
         virtual Namespace* getAsNamespace()             { return nullptr; }
         virtual Function* getAsFunction()               { return nullptr; }
         virtual Block* getAsBlock()                     { return nullptr; }
@@ -335,6 +337,15 @@ struct AST
             for (auto p = this; p != nullptr; p = p->getParentScope())
                 if (auto m = p->getAsModule())
                     return *m;
+
+            return {};
+        }
+
+        ProcessorBasePtr findProcessor()
+        {
+            for (auto s = this; s != nullptr; s = s->getParentScope())
+                if (auto p = s->getAsProcessor())
+                    return *p;
 
             return {};
         }
@@ -448,7 +459,7 @@ struct AST
             return found;
         }
 
-        ModuleBasePtr findSingleMatchingSubModule (const QualifiedIdentifier& name) const
+        ModuleBase& findSingleMatchingSubModule (const QualifiedIdentifier& name) const
         {
             auto modulesFound = getMatchingSubModules (name.path);
 
@@ -458,29 +469,29 @@ struct AST
             if (modulesFound.size() > 1)
                 name.context.throwError (Errors::ambiguousSymbol (name.path));
 
-            return modulesFound.front();
+            return *modulesFound.front();
         }
 
-        pool_ptr<ProcessorBase> findSingleMatchingProcessor (const QualifiedIdentifier& name) const
+        ProcessorBase& findSingleMatchingProcessor (const QualifiedIdentifier& name) const
         {
             auto p = cast<ProcessorBase> (findSingleMatchingSubModule (name));
 
             if (p == nullptr)
                 name.context.throwError (Errors::notAProcessorOrGraph (name.path));
 
-            return p;
+            return *p;
         }
 
-        pool_ptr<ProcessorBase> findSingleMatchingProcessor (const ProcessorInstance& i) const
+        ProcessorBase& findSingleMatchingProcessor (const ProcessorInstance& i) const
         {
-            if (auto p = cast<ProcessorRef> (i.targetProcessor))
-                return p->processor;
+            SOUL_ASSERT (i.targetProcessor != nullptr);
+            auto p = i.targetProcessor->getAsProcessor();
 
-            if (auto name = cast<QualifiedIdentifier> (i.targetProcessor))
-                return findSingleMatchingProcessor (*name);
+            if (p == nullptr)
+                if (auto name = cast<QualifiedIdentifier> (i.targetProcessor))
+                    return findSingleMatchingProcessor (*name);
 
-            SOUL_ASSERT_FALSE;
-            return {};
+            return *p;
         }
 
         std::string makeUniqueName (const std::string& root) const
@@ -613,6 +624,8 @@ struct AST
             SOUL_ASSERT (processorNamespace != nullptr);
             return *processorNamespace;
         }
+
+        ProcessorBase* getAsProcessor() override        { return this; }
 
         ArrayView<EndpointDeclarationPtr>   getEndpoints() const override                   { return endpoints; }
         ArrayView<ASTObjectPtr>             getSpecialisationParameters() const override    { return specialisationParams; }
@@ -917,6 +930,7 @@ struct AST
 
         virtual Type getResultType() const               { SOUL_ASSERT_FALSE; return {}; }
         virtual Type resolveAsType() const               { SOUL_ASSERT_FALSE; return {}; }
+        virtual ProcessorBasePtr getAsProcessor() const  { return {}; }
         virtual bool isOutputEndpoint() const            { return false; }
         virtual Constness getConstness() const           { return Constness::unknown; }
         virtual const Type* getConcreteType() const      { return {}; }
@@ -1081,6 +1095,7 @@ struct AST
         std::unique_ptr<EndpointDetails> details;
         std::unique_ptr<ChildEndpointPath> childPath;
         Annotation annotation;
+        bool needsToBeExposedInParent = false;
 
         heart::InputDeclarationPtr generatedInput;
         heart::OutputDeclarationPtr generatedOutput;
@@ -1359,10 +1374,11 @@ struct AST
         {
         }
 
-        bool isResolved() const override             { return true; }
-        bool isCompileTimeConstant() const override  { return true; }
+        bool isResolved() const override                    { return true; }
+        bool isCompileTimeConstant() const override         { return true; }
+        ProcessorBasePtr getAsProcessor() const override    { return processor; }
 
-        pool_ptr<ProcessorBase> processor;
+        ProcessorBasePtr processor;
     };
 
     //==============================================================================
