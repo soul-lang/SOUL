@@ -116,7 +116,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         if (m.moduleId == 0)
         {
             m.moduleId = nextModuleId;
-            nextModuleId += arraySize;
+            nextModuleId += static_cast<int> (arraySize);
         }
 
         return m.moduleId;

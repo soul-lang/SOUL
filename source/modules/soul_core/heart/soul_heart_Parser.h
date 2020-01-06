@@ -915,7 +915,7 @@ private:
 
     bool parseWriteStream (FunctionParseState& state, FunctionBuilder& builder)
     {
-        auto startLocation = location;
+        auto writeStreamLocation = location;
         auto name = parseIdentifier();
         auto target = module->findOutput (name);
 
@@ -957,7 +957,7 @@ private:
         if (! (state.function.functionType.isRun() || target->isEventEndpoint()))
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
-        builder.addWriteStream (startLocation, *target, index, value);
+        builder.addWriteStream (writeStreamLocation, *target, index, value);
         expectSemicolon();
         return true;
     }
