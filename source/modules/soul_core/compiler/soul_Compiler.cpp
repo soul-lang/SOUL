@@ -117,7 +117,7 @@ void Compiler::compile (CodeLocation code)
 }
 
 //==============================================================================
-pool_ptr<AST::ProcessorBase> Compiler::findMainProcessor (const LinkOptions& linkOptions)
+AST::ProcessorBase& Compiler::findMainProcessor (const LinkOptions& linkOptions)
 {
     auto nameOfProcessorToRun = linkOptions.getMainProcessor();
 
@@ -128,7 +128,7 @@ pool_ptr<AST::ProcessorBase> Compiler::findMainProcessor (const LinkOptions& lin
         if (path.isValid())
             for (auto& m : topLevelNamespace->getMatchingSubModules (path))
                 if (auto pb = cast<AST::ProcessorBase> (m))
-                    return pb;
+                    return *pb;
 
         CodeLocation().throwError (Errors::cannotFindMainProcessorWithName (nameOfProcessorToRun));
     }
@@ -147,14 +147,14 @@ pool_ptr<AST::ProcessorBase> Compiler::findMainProcessor (const LinkOptions& lin
     }
 
     if (mainProcessors.size() == 1)
-        return mainProcessors.front();
+        return *mainProcessors.front();
 
     auto main = ASTUtilities::scanForProcessorToUseAsMain (*topLevelNamespace);
 
     if (main == nullptr)
         topLevelNamespace->context.throwError (Errors::cannotFindMainProcessor());
 
-    return main;
+    return *main;
 }
 
 Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions)
@@ -165,16 +165,14 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
     try
     {
         CompileMessageHandler handler (messageList);
-        auto main = findMainProcessor (linkOptions);
-        return link (messageList, linkOptions, main);
+        return link (messageList, linkOptions, findMainProcessor (linkOptions));
     }
     catch (AbortCompilationException) {}
 
     return {};
 }
 
-Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions,
-                        pool_ptr<AST::ProcessorBase> processorToRun)
+Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions, AST::ProcessorBase& processorToRun)
 {
     try
     {
@@ -188,6 +186,7 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
         ResolutionPass::run (allocator, *topLevelNamespace, true);
         ResolutionPass::run (allocator, *topLevelNamespace, false);
         createImplicitProcessorInstances (topLevelNamespace);
+        ASTUtilities::connectAnyChildEndpointsNeedingToBeExposed (allocator, processorToRun);
 
         Program program;
         program.getStringDictionary() = allocator.stringDictionary;  // Bring the existing string dictionary along so that the handles match
@@ -247,10 +246,10 @@ void Compiler::recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase
                 if (! graph->getMatchingSubModules (i->instanceName->path).empty())
                     i->context.throwError (Errors::alreadyProcessorWithName (i->instanceName->path));
 
-            auto target = graph->findSingleMatchingProcessor (*i);
+            auto& target = graph->findSingleMatchingProcessor (*i);
             resolvedTargets.push_back (target);
-            bool alreadyUsed = contains (usedProcessorInstances, target);
-            auto resolvedProcessor = createSpecialisedInstance (*graph, *i, *target, alreadyUsed);
+            bool alreadyUsed = contains (usedProcessorInstances, std::addressof (target));
+            auto resolvedProcessor = createSpecialisedInstance (*graph, *i, target, alreadyUsed);
             recursivelyResolveProcessorInstances (resolvedProcessor, usedProcessorInstances);
         }
 
@@ -282,14 +281,12 @@ void Compiler::createImplicitProcessorInstanceIfNeeded (AST::Graph& graph, AST::
         if (path == *i->instanceName)
             return;
 
-    if (auto target = graph.findSingleMatchingProcessor (path))
-    {
-        auto& i = allocator.allocate<AST::ProcessorInstance> (path.context);
-        graph.processorInstances.push_back (i);
-        i.instanceName  = allocator.allocate<AST::QualifiedIdentifier> (path.context, path.path);
-        i.targetProcessor = allocator.allocate<AST::ProcessorRef> (path.context, *target);
-        i.wasCreatedImplicitly = true;
-    }
+    auto& target = graph.findSingleMatchingProcessor (path);
+    auto& i = allocator.allocate<AST::ProcessorInstance> (path.context);
+    graph.processorInstances.push_back (i);
+    i.instanceName  = allocator.allocate<AST::QualifiedIdentifier> (path.context, path.path);
+    i.targetProcessor = allocator.allocate<AST::ProcessorRef> (path.context, target);
+    i.wasCreatedImplicitly = true;
 }
 
 void Compiler::createImplicitProcessorInstances (AST::ModuleBasePtr module)
@@ -439,7 +436,7 @@ static pool_ptr<Module> createHEARTModule (Program& p, pool_ptr<AST::ModuleBase>
 }
 
 void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program& program,
-                                  pool_ptr<AST::ProcessorBase> processorToRun)
+                                  AST::ProcessorBase& processorToRun)
 {
     std::vector<pool_ptr<AST::ModuleBase>> modulesToCompile;
     ASTUtilities::findAllModulesToCompile (parentNamespace, modulesToCompile);
@@ -448,7 +445,7 @@ void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program
 
     for (auto& m : modulesToCompile)
     {
-        auto newModule = createHEARTModule (program, *m, processorToRun == m);
+        auto newModule = createHEARTModule (program, *m, m == processorToRun);
         HEARTGenerator::run (*m, *newModule, unresolvedCalls);
     }
 

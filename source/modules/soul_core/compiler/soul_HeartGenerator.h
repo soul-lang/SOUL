@@ -258,12 +258,11 @@ private:
         {
             if (processorName == *i->instanceName)
             {
-                auto targetProcessor = sourceGraph->findSingleMatchingProcessor (*i);
-                SOUL_ASSERT (targetProcessor != nullptr);
+                auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (*i);
 
                 auto& p = module.allocate<heart::ProcessorInstance>();
                 p.instanceName = processorName.path.toString();
-                p.sourceName = targetProcessor->getFullyQualifiedPath().toString();
+                p.sourceName = targetProcessor.getFullyQualifiedPath().toString();
                 p.arraySize = getProcessorArraySize (i->arraySize);
 
                 if (i->clockMultiplierRatio != nullptr)

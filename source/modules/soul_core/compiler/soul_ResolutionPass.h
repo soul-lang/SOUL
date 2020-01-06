@@ -411,19 +411,23 @@ private:
             if (auto builtInConstant = getBuiltInConstant (qi))
                 return builtInConstant;
 
-            if (! ignoreErrors)
+            if (qi.path.isUnqualifiedName (ASTUtilities::getDebugOutputName()))
+                return allocator.allocate<AST::OutputEndpointRef> (qi.context, ASTUtilities::getOrCreateDebugEndpoint (allocator, qi.getParentScope(), qi.context));
+
+            if (ignoreErrors)
+            {
+                ++numFails;
+            }
+            else
             {
                 if (qi.path.isUnqualifiedName ("wrap") || qi.path.isUnqualifiedName ("clamp"))
                     return qi;
 
-                if (search.itemsFound.empty())      qi.context.throwError (Errors::unresolvedSymbol (qi.path));
-                if (search.itemsFound.size() > 1)   qi.context.throwError (Errors::ambiguousSymbol (qi.path));
-            }
+                if (search.itemsFound.size() > 1)
+                    qi.context.throwError (Errors::ambiguousSymbol (qi.path));
 
-            if (ignoreErrors)
-                ++numFails;
-            else
                 qi.context.throwError (Errors::unresolvedSymbol (qi.path));
+            }
 
             return qi;
         }
