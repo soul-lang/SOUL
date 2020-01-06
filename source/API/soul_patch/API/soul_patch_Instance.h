@@ -99,6 +99,28 @@ public:
     virtual VirtualFile::Ptr getExternalFile (const char* externalVariableName) = 0;
 };
 
+//==============================================================================
+/**
+    Allows the caller to supply a custom class to receive debug messages that are
+    sent as output events from the patch processor.
+
+    If one of these objects is provided to the PatchInstance::compileNewPlayer() method,
+    then it will be called with any debug messages.
+*/
+class DebugMessageHandler  : public RefCountedBase
+{
+public:
+    using Ptr = RefCountingPtr<DebugMessageHandler>;
+
+    /** This is called for each external variable that the code needs to resolve.
+        If it returns nullptr and no suitable file is found in the "externals" property
+        of the .soulpatch manifest, then the compilation will fail. The variable name
+        supplied will be fully-qualified, and the method must return an audio file that
+        can be successfully loaded to provide suitable data for the type of that variable.
+    */
+    virtual void handleDebugMessage (uint64_t sampleCount, const char* endpointName, const char* message) = 0;
+};
+
 
 //==============================================================================
 /**
@@ -135,13 +157,14 @@ public:
         This will always return a new player object, but you should call
         PatchPlayer::isPlayable() on the object before using it to check whether
         an error occurred while building.
-        The cacheToUse and preprocessors are optional parameters, and can both be
+        The various other custom callbacks are optional parameters, and can be
         nullptr if not needed.
     */
     virtual PatchPlayer::Ptr compileNewPlayer (const PatchPlayerConfiguration&,
                                                CompilerCache* cacheToUse,
                                                SourceFilePreprocessor* preprocessor,
-                                               ExternalDataProvider* externalDataProvider) = 0;
+                                               ExternalDataProvider* externalDataProvider,
+                                               DebugMessageHandler* debugMessageHandler) = 0;
 };
 
 

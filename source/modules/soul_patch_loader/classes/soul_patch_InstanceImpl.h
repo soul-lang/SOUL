@@ -80,7 +80,8 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
     PatchPlayer::Ptr compileNewPlayer (const PatchPlayerConfiguration& config,
                                        CompilerCache* cache,
                                        SourceFilePreprocessor* preprocessor,
-                                       ExternalDataProvider* externalDataProvider) override
+                                       ExternalDataProvider* externalDataProvider,
+                                       DebugMessageHandler* debugMessageHandler) override
     {
         PatchPlayer::Ptr patch;
 
@@ -97,7 +98,7 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
             linkOptions.setPlatform ("bela");
            #endif
 
-            patchImpl->compile (linkOptions, cache, preprocessor, externalDataProvider);
+            patchImpl->compile (linkOptions, cache, preprocessor, externalDataProvider, debugMessageHandler);
         }
         catch (const PatchLoadError& e)
         {

@@ -58,6 +58,7 @@ template <class ObjectType>
 struct RefCountingPtr
 {
     RefCountingPtr() noexcept = default;
+    RefCountingPtr (decltype(nullptr)) noexcept {}
     ~RefCountingPtr() noexcept                                                     { release(); }
     explicit RefCountingPtr (ObjectType* object) noexcept : source (object)        { addRef(); }
     RefCountingPtr (const RefCountingPtr& other) noexcept : source (other.source)  { addRef(); }
