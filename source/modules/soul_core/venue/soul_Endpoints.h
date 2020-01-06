@@ -232,6 +232,9 @@ inline bool isParameterInput (const EndpointDetails& details)
     if (isStream (details.kind) && details.annotation.hasValue ("name"))
         return true;
 
+    if (isValue (details.kind) && details.annotation.hasValue ("name"))
+        return true;
+
     return false;
 }
 

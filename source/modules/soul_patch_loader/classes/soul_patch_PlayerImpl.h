@@ -368,6 +368,15 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                 },
                 endpointProperties);
             }
+            else if (isValue (details.kind))
+            {
+                input.setCurrentValue (&initialValue, sizeof (initialValue));
+
+                onValueUpdated = [this, &input] ()
+                {
+                    input.setCurrentValue (&value, sizeof (value));
+                };
+            }
 
             propertyNameStrings = annotation.getNames();
             propertyNameRawStrings.reserve (propertyNameStrings.size());
@@ -391,6 +400,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             {
                 value = newValue;
                 changed = true;
+
+                if (onValueUpdated)
+                    onValueUpdated();
             }
         }
 
@@ -422,6 +434,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         std::vector<const char*> propertyNameRawStrings;
         Span<const char*> propertyNameSpan;
         const StringDictionary& stringDictionary;
+
+        std::function<void()> onValueUpdated;
     };
 
     //==============================================================================
