@@ -70,6 +70,11 @@ namespace soul::intrinsics
     /** Returns the log 10 of a scalar floating point value. */
     T.removeReference log10<T>     (T n)                   [[intrin: "log10"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "log10() only works with scalar floating point types");     return T(); }
 
+    /** Returns true if the floating point argument is a NaN. */
+    bool isnan<T> (T n)  [[intrin: "isnan"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isnan() only works with floating point types"); return false; }
+    /** Returns true if the floating point argument is an INF. */
+    bool isinf<T> (T n)  [[intrin: "isinf"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isinf() only works with floating point types"); return false; }
+
     /** Adds an delta to a value, and returns the resulting value modulo PI/2.
         A typical use-case for this is in incrementing the phase of an oscillator.
     */

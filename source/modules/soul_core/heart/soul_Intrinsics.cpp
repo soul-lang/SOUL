@@ -28,20 +28,20 @@ namespace soul
 //==============================================================================
 namespace CompileTimeIntrinsicEvaluation
 {
-    template <typename ArgType>
-    static Value perform (ArrayView<Value> args, ArgType (*fn)(ArgType))
+    template <typename ReturnType, typename ArgType>
+    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType))
     {
         SOUL_ASSERT (args.size() == 1); return Value (fn (static_cast<ArgType> (args.front())));
     }
 
-    template <typename ArgType>
-    static Value perform (ArrayView<Value> args, ArgType (*fn)(ArgType, ArgType))
+    template <typename ReturnType, typename ArgType>
+    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType, ArgType))
     {
         SOUL_ASSERT (args.size() == 2); return Value (fn (static_cast<ArgType> (args[0]), static_cast<ArgType> (args[1])));
     }
 
-    template <typename ArgType>
-    static Value perform (ArrayView<Value> args, ArgType (*fn)(ArgType, ArgType, ArgType))
+    template <typename ReturnType, typename ArgType>
+    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType, ArgType, ArgType))
     {
         SOUL_ASSERT (args.size() == 3); return Value (fn (static_cast<ArgType> (args[0]), static_cast<ArgType> (args[1]), static_cast<ArgType> (args[2])));
     }
@@ -79,17 +79,19 @@ namespace CompileTimeIntrinsicEvaluation
     static double   acosh_d        (double n)                              { return std::acosh (n); }
     static double   atanh_d        (double n)                              { return std::atanh (n); }
     static double   atan2_d        (double a, double b)                    { return std::atan2 (a, b); }
+    static bool     isnan_d        (double n)                              { return std::isnan (n); }
+    static bool     isinf_d        (double n)                              { return std::isinf (n); }
 
-    Value perform (IntrinsicType i, ArrayView<Value> args, bool isDouble)
+    Value perform (IntrinsicType i, ArrayView<Value> args, bool isFloat)
     {
         switch (i)
         {
             case IntrinsicType::none:                    SOUL_ASSERT_FALSE; break;
-            case IntrinsicType::abs:                     return isDouble ? perform (args, abs_d)   : perform (args, abs_i);
-            case IntrinsicType::min:                     return isDouble ? perform (args, min_d)   : perform (args, min_i);
-            case IntrinsicType::max:                     return isDouble ? perform (args, max_d)   : perform (args, max_i);
-            case IntrinsicType::clamp:                   return isDouble ? perform (args, clamp_d) : perform (args, clamp_i);
-            case IntrinsicType::wrap:                    return isDouble ? perform (args, wrap_d)  : perform (args, wrap_i);
+            case IntrinsicType::abs:                     return isFloat ? perform (args, abs_d)   : perform (args, abs_i);
+            case IntrinsicType::min:                     return isFloat ? perform (args, min_d)   : perform (args, min_i);
+            case IntrinsicType::max:                     return isFloat ? perform (args, max_d)   : perform (args, max_i);
+            case IntrinsicType::clamp:                   return isFloat ? perform (args, clamp_d) : perform (args, clamp_i);
+            case IntrinsicType::wrap:                    return isFloat ? perform (args, wrap_d)  : perform (args, wrap_i);
             case IntrinsicType::fmod:                    return perform (args, fmod_d);
             case IntrinsicType::remainder:               return perform (args, remainder_d);
             case IntrinsicType::floor:                   return perform (args, floor_d);
@@ -113,6 +115,8 @@ namespace CompileTimeIntrinsicEvaluation
             case IntrinsicType::acos:                    return perform (args, acos_d);
             case IntrinsicType::atan:                    return perform (args, atan_d);
             case IntrinsicType::atan2:                   return perform (args, atan2_d);
+            case IntrinsicType::isnan:                   return perform (args, isnan_d);
+            case IntrinsicType::isinf:                   return perform (args, isinf_d);
             case IntrinsicType::sum:                     return {};
             case IntrinsicType::product:                 return {};
             case IntrinsicType::get_array_size:          return {};
@@ -146,10 +150,13 @@ Value performIntrinsic (IntrinsicType i, ArrayView<Value> args)
 
     auto result = CompileTimeIntrinsicEvaluation::perform (i, castArgs, argType.isFloatingPoint());
 
-    if (result.isValid())
-        return result.castToTypeExpectingSuccess (argType.withConstAndRefFlags (false, false));
+    if (! result.isValid())
+        return {};
 
-    return {};
+    if (result.getType().isBool())
+        return result;
+
+    return result.castToTypeExpectingSuccess (argType.withConstAndRefFlags (false, false));
 }
 
 #define SOUL_INTRINSICS(X) \
@@ -181,6 +188,8 @@ Value performIntrinsic (IntrinsicType i, ArrayView<Value> args)
     X(acos) \
     X(atan) \
     X(atan2) \
+    X(isnan) \
+    X(isinf) \
     X(sum) \
     X(product) \
     X(get_array_size) \

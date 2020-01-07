@@ -52,6 +52,8 @@ namespace soul
         acos,
         atan,
         atan2,
+        isnan,
+        isinf,
         sum,
         product,
         get_array_size,
