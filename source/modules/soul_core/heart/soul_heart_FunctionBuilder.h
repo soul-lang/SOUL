@@ -96,7 +96,7 @@ struct BlockBuilder
         SOUL_ASSERT (! indexes.empty());
 
         auto i = indexes.begin();
-        heart::SubElementPtr result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
+        pool_ptr<heart::SubElement> result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
 
         while (i != indexes.end())
             result = module.allocate<heart::SubElement> (result->location, *result, *i++);
@@ -204,11 +204,12 @@ struct BlockBuilder
             return;
         }
 
-        heart::ExpressionPtr total = values.front();
+        auto i = values.begin();
+        pool_ptr<heart::Expression> total (*i++);
         auto type = dest.getType();
 
-        for (size_t i = 1; i < values.size(); ++i)
-            total = createBinaryOp (CodeLocation(), *total, *values[i], BinaryOp::Op::add, type);
+        while (i != values.end())
+            total = createBinaryOp (CodeLocation(), *total, **i++, BinaryOp::Op::add, type);
 
         addAssignment (dest, *total);
     }
@@ -236,12 +237,12 @@ struct BlockBuilder
         changeIntegerByOne (dest, BinaryOp::Op::subtract);
     }
 
-    void addFunctionCall (heart::Function& function, std::initializer_list<heart::ExpressionPtr> args)
+    void addFunctionCall (heart::Function& function, std::initializer_list<pool_ptr<heart::Expression>> args)
     {
         addFunctionCall (nullptr, function, args);
     }
 
-    void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function, std::initializer_list<heart::ExpressionPtr> args)
+    void addFunctionCall (pool_ptr<heart::Expression> dest, heart::Function& function, std::initializer_list<pool_ptr<heart::Expression>> args)
     {
         auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
         call.arguments.reserve (args.size());
@@ -253,7 +254,7 @@ struct BlockBuilder
         addStatement (call);
     }
 
-    void addFunctionCall (heart::ExpressionPtr dest, heart::Function& function, heart::FunctionCall::ArgListType&& args)
+    void addFunctionCall (pool_ptr<heart::Expression> dest, heart::Function& function, heart::FunctionCall::ArgListType&& args)
     {
         auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
         call.arguments = std::move (args);
@@ -296,7 +297,7 @@ struct BlockBuilder
         addAssignment (dest, createCast (l, temp, dest.getType()));
     }
 
-    void addWriteStream (CodeLocation l, heart::OutputDeclaration& output, heart::ExpressionPtr element, heart::Expression& value)
+    void addWriteStream (CodeLocation l, heart::OutputDeclaration& output, pool_ptr<heart::Expression> element, heart::Expression& value)
     {
         createStatement<heart::WriteStream> (std::move (l), output, element, value);
     }
@@ -328,7 +329,7 @@ struct BlockBuilder
     }
 
     Module& module;
-    heart::BlockPtr currentBlock;
+    pool_ptr<heart::Block> currentBlock;
     LinkedList<heart::Statement>::Iterator lastStatementInCurrentBlock;
 };
 
@@ -490,7 +491,7 @@ struct FunctionBuilder  : public BlockBuilder
             beginBlock (createNewBlock());
     }
 
-    void beginBlock (heart::BlockPtr b)
+    void beginBlock (pool_ptr<heart::Block> b)
     {
         SOUL_ASSERT (currentFunction != nullptr);
         SOUL_ASSERT (currentBlock != b);
@@ -514,7 +515,7 @@ struct FunctionBuilder  : public BlockBuilder
         BlockBuilder::addStatement (s);
     }
 
-    void addTerminatorStatement (heart::Terminator& t, heart::BlockPtr subsequentBlock)
+    void addTerminatorStatement (heart::Terminator& t, pool_ptr<heart::Block> subsequentBlock)
     {
         ensureBlockIsReady();
         setTerminator (t);
@@ -531,13 +532,13 @@ struct FunctionBuilder  : public BlockBuilder
         addTerminatorStatement (module.allocate<heart::ReturnValue> (value), nullptr);
     }
 
-    void addBranch (heart::Block& target, heart::BlockPtr subsequentBlock)
+    void addBranch (heart::Block& target, pool_ptr<heart::Block> subsequentBlock)
     {
         addTerminatorStatement (module.allocate<heart::Branch> (target), subsequentBlock);
     }
 
     void addBranchIf (heart::Expression& condition, heart::Block& trueBranch,
-                      heart::Block& falseBranch, heart::BlockPtr subsequentBlock)
+                      heart::Block& falseBranch, pool_ptr<heart::Block> subsequentBlock)
     {
         addTerminatorStatement (module.allocate<heart::BranchIf> (condition, trueBranch, falseBranch),
                                 subsequentBlock);
@@ -592,7 +593,7 @@ struct FunctionBuilder  : public BlockBuilder
         }
     }
 
-    heart::FunctionPtr currentFunction;
+    pool_ptr<heart::Function> currentFunction;
     uint32_t blockIndex = 0, localVarIndex = 0;
 };
 

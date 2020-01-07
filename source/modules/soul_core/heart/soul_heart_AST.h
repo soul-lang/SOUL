@@ -69,11 +69,6 @@ struct heart
     SOUL_HEART_TERMINATORS (SOUL_PREDECLARE_TYPE)
     #undef SOUL_PREDECLARE_TYPE
 
-    using ObjectPtr        = pool_ptr<Object>;
-    using StatementPtr     = pool_ptr<Statement>;
-    using AssignmentPtr    = pool_ptr<Assignment>;
-    using TerminatorPtr    = pool_ptr<Terminator>;
-
     struct Parser;
     struct Printer;
     struct Checker;
@@ -310,7 +305,7 @@ struct heart
         readWrite
     };
 
-    using ExpressionVisitorFn = const std::function<void(ExpressionPtr&, AccessType)>&;
+    using ExpressionVisitorFn = const std::function<void(pool_ptr<Expression>&, AccessType)>&;
 
     struct Expression  : public Object
     {
@@ -378,7 +373,7 @@ struct heart
         SubElement (CodeLocation l, Expression& v) : Expression (std::move (l)), parent (v) {}
         SubElement (CodeLocation l, Expression& v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) {}
         SubElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) {}
-        SubElement (CodeLocation l, Expression& v, ExpressionPtr elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) {}
+        SubElement (CodeLocation l, Expression& v, Expression& elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) {}
 
         pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
         bool isMutable() const override                 { return parent->isMutable(); }
@@ -482,7 +477,7 @@ struct heart
             }
         }
 
-        ExpressionPtr parent, dynamicIndex;
+        pool_ptr<Expression> parent, dynamicIndex;
         size_t fixedStartIndex = 0, fixedEndIndex = 1;
         bool isRangeTrusted = false, suppressWrapWarning = false;
 
@@ -512,11 +507,9 @@ struct heart
     //==============================================================================
     struct TypeCast  : public Expression
     {
-        TypeCast (CodeLocation l, ExpressionPtr src, const Type& type)
+        TypeCast (CodeLocation l, Expression& src, const Type& type)
             : Expression (std::move (l)), source (src), destType (type)
-        {
-            SOUL_ASSERT (source != nullptr);
-        }
+        {}
 
         const Type& getType() const override                 { return destType; }
         pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
@@ -541,7 +534,7 @@ struct heart
             fn (source, AccessType::read);
         }
 
-        ExpressionPtr source;
+        pool_ptr<Expression> source;
         Type destType;
     };
 
@@ -550,8 +543,7 @@ struct heart
     {
         UnaryOperator (CodeLocation l, Expression& src, UnaryOp::Op op)
             : Expression (std::move (l)), source (src), operation (op)
-        {
-        }
+        {}
 
         const Type& getType() const override                 { return source->getType(); }
         pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
@@ -577,7 +569,7 @@ struct heart
             fn (source, AccessType::read);
         }
 
-        ExpressionPtr source;
+        pool_ptr<Expression> source;
         UnaryOp::Op operation;
     };
 
@@ -622,7 +614,7 @@ struct heart
             return {};
         }
 
-        ExpressionPtr lhs, rhs;
+        pool_ptr<Expression> lhs, rhs;
         BinaryOp::Op operation;
         Type destType;
     };
@@ -647,7 +639,7 @@ struct heart
             }
         }
 
-        std::vector<ExpressionPtr> arguments;
+        std::vector<pool_ptr<Expression>> arguments;
     };
 
     //==============================================================================
@@ -684,7 +676,7 @@ struct heart
         Type returnType;
         Identifier name;
         std::vector<pool_ptr<Variable>> parameters;
-        std::vector<BlockPtr> blocks;
+        std::vector<pool_ptr<Block>> blocks;
         Annotation annotation;
         IntrinsicType intrinsicType = IntrinsicType::none;
         pool_ptr<Variable> stateParameter;
@@ -804,13 +796,13 @@ struct heart
             for (auto& p : parameters)
                 p->resetUseCount();
 
-            visitExpressions ([] (ExpressionPtr& value, AccessType)
+            visitExpressions ([] (pool_ptr<Expression>& value, AccessType)
                               {
                                   if (auto v = cast<Variable> (value))
                                       v->resetUseCount();
                               });
 
-            visitExpressions ([] (ExpressionPtr& value, AccessType mode)
+            visitExpressions ([] (pool_ptr<Expression>& value, AccessType mode)
                               {
                                   if (auto v = cast<Variable> (value))
                                   {
@@ -878,7 +870,7 @@ struct heart
         LinkedList<Statement> statements;
         pool_ptr<Terminator> terminator;
 
-        std::vector<BlockPtr> predecessors;
+        std::vector<pool_ptr<Block>> predecessors;
         bool doNotOptimiseAway = false;
         void* temporaryData; // a general-purpose slot, used for temporary storage by algorithms
     };
@@ -898,17 +890,17 @@ struct heart
     //==============================================================================
     struct Terminator  : public Object
     {
-        virtual ArrayView<BlockPtr> getDestinationBlocks()      { return {}; }
-        virtual bool isConditional() const                      { return false; }
-        virtual bool isReturn() const                           { return false; }
-        virtual bool readsVariable (Variable&) const            { return false; }
-        virtual void visitExpressions (ExpressionVisitorFn)     {}
+        virtual ArrayView<pool_ptr<Block>> getDestinationBlocks()   { return {}; }
+        virtual bool isConditional() const                          { return false; }
+        virtual bool isReturn() const                               { return false; }
+        virtual bool readsVariable (Variable&) const                { return false; }
+        virtual void visitExpressions (ExpressionVisitorFn)         {}
     };
 
     struct Branch  : public Terminator
     {
         Branch (Block& b)  : target (b) {}
-        ArrayView<BlockPtr> getDestinationBlocks() override  { return { &target, &target + 1 }; }
+        ArrayView<pool_ptr<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
 
         pool_ptr<Block> target;
     };
@@ -959,7 +951,7 @@ struct heart
     //==============================================================================
     struct Assignment  : public Statement
     {
-        Assignment (CodeLocation l, ExpressionPtr dest)  : Statement (std::move (l)), target (dest)     {}
+        Assignment (CodeLocation l, pool_ptr<Expression> dest)  : Statement (std::move (l)), target (dest)  {}
 
         bool readsVariable (Variable& v) const override   { return target != nullptr && target->readsVariable (v); }
         bool writesVariable (Variable& v) const override  { return target != nullptr && target->writesVariable (v); }
@@ -978,7 +970,7 @@ struct heart
             return target != nullptr && target->getRootVariable()->isExternalToFunction();
         }
 
-        ExpressionPtr target;
+        pool_ptr<Expression> target;
     };
 
     struct AssignFromValue  : public Assignment
@@ -998,14 +990,14 @@ struct heart
             fn (source, AccessType::read);
         }
 
-        ExpressionPtr source;
+        pool_ptr<Expression> source;
     };
 
     struct FunctionCall  : public Assignment
     {
-        FunctionCall (CodeLocation l, ExpressionPtr dest, pool_ptr<Function> f) : Assignment (std::move (l), dest), function (f)
-        {
-        }
+        FunctionCall (CodeLocation l, pool_ptr<Expression> dest, pool_ptr<Function> f)
+            : Assignment (std::move (l), dest), function (f)
+        {}
 
         bool readsVariable (Variable& v) const override
         {
@@ -1038,7 +1030,7 @@ struct heart
         }
 
         pool_ptr<Function> function; // may be temporarily null while building the program
-        using ArgListType = ArrayWithPreallocation<ExpressionPtr, 4>;
+        using ArgListType = ArrayWithPreallocation<pool_ptr<Expression>, 4>;
         ArgListType arguments;
     };
 
@@ -1050,12 +1042,12 @@ struct heart
 
         bool mayHaveSideEffects() const override     { return true; }
 
-        InputDeclarationPtr source;
+        pool_ptr<InputDeclaration> source;
     };
 
     struct WriteStream  : public Statement
     {
-        WriteStream (CodeLocation l, OutputDeclaration& output, ExpressionPtr e, Expression& v)
+        WriteStream (CodeLocation l, OutputDeclaration& output, pool_ptr<Expression> e, Expression& v)
             : Statement (std::move (l)), target (output), element (e), value (v) {}
 
         void visitExpressions (ExpressionVisitorFn fn) override
@@ -1075,8 +1067,8 @@ struct heart
             return true;
         }
 
-        OutputDeclarationPtr target;
-        ExpressionPtr element, value;
+        pool_ptr<OutputDeclaration> target;
+        pool_ptr<Expression> element, value;
     };
 
     //==============================================================================

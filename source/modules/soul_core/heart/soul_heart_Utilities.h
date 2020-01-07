@@ -23,7 +23,7 @@ namespace soul
 
 struct heart::Utilities
 {
-    static WriteStreamPtr findFirstWrite (Function& f)
+    static pool_ptr<WriteStream> findFirstWrite (Function& f)
     {
         for (auto& b : f.blocks)
             for (auto s : b->statements)
@@ -33,7 +33,7 @@ struct heart::Utilities
         return {};
     }
 
-    static WriteStreamPtr findFirstStreamWrite (Function& f)
+    static pool_ptr<WriteStream> findFirstStreamWrite (Function& f)
     {
         for (auto& b : f.blocks)
             for (auto s : b->statements)
@@ -44,7 +44,7 @@ struct heart::Utilities
         return {};
     }
 
-    static AdvanceClockPtr findFirstAdvanceCall (Function& f)
+    static pool_ptr<AdvanceClock> findFirstAdvanceCall (Function& f)
     {
         for (auto& b : f.blocks)
             for (auto s : b->statements)
@@ -172,14 +172,14 @@ struct heart::Utilities
         return anyRemoved;
     }
 
-    static void replaceBlockDestination (Block& block, BlockPtr oldDest, BlockPtr newDest)
+    static void replaceBlockDestination (Block& block, Block& oldDest, Block& newDest)
     {
         for (auto& dest : block.terminator->getDestinationBlocks())
             if (dest == oldDest)
                 dest = newDest;
     }
 
-    static bool areAllTerminatorsUnconditional (ArrayView<BlockPtr> blocks)
+    static bool areAllTerminatorsUnconditional (ArrayView<pool_ptr<Block>> blocks)
     {
         for (auto b : blocks)
             if (b->terminator->isConditional())
@@ -188,7 +188,7 @@ struct heart::Utilities
         return true;
     }
 
-    static BlockPtr findBlock (const Function& f, const std::string& targetName) noexcept
+    static pool_ptr<Block> findBlock (const Function& f, const std::string& targetName) noexcept
     {
         for (auto b : f.blocks)
             if (b->name == targetName)

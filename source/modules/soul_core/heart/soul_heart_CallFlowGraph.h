@@ -37,7 +37,7 @@ struct CallFlowGraph
         visitUpstreamBlocks (start, visitor);
     }
 
-    static std::vector<heart::VariablePtr> findVariablesBeingReadBeforeBeingWritten (const heart::Function& function)
+    static std::vector<pool_ptr<heart::Variable>> findVariablesBeingReadBeforeBeingWritten (const heart::Function& function)
     {
         return findUninitialisedVariableUse (function);
     }
@@ -67,9 +67,9 @@ struct CallFlowGraph
     /** Returns the first set of functions which call each other in a cycle (or an empty vector if
         no cycles were found)
     */
-    static std::vector<heart::FunctionPtr> findRecursiveFunctionCallSequences (Program& program)
+    static std::vector<pool_ptr<heart::Function>> findRecursiveFunctionCallSequences (Program& program)
     {
-        std::vector<heart::FunctionPtr> callerFns;
+        std::vector<pool_ptr<heart::Function>> callerFns;
 
         for (auto& m : program.getModules())
         {
@@ -134,14 +134,14 @@ private:
     }
 
     //==============================================================================
-    static std::vector<heart::VariablePtr> findUninitialisedVariableUse (const heart::Function& f)
+    static std::vector<pool_ptr<heart::Variable>> findUninitialisedVariableUse (const heart::Function& f)
     {
         if (f.blocks.empty())
             return {};
 
         struct BlockState
         {
-            ArrayWithPreallocation<heart::VariablePtr, 16> variablesUsedDuringBlock, variablesUnsafeAtEnd;
+            ArrayWithPreallocation<pool_ptr<heart::Variable>, 16> variablesUsedDuringBlock, variablesUnsafeAtEnd;
             bool isFullyResolved = false;
 
             static BlockState& get (const heart::Block& b)  { return *static_cast<BlockState*> (b.temporaryData); }
@@ -152,14 +152,14 @@ private:
         {
             states.resize (f.blocks.size());
             size_t index = 0;
-            std::vector<heart::VariablePtr> allVariables;
+            std::vector<pool_ptr<heart::Variable>> allVariables;
 
             for (auto& block : f.blocks)
             {
                 auto& state = states[index++];
                 block->temporaryData = std::addressof (state);
 
-                block->visitExpressions ([&] (heart::ExpressionPtr& value, heart::AccessType)
+                block->visitExpressions ([&] (pool_ptr<heart::Expression>& value, heart::AccessType)
                 {
                     if (auto v = cast<heart::Variable> (value))
                         if (! (v->isState() || v->isParameter()))
@@ -217,7 +217,7 @@ private:
                 break;
         }
 
-        std::vector<heart::VariablePtr> results;
+        std::vector<pool_ptr<heart::Variable>> results;
 
         for (auto& b : f.blocks)
         {
@@ -229,7 +229,7 @@ private:
                 sortAndRemoveDuplicates (unsafeVariables);
             }
 
-            auto visitRead = [&] (heart::ExpressionPtr& value, heart::AccessType mode)
+            auto visitRead = [&] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
             {
                 if (mode != heart::AccessType::write)
                     if (auto v = cast<heart::Variable> (value))
@@ -255,7 +255,7 @@ private:
 
         sortAndRemoveDuplicates (results);
 
-        std::sort (results.begin(), results.end(), [] (heart::VariablePtr a, heart::VariablePtr b) -> bool
+        std::sort (results.begin(), results.end(), [] (pool_ptr<heart::Variable> a, pool_ptr<heart::Variable> b) -> bool
                                                    {
                                                        return a->name.toString() < b->name.toString();
                                                    });
@@ -264,8 +264,8 @@ private:
     }
 
     //==============================================================================
-    static std::vector<heart::FunctionPtr> findRecursiveFunctions (heart::Function& f,
-                                                                   std::vector<heart::FunctionPtr>& callerFns)
+    static std::vector<pool_ptr<heart::Function>> findRecursiveFunctions (heart::Function& f,
+                                                                          std::vector<pool_ptr<heart::Function>>& callerFns)
     {
         callerFns.emplace_back (f);
 
@@ -279,7 +279,7 @@ private:
                     {
                         if (callerFns[i] == call->function)
                         {
-                            std::vector<heart::FunctionPtr> functions;
+                            std::vector<pool_ptr<heart::Function>> functions;
 
                             while (i < callerFns.size())
                                 functions.push_back (callerFns[i++]);

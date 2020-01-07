@@ -463,7 +463,7 @@ private:
 
     struct ProcessorAndChannel
     {
-        heart::ProcessorInstancePtr processor;
+        pool_ptr<heart::ProcessorInstance> processor;
         std::string endpoint;
     };
 
@@ -480,7 +480,7 @@ private:
         return { nullptr, name };
     }
 
-    heart::ProcessorInstancePtr findProcessorInstance (const std::string& instanceName)
+    pool_ptr<heart::ProcessorInstance> findProcessorInstance (const std::string& instanceName)
     {
         for (auto m : module->processorInstances)
             if (m->instanceName == instanceName)
@@ -601,13 +601,13 @@ private:
 
         struct BlockCode
         {
-            heart::BlockPtr block;
+            heart::Block& block;
             UTF8Reader code;
         };
 
         heart::Function& function;
         std::vector<BlockCode> blocks;
-        std::vector<heart::VariablePtr> variables;
+        std::vector<pool_ptr<heart::Variable>> variables;
     };
 
     void parseFunctionParams (heart::Function& f)
@@ -695,7 +695,7 @@ private:
 
     struct AssignmentTarget
     {
-        heart::ExpressionPtr existingVariable;
+        pool_ptr<heart::Expression> existingVariable;
         std::string newVariableName;
         bool isConst, isNull;
 
@@ -705,7 +705,7 @@ private:
                     || TypeRules::canPassAsArgumentTo (existingVariable->getType(), sourceType, true);
         }
 
-        heart::ExpressionPtr create (FunctionParseState& state, FunctionBuilder& builder, const Type& type) const
+        pool_ptr<heart::Expression> create (FunctionParseState& state, FunctionBuilder& builder, const Type& type) const
         {
             if (isNull)
                 return {};
@@ -840,7 +840,7 @@ private:
         return true;
     }
 
-    heart::FunctionPtr findFunction (const std::string& name, ArrayView<Type> argTypes)
+    pool_ptr<heart::Function> findFunction (const std::string& name, ArrayView<Type> argTypes)
     {
         if (! containsChar (name, ':'))
         {
@@ -919,7 +919,7 @@ private:
         auto name = parseIdentifier();
         auto target = module->findOutput (name);
 
-        heart::ExpressionPtr index;
+        pool_ptr<heart::Expression> index;
 
         if (state.function.functionType.isUserInit())
             throwError (Errors::streamsCannotBeUsedDuringInit());
@@ -965,11 +965,11 @@ private:
     heart::Block& findBlock (const FunctionParseState& state, Identifier name)
     {
         for (auto& b : state.blocks)
-            if (b.block->name == name)
-                return *b.block;
+            if (b.block.name == name)
+                return b.block;
 
         throwError (Errors::cannotFind (name));
-        return *state.blocks.front().block;
+        return state.blocks.front().block;
     }
 
     heart::Block& readBlockNameAndFind (const FunctionParseState& state)
@@ -977,7 +977,7 @@ private:
         return findBlock (state, readBlockName());
     }
 
-    heart::VariablePtr findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
+    pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
     {
         for (auto& v : state.variables)
             if (v->name == name)
@@ -1199,7 +1199,7 @@ private:
         return r;
     }
 
-    heart::ExpressionPtr parseVariableExpression (const FunctionParseState& state)
+    pool_ptr<heart::Expression> parseVariableExpression (const FunctionParseState& state)
     {
         if (matches (Token::identifier))
         {

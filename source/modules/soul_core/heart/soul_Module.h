@@ -37,16 +37,16 @@ public:
     std::string getNameWithoutRootNamespace() const;
     std::string getNameWithoutRootNamespaceOrSpecialisations() const;
 
-    std::vector<heart::InputDeclarationPtr> inputs;
-    std::vector<heart::OutputDeclarationPtr> outputs;
+    std::vector<pool_ptr<heart::InputDeclaration>> inputs;
+    std::vector<pool_ptr<heart::OutputDeclaration>> outputs;
 
     // Properties if it's a connection graph:
-    std::vector<heart::ConnectionPtr> connections;
-    std::vector<heart::ProcessorInstancePtr> processorInstances;
+    std::vector<pool_ptr<heart::Connection>> connections;
+    std::vector<pool_ptr<heart::ProcessorInstance>> processorInstances;
 
     // Properties if it's a processor
-    std::vector<heart::VariablePtr> stateVariables;
-    std::vector<heart::FunctionPtr> functions;
+    std::vector<pool_ptr<heart::Variable>> stateVariables;
+    std::vector<pool_ptr<heart::Function>> functions;
     std::vector<StructurePtr> structs;
 
     Annotation annotation;
@@ -59,16 +59,16 @@ public:
     Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
     //==============================================================================
-    std::vector<heart::FunctionPtr> getExportedFunctions() const;
-    heart::FunctionPtr findRunFunction() const;
+    std::vector<pool_ptr<heart::Function>> getExportedFunctions() const;
+    pool_ptr<heart::Function> findRunFunction() const;
     heart::Function& getRunFunction() const;
     heart::Function& getFunction (const std::string& name) const;
-    heart::FunctionPtr findFunction (const std::string& name) const;
-    heart::VariablePtr findStateVariable (const std::string& name) const;
+    pool_ptr<heart::Function> findFunction (const std::string& name) const;
+    pool_ptr<heart::Variable> findStateVariable (const std::string& name) const;
 
     //==============================================================================
-    heart::InputDeclarationPtr findInput (const std::string& name) const;
-    heart::OutputDeclarationPtr findOutput (const std::string& name) const;
+    pool_ptr<heart::InputDeclaration>  findInput  (const std::string& name) const;
+    pool_ptr<heart::OutputDeclaration> findOutput (const std::string& name) const;
 
     //==============================================================================
     void addStruct (StructurePtr newStruct);

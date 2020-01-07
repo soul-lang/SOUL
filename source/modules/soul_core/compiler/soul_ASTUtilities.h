@@ -18,9 +18,132 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-namespace soul::ASTUtilities
+namespace soul
 {
-    static inline void mergeNamespaces (AST::Namespace& target, AST::Namespace& source)
+
+struct ASTUtilities
+{
+    static void mergeDuplicateNamespaces (AST::Namespace& ns)
+    {
+        while (mergeFirstPairOfDuplicateNamespaces (ns))
+        {}
+    }
+
+    static void findAllMainProcessors (AST::ModuleBase& module, std::vector<pool_ptr<AST::ProcessorBase>>& found)
+    {
+        for (auto& m : module.getSubModules())
+        {
+            if (auto pb = cast<AST::ProcessorBase> (m))
+                if (auto main = pb->annotation.findProperty ("main"))
+                    if (auto c = main->value->getAsConstant())
+                        if (c->value.getAsBool())
+                            found.push_back (pb);
+
+            findAllMainProcessors (*m, found);
+        }
+    }
+
+    static pool_ptr<AST::ProcessorBase> scanForProcessorToUseAsMain (AST::ModuleBase& module)
+    {
+        pool_ptr<AST::ProcessorBase> lastProcessor;
+
+        for (auto& m : module.getSubModules())
+        {
+            auto p1 = cast<AST::ProcessorBase> (m);
+
+            if (p1 != nullptr && ! p1->annotation.findProperty ("main"))
+                lastProcessor = p1;
+            else if (auto p2 = scanForProcessorToUseAsMain (*m))
+                lastProcessor = p2;
+        }
+
+        return lastProcessor;
+    }
+
+    static void findAllModulesToCompile (const AST::Namespace& parentNamespace, std::vector<pool_ptr<AST::ModuleBase>>& modulesToCompile)
+    {
+        for (auto& m : parentNamespace.subModules)
+        {
+            SOUL_ASSERT (m->getSpecialisationParameters().empty());
+            modulesToCompile.push_back (m);
+
+            if (auto ns = cast<AST::Namespace> (m))
+                findAllModulesToCompile (*ns, modulesToCompile);
+        }
+    }
+
+    static void removeModulesWithSpecialisationParams (AST::Namespace& ns)
+    {
+        for (auto& m : ns.getSubModules())
+            if (auto sub = cast<AST::Namespace> (m))
+                removeModulesWithSpecialisationParams (*sub);
+
+        removeIf (ns.subModules,
+                  [] (AST::ModuleBasePtr& m) { return ! m->getSpecialisationParameters().empty(); });
+    }
+
+    static void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ptr<AST::ProcessorBase>> graphsToKeep)
+    {
+        for (auto& m : ns.subModules)
+            if (auto subNamespace = cast<AST::Namespace> (m))
+                removeUnusedGraphs (*subNamespace, graphsToKeep);
+
+        removeIf (ns.subModules, [=] (AST::ModuleBasePtr m)
+        {
+            if (auto graph = cast<AST::Graph> (m))
+                return ! contains (graphsToKeep, graph);
+
+            return false;
+        });
+    }
+
+    static void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
+    {
+        for (auto& m : module.getSubModules())
+            resolveHoistedEndpoints (allocator, *m);
+
+        if (auto graph = cast<AST::Graph> (module))
+        {
+            while (hoistFirstChildEndpoint (allocator, *graph))
+            {}
+        }
+    }
+
+    static const char* getDebugOutputName()              { return "debug"; }
+    static const char* getDebugEndpointInternalName()    { return "_debug"; }
+
+    static AST::EndpointDeclaration& getOrCreateDebugEndpoint (AST::Allocator& allocator, AST::Scope* scope, AST::Context& errorContext)
+    {
+        SOUL_ASSERT (scope != nullptr);
+        auto processor = scope->findProcessor();
+
+        if (processor == nullptr)
+            errorContext.throwError (Errors::cannotFindOutput (getDebugOutputName()));
+
+        if (auto e = processor->findEndpoint (getDebugEndpointInternalName(), false))
+            return *e;
+
+        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
+        newDebugEndpoint.name = allocator.get (getDebugEndpointInternalName());
+        newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointKind::event);
+        newDebugEndpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), Type::createStringLiteral()));
+        newDebugEndpoint.needsToBeExposedInParent = true;
+        processor->endpoints.push_back (newDebugEndpoint);
+
+        return newDebugEndpoint;
+    }
+
+    static void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
+    {
+        if (auto g = cast<AST::Graph> (processor))
+        {
+            while (exposeChildEndpoints (allocator, *g))
+            {}
+        }
+    }
+
+private:
+    static void mergeNamespaces (AST::Namespace& target, AST::Namespace& source)
     {
         auto newParentScope = std::addressof (target);
 
@@ -55,7 +178,7 @@ namespace soul::ASTUtilities
         }
     }
 
-    static inline bool mergeFirstPairOfDuplicateNamespaces (AST::Namespace& ns)
+    static bool mergeFirstPairOfDuplicateNamespaces (AST::Namespace& ns)
     {
         bool anyDone = false;
 
@@ -85,56 +208,7 @@ namespace soul::ASTUtilities
         return anyDone;
     }
 
-    static inline void mergeDuplicateNamespaces (AST::Namespace& ns)
-    {
-        while (mergeFirstPairOfDuplicateNamespaces (ns))
-        {}
-    }
-
-    static inline void findAllMainProcessors (AST::ModuleBase& module, std::vector<pool_ptr<AST::ProcessorBase>>& found)
-    {
-        for (auto& m : module.getSubModules())
-        {
-            if (auto pb = cast<AST::ProcessorBase> (m))
-                if (auto main = pb->annotation.findProperty ("main"))
-                    if (auto c = main->value->getAsConstant())
-                        if (c->value.getAsBool())
-                            found.push_back (pb);
-
-            findAllMainProcessors (*m, found);
-        }
-    }
-
-    static inline pool_ptr<AST::ProcessorBase> scanForProcessorToUseAsMain (AST::ModuleBase& module)
-    {
-        pool_ptr<AST::ProcessorBase> lastProcessor;
-
-        for (auto& m : module.getSubModules())
-        {
-            auto p1 = cast<AST::ProcessorBase> (m);
-
-            if (p1 != nullptr && ! p1->annotation.findProperty ("main"))
-                lastProcessor = p1;
-            else if (auto p2 = scanForProcessorToUseAsMain (*m))
-                lastProcessor = p2;
-        }
-
-        return lastProcessor;
-    }
-
-    static inline void findAllModulesToCompile (const AST::Namespace& parentNamespace, std::vector<pool_ptr<AST::ModuleBase>>& modulesToCompile)
-    {
-        for (auto& m : parentNamespace.subModules)
-        {
-            SOUL_ASSERT (m->getSpecialisationParameters().empty());
-            modulesToCompile.push_back (m);
-
-            if (auto ns = cast<AST::Namespace> (m))
-                findAllModulesToCompile (*ns, modulesToCompile);
-        }
-    }
-
-    static inline AST::EndpointDeclaration& findEndpoint (AST::ProcessorBase& processor, AST::QualifiedIdentifier& name, bool isInput)
+    static AST::EndpointDeclaration& findEndpoint (AST::ProcessorBase& processor, AST::QualifiedIdentifier& name, bool isInput)
     {
         auto result = processor.findEndpoint (name.path.getFirstPart(), isInput);
 
@@ -145,8 +219,8 @@ namespace soul::ASTUtilities
         return *result;
     }
 
-    static inline std::string makeUniqueEndpointName (AST::ProcessorBase& parent,
-                                                      ArrayView<AST::ChildEndpointPath::PathSection> path)
+    static std::string makeUniqueEndpointName (AST::ProcessorBase& parent,
+                                               ArrayView<AST::ChildEndpointPath::PathSection> path)
     {
         std::string root = "expose";
 
@@ -157,37 +231,12 @@ namespace soul::ASTUtilities
                                       [&] (const std::string& nm) { return parent.findEndpoint (nm) != nullptr; });
     }
 
-    static inline void removeModulesWithSpecialisationParams (AST::Namespace& ns)
-    {
-        for (auto& m : ns.getSubModules())
-            if (auto sub = cast<AST::Namespace> (m))
-                removeModulesWithSpecialisationParams (*sub);
-
-        removeIf (ns.subModules,
-                  [] (AST::ModuleBasePtr& m) { return ! m->getSpecialisationParameters().empty(); });
-    }
-
-    static inline void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ptr<AST::ProcessorBase>> graphsToKeep)
-    {
-        for (auto& m : ns.subModules)
-            if (auto subNamespace = cast<AST::Namespace> (m))
-                removeUnusedGraphs (*subNamespace, graphsToKeep);
-
-        removeIf (ns.subModules, [=] (AST::ModuleBasePtr m)
-        {
-            if (auto graph = cast<AST::Graph> (m))
-                return ! contains (graphsToKeep, graph);
-
-            return false;
-        });
-    }
-
     //==============================================================================
-    static inline void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
-                                                          AST::Graph& parentGraph,
-                                                          AST::EndpointDeclaration& parentEndpoint,
-                                                          AST::ProcessorInstance& childProcessor,
-                                                          AST::EndpointDeclaration& childEndpoint)
+    static void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
+                                                   AST::Graph& parentGraph,
+                                                   AST::EndpointDeclaration& parentEndpoint,
+                                                   AST::ProcessorInstance& childProcessor,
+                                                   AST::EndpointDeclaration& childEndpoint)
     {
         parentEndpoint.details = std::make_unique<AST::EndpointDetails> (*childEndpoint.details);
         parentEndpoint.annotation.setProperties (childEndpoint.annotation);
@@ -211,10 +260,10 @@ namespace soul::ASTUtilities
             parentGraph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none, child, parent, nullptr));
     }
 
-    static inline void resolveEndpoint (AST::Allocator& allocator,
-                                        AST::Graph& parentGraph,
-                                        AST::EndpointDeclaration& hoistedEndpoint,
-                                        ArrayView<AST::ChildEndpointPath::PathSection> path)
+    static  void resolveEndpoint (AST::Allocator& allocator,
+                                  AST::Graph& parentGraph,
+                                  AST::EndpointDeclaration& hoistedEndpoint,
+                                  ArrayView<AST::ChildEndpointPath::PathSection> path)
     {
         SOUL_ASSERT (path.size() > 1);
 
@@ -263,7 +312,7 @@ namespace soul::ASTUtilities
         setupEndpointDetailsAndConnection (allocator, parentGraph, hoistedEndpoint, *childProcessorInstance, newEndpointInChild);
     }
 
-    static inline bool hoistFirstChildEndpoint (AST::Allocator& allocator, AST::Graph& g)
+    static bool hoistFirstChildEndpoint (AST::Allocator& allocator, AST::Graph& g)
     {
         for (size_t i = 0; i < g.endpoints.size(); ++i)
         {
@@ -279,55 +328,19 @@ namespace soul::ASTUtilities
         return false;
     }
 
-    static inline void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
-    {
-        for (auto& m : module.getSubModules())
-            resolveHoistedEndpoints (allocator, *m);
-
-        if (auto graph = cast<AST::Graph> (module))
-        {
-            while (hoistFirstChildEndpoint (allocator, *graph))
-            {}
-        }
-    }
-
-    static inline const char* getDebugOutputName()              { return "debug"; }
-    static inline const char* getDebugEndpointInternalName()    { return "_debug"; }
-
-    static inline AST::EndpointDeclaration& getOrCreateDebugEndpoint (AST::Allocator& allocator, AST::Scope* scope, AST::Context& errorContext)
-    {
-        SOUL_ASSERT (scope != nullptr);
-        auto processor = scope->findProcessor();
-
-        if (processor == nullptr)
-            errorContext.throwError (Errors::cannotFindOutput (getDebugOutputName()));
-
-        if (auto e = processor->findEndpoint (getDebugEndpointInternalName(), false))
-            return *e;
-
-        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
-        newDebugEndpoint.name = allocator.get (getDebugEndpointInternalName());
-        newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointKind::event);
-        newDebugEndpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), Type::createStringLiteral()));
-        newDebugEndpoint.needsToBeExposedInParent = true;
-        processor->endpoints.push_back (newDebugEndpoint);
-
-        return newDebugEndpoint;
-    }
-
-    static inline bool exposeChildEndpoints (AST::Allocator& allocator, AST::Graph& graph)
+    static bool exposeChildEndpoints (AST::Allocator& allocator, AST::Graph& graph)
     {
         bool anyChanges = false;
 
-        for (auto& pi : graph.processorInstances)
-            if (auto childProcessor = pi->targetProcessor->getAsProcessor())
+        for (auto& i : graph.processorInstances)
+            if (auto childProcessor = i->targetProcessor->getAsProcessor())
                 if (auto childGraph = cast<AST::Graph> (childProcessor))
                     if (exposeChildEndpoints (allocator, *childGraph))
                         anyChanges = true;
 
-        for (auto& pi : graph.processorInstances)
+        for (auto& i : graph.processorInstances)
         {
-            if (auto childProcessor = pi->targetProcessor->getAsProcessor())
+            if (auto childProcessor = i->targetProcessor->getAsProcessor())
             {
                 for (auto& childEndpoint : childProcessor->getEndpoints())
                 {
@@ -352,7 +365,7 @@ namespace soul::ASTUtilities
                         parent.endpoint = parentEndpoint->name;
                         parent.endpointIndex = {};
 
-                        child.processorName = pi->instanceName;
+                        child.processorName = i->instanceName;
                         child.processorIndex = {};
                         child.endpoint = allocator.get (childEndpoint->name);
                         child.endpointIndex = {};
@@ -366,20 +379,13 @@ namespace soul::ASTUtilities
         }
 
         if (anyChanges)
-            for (auto& pi : graph.processorInstances)
-                if (auto childProcessor = pi->targetProcessor->getAsProcessor())
+            for (auto& i : graph.processorInstances)
+                if (auto childProcessor = i->targetProcessor->getAsProcessor())
                     for (auto& childEndpoint : childProcessor->getEndpoints())
                         childEndpoint->needsToBeExposedInParent = false;
 
         return anyChanges;
     }
+};
 
-    static inline void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
-    {
-        if (auto g = cast<AST::Graph> (processor))
-        {
-            while (exposeChildEndpoints (allocator, *g))
-            {}
-        }
-    }
 }

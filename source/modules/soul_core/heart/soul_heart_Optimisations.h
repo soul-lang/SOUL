@@ -66,7 +66,7 @@ struct Optimisations
                     recursivelyFlagFunctionUse (*f);
 
         for (auto& m : program.getModules())
-            removeIf (m->functions, [] (heart::FunctionPtr f) { return ! f->functionUseTestFlag; });
+            removeIf (m->functions, [] (pool_ptr<heart::Function> f) { return ! f->functionUseTestFlag; });
     }
 
     static void removeUnusedProcessors (Program& program)
@@ -102,7 +102,7 @@ struct Optimisations
                 for (auto& p : f->parameters)
                     recursivelyFlagStructUse (p->getType());
 
-                f->visitExpressions ([] (heart::ExpressionPtr& value, heart::AccessType)
+                f->visitExpressions ([] (pool_ptr<heart::Expression>& value, heart::AccessType)
                 {
                     recursivelyFlagStructUse (value->getType());
                 });
@@ -181,7 +181,7 @@ struct Optimisations
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {
-        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
         {
             if (b->doNotOptimiseAway || b == f.blocks.front())
                 return false;
@@ -203,13 +203,13 @@ private:
 
             if (numDestinations == 1)
             {
-                if (b == *destinations.begin())
+                if (b == destinations.front())
                     return false;
 
                 for (auto pred : b->predecessors)
                 {
                     SOUL_ASSERT (pred->terminator != nullptr);
-                    heart::Utilities::replaceBlockDestination (*pred, b, *destinations.begin());
+                    heart::Utilities::replaceBlockDestination (*pred, *b, *destinations.front());
                 }
 
                 return true;
@@ -233,21 +233,21 @@ private:
     //==============================================================================
     static bool eliminateUnreachableBlockCycles (heart::Function& f)
     {
-        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
         {
             return f.blocks.front() != b
-                    && ! isReachableFrom (f, *b, f.blocks.front());
+                    && ! isReachableFrom (f, *b, *f.blocks.front());
         });
     }
 
-    static bool isReachableFrom (heart::Function& f, heart::Block& dest, heart::BlockPtr source)
+    static bool isReachableFrom (heart::Function& f, heart::Block& dest, heart::Block& source)
     {
         bool result = false;
 
         CallFlowGraph::visitUpstreamBlocks (f, dest,
-            [source, &result] (heart::Block& b) -> bool
+            [&] (heart::Block& b) -> bool
             {
-                if (std::addressof (b) == source) { result = true; return false; }
+                if (std::addressof (b) == std::addressof (source)) { result = true; return false; }
                 return true;
             });
 
@@ -257,7 +257,7 @@ private:
     //==============================================================================
     static bool mergeAdjacentBlocks (heart::Function& f)
     {
-        return heart::Utilities::removeBlocks (f, [&] (heart::BlockPtr b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
         {
             if (b->predecessors.size() != 1 || b->doNotOptimiseAway)
                 return false;
@@ -290,7 +290,7 @@ private:
                 recursivelyFlagFunctionUse (fc.getFunction());
             });
 
-            sourceFn.visitExpressions ([] (heart::ExpressionPtr& value, heart::AccessType)
+            sourceFn.visitExpressions ([] (pool_ptr<heart::Expression>& value, heart::AccessType)
             {
                 if (auto fc = cast<heart::PureFunctionCall> (value))
                     recursivelyFlagFunctionUse (fc->function);
@@ -348,7 +348,7 @@ private:
                                 {
                                     b->statements.removeNext (last);
 
-                                    f.visitExpressions ([target, source] (heart::ExpressionPtr& value, heart::AccessType mode)
+                                    f.visitExpressions ([target, source] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
                                     {
                                         if (value == target && mode == heart::AccessType::read)
                                             value = source;
@@ -403,7 +403,7 @@ private:
     template <typename EndpointPropertyProvider>
     static void removeUnconnectedInputs (Module& module, EndpointPropertyProvider& epp)
     {
-        std::vector<heart::InputDeclarationPtr> toRemove;
+        std::vector<pool_ptr<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
             if (! epp.findInputEndpointProperties (*i).initialised)
@@ -412,7 +412,7 @@ private:
         removeFromVector (module.inputs, toRemove);
 
         removeIf (module.connections,
-                  [&] (heart::ConnectionPtr& connection)
+                  [&] (pool_ptr<heart::Connection> connection)
                   {
                       if (connection->sourceProcessor == nullptr)
                           for (auto& i : toRemove)
@@ -424,7 +424,7 @@ private:
 
         for (auto& f : module.functions)
         {
-            f->visitExpressions ([&] (heart::ExpressionPtr& value, heart::AccessType mode)
+            f->visitExpressions ([&] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
             {
                 if (mode == heart::AccessType::read)
                 {
@@ -439,7 +439,7 @@ private:
     template <typename EndpointPropertyProvider>
     static void removeUnconnectedOutputs (Module& module, EndpointPropertyProvider& epp)
     {
-        std::vector<heart::OutputDeclarationPtr> toRemove;
+        std::vector<pool_ptr<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
             if (! epp.findOutputEndpointProperties (*o).initialised)
@@ -448,7 +448,7 @@ private:
         removeFromVector (module.outputs, toRemove);
 
         removeIf (module.connections,
-                  [&] (heart::ConnectionPtr& connection)
+                  [&] (pool_ptr<heart::Connection> connection)
                   {
                       if (connection->destProcessor == nullptr)
                           for (auto& i : toRemove)
@@ -462,7 +462,7 @@ private:
         {
             for (auto& b : f->blocks)
             {
-                b->statements.removeMatches ([&] (heart::StatementPtr s)
+                b->statements.removeMatches ([&] (pool_ptr<heart::Statement> s)
                 {
                     if (auto w = cast<heart::WriteStream> (s))
                         return contains (toRemove, w->target);
@@ -597,7 +597,7 @@ private:
             auto& fc = module.allocate<heart::FunctionCall> (old.location, getRemappedExpression (old.target), old.getFunction());
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpression (arg));
+                fc.arguments.push_back (getRemappedExpressionRef (*arg));
 
             return fc;
         }
@@ -607,7 +607,7 @@ private:
             auto& fc = module.allocate<heart::PureFunctionCall> (old.location, old.function);
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpression (arg));
+                fc.arguments.push_back (getRemappedExpressionRef (*arg));
 
             return fc;
         }
@@ -617,7 +617,7 @@ private:
             auto& fc = module.allocate<heart::PlaceholderFunctionCall> (old.location, old.name, old.returnType);
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpression (arg));
+                fc.arguments.push_back (getRemappedExpressionRef (*arg));
 
             return fc;
         }
@@ -641,19 +641,8 @@ private:
 
         heart::Expression& getRemappedExpressionRef (heart::Expression& old)
         {
-            return *getRemappedExpression (old);
-        }
-
-        heart::ExpressionPtr getRemappedExpression (heart::ExpressionPtr old)
-        {
-            if (old == nullptr)
-                return {};
-
             if (auto c = cast<heart::Constant> (old))
                 return module.allocate<heart::Constant> (c->location, c->value);
-
-            if (auto pp = cast<heart::ProcessorProperty> (old))
-                return module.allocate<heart::ProcessorProperty> (pp->location, pp->property);
 
             if (auto b = cast<heart::BinaryOperator> (old))
                 return module.allocate<heart::BinaryOperator> (b->location,
@@ -680,7 +669,16 @@ private:
             if (auto s = cast<heart::SubElement> (old))
                 return cloneSubElement (*s);
 
-            SOUL_ASSERT_FALSE;
+            auto pp = cast<heart::ProcessorProperty> (old);
+            SOUL_ASSERT (pp != nullptr);
+            return module.allocate<heart::ProcessorProperty> (pp->location, pp->property);
+        }
+
+        pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
+        {
+            if (old != nullptr)
+                return getRemappedExpressionRef (*old);
+
             return {};
         }
 
@@ -724,11 +722,11 @@ private:
         size_t blockIndex;
         heart::Function& targetFunction;
         std::string inlinedFnName;
-        std::vector<heart::BlockPtr> newBlocks;
-        std::unordered_map<heart::BlockPtr, heart::BlockPtr> remappedBlocks;
-        std::unordered_map<heart::VariablePtr, heart::VariablePtr> remappedVariables;
-        heart::BlockPtr postCallResumeBlock;
-        heart::VariablePtr returnValueVar;
+        std::vector<pool_ptr<heart::Block>> newBlocks;
+        std::unordered_map<pool_ptr<heart::Block>, pool_ptr<heart::Block>> remappedBlocks;
+        std::unordered_map<pool_ptr<heart::Variable>, pool_ptr<heart::Variable>> remappedVariables;
+        pool_ptr<heart::Block> postCallResumeBlock;
+        pool_ptr<heart::Variable> returnValueVar;
     };
 
     enum class InlineResult { ok, failed, noneFound };

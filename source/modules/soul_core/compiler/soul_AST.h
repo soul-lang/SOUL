@@ -1097,8 +1097,8 @@ struct AST
         Annotation annotation;
         bool needsToBeExposedInParent = false;
 
-        heart::InputDeclarationPtr generatedInput;
-        heart::OutputDeclarationPtr generatedOutput;
+        pool_ptr<heart::InputDeclaration> generatedInput;
+        pool_ptr<heart::OutputDeclaration> generatedOutput;
     };
 
     //==============================================================================
@@ -1193,7 +1193,7 @@ struct AST
         bool eventFunction = false;
 
         pool_ptr<Block> block;
-        heart::FunctionPtr generatedFunction;
+        pool_ptr<heart::Function> generatedFunction;
 
         Function* getAsFunction() override  { return this; }
 
@@ -1883,7 +1883,7 @@ struct AST
             return *generatedVariable;
         }
 
-        heart::VariablePtr generatedVariable;
+        pool_ptr<heart::Variable> generatedVariable;
     };
 
     //==============================================================================
