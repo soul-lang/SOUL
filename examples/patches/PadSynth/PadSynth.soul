@@ -351,52 +351,45 @@ processor ADSREnvelope
     void run()
     {
         float64 value = 0;
-        bool released = false;
 
         loop
         {
             if (triggerLevel > 0)
             {
-                // TODO: Shouldn't need this
-                released = false;
-
                 // Use the value of the trigger to modify our target value
                 calculateTargetValue (triggerLevel);
 
-                while (! released && value < targetValue)
+                while (value < targetValue)
                 {
                     value += attackRamp;
                     envelopeLevel << float(value);
                     advance();
 
-                    released = (triggerLevel <= 0);
+                    if (triggerLevel <= 0)
+                        break;
                 }
 
                 // Cap it to the target value
-                value = min(value, targetValue);
+                value = min (value, targetValue);
 
                 // Decay stage
-                while (! released && value > (targetValue * sustainLevel))
+                while (value > targetValue * sustainLevel && triggerLevel > 0)
                 {
                     value = value * decayMultiplier;
-                    envelopeLevel << float(value);
+                    envelopeLevel << float (value);
                     advance();
-
-                    released = (triggerLevel <= 0);
                 }
 
                 // Sustain stage
-                while (! released)
+                while (triggerLevel > 0)
                 {
-                    envelopeLevel << float(value);
+                    envelopeLevel << float (value);
                     advance();
-                    released = (triggerLevel <= 0);
                 }
             }
 
-            value = value * releaseMultiplier;
-
-            envelopeLevel << float(value);
+            value *= releaseMultiplier;
+            envelopeLevel << float (value);
             advance();
         }
     }
