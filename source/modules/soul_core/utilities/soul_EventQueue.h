@@ -145,9 +145,9 @@ struct OutputEventQueue
     {
         SOUL_ASSERT (isEvent (stream.getDetails().kind));
 
-        outputStream->setEventSink ([this] (const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+        outputStream->setEventSink ([this] (const soul::Type& eventType, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
                                     {
-                                        return enqueueEvent (eventData, eventSize, eventFrameTime);
+                                        return enqueueEvent (eventType, eventData, eventSize, eventFrameTime);
                                     },
                                     endpointProperties);
     }
@@ -158,9 +158,10 @@ struct OutputEventQueue
         outputStream.reset();
     }
 
-    bool enqueueEvent (const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+    bool enqueueEvent (const soul::Type&, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
     {
         typename FIFOType::EventType value;
+
         SOUL_ASSERT (eventSize == sizeof (value));
         memcpy (std::addressof (value), eventData, sizeof (value));
         fifo.pushEvent (eventFrameTime, value);

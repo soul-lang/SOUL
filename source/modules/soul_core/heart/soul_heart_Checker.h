@@ -50,9 +50,6 @@ struct heart::Checker
         {
             if (output->arraySize != 1)
                 output->location.throwError (Errors::notYetImplemented ("top-level arrays of outputs"));
-
-            if (output->sampleTypes.size() != 1)
-                output->location.throwError (Errors::onlyOneTypeInTopLevelOutputs());
         }
     }
 

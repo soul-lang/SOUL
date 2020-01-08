@@ -52,12 +52,13 @@ namespace callbacks
     using FillStreamBuffer = std::function<uint32_t(void* frameData, uint32_t numFramesRequested)>;
 
     /** Called when an output endpoint has generated an event which needs to be consumed.
+        @param eventType        the type of event
         @param eventData        a pointer to the raw bytes of the event value
         @param eventSize        the size of the event object, in bytes
         @param eventFrameTime   the timestamp of the event, as a count of the number of frames since processing began
         @returns true if it was successfully consumed
     */
-    using ConsumeNextEvent = std::function<bool(const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)>;
+    using ConsumeNextEvent = std::function<bool(const soul::Type& eventType, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)>;
 
     /** Called to consume the given number of frames from the given buffer.
         @returns the number of frames consumed

@@ -103,7 +103,6 @@ namespace soul
     X(incompatibleRatesOnEndpoints,         "Endpoints have incompatible sample rates: $0$ and $1$") \
     X(noSampleRateForEndpoint,              "No endpoint specifies a valid sample rate") \
     X(onlyOneTypeInTopLevelInputs,          "Top level input endpoints can only declare one type") \
-    X(onlyOneTypeInTopLevelOutputs,         "Top level output endpoints can only declare one type") \
     X(wrongTypeForEndpoint,                 "This type is not supported by the endpoint") \
     X(cannotWriteTypeToEndpoint,            "Cannot write type $0$ to endpoint which takes $1$") \
     X(recursiveTypes,                       "Recursively nested types within $Q0$") \
