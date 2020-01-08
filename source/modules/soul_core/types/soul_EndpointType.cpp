@@ -34,9 +34,12 @@ EndpointProperties::EndpointProperties (double rate, uint32_t size)
 }
 
 EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind kind_,
-                                  Type sampleType_, uint32_t stride, Annotation a)
-   : endpointID (std::move (id)), name (std::move (nm)), kind (kind_),
-     sampleType (sampleType_), strideBytes (stride),
+                                  std::vector<Type> sampleTypes_, uint32_t stride, Annotation a)
+   : endpointID (std::move (id)),
+     name (std::move (nm)),
+     kind (kind_),
+     sampleTypes (std::move (sampleTypes_)),
+     strideBytes (stride),
      annotation (std::move (a))
 {
 }
@@ -45,6 +48,8 @@ uint32_t EndpointDetails::getNumAudioChannels() const
 {
     if (isStream (kind))
     {
+        auto sampleType = getSingleSampleType();
+
         if (sampleType.isFloatingPoint())
         {
             if (sampleType.isPrimitive())

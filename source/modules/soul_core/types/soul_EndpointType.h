@@ -71,7 +71,7 @@ struct EndpointDetails
     EndpointDetails& operator= (EndpointDetails&&) = default;
 
     EndpointDetails (EndpointID, std::string name, EndpointKind,
-                     Type sampleType, uint32_t strideBytes,
+                     std::vector<Type> sampleTypes, uint32_t strideBytes,
                      Annotation);
 
     uint32_t getNumAudioChannels() const;
@@ -79,9 +79,15 @@ struct EndpointDetails
     EndpointID endpointID;
     std::string name;
     EndpointKind kind;
-    Type sampleType;
+    std::vector<Type> sampleTypes;
     uint32_t strideBytes;
     Annotation annotation;
+
+    Type getSingleSampleType() const
+    {
+        SOUL_ASSERT (sampleTypes.size() == 1);
+        return sampleTypes.front();
+    }
 };
 
 //==============================================================================

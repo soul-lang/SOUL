@@ -217,8 +217,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            auto sampleType = getSingleSampleType();
-            return { "in:" + name.toString(), name, kind, sampleType, (uint32_t) sampleType.getPackedSizeInBytes(), annotation };
+            return { "in:" + name.toString(), name, kind, sampleTypes, (uint32_t) getSingleSampleType().getPackedSizeInBytes(), annotation };
         }
     };
 
@@ -233,8 +232,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            auto sampleType = getSingleSampleType();
-            return { "out:" + name.toString(), name, kind, sampleType, (uint32_t) sampleType.getPackedSizeInBytes(), annotation };
+            return { "out:" + name.toString(), name, kind, sampleTypes, (uint32_t) getSingleSampleType().getPackedSizeInBytes(), annotation };
         }
     };
 

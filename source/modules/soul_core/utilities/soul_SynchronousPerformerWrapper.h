@@ -131,7 +131,7 @@ private:
         {
             auto& details = inputToAttachTo.getDetails();
 
-            if (details.sampleType.isFloat64())
+            if (details.getSingleSampleType().isFloat64())
             {
                 inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t requestedFrames) -> uint32_t
                 {
@@ -206,7 +206,7 @@ private:
         {
             auto& details = outputToAttachTo.getDetails();
 
-            if (details.sampleType.isFloat64())
+            if (details.getSingleSampleType().isFloat64())
             {
                 outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t numFrames) -> uint32_t
                 {

@@ -218,8 +218,8 @@ inline bool isMIDIEventEndpoint (const EndpointDetails& details)
     };
 
     return isEvent (details.kind)
-            && details.sampleType.isStruct()
-            && isMIDIMessageStruct (details.sampleType.getStructRef());
+            && details.getSingleSampleType().isStruct()
+            && isMIDIMessageStruct (details.getSingleSampleType().getStructRef());
 }
 
 inline bool isMIDIEventEndpoint (InputEndpoint& i)  { return isMIDIEventEndpoint (i.getDetails()); }

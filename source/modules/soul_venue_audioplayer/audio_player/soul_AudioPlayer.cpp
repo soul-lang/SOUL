@@ -333,9 +333,9 @@ public:
                 : input (inputToAttachTo), startChannelIndex (startChannel)
             {
                 auto& details = inputToAttachTo.getDetails();
-                auto numDestChannels = (uint32_t) details.sampleType.getVectorSize();
+                auto numDestChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
-                if (details.sampleType.isFloat64())
+                if (details.getSingleSampleType().isFloat64())
                 {
                     inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
                     {
@@ -353,7 +353,7 @@ public:
                         return 0;
                     }, properties);
                 }
-                else if (details.sampleType.isFloat32())
+                else if (details.getSingleSampleType().isFloat32())
                 {
                     inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
                     {
@@ -372,7 +372,7 @@ public:
                         return 0;
                     }, properties);
                 }
-                else if (details.sampleType.isInteger32())
+                else if (details.getSingleSampleType().isInteger32())
                 {
                     inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
                                                      {
@@ -421,9 +421,9 @@ public:
                 : output (outputToAttachTo), startChannelIndex (startChannel)
             {
                 auto& details = outputToAttachTo.getDetails();
-                auto numSrcChannels = (uint32_t) details.sampleType.getVectorSize();
+                auto numSrcChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
-                if (details.sampleType.isFloat64())
+                if (details.getSingleSampleType().isFloat64())
                 {
                     outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
                     {
@@ -440,7 +440,7 @@ public:
 
                     }, properties);
                 }
-                else if (details.sampleType.isFloat32())
+                else if (details.getSingleSampleType().isFloat32())
                 {
                     outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
                     {
@@ -456,7 +456,7 @@ public:
                         return num;
                     }, properties);
                 }
-                else if (details.sampleType.isInteger32())
+                else if (details.getSingleSampleType().isInteger32())
                 {
                     outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
                                                     {
@@ -772,7 +772,7 @@ private:
         e.details.endpointID    = std::move (id);
         e.details.name          = std::move (name);
         e.details.kind          = kind;
-        e.details.sampleType    = sampleType;
+        e.details.sampleTypes.push_back (sampleType);
         e.details.strideBytes   = 0;
 
         e.audioChannelIndex     = audioChannelIndex;
