@@ -250,9 +250,16 @@ private:
             SOUL_ASSERT (f.name.isValid());
 
             out << (f.functionType.isEvent() ? "event " : "function ");
-            out << getFunctionName (f) << '(';
+            out << getFunctionName (f);
 
+            if (f.parameters.empty())
             {
+                out << "()";
+            }
+            else
+            {
+                out << " (";
+
                 bool isFirst = true;
 
                 for (auto p : f.parameters)
@@ -265,9 +272,9 @@ private:
                     out << getTypeDescription (p->type) << ' ';
                     printVarWithPrefix (p->name.toString());
                 }
-            }
 
-            out << ')';
+                out << ')';
+            }
 
             if (! f.functionType.isEvent())
                 out << " -> " << getTypeDescription (f.returnType);
