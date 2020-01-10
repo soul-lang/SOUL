@@ -79,10 +79,10 @@ struct heart
     static constexpr const char* getUserInitFunctionName()          { return "init"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
 
-    static std::string getExternalEventFunctionName (const std::string& endpointName)           { return "_external_event_" + endpointName; }
-    static std::string getEventFunctionName (const std::string& endpointName, const Type& t)    { return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
-    static std::string getEventFunctionName (const heart::InputDeclaration&  i, const Type& t)  { return getEventFunctionName (i.name.toString(), t); }
-    static std::string getEventFunctionName (const heart::OutputDeclaration& o, const Type& t)  { return getEventFunctionName (o.name.toString(), t); }
+    static std::string getExternalEventFunctionName (const std::string& endpointName, const Type& t)    { return "_external_event_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
+    static std::string getEventFunctionName (const std::string& endpointName, const Type& t)            { return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
+    static std::string getEventFunctionName (const heart::InputDeclaration&  i, const Type& t)          { return getEventFunctionName (i.name.toString(), t); }
+    static std::string getEventFunctionName (const heart::OutputDeclaration& o, const Type& t)          { return getEventFunctionName (o.name.toString(), t); }
 
     //==============================================================================
     struct Allocator
@@ -219,7 +219,7 @@ struct heart
     {
         InputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
-        std::string getEventFunctionName() const                { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString()); }
+        std::string getEventFunctionName(const Type& t) const   { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
         std::string getFramesTillNextEventFunctionName() const  { SOUL_ASSERT (isEventEndpoint());  return "_setFramesTillNextEvent_" + name.toString(); }
         std::string getAddFramesFunctionName() const            { SOUL_ASSERT (isStreamEndpoint()); return "_addFramesToInput_" + name.toString(); }
         std::string getAddSparseFramesFunctionName() const      { SOUL_ASSERT (isStreamEndpoint()); return "_addSparseFramesToInput_" + name.toString(); }
@@ -237,7 +237,7 @@ struct heart
     {
         OutputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
-        std::string getEventFunctionName() const                { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString()); }
+        std::string getEventFunctionName(const Type& t) const   { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
         std::string getReadFramesFunctionName() const           { SOUL_ASSERT (isStreamEndpoint()); return "_readFramesFromOutput_" + name.toString(); }
         std::string getGetEventsFunctionName() const            { SOUL_ASSERT (isEventEndpoint());  return "_getEventsFromOutput_" + name.toString(); }
 
