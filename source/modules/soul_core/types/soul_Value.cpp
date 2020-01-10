@@ -648,7 +648,7 @@ void ValuePrinter::printFloat32 (float value)
     if (std::isnan (value))     return print ("_nan32");
     if (std::isinf (value))     return print (value > 0 ? "_inf32" : "_ninf32");
 
-    return print (ensureDecimalPointIsPresent (floatToAccurateString (value)) + "f");
+    return print (floatToAccurateString (value) + "f");
 }
 
 void ValuePrinter::printFloat64 (double value)
@@ -657,7 +657,7 @@ void ValuePrinter::printFloat64 (double value)
     if (std::isnan (value))     return print ("_nan64");
     if (std::isinf (value))     return print (value > 0 ? "_inf64" : "_ninf64");
 
-    return print (ensureDecimalPointIsPresent (doubleToAccurateString (value)));
+    return print (doubleToAccurateString (value));
 }
 
 void ValuePrinter::beginStructMembers (const Type&)       { print ("{ "); }

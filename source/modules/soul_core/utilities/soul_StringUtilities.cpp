@@ -324,33 +324,16 @@ std::string toStringWithDecPlaces (double n, size_t numDecPlaces)
     return dot == std::string::npos ? s : s.substr (0, std::min (s.length(), dot + 1 + numDecPlaces));
 }
 
-std::string floatToAccurateString (float n)
+template <typename FloatType>
+static std::string floatToString (FloatType value)
 {
-    // TODO: clang's version of std::to_chars doesn't yet support floating point, but when it does, we should use it here..
-    std::ostringstream s;
-    s.imbue (std::locale::classic());
-    s.precision (9);
-    s << n;
-    return s.str();
+    char buffer[FloatToString<FloatType>::maxBufferSizeNeeded];
+    auto end = FloatToString<FloatType>::write (value, buffer);
+    return std::string (buffer, end);
 }
 
-std::string doubleToAccurateString (double n)
-{
-    // TODO: clang's version of std::to_chars doesn't yet support floating point, but when it does, we should use it here..
-    std::ostringstream s;
-    s.imbue (std::locale::classic());
-    s.precision (30);
-    s << n;
-    return s.str();
-}
-
-std::string ensureDecimalPointIsPresent (std::string s)
-{
-    if (containsChar (s, '.') || containsChar (s, 'e'))
-        return s;
-
-    return s + ".0";
-}
+std::string floatToAccurateString (float n)     { return floatToString (n); }
+std::string doubleToAccurateString (double n)   { return floatToString (n); }
 
 std::string getDescriptionOfTimeInSeconds (double numSeconds)
 {

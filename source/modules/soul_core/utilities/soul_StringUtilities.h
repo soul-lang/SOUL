@@ -100,7 +100,6 @@ static std::string addSuffixToMakeUnique (const std::string& name, IsAlreadyUsed
 std::string toStringWithDecPlaces (double n, size_t numDecPlaces);
 std::string floatToAccurateString (float n);
 std::string doubleToAccurateString (double n);
-std::string ensureDecimalPointIsPresent (std::string);
 std::string getDescriptionOfTimeInSeconds (double numSeconds);
 std::string toHexString (int64_t value);
 std::string toHexString (int64_t value, int numDigits);
