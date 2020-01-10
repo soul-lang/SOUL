@@ -196,6 +196,17 @@ struct heart
             return soul::joinStrings (sampleDescriptions, ", ");
         }
 
+    protected:
+        uint32_t getSampleTypesPackedSize() const
+        {
+            size_t packedSize = 0;
+
+            for (auto& sampleType : sampleTypes)
+                packedSize += sampleType.getPackedSizeInBytes();
+
+            return static_cast<uint32_t> (packedSize);
+        }
+
     private:
         Type getSampleArrayType (Type t) const
         {
@@ -217,7 +228,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { "in:" + name.toString(), name, kind, sampleTypes, (uint32_t) getSingleSampleType().getPackedSizeInBytes(), annotation };
+            return { "in:" + name.toString(), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
         }
     };
 
@@ -232,7 +243,8 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { "out:" + name.toString(), name, kind, sampleTypes, (uint32_t) getSingleSampleType().getPackedSizeInBytes(), annotation };
+
+            return { "out:" + name.toString(), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
         }
     };
 
