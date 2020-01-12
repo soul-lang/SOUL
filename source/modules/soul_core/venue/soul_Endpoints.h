@@ -218,6 +218,7 @@ inline bool isMIDIEventEndpoint (const EndpointDetails& details)
     };
 
     return isEvent (details.kind)
+            && details.sampleTypes.size() == 1
             && details.getSingleSampleType().isStruct()
             && isMIDIMessageStruct (details.getSingleSampleType().getStructRef());
 }
