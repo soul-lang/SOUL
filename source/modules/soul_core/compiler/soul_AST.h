@@ -1053,6 +1053,10 @@ struct AST
         Type getSampleType (Expression& e) const
         {
             for (auto& sampleType : getSampleArrayTypes())
+                if (e.getResultType().isEqual (sampleType, Type::ignoreVectorSize1))
+                    return sampleType;
+
+            for (auto& sampleType : getSampleArrayTypes())
                 if (e.canSilentlyCastTo (sampleType))
                     return sampleType;
 
