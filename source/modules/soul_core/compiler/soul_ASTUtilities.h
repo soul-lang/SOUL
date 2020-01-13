@@ -126,13 +126,29 @@ struct ASTUtilities
         auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
         newDebugEndpoint.name = allocator.get (getDebugEndpointInternalName());
         newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointKind::event);
-        newDebugEndpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), Type::createStringLiteral()));
         newDebugEndpoint.needsToBeExposedInParent = true;
         processor->endpoints.push_back (newDebugEndpoint);
 
         return newDebugEndpoint;
     }
 
+    static bool isInternalDebugEndpoint (const AST::EndpointDeclaration& e)
+    {
+        return e.needsToBeExposedInParent && e.name == ASTUtilities::getDebugEndpointInternalName();
+    }
+
+    static void ensureEventEndpointHasSampleType (AST::Allocator& allocator, AST::EndpointDeclaration& endpoint, const Type& type)
+    {
+        if (type.isReference() || type.isConst())
+            return ensureEventEndpointHasSampleType (allocator, endpoint, type.withConstAndRefFlags (false, false));
+
+        for (auto& t : endpoint.details->getResolvedSampleTypes())
+            if (t.isEqual (type, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
+                return;
+
+        endpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
+    }
+    
     static void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
     {
         if (auto g = cast<AST::Graph> (processor))
@@ -348,14 +364,18 @@ private:
                     {
                         auto parentEndpoint = graph.findEndpoint (childEndpoint->name, false);
 
-                        if (parentEndpoint == nullptr)
+                        if (parentEndpoint != nullptr)
+                        {
+                            for (auto& t : childEndpoint->details->getResolvedSampleTypes())
+                                ensureEventEndpointHasSampleType (allocator, *parentEndpoint, t);
+                        }
+                        else
                         {
                             parentEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
                             parentEndpoint->name = allocator.get (childEndpoint->name);
                             parentEndpoint->details = std::make_unique<AST::EndpointDetails> (*childEndpoint->details);
                             parentEndpoint->needsToBeExposedInParent = true;
                             graph.endpoints.push_back (parentEndpoint);
-                            anyChanges = true;
                         }
 
                         AST::Connection::NameAndEndpoint parent, child;

@@ -2308,6 +2308,10 @@ private:
             if (auto outputEndpoint = cast<AST::OutputEndpointRef> (topLevelWrite.target))
             {
                 SOUL_ASSERT (outputEndpoint->output->details != nullptr);
+
+                if (ASTUtilities::isInternalDebugEndpoint (*outputEndpoint->output))
+                    ASTUtilities::ensureEventEndpointHasSampleType (allocator, *outputEndpoint->output, w.value->getResultType());
+
                 SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), *w.value);
                 return w;
             }
