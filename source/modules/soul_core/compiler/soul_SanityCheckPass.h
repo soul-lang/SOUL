@@ -158,12 +158,14 @@ struct SanityCheckPass  final
 
     static void expectSilentCastPossible (const AST::Context& context, ArrayView<Type> targetTypes, AST::Expression& source)
     {
+        auto sourceType = source.getResultType();
+
         int matches = 0;
 
         for (auto& type : targetTypes)
         {
             // If we have an exact match, it doesn't matter how many other types could be used silently
-            if (source.getResultType().isEqual (type, Type::ignoreVectorSize1))
+            if (sourceType.isEqual (type, Type::ignoreVectorSize1))
                 return;
 
             if (source.canSilentlyCastTo (type))
@@ -171,11 +173,11 @@ struct SanityCheckPass  final
         }
 
         if (matches == 0)
-            context.throwError (Errors::cannotImplicitlyCastType (source.getResultType().getDescription(),
+            context.throwError (Errors::cannotImplicitlyCastType (sourceType.getDescription(),
                                                                   getTypesDescription (targetTypes)));
 
         if (matches > 1)
-            context.throwError (Errors::ambiguousCastBetween (source.getResultType().getDescription(),
+            context.throwError (Errors::ambiguousCastBetween (sourceType.getDescription(),
                                                               getTypesDescription (targetTypes)));
     }
 
