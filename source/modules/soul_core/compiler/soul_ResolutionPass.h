@@ -1332,6 +1332,11 @@ private:
                     }
 
                     auto possibles = findAllPossibleFunctions (call, *name);
+
+                    for (auto& f : possibles)
+                        if (f.functionIsNotResolved)
+                            return call;
+
                     auto totalMatches = possibles.size();
 
                     // If there's only one function found, and we can call it (maybe with a cast), then go for it..
@@ -1433,9 +1438,13 @@ private:
                 {
                     Type targetParamType;
 
-                    if (function.isGeneric() && ! function.parameters[i]->isResolved())
+                    if (! function.parameters[i]->isResolved())
                     {
-                        requiresGeneric = true;
+                        if (function.isGeneric())
+                            requiresGeneric = true;
+                        else
+                            functionIsNotResolved = true;
+
                         continue;
                     }
 
@@ -1456,6 +1465,7 @@ private:
             bool isImpossible = false;
             bool requiresCast = false;
             bool requiresGeneric = false;
+            bool functionIsNotResolved = false;
 
             bool isExactMatch() const       { return ! (isImpossible || requiresCast || requiresGeneric); }
         };
