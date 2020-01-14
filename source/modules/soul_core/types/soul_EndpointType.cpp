@@ -63,6 +63,17 @@ uint32_t EndpointDetails::getNumAudioChannels() const
     return 0;
 }
 
+const Type& EndpointDetails::getSingleSampleType() const
+{
+    SOUL_ASSERT (sampleTypes.size() == 1);
+    return sampleTypes.front();
+}
+
+bool EndpointDetails::isConsoleOutput() const
+{
+    return name == ASTUtilities::getConsoleEndpointInternalName();
+}
+
 const char* getEndpointKindName (EndpointKind kind)
 {
     switch (kind)

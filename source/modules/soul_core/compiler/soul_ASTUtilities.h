@@ -150,7 +150,7 @@ struct ASTUtilities
 
         endpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
     }
-    
+
     static void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
     {
         if (auto g = cast<AST::Graph> (processor))

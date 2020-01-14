@@ -260,7 +260,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         if (debugMessageHandler != nullptr)
             for (auto& outputEndpoint : performer->getOutputEndpoints())
                 if (isEvent (outputEndpoint->getDetails().kind))
-                    soul::utilities::attachDebugPrinterToOutput (program, *outputEndpoint, properties,
+                    soul::utilities::attachConsoleOutputHandler (program, *outputEndpoint, properties,
                                                                  [debugMessageHandler] (uint64_t eventTime, const char* endpointName, const char* message)
                                                                  { debugMessageHandler->handleDebugMessage (eventTime, endpointName, message); });
     }

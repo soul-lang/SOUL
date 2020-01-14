@@ -75,6 +75,8 @@ struct EndpointDetails
                      Annotation);
 
     uint32_t getNumAudioChannels() const;
+    const Type& getSingleSampleType() const;
+    bool isConsoleOutput() const;
 
     EndpointID endpointID;
     std::string name;
@@ -82,12 +84,6 @@ struct EndpointDetails
     std::vector<Type> sampleTypes;
     uint32_t strideBytes;
     Annotation annotation;
-
-    Type getSingleSampleType() const
-    {
-        SOUL_ASSERT (sampleTypes.size() == 1);
-        return sampleTypes.front();
-    }
 };
 
 //==============================================================================
