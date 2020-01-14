@@ -411,8 +411,8 @@ private:
             if (auto builtInConstant = getBuiltInConstant (qi))
                 return builtInConstant;
 
-            if (qi.path.isUnqualifiedName (ASTUtilities::getDebugOutputName()))
-                return allocator.allocate<AST::OutputEndpointRef> (qi.context, ASTUtilities::getOrCreateDebugEndpoint (allocator, qi.getParentScope(), qi.context));
+            if (auto consoleEndpoint = ASTUtilities::createConsoleEndpoint (allocator, qi))
+                return consoleEndpoint;
 
             if (ignoreErrors)
             {
@@ -2319,7 +2319,7 @@ private:
             {
                 SOUL_ASSERT (outputEndpoint->output->details != nullptr);
 
-                if (ASTUtilities::isInternalDebugEndpoint (*outputEndpoint->output))
+                if (ASTUtilities::isConsoleEndpoint (*outputEndpoint->output))
                     ASTUtilities::ensureEventEndpointHasSampleType (allocator, *outputEndpoint->output, w.value->getResultType());
 
                 SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), *w.value);

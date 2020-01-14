@@ -109,32 +109,34 @@ struct ASTUtilities
         }
     }
 
-    static const char* getDebugOutputName()              { return "debug"; }
-    static const char* getDebugEndpointInternalName()    { return "_debug"; }
+    static const char* getConsoleEndpointInternalName()  { return "_console"; }
 
-    static AST::EndpointDeclaration& getOrCreateDebugEndpoint (AST::Allocator& allocator, AST::Scope* scope, AST::Context& errorContext)
+    static pool_ptr<AST::OutputEndpointRef> createConsoleEndpoint (AST::Allocator& allocator, AST::QualifiedIdentifier& name)
     {
-        SOUL_ASSERT (scope != nullptr);
-        auto processor = scope->findProcessor();
+        if (! (name.path.isUnqualifiedName ("console") || name.path.isUnqualifiedName ("consoul")))
+            return {};
+
+        SOUL_ASSERT (name.getParentScope() != nullptr);
+        auto processor = name.getParentScope()->findProcessor();
 
         if (processor == nullptr)
-            errorContext.throwError (Errors::cannotFindOutput (getDebugOutputName()));
+            name.context.throwError (Errors::cannotFindOutput (name.path));
 
-        if (auto e = processor->findEndpoint (getDebugEndpointInternalName(), false))
-            return *e;
+        if (auto e = processor->findEndpoint (getConsoleEndpointInternalName(), false))
+            return allocator.allocate<AST::OutputEndpointRef> (name.context, *e);
 
         auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
-        newDebugEndpoint.name = allocator.get (getDebugEndpointInternalName());
+        newDebugEndpoint.name = allocator.get (getConsoleEndpointInternalName());
         newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointKind::event);
         newDebugEndpoint.needsToBeExposedInParent = true;
         processor->endpoints.push_back (newDebugEndpoint);
 
-        return newDebugEndpoint;
+        return allocator.allocate<AST::OutputEndpointRef> (name.context, newDebugEndpoint);
     }
 
-    static bool isInternalDebugEndpoint (const AST::EndpointDeclaration& e)
+    static bool isConsoleEndpoint (const AST::EndpointDeclaration& e)
     {
-        return e.needsToBeExposedInParent && e.name == ASTUtilities::getDebugEndpointInternalName();
+        return e.needsToBeExposedInParent && e.name == ASTUtilities::getConsoleEndpointInternalName();
     }
 
     static void ensureEventEndpointHasSampleType (AST::Allocator& allocator, AST::EndpointDeclaration& endpoint, const Type& type)
