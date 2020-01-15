@@ -80,8 +80,8 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
                                              StandardOperatorMatcher,
                                              StandardIdentifierMatcher>
 {
-    static std::vector<AST::ModuleBasePtr> parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
-                                                                      AST::Namespace& parentNamespace)
+    static std::vector<pool_ptr<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
+                                                                             AST::Namespace& parentNamespace)
     {
         StructuralParser p (allocator, code, parentNamespace);
         p.parseTopLevelDecls (parentNamespace);
@@ -150,7 +150,7 @@ private:
         metaFunctionArgument
     };
 
-    AST::StatementPtr noop;
+    pool_ptr<AST::NoopStatement> noop;
     AST::Statement& getNoop()     { if (noop == nullptr) noop = allocate<AST::NoopStatement> (AST::Context()); return *noop; }
 
     //==============================================================================
@@ -367,7 +367,7 @@ private:
         auto context = getContext();
         auto name = parseIdentifier();
 
-        std::vector<AST::QualifiedIdentifierPtr> genericWildcards;
+        std::vector<pool_ptr<AST::QualifiedIdentifier>> genericWildcards;
 
         if (matchIf (Operator::lessThan))
             genericWildcards = parseGenericFunctionWildcardList();
@@ -907,9 +907,9 @@ private:
     }
 
     //==============================================================================
-    std::vector<AST::QualifiedIdentifierPtr> parseGenericFunctionWildcardList()
+    std::vector<pool_ptr<AST::QualifiedIdentifier>> parseGenericFunctionWildcardList()
     {
-        std::vector<AST::QualifiedIdentifierPtr> wildcards;
+        std::vector<pool_ptr<AST::QualifiedIdentifier>> wildcards;
 
         for (;;)
         {
@@ -956,7 +956,7 @@ private:
 
     AST::Function& parseFunctionDeclaration (const AST::Context& context, AST::Expression& returnType,
                                              Identifier name, const AST::Context& nameLocation,
-                                             std::vector<AST::QualifiedIdentifierPtr> genericWildcards)
+                                             std::vector<pool_ptr<AST::QualifiedIdentifier>> genericWildcards)
     {
         if (AST::isResolvedAsType (returnType) && returnType.getConstness() == AST::Constness::definitelyConst)
             throwError (Errors::functionReturnTypeCannotBeConst());
@@ -1022,7 +1022,7 @@ private:
         return f;
     }
 
-    AST::Block& parseBlock (AST::FunctionPtr ownerFunction)
+    AST::Block& parseBlock (pool_ptr<AST::Function> ownerFunction)
     {
         expect (Operator::openBrace);
         auto& newBlock = allocate<AST::Block> (getContext(), ownerFunction);

@@ -63,7 +63,7 @@ struct heart
     struct Assignment;
     struct Terminator;
 
-    #define SOUL_PREDECLARE_TYPE(Type)     struct Type; using Type ## Ptr = pool_ptr<Type>;
+    #define SOUL_PREDECLARE_TYPE(Type)     struct Type;
     SOUL_HEART_OBJECTS (SOUL_PREDECLARE_TYPE)
     SOUL_HEART_STATEMENTS (SOUL_PREDECLARE_TYPE)
     SOUL_HEART_TERMINATORS (SOUL_PREDECLARE_TYPE)

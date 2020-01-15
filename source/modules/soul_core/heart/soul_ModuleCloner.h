@@ -24,7 +24,7 @@ namespace soul
 /** Performs a deep-clone of a Module object, which is trickier than it sounds.. */
 struct ModuleCloner
 {
-    using FunctionMappings = std::unordered_map<pool_ptr<const heart::Function>, heart::FunctionPtr>;
+    using FunctionMappings = std::unordered_map<pool_ptr<const heart::Function>, pool_ptr<heart::Function>>;
     using StructMappings   = std::unordered_map<const Structure*, StructurePtr>;
 
     ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs) noexcept
@@ -76,11 +76,11 @@ struct ModuleCloner
 
     FunctionMappings& functionMappings;
     StructMappings& structMappings;
-    std::unordered_map<pool_ptr<const heart::InputDeclaration>, heart::InputDeclarationPtr> inputMappings;
-    std::unordered_map<pool_ptr<const heart::OutputDeclaration>, heart::OutputDeclarationPtr> outputMappings;
-    std::unordered_map<pool_ptr<const heart::Variable>, heart::VariablePtr> variableMappings;
-    std::unordered_map<pool_ptr<const heart::Block>, heart::BlockPtr> blockMappings;
-    std::unordered_map<pool_ptr<const heart::ProcessorInstance>, heart::ProcessorInstancePtr> processorInstanceMappings;
+    std::unordered_map<pool_ptr<const heart::InputDeclaration>, pool_ptr<heart::InputDeclaration>> inputMappings;
+    std::unordered_map<pool_ptr<const heart::OutputDeclaration>, pool_ptr<heart::OutputDeclaration>> outputMappings;
+    std::unordered_map<pool_ptr<const heart::Variable>, pool_ptr<heart::Variable>> variableMappings;
+    std::unordered_map<pool_ptr<const heart::Block>, pool_ptr<heart::Block>> blockMappings;
+    std::unordered_map<pool_ptr<const heart::ProcessorInstance>, pool_ptr<heart::ProcessorInstance>> processorInstanceMappings;
 
     heart::Block& getRemappedBlock (heart::Block& old)
     {
@@ -99,7 +99,7 @@ struct ModuleCloner
         return *getRemappedExpression (old);
     }
 
-    heart::ExpressionPtr getRemappedExpression (heart::ExpressionPtr old)
+    pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
     {
         if (old == nullptr)
             return {};
@@ -200,8 +200,9 @@ struct ModuleCloner
     heart::InputDeclaration& clone (const heart::InputDeclaration& old)
     {
         auto& io = newModule.allocate<heart::InputDeclaration> (old.location);
-        SOUL_ASSERT (inputMappings[old] == nullptr);
-        inputMappings[old] = io;
+        auto& mapping = inputMappings[old];
+        SOUL_ASSERT (mapping == nullptr);
+        mapping = io;
         io.name = newModule.allocator.get (old.name);
         io.index = old.index;
         io.kind = old.kind;
@@ -214,8 +215,9 @@ struct ModuleCloner
     heart::OutputDeclaration& clone (const heart::OutputDeclaration& old)
     {
         auto& io = newModule.allocate<heart::OutputDeclaration> (old.location);
-        SOUL_ASSERT (outputMappings[old] == nullptr);
-        outputMappings[old] = io;
+        auto& mapping = outputMappings[old];
+        SOUL_ASSERT (mapping == nullptr);
+        mapping = io;
         io.name = newModule.allocator.get (old.name);
         io.index = old.index;
         io.kind = old.kind;
@@ -237,7 +239,7 @@ struct ModuleCloner
         return c;
     }
 
-    heart::ProcessorInstancePtr getRemappedProcessorInstance (heart::ProcessorInstancePtr old)
+    pool_ptr<heart::ProcessorInstance> getRemappedProcessorInstance (pool_ptr<heart::ProcessorInstance> old)
     {
         if (old == nullptr)
             return {};
@@ -248,8 +250,9 @@ struct ModuleCloner
     heart::ProcessorInstance& clone (const heart::ProcessorInstance& old)
     {
         auto& p = newModule.allocate<heart::ProcessorInstance>();
-        SOUL_ASSERT (processorInstanceMappings[old] == nullptr);
-        processorInstanceMappings[old] = p;
+        auto& mapping = processorInstanceMappings[old];
+        SOUL_ASSERT (mapping == nullptr);
+        mapping = p;
         p.instanceName = old.instanceName;
         p.sourceName = old.sourceName;
         p.specialisationArgs = old.specialisationArgs;
@@ -261,12 +264,13 @@ struct ModuleCloner
 
     heart::Variable& cloneVariable (const heart::Variable& old)
     {
-        SOUL_ASSERT (variableMappings[old] == nullptr);
+        auto& mapping = variableMappings[old];
+        SOUL_ASSERT (mapping == nullptr);
         auto& v = newModule.allocate<heart::Variable> (old.location, cloneType (old.type),
                                                        newModule.allocator.get (old.name),
                                                        old.role);
         v.annotation = old.annotation;
-        variableMappings[old] = v;
+        mapping = v;
         return v;
     }
 

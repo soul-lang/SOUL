@@ -392,7 +392,7 @@ struct RewritingASTVisitor
         }
     }
 
-    AST::ExpPtr visitObject (AST::Expression& t)
+    pool_ptr<AST::Expression> visitObject (AST::Expression& t)
     {
         switch (t.objectType)
         {
@@ -401,7 +401,7 @@ struct RewritingASTVisitor
         }
     }
 
-    AST::StatementPtr visitObject (AST::Statement& t)
+    pool_ptr<AST::Statement> visitObject (AST::Statement& t)
     {
         switch (t.objectType)
         {
@@ -443,16 +443,16 @@ struct RewritingASTVisitor
     }
 
     template <typename Type>
-    void replaceAs (pool_ptr<Type>& o)               { replace (o, visitAs<Type> (o)); }
-    void replaceExpression (AST::ExpPtr& e)          { replace (e, visitExpression (e)); }
-    void replaceStatement (AST::StatementPtr& s)     { replace (s, visitStatement (s)); }
+    void replaceAs (pool_ptr<Type>& o)                      { replace (o, visitAs<Type> (o)); }
+    void replaceExpression (pool_ptr<AST::Expression>& e)   { replace (e, visitExpression (e)); }
+    void replaceStatement (pool_ptr<AST::Statement>& s)     { replace (s, visitStatement (s)); }
 
-    AST::StatementPtr visitStatement (AST::StatementPtr s)
+    pool_ptr<AST::Statement> visitStatement (pool_ptr<AST::Statement> s)
     {
         return visitAs<AST::Statement> (s);
     }
 
-    virtual AST::ExpPtr visitExpression (AST::ExpPtr e)
+    virtual pool_ptr<AST::Expression> visitExpression (pool_ptr<AST::Expression> e)
     {
         return visitAs<AST::Expression> (e);
     }
@@ -483,7 +483,7 @@ struct RewritingASTVisitor
     }
 
     //==============================================================================
-    virtual AST::ProcessorPtr visit (AST::Processor& p)
+    virtual pool_ptr<AST::Processor> visit (AST::Processor& p)
     {
         visitArray (p.endpoints);
         visitArray (p.structures);
@@ -493,7 +493,7 @@ struct RewritingASTVisitor
         return p;
     }
 
-    virtual AST::GraphPtr visit (AST::Graph& g)
+    virtual pool_ptr<AST::Graph> visit (AST::Graph& g)
     {
         visitArray (g.endpoints);
         visitArray (g.processorInstances);
@@ -504,7 +504,7 @@ struct RewritingASTVisitor
         return g;
     }
 
-    virtual AST::NamespacePtr visit (AST::Namespace& n)
+    virtual pool_ptr<AST::Namespace> visit (AST::Namespace& n)
     {
         visitArray   (n.subModules);
         visitArray   (n.structures);
@@ -515,7 +515,7 @@ struct RewritingASTVisitor
         return n;
     }
 
-    virtual AST::BlockPtr visit (AST::Block& b)
+    virtual pool_ptr<AST::Block> visit (AST::Block& b)
     {
         for (auto& s : b.statements)
             replaceStatement (s);
@@ -523,7 +523,7 @@ struct RewritingASTVisitor
         return b;
     }
 
-    virtual AST::ExpPtr visit (AST::Constant& o)
+    virtual pool_ptr<AST::Expression> visit (AST::Constant& o)
     {
         return o;
     }
@@ -534,20 +534,20 @@ struct RewritingASTVisitor
             replaceExpression (property.value);
     }
 
-    virtual AST::ExpPtr visit (AST::BinaryOperator& o)
+    virtual pool_ptr<AST::Expression> visit (AST::BinaryOperator& o)
     {
         replaceExpression (o.lhs);
         replaceExpression (o.rhs);
         return o;
     }
 
-    virtual AST::ExpPtr visit (AST::UnaryOperator& o)
+    virtual pool_ptr<AST::Expression> visit (AST::UnaryOperator& o)
     {
         replaceExpression (o.source);
         return o;
     }
 
-    virtual AST::StatementPtr visit (AST::VariableDeclaration& v)
+    virtual pool_ptr<AST::Statement> visit (AST::VariableDeclaration& v)
     {
         if (v.declaredType != nullptr)  replaceExpression (v.declaredType);
         if (v.initialValue != nullptr)  replaceExpression (v.initialValue);
@@ -556,19 +556,19 @@ struct RewritingASTVisitor
         return v;
     }
 
-    virtual AST::ExpPtr visit (AST::VariableRef& o)
+    virtual pool_ptr<AST::Expression> visit (AST::VariableRef& o)
     {
         return o;
     }
 
-    virtual AST::ExpPtr visit (AST::Assignment& a)
+    virtual pool_ptr<AST::Expression> visit (AST::Assignment& a)
     {
         replaceExpression (a.target);
         replaceExpression (a.newValue);
         return a;
     }
 
-    virtual AST::ExpPtr visit (AST::CallOrCast& c)
+    virtual pool_ptr<AST::Expression> visit (AST::CallOrCast& c)
     {
         if (c.arguments != nullptr)
             visitObject (*c.arguments);
@@ -577,7 +577,7 @@ struct RewritingASTVisitor
         return c;
     }
 
-    virtual AST::ExpPtr visit (AST::FunctionCall& c)
+    virtual pool_ptr<AST::Expression> visit (AST::FunctionCall& c)
     {
         if (c.arguments != nullptr)
             visitObject (*c.arguments);
@@ -585,7 +585,7 @@ struct RewritingASTVisitor
         return c;
     }
 
-    virtual AST::ExpPtr visit (AST::TypeCast& c)
+    virtual pool_ptr<AST::Expression> visit (AST::TypeCast& c)
     {
         if (c.source != nullptr)
             replaceExpression (c.source);
@@ -593,7 +593,7 @@ struct RewritingASTVisitor
         return c;
     }
 
-    virtual AST::ExpPtr visit (AST::ArrayElementRef& s)
+    virtual pool_ptr<AST::Expression> visit (AST::ArrayElementRef& s)
     {
         replaceExpression (s.object);
         if (s.startIndex != nullptr)  replaceExpression (s.startIndex);
@@ -601,25 +601,25 @@ struct RewritingASTVisitor
         return s;
     }
 
-    virtual AST::ExpPtr visit (AST::StructMemberRef& s)
+    virtual pool_ptr<AST::Expression> visit (AST::StructMemberRef& s)
     {
         replaceExpression (s.object);
         return s;
     }
 
-    virtual AST::ExpPtr visit (AST::PreOrPostIncOrDec& p)
+    virtual pool_ptr<AST::Expression> visit (AST::PreOrPostIncOrDec& p)
     {
         replaceExpression (p.target);
         return p;
     }
 
-    virtual AST::StatementPtr visit (AST::ReturnStatement& r)
+    virtual pool_ptr<AST::Statement> visit (AST::ReturnStatement& r)
     {
         replaceExpression (r.returnValue);
         return r;
     }
 
-    virtual AST::ExpPtr visit (AST::TernaryOp& o)
+    virtual pool_ptr<AST::Expression> visit (AST::TernaryOp& o)
     {
         replaceExpression (o.condition);
         replaceExpression (o.trueBranch);
@@ -627,7 +627,7 @@ struct RewritingASTVisitor
         return o;
     }
 
-    virtual AST::StatementPtr visit (AST::IfStatement& i)
+    virtual pool_ptr<AST::Statement> visit (AST::IfStatement& i)
     {
         replaceExpression (i.condition);
         replaceStatement (i.trueBranch);
@@ -635,17 +635,17 @@ struct RewritingASTVisitor
         return i;
     }
 
-    virtual AST::StatementPtr visit (AST::BreakStatement& o)
+    virtual pool_ptr<AST::Statement> visit (AST::BreakStatement& o)
     {
         return o;
     }
 
-    virtual AST::StatementPtr visit (AST::ContinueStatement& o)
+    virtual pool_ptr<AST::Statement> visit (AST::ContinueStatement& o)
     {
         return o;
     }
 
-    virtual AST::StatementPtr visit (AST::LoopStatement& l)
+    virtual pool_ptr<AST::Statement> visit (AST::LoopStatement& l)
     {
         replaceExpression (l.condition);
         replaceExpression (l.numIterations);
@@ -654,29 +654,29 @@ struct RewritingASTVisitor
         return l;
     }
 
-    virtual AST::StatementPtr visit (AST::NoopStatement& o)
+    virtual pool_ptr<AST::Statement> visit (AST::NoopStatement& o)
     {
         return o;
     }
 
-    virtual AST::ExpPtr visit (AST::WriteToEndpoint& w)
+    virtual pool_ptr<AST::Expression> visit (AST::WriteToEndpoint& w)
     {
         replaceExpression (w.target);
         replaceExpression (w.value);
         return w;
     }
 
-    virtual AST::ExpPtr visit (AST::ProcessorProperty& p)
+    virtual pool_ptr<AST::Expression> visit (AST::ProcessorProperty& p)
     {
         return p;
     }
 
-    virtual AST::ExpPtr visit (AST::AdvanceClock& o)
+    virtual pool_ptr<AST::Expression> visit (AST::AdvanceClock& o)
     {
         return o;
     }
 
-    virtual AST::FunctionPtr visit (AST::Function& f)
+    virtual pool_ptr<AST::Function> visit (AST::Function& f)
     {
         replaceExpression (f.returnType);
 
@@ -687,12 +687,12 @@ struct RewritingASTVisitor
         return f;
     }
 
-    virtual AST::ExpPtr visit (AST::ConcreteType& t)
+    virtual pool_ptr<AST::Expression> visit (AST::ConcreteType& t)
     {
         return t;
     }
 
-    virtual AST::StructDeclarationPtr visit (AST::StructDeclaration& s)
+    virtual pool_ptr<AST::StructDeclaration> visit (AST::StructDeclaration& s)
     {
         for (auto& m : s.getMembers())
             replaceExpression (m.type);
@@ -700,38 +700,38 @@ struct RewritingASTVisitor
         return s;
     }
 
-    virtual AST::UsingDeclarationPtr visit (AST::UsingDeclaration& u)
+    virtual pool_ptr<AST::UsingDeclaration> visit (AST::UsingDeclaration& u)
     {
         replaceExpression (u.targetType);
         return u;
     }
 
-    virtual AST::ExpPtr visit (AST::SubscriptWithBrackets& s)
+    virtual pool_ptr<AST::Expression> visit (AST::SubscriptWithBrackets& s)
     {
         replaceExpression (s.lhs);
         replaceExpression (s.rhs);
         return s;
     }
 
-    virtual AST::ExpPtr visit (AST::SubscriptWithChevrons& s)
+    virtual pool_ptr<AST::Expression> visit (AST::SubscriptWithChevrons& s)
     {
         replaceExpression (s.lhs);
         replaceExpression (s.rhs);
         return s;
     }
 
-    virtual AST::ExpPtr visit (AST::TypeMetaFunction& c)
+    virtual pool_ptr<AST::Expression> visit (AST::TypeMetaFunction& c)
     {
         replaceExpression (c.source);
         return c;
     }
 
-    virtual AST::ProcessorAliasDeclarationPtr visit (AST::ProcessorAliasDeclaration& a)
+    virtual pool_ptr<AST::ProcessorAliasDeclaration> visit (AST::ProcessorAliasDeclaration& a)
     {
         return a;
     }
 
-    virtual AST::ASTObjectPtr visit (AST::EndpointDeclaration& e)
+    virtual pool_ptr<AST::ASTObject> visit (AST::EndpointDeclaration& e)
     {
         if (e.details != nullptr)
         {
@@ -749,23 +749,23 @@ struct RewritingASTVisitor
         return e;
     }
 
-    virtual AST::ExpPtr visit (AST::InputEndpointRef& e)
+    virtual pool_ptr<AST::Expression> visit (AST::InputEndpointRef& e)
     {
         return e;
     }
 
-    virtual AST::ExpPtr visit (AST::OutputEndpointRef& e)
+    virtual pool_ptr<AST::Expression> visit (AST::OutputEndpointRef& e)
     {
         return e;
     }
 
-    virtual AST::ConnectionPtr visit (AST::Connection& c)
+    virtual pool_ptr<AST::Connection> visit (AST::Connection& c)
     {
         replaceExpression (c.delayLength);
         return c;
     }
 
-    virtual AST::ProcessorInstancePtr visit (AST::ProcessorInstance& i)
+    virtual pool_ptr<AST::ProcessorInstance> visit (AST::ProcessorInstance& i)
     {
         replaceExpression (i.targetProcessor);
 
@@ -781,12 +781,12 @@ struct RewritingASTVisitor
         return i;
     }
 
-    virtual AST::ProcessorRefPtr visit (AST::ProcessorRef& pr)
+    virtual pool_ptr<AST::ProcessorRef> visit (AST::ProcessorRef& pr)
     {
         return pr;
     }
 
-    virtual AST::ExpPtr visit (AST::CommaSeparatedList& l)
+    virtual pool_ptr<AST::Expression> visit (AST::CommaSeparatedList& l)
     {
         for (auto& i : l.items)
             replaceExpression (i);
@@ -794,18 +794,18 @@ struct RewritingASTVisitor
         return l;
     }
 
-    virtual AST::ExpPtr visit (AST::QualifiedIdentifier& o)
+    virtual pool_ptr<AST::Expression> visit (AST::QualifiedIdentifier& o)
     {
         return o;
     }
 
-    virtual AST::ExpPtr visit (AST::DotOperator& o)
+    virtual pool_ptr<AST::Expression> visit (AST::DotOperator& o)
     {
         replaceExpression (o.lhs);
         return o;
     }
 
-    virtual AST::StaticAssertionPtr visit (AST::StaticAssertion& a)
+    virtual pool_ptr<AST::StaticAssertion> visit (AST::StaticAssertion& a)
     {
         replaceExpression (a.condition);
         return a;

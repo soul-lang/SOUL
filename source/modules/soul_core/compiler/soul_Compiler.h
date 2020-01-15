@@ -56,9 +56,9 @@ public:
                           const LinkOptions& linkOptions);
 
     /** Just parses the top-level objects from a chunk of code */
-    static std::vector<AST::ModuleBasePtr> parseTopLevelDeclarations (AST::Allocator&,
-                                                                      CodeLocation code,
-                                                                      AST::Namespace& parentNamespace);
+    static std::vector<pool_ptr<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator&,
+                                                                             CodeLocation code,
+                                                                             AST::Namespace& parentNamespace);
 
 private:
     //==============================================================================

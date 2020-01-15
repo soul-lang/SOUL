@@ -29,8 +29,8 @@ struct HEARTGenerator  : public ASTVisitor
 {
     struct UnresolvedFunctionCall
     {
-        heart::FunctionCallPtr call;
-        AST::FunctionPtr function;
+        pool_ptr<heart::FunctionCall> call;
+        pool_ptr<AST::Function> function;
 
         void resolve()   { call->function = function->getGeneratedFunction(); }
     };
@@ -65,10 +65,10 @@ private:
     bool parsingStateVariables = false;
 
     FunctionBuilder builder;
-    heart::VariablePtr currentTargetVariable;
+    pool_ptr<heart::Variable> currentTargetVariable;
     uint32_t expressionDepth = 0;
     const uint32_t maxExpressionDepth;
-    heart::BlockPtr breakTarget, continueTarget;
+    pool_ptr<heart::Block> breakTarget, continueTarget;
     UnresolvedFunctionCallList& unresolvedFunctionCalls;
 
     //==============================================================================
@@ -88,13 +88,13 @@ private:
     }
 
     void addBranchIf (AST::Expression& condition, heart::Block& trueBranch,
-                      heart::Block& falseBranch, heart::BlockPtr subsequentBranch)
+                      heart::Block& falseBranch, pool_ptr<heart::Block> subsequentBranch)
     {
         builder.addBranchIf (evaluateAsExpression (condition, PrimitiveType::bool_),
                              trueBranch, falseBranch, subsequentBranch);
     }
 
-    void visitWithDestination (heart::VariablePtr destVar, AST::Statement& s)
+    void visitWithDestination (pool_ptr<heart::Variable> destVar, AST::Statement& s)
     {
         auto oldTarget = currentTargetVariable;
         auto oldDepth = expressionDepth;
@@ -248,7 +248,7 @@ private:
         return 1;
     }
 
-    heart::ProcessorInstancePtr getOrAddProcessorInstance (const AST::QualifiedIdentifier& processorName)
+    pool_ptr<heart::ProcessorInstance> getOrAddProcessorInstance (const AST::QualifiedIdentifier& processorName)
     {
         if (processorName.path.empty())
             return {};
@@ -356,7 +356,7 @@ private:
                                                             }));
     }
 
-    void generateStructs (ArrayView<AST::StructDeclarationPtr> structs)
+    void generateStructs (ArrayView<pool_ptr<AST::StructDeclaration>> structs)
     {
         for (auto& s : structs)
             module.structs.push_back (s->getStruct());
@@ -382,7 +382,7 @@ private:
         builder.checkFunctionBlocksForTermination();
     }
 
-    void generateFunctions (ArrayView<AST::FunctionPtr> functions)
+    void generateFunctions (ArrayView<pool_ptr<AST::Function>> functions)
     {
         for (auto& f : functions)
             if (! f->isGeneric())
@@ -850,7 +850,7 @@ private:
             builder.addCastOrAssignment (*currentTargetVariable, v.variable->getGeneratedVariable());
     }
 
-    void createFunctionCall (const AST::FunctionCall& call, heart::VariablePtr targetVariable)
+    void createFunctionCall (const AST::FunctionCall& call, pool_ptr<heart::Variable> targetVariable)
     {
         auto& fc = module.allocate<heart::FunctionCall> (call.context.location, targetVariable,
                                                          call.targetFunction.generatedFunction);

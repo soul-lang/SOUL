@@ -135,14 +135,14 @@ private:
 
         using RewritingASTVisitor::visit;
 
-        AST::StaticAssertionPtr visit (AST::StaticAssertion& a) override
+        pool_ptr<AST::StaticAssertion> visit (AST::StaticAssertion& a) override
         {
             RewritingASTVisitor::visit (a);
             a.testAndThrowErrorOnFailure();
             return a;
         }
 
-        AST::StatementPtr visit (AST::IfStatement& i) override
+        pool_ptr<AST::Statement> visit (AST::IfStatement& i) override
         {
             if (i.isConstIf)
             {
@@ -272,7 +272,7 @@ private:
         counter.visitObject (module);
     }
 
-    static AST::TypeCastPtr convertToCast (AST::Allocator& a, AST::CallOrCast& call, Type destType)
+    static AST::TypeCast& convertToCast (AST::Allocator& a, AST::CallOrCast& call, Type destType)
     {
         SOUL_ASSERT (! call.isMethodCall);
 
@@ -292,7 +292,7 @@ private:
         ConvertStreamOperations (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
 
-        AST::ExpPtr visit (AST::BinaryOperator& o) override
+        pool_ptr<AST::Expression> visit (AST::BinaryOperator& o) override
         {
             super::visit (o);
 
@@ -326,7 +326,7 @@ private:
                 {
                     void visit (AST::VariableDeclaration& v) override
                     {
-                        if (contains (stack, AST::VariableDeclarationPtr (v)))
+                        if (contains (stack, pool_ptr<AST::VariableDeclaration> (v)))
                             v.context.throwError (Errors::initialiserRefersToTarget (v.name));
 
                         if (v.initialValue != nullptr)
@@ -344,14 +344,14 @@ private:
                             visit (*vr.variable);
                     }
 
-                    std::vector<AST::VariableDeclarationPtr> stack;
+                    std::vector<pool_ptr<AST::VariableDeclaration>> stack;
                 };
 
                 RecursiveVariableInitialiserCheck().visitObject (module);
             }
         }
 
-        AST::BlockPtr visit (AST::Block& b) override
+        pool_ptr<AST::Block> visit (AST::Block& b) override
         {
             auto oldStatement = currentStatement;
 
@@ -365,7 +365,7 @@ private:
             return b;
         }
 
-        AST::ExpPtr visit (AST::QualifiedIdentifier& qi) override
+        pool_ptr<AST::Expression> visit (AST::QualifiedIdentifier& qi) override
         {
             AST::Scope::NameSearch search;
             search.partiallyQualifiedPath = qi.path;
@@ -432,7 +432,7 @@ private:
             return qi;
         }
 
-        AST::FunctionPtr visit (AST::Function& f) override
+        pool_ptr<AST::Function> visit (AST::Function& f) override
         {
             if (! f.isGeneric())
                 return super::visit (f);
@@ -440,7 +440,7 @@ private:
             return f;
         }
 
-        AST::ExpPtr visit (AST::CallOrCast& call) override
+        pool_ptr<AST::Expression> visit (AST::CallOrCast& call) override
         {
             if (call.arguments != nullptr)
                 visitObject (*call.arguments);
@@ -488,7 +488,7 @@ private:
             return call;
         }
 
-        AST::ExpPtr visit (AST::ArrayElementRef& s) override
+        pool_ptr<AST::Expression> visit (AST::ArrayElementRef& s) override
         {
             auto result = super::visit (s);
 
@@ -498,7 +498,7 @@ private:
             return result;
         }
 
-        AST::ExpPtr createSizeForType (const AST::Context& c, const Type& type)
+        pool_ptr<AST::Expression> createSizeForType (const AST::Context& c, const Type& type)
         {
             uint64_t size = 0;
 
@@ -519,7 +519,7 @@ private:
                                                                             : Value::createInt32 (size));
         }
 
-        AST::ExpPtr createTypeMetaFunction (AST::QualifiedIdentifier& name, AST::Expression& arg)
+        pool_ptr<AST::Expression> createTypeMetaFunction (AST::QualifiedIdentifier& name, AST::Expression& arg)
         {
             if (name.path.isUnqualified())
             {
@@ -532,7 +532,7 @@ private:
             return {};
         }
 
-        AST::ExpPtr visit (AST::DotOperator& d) override
+        pool_ptr<AST::Expression> visit (AST::DotOperator& d) override
         {
             auto result = super::visit (d);
 
@@ -586,9 +586,9 @@ private:
             return d;
         }
 
-        AST::ConstantPtr getBuiltInConstant (AST::QualifiedIdentifier& u)
+        pool_ptr<AST::Constant> getBuiltInConstant (AST::QualifiedIdentifier& u)
         {
-            AST::ConstantPtr result;
+            pool_ptr<AST::Constant> result;
 
             if (u.path.isUnqualified())
                 matchBuiltInConstant (u.path.getFirstPart(),
@@ -600,7 +600,7 @@ private:
             return result;
         }
 
-        AST::StatementPtr currentStatement;
+        pool_ptr<AST::Statement> currentStatement;
         uint32_t numVariablesResolved = 0;
     };
 
@@ -615,7 +615,7 @@ private:
 
         bool isUsedAsReference = false;
 
-        bool failIfNotResolved (AST::ExpPtr e)
+        bool failIfNotResolved (pool_ptr<AST::Expression> e)
         {
             if (e->isResolved())
                 return false;
@@ -624,12 +624,12 @@ private:
             return true;
         }
 
-        AST::ExpPtr createConstant (const AST::Context& c, Value v)
+        pool_ptr<AST::Expression> createConstant (const AST::Context& c, Value v)
         {
             return allocator.allocate<AST::Constant> (c, std::move (v));
         }
 
-        AST::ExpPtr visitExpression (AST::ExpPtr e) override
+        pool_ptr<AST::Expression> visitExpression (pool_ptr<AST::Expression> e) override
         {
             if (e == nullptr)
                 return {};
@@ -656,7 +656,7 @@ private:
             return e;
         }
 
-        AST::ExpPtr visit (AST::VariableRef& v) override
+        pool_ptr<AST::Expression> visit (AST::VariableRef& v) override
         {
             auto e = super::visit (v);
 
@@ -691,7 +691,7 @@ private:
             return e;
         }
 
-        AST::ExpPtr visit (AST::TernaryOp& t) override
+        pool_ptr<AST::Expression> visit (AST::TernaryOp& t) override
         {
             super::visit (t);
 
@@ -738,7 +738,7 @@ private:
             return t;
         }
 
-        AST::ExpPtr visit (AST::FunctionCall& c) override
+        pool_ptr<AST::Expression> visit (AST::FunctionCall& c) override
         {
             if (c.getNumArguments() != 0)
             {
@@ -793,7 +793,7 @@ private:
             return c;
         }
 
-        AST::ExpPtr visit (AST::TypeCast& c) override
+        pool_ptr<AST::Expression> visit (AST::TypeCast& c) override
         {
             super::visit (c);
 
@@ -807,7 +807,7 @@ private:
             {
                 auto numArgs = TypeRules::checkArraySizeAndThrowErrorIfIllegal (c.context, list->items.size());
 
-                ArrayWithPreallocation<AST::ConstantPtr, 8> constants;
+                ArrayWithPreallocation<pool_ptr<AST::Constant>, 8> constants;
                 constants.reserve (numArgs);
 
                 for (auto& v : list->items)
@@ -892,7 +892,7 @@ private:
             return c;
         }
 
-        AST::ExpPtr visit (AST::UnaryOperator& o) override
+        pool_ptr<AST::Expression> visit (AST::UnaryOperator& o) override
         {
             auto e = super::visit (o);
 
@@ -913,7 +913,7 @@ private:
             return e;
         }
 
-        AST::ExpPtr visit (AST::BinaryOperator& b) override
+        pool_ptr<AST::Expression> visit (AST::BinaryOperator& b) override
         {
             super::visit (b);
 
@@ -961,7 +961,7 @@ private:
 
         void performPass() { visitObject (module); }
 
-        AST::ExpPtr visit (AST::TypeCast& c) override
+        pool_ptr<AST::Expression> visit (AST::TypeCast& c) override
         {
             super::visit (c);
 
@@ -988,7 +988,7 @@ private:
             return c;
         }
 
-        AST::ExpPtr visit (AST::SubscriptWithBrackets& s) override
+        pool_ptr<AST::Expression> visit (AST::SubscriptWithBrackets& s) override
         {
             super::visit (s);
 
@@ -1035,7 +1035,7 @@ private:
             return s;
         }
 
-        AST::ExpPtr visit (AST::SubscriptWithChevrons& s) override
+        pool_ptr<AST::Expression> visit (AST::SubscriptWithChevrons& s) override
         {
             super::visit (s);
 
@@ -1100,7 +1100,7 @@ private:
             return s;
         }
 
-        AST::ExpPtr visit (AST::TypeMetaFunction& c) override
+        pool_ptr<AST::Expression> visit (AST::TypeMetaFunction& c) override
         {
             super::visit (c);
 
@@ -1133,7 +1133,7 @@ private:
             return c;
         }
 
-        AST::ExpPtr visit (AST::ArrayElementRef& s) override
+        pool_ptr<AST::Expression> visit (AST::ArrayElementRef& s) override
         {
             super::visit (s);
 
@@ -1143,7 +1143,7 @@ private:
             return s;
         }
 
-        AST::FunctionPtr visit (AST::Function& f) override
+        pool_ptr<AST::Function> visit (AST::Function& f) override
         {
             if (f.isGeneric())
                 return f;
@@ -1151,7 +1151,7 @@ private:
             return super::visit (f);
         }
 
-        AST::StructDeclarationPtr visit (AST::StructDeclaration& s) override
+        pool_ptr<AST::StructDeclaration> visit (AST::StructDeclaration& s) override
         {
             recursiveTypeDeclVisitStack.push (s);
             auto e = super::visit (s);
@@ -1159,7 +1159,7 @@ private:
             return e;
         }
 
-        AST::UsingDeclarationPtr visit (AST::UsingDeclaration& u) override
+        pool_ptr<AST::UsingDeclaration> visit (AST::UsingDeclaration& u) override
         {
             recursiveTypeDeclVisitStack.push (u);
             auto e = super::visit (u);
@@ -1167,7 +1167,7 @@ private:
             return e;
         }
 
-        AST::StatementPtr visit (AST::VariableDeclaration& v) override
+        pool_ptr<AST::Statement> visit (AST::VariableDeclaration& v) override
         {
             super::visit (v);
 
@@ -1211,7 +1211,7 @@ private:
             return v;
         }
 
-        AST::ExpPtr visit (AST::BinaryOperator& b) override
+        pool_ptr<AST::Expression> visit (AST::BinaryOperator& b) override
         {
             super::visit (b);
 
@@ -1237,7 +1237,7 @@ private:
             return b;
         }
 
-        Type::ArraySize findSizeOfArray (AST::ExpPtr value)
+        Type::ArraySize findSizeOfArray (pool_ptr<AST::Expression> value)
         {
             if (value != nullptr)
             {
@@ -1297,7 +1297,7 @@ private:
         FunctionResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
 
-        AST::ExpPtr visit (AST::CallOrCast& call) override
+        pool_ptr<AST::Expression> visit (AST::CallOrCast& call) override
         {
             super::visit (call);
 
@@ -1369,7 +1369,7 @@ private:
                     }
 
                     // If there are any generic functions, see if exactly one of these works
-                    ArrayWithPreallocation<AST::ExpPtr, 4> matchingGenerics;
+                    ArrayWithPreallocation<pool_ptr<AST::Expression>, 4> matchingGenerics;
 
                     for (auto& f : possibles)
                     {
@@ -1410,7 +1410,7 @@ private:
 
                         if (totalMatches > 1 || matchingGenerics.size() > 1)
                         {
-                            ArrayWithPreallocation<AST::FunctionPtr, 4> functions;
+                            ArrayWithPreallocation<pool_ptr<AST::Function>, 4> functions;
 
                             for (auto& f : possibles)
                                 functions.push_back (f.function);
@@ -1470,7 +1470,7 @@ private:
             bool isExactMatch() const       { return ! (isImpossible || requiresCast || requiresGeneric); }
         };
 
-        AST::ExpPtr resolveFunction (const PossibleFunction& f, AST::CallOrCast& call, bool ignoreErrorsInGenerics)
+        pool_ptr<AST::Expression> resolveFunction (const PossibleFunction& f, AST::CallOrCast& call, bool ignoreErrorsInGenerics)
         {
             if (f.function.isRunFunction() || f.function.isUserInitFunction())
                 call.context.throwError (Errors::cannotCallFunction (f.function.name.toString()));
@@ -1483,7 +1483,7 @@ private:
 
         virtual bool canResolveGenerics() const     { return false; }
 
-        virtual AST::ExpPtr createCallToGenericFunction (AST::CallOrCast&, AST::Function&, bool)
+        virtual pool_ptr<AST::Expression> createCallToGenericFunction (AST::CallOrCast&, AST::Function&, bool)
         {
             ++numFails;
             return {};
@@ -1655,7 +1655,7 @@ private:
             return allocator.allocate<AST::StaticAssertion> (c.context, *c.arguments->items.front(), error);
         }
 
-        std::string getErrorMessageArgument (AST::ExpPtr e)
+        std::string getErrorMessageArgument (pool_ptr<AST::Expression> e)
         {
             if (AST::isResolvedAsConstant (e))
                 if (auto c = e->getAsConstant())
@@ -1679,7 +1679,7 @@ private:
             if (array->kind == AST::ExpressionKind::endpoint)
             {
                 SOUL_ASSERT (AST::isResolvedAsEndpoint (array));
-                AST::ExpPtr endpointArraySize;
+                pool_ptr<AST::Expression> endpointArraySize;
 
                 if (auto i = cast<AST::InputEndpointRef> (array))
                 {
@@ -1722,7 +1722,7 @@ private:
             return ref;
         }
 
-        AST::FunctionPtr visit (AST::Function& f) override
+        pool_ptr<AST::Function> visit (AST::Function& f) override
         {
             if (! f.isGeneric())
                 return super::visit (f);
@@ -1730,7 +1730,7 @@ private:
             return f;
         }
 
-        AST::ExpPtr visit (AST::ArrayElementRef& s) override
+        pool_ptr<AST::Expression> visit (AST::ArrayElementRef& s) override
         {
             super::visit (s);
 
@@ -1753,7 +1753,7 @@ private:
 
         bool canResolveGenerics() const override        { return true; }
 
-        AST::ExpPtr createCallToGenericFunction (AST::CallOrCast& call, AST::Function& genericFunction, bool shouldIgnoreErrors) override
+        pool_ptr<AST::Expression> createCallToGenericFunction (AST::CallOrCast& call, AST::Function& genericFunction, bool shouldIgnoreErrors) override
         {
             SOUL_ASSERT (genericFunction.isGeneric());
 
@@ -1772,9 +1772,9 @@ private:
             return {};
         }
 
-        AST::FunctionPtr getOrCreateSpecialisedFunction (AST::CallOrCast& call, AST::Function& genericFunction,
-                                                         Identifier specialisedFunctionName, ArrayView<Type> callerArgumentTypes,
-                                                         bool shouldIgnoreErrors)
+        pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call, AST::Function& genericFunction,
+                                                                Identifier specialisedFunctionName, ArrayView<Type> callerArgumentTypes,
+                                                                bool shouldIgnoreErrors)
         {
             auto parentScope = genericFunction.getParentScope();
             SOUL_ASSERT (parentScope != nullptr);
@@ -1817,7 +1817,7 @@ private:
                     if (auto paramType = function.parameters[i]->declaredType)
                     {
                         bool anyReferencesInvolved = false;
-                        auto newMatch = matchParameterAgainstWildcard (paramType, callerArgumentTypes[i],
+                        auto newMatch = matchParameterAgainstWildcard (*paramType, callerArgumentTypes[i],
                                                                        wildcardName, anyReferencesInvolved);
 
                         if (newMatch.isValid())
@@ -1888,7 +1888,7 @@ private:
             soul::throwError (messages);
         }
 
-        Type matchParameterAgainstWildcard (const AST::ExpPtr paramType,
+        Type matchParameterAgainstWildcard (AST::Expression& paramType,
                                             const Type& callerArgumentType,
                                             const Identifier& wildcardToFind,
                                             bool& anyReferencesInvolved)
@@ -1901,18 +1901,18 @@ private:
             else if (auto mf = cast<AST::TypeMetaFunction> (paramType))
             {
                 if (mf->isMakingConst())
-                    return matchParameterAgainstWildcard (mf->source, callerArgumentType.removeConstIfPresent(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (*mf->source, callerArgumentType.removeConstIfPresent(), wildcardToFind, anyReferencesInvolved);
 
                 if (mf->isMakingReference())
                 {
                     anyReferencesInvolved = true;
-                    return matchParameterAgainstWildcard (mf->source, callerArgumentType.removeReferenceIfPresent(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (*mf->source, callerArgumentType.removeReferenceIfPresent(), wildcardToFind, anyReferencesInvolved);
                 }
             }
             else if (auto sb = cast<AST::SubscriptWithBrackets> (paramType))
             {
                 if (callerArgumentType.isArray() && sb->rhs == nullptr)
-                    return matchParameterAgainstWildcard (sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (*sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
 
                 if (callerArgumentType.isFixedSizeArray() && sb->rhs != nullptr)
                 {
@@ -1923,7 +1923,7 @@ private:
                             auto size = sizeConst->value.getAsInt64();
 
                             if (size == (int64_t) callerArgumentType.getArraySize())
-                                return matchParameterAgainstWildcard (sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                                return matchParameterAgainstWildcard (*sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
                         }
                     }
                 }
@@ -1939,7 +1939,7 @@ private:
                             auto size = sizeConst->value.getAsInt64();
 
                             if (size == (int64_t) callerArgumentType.getVectorSize())
-                                return matchParameterAgainstWildcard (sc->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                                return matchParameterAgainstWildcard (*sc->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
                         }
                     }
                 }
@@ -1960,7 +1960,7 @@ private:
         AST::Allocator& allocator;
         AST::ModuleBase& module;
 
-        AST::ExpPtr silentCastToType (const AST::Context& castLocation, AST::ExpPtr e, const Type& targetType)
+        pool_ptr<AST::Expression> silentCastToType (const AST::Context& castLocation, pool_ptr<AST::Expression> e, const Type& targetType)
         {
             if (e == nullptr)
                 return {};
@@ -1983,7 +1983,7 @@ private:
             return visitExpression (allocator.allocate<AST::TypeCast> (e->context, targetType, e));
         }
 
-        AST::FunctionPtr visit (AST::Function& f) override
+        pool_ptr<AST::Function> visit (AST::Function& f) override
         {
             if (f.isGeneric())
                 return f;
@@ -1991,21 +1991,21 @@ private:
             return super::visit (f);
         }
 
-        AST::ExpPtr visit (AST::QualifiedIdentifier& qi) override
+        pool_ptr<AST::Expression> visit (AST::QualifiedIdentifier& qi) override
         {
             super::visit (qi);
             qi.context.throwError (Errors::unresolvedSymbol (qi.path));
             return qi;
         }
 
-        AST::ExpPtr visit (AST::CallOrCast& c) override
+        pool_ptr<AST::Expression> visit (AST::CallOrCast& c) override
         {
             super::visit (c);
             c.context.throwError (Errors::cannotResolveFunctionOrCast());
             return c;
         }
 
-        AST::StatementPtr visit (AST::ReturnStatement& r) override
+        pool_ptr<AST::Statement> visit (AST::ReturnStatement& r) override
         {
             super::visit (r);
 
@@ -2021,7 +2021,7 @@ private:
             return r;
         }
 
-        AST::StatementPtr visit (AST::IfStatement& i) override
+        pool_ptr<AST::Statement> visit (AST::IfStatement& i) override
         {
             if (i.isConstIf)
                 replaceExpression (i.condition);
@@ -2051,7 +2051,7 @@ private:
             return i;
         }
 
-        AST::ExpPtr visit (AST::TernaryOp& t) override
+        pool_ptr<AST::Expression> visit (AST::TernaryOp& t) override
         {
             super::visit (t);
             SanityCheckPass::throwErrorIfNotReadableValue (*t.condition);
@@ -2061,7 +2061,7 @@ private:
             return t;
         }
 
-        AST::ExpPtr visit (AST::TypeCast& c) override
+        pool_ptr<AST::Expression> visit (AST::TypeCast& c) override
         {
             super::visit (c);
 
@@ -2081,7 +2081,7 @@ private:
             return c;
         }
 
-        AST::ExpPtr visit (AST::BinaryOperator& b) override
+        pool_ptr<AST::Expression> visit (AST::BinaryOperator& b) override
         {
             super::visit (b);
 
@@ -2164,7 +2164,7 @@ private:
                 checkPropertyValue (*property.value);
         }
 
-        AST::ExpPtr visit (AST::Assignment& a) override
+        pool_ptr<AST::Expression> visit (AST::Assignment& a) override
         {
             super::visit (a);
 
@@ -2183,7 +2183,7 @@ private:
             return p.isIncrement ? "++" : "--";
         }
 
-        AST::ExpPtr visit (AST::PreOrPostIncOrDec& p) override
+        pool_ptr<AST::Expression> visit (AST::PreOrPostIncOrDec& p) override
         {
             super::visit (p);
 
@@ -2212,7 +2212,7 @@ private:
             return {};
         }
 
-        AST::ExpPtr visit (AST::ArrayElementRef& s) override
+        pool_ptr<AST::Expression> visit (AST::ArrayElementRef& s) override
         {
             super::visit (s);
 
@@ -2284,7 +2284,7 @@ private:
             return s;
         }
 
-        AST::StatementPtr visit (AST::LoopStatement& s) override
+        pool_ptr<AST::Statement> visit (AST::LoopStatement& s) override
         {
             if (s.numIterations != nullptr)
             {
@@ -2307,7 +2307,7 @@ private:
             return ws;
         }
 
-        AST::ExpPtr visit (AST::WriteToEndpoint& w) override
+        pool_ptr<AST::Expression> visit (AST::WriteToEndpoint& w) override
         {
             super::visit (w);
 
@@ -2340,7 +2340,7 @@ private:
             return w;
         }
 
-        AST::ProcessorInstancePtr visit (AST::ProcessorInstance& i) override
+        pool_ptr<AST::ProcessorInstance> visit (AST::ProcessorInstance& i) override
         {
             super::visit (i);
 

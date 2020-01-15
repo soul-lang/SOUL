@@ -49,7 +49,7 @@ private:
         const Module& module;
         IndentedStream& out;
 
-        std::unordered_map<heart::VariablePtr, std::string> localVariableNames;
+        std::unordered_map<pool_ptr<heart::Variable>, std::string> localVariableNames;
         std::vector<std::string> allVisibleVariables;
 
         void printAll()
@@ -209,7 +209,7 @@ private:
             }
         }
 
-        void printProcessorAndChannel (const heart::ProcessorInstancePtr m, const std::string& channel)
+        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel)
         {
             if (m != nullptr)
                 out << m->instanceName << ".";
@@ -579,7 +579,7 @@ private:
             printExpression (*a.source);
         }
 
-        void printArgList (ArrayView<heart::ExpressionPtr> args)
+        void printArgList (ArrayView<pool_ptr<heart::Expression>> args)
         {
             if (args.empty())
             {

@@ -85,7 +85,7 @@ struct AST
         SOUL_AST_MODULES (X) \
         SOUL_AST_OBJECTS (X)
 
-    #define SOUL_PREDECLARE_TYPE(Type)     struct Type; using Type ## Ptr = pool_ptr<Type>;
+    #define SOUL_PREDECLARE_TYPE(Type)   struct Type;
     SOUL_AST_ALL_TYPES (SOUL_PREDECLARE_TYPE)
     #undef SOUL_PREDECLARE_TYPE
 
@@ -110,12 +110,6 @@ struct AST
     struct FunctionSignature;
     struct Expression;
     struct Statement;
-
-    using ASTObjectPtr     = pool_ptr<ASTObject>;
-    using ExpPtr           = pool_ptr<Expression>;
-    using StatementPtr     = pool_ptr<Statement>;
-    using ModuleBasePtr    = pool_ptr<ModuleBase>;
-    using ProcessorBasePtr = pool_ptr<ProcessorBase>;
 
     using TypeArray = ArrayWithPreallocation<Type, 8>;
 

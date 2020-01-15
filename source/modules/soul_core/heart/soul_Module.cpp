@@ -52,9 +52,9 @@ std::string Module::getNameWithoutRootNamespaceOrSpecialisations() const
             .fullPath;
 }
 
-std::vector<heart::FunctionPtr> Module::getExportedFunctions() const
+std::vector<pool_ptr<heart::Function>> Module::getExportedFunctions() const
 {
-    std::vector<heart::FunctionPtr> result;
+    std::vector<pool_ptr<heart::Function>> result;
 
     for (auto& f : functions)
         if (f->isExported)
@@ -63,7 +63,7 @@ std::vector<heart::FunctionPtr> Module::getExportedFunctions() const
     return result;
 }
 
-heart::FunctionPtr Module::findRunFunction() const
+pool_ptr<heart::Function> Module::findRunFunction() const
 {
     for (auto& f : functions)
         if (f->functionType.isRun())
@@ -79,7 +79,7 @@ heart::Function& Module::getRunFunction() const
     return *f;
 }
 
-heart::InputDeclarationPtr Module::findInput (const std::string& name) const
+pool_ptr<heart::InputDeclaration> Module::findInput (const std::string& name) const
 {
     for (auto& f : inputs)
         if (f->name == name)
@@ -88,7 +88,7 @@ heart::InputDeclarationPtr Module::findInput (const std::string& name) const
     return {};
 }
 
-heart::OutputDeclarationPtr Module::findOutput (const std::string& name) const
+pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) const
 {
     for (auto& f : outputs)
         if (f->name == name)
@@ -104,7 +104,7 @@ heart::Function& Module::getFunction (const std::string& name) const
     return *f;
 }
 
-heart::FunctionPtr Module::findFunction (const std::string& name) const
+pool_ptr<heart::Function> Module::findFunction (const std::string& name) const
 {
     for (auto& f : functions)
         if (f->name == name)
@@ -113,7 +113,7 @@ heart::FunctionPtr Module::findFunction (const std::string& name) const
     return {};
 }
 
-heart::VariablePtr Module::findStateVariable (const std::string& name) const
+pool_ptr<heart::Variable> Module::findStateVariable (const std::string& name) const
 {
     for (auto& v : stateVariables)
         if (v->name == name)

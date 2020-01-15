@@ -79,7 +79,7 @@ struct ASTUtilities
                 removeModulesWithSpecialisationParams (*sub);
 
         removeIf (ns.subModules,
-                  [] (AST::ModuleBasePtr& m) { return ! m->getSpecialisationParameters().empty(); });
+                  [] (pool_ptr<AST::ModuleBase>& m) { return ! m->getSpecialisationParameters().empty(); });
     }
 
     static void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ptr<AST::ProcessorBase>> graphsToKeep)
@@ -88,7 +88,7 @@ struct ASTUtilities
             if (auto subNamespace = cast<AST::Namespace> (m))
                 removeUnusedGraphs (*subNamespace, graphsToKeep);
 
-        removeIf (ns.subModules, [=] (AST::ModuleBasePtr m)
+        removeIf (ns.subModules, [=] (pool_ptr<AST::ModuleBase> m)
         {
             if (auto graph = cast<AST::Graph> (m))
                 return ! contains (graphsToKeep, graph);
