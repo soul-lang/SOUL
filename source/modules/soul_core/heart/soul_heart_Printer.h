@@ -242,7 +242,7 @@ private:
         void printFunctions()
         {
             for (auto f : module.functions)
-                printFunction (*f);
+                printFunction (f);
         }
 
         void printFunction (heart::Function& f)
@@ -552,14 +552,14 @@ private:
 
         void printDescription (const heart::Branch& b) const
         {
-            out << "branch " << getBlockName (*b.target);
+            out << "branch " << getBlockName (b.target);
         }
 
         void printDescription (const heart::BranchIf& b)
         {
             out << "branch_if ";
             printExpression (*b.condition);
-            out << " ? " << getBlockName (*b.targets[0]) << " : " << getBlockName (*b.targets[1]);
+            out << " ? " << getBlockName (b.targets[0]) << " : " << getBlockName (b.targets[1]);
         }
 
         void printDescription (const heart::ReturnVoid&) const

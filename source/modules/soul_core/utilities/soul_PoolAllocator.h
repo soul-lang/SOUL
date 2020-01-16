@@ -24,7 +24,7 @@ namespace soul
 class PoolAllocator;
 
 //==============================================================================
-/** A smart-pointer which references an object which is a member of a PoolAllocator.
+/** A smart-pointer for objects which were created by a PoolAllocator.
 
     Almost all the AST classes are pool_ptrs to avoid the horror of trying dealing with
     ownership within a huge spaghetti-like graph of interconnected objects.
@@ -47,16 +47,10 @@ struct pool_ptr  final
     pool_ptr (OtherType& o) noexcept : object (std::addressof (o)) {}
 
     template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
-    pool_ptr (const pool_ptr<OtherType>& other) noexcept : object (other.get()) {}
+    pool_ptr (pool_ptr<OtherType> other) noexcept : object (other.get()) {}
 
     template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
-    pool_ptr (pool_ptr<OtherType>&& other) noexcept : object (other.get()) {}
-
-    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
-    pool_ptr& operator= (const pool_ptr<OtherType>& other) noexcept    { object = other.get(); return *this; }
-
-    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
-    pool_ptr& operator= (pool_ptr<OtherType>&& other) noexcept         { object = other.get(); return *this; }
+    pool_ptr& operator= (pool_ptr<OtherType> other) noexcept    { object = other.get(); return *this; }
 
     Type* get() const noexcept                              { return object; }
     Type& operator*() const                                 { SOUL_ASSERT (object != nullptr); return *object; }
@@ -82,6 +76,53 @@ private:
     Type* object = nullptr;
 };
 
+//==============================================================================
+/** A never-null smart-pointer for objects which were created by a PoolAllocator.
+
+    This is like a pool_ptr but cannot contain a null pointer, so has more
+    reference-like access methods and needs less checking.
+*/
+template <typename Type>
+struct pool_ref  final
+{
+    pool_ref() = delete;
+    pool_ref (decltype (nullptr)) = delete;
+    ~pool_ref() noexcept {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ref (OtherType& o) noexcept : object (std::addressof (o)) {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ref (pool_ref<OtherType> other) noexcept : object (other.getPointer()) {}
+
+    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
+    pool_ref& operator= (pool_ref<OtherType> other) noexcept    { object = other.getPointer(); return *this; }
+
+    Type& get() const noexcept                              { return *object; }
+    operator Type&() const noexcept                         { return *object; }
+    operator pool_ptr<Type>() const noexcept                { return pool_ptr<Type> (*object); }
+    Type* getPointer() const noexcept                       { return object; }
+    Type* operator->() const                                { return object; }
+
+    void reset (Type& newObject) noexcept                   { object = std::addressof (newObject); }
+
+    bool operator== (const Type& other) const noexcept      { return object == std::addressof (other); }
+    bool operator!= (const Type& other) const noexcept      { return object != std::addressof (other); }
+    bool operator<  (const Type& other) const noexcept      { return object <  std::addressof (other); }
+    bool operator== (pool_ref other) const noexcept         { return object == other.object; }
+    bool operator!= (pool_ref other) const noexcept         { return object != other.object; }
+    bool operator<  (pool_ref other) const noexcept         { return object <  other.object; }
+    bool operator== (decltype (nullptr)) const noexcept     { return false; }
+    bool operator!= (decltype (nullptr)) const noexcept     { return true; }
+
+    operator bool() const noexcept                          { return true; }
+
+    using ObjectType = Type;
+
+private:
+    Type* object = nullptr;
+};
+
 template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, const T2* p2) noexcept     { return p1.get() == p2; }
 template <typename T1, typename T2> bool operator!= (pool_ptr<T1> p1, const T2* p2) noexcept     { return p1.get() != p2; }
 template <typename T1, typename T2> bool operator== (const T1* p1, pool_ptr<T2> p2) noexcept     { return p1 == p2.get(); }
@@ -89,11 +130,30 @@ template <typename T1, typename T2> bool operator!= (const T1* p1, pool_ptr<T2> 
 template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.get() == p2.get(); }
 template <typename T1, typename T2> bool operator!= (pool_ptr<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.get() != p2.get(); }
 
+template <typename T1, typename T2> bool operator== (pool_ref<T1> p1, const T2& p2) noexcept     { return p1.getPointer() == std::addressof (p2); }
+template <typename T1, typename T2> bool operator!= (pool_ref<T1> p1, const T2& p2) noexcept     { return p1.getPointer() != std::addressof (p2); }
+template <typename T1, typename T2> bool operator== (pool_ref<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.getPointer() == p2.get(); }
+template <typename T1, typename T2> bool operator!= (pool_ref<T1> p1, pool_ptr<T2> p2) noexcept  { return p1.getPointer() != p2.get(); }
+template <typename T1, typename T2> bool operator== (const T1& p1, pool_ref<T2> p2) noexcept     { return std::addressof (p1) == p2.getPointer(); }
+template <typename T1, typename T2> bool operator!= (const T1& p1, pool_ref<T2> p2) noexcept     { return std::addressof (p1) != p2.getPointer(); }
+template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, pool_ref<T2> p2) noexcept  { return p1.get() == p2.getPointer(); }
+template <typename T1, typename T2> bool operator!= (pool_ptr<T1> p1, pool_ref<T2> p2) noexcept  { return p1.get() != p2.getPointer(); }
+template <typename T1, typename T2> bool operator== (pool_ref<T1> p1, pool_ref<T2> p2) noexcept  { return p1.getPointer() == p2.getPointer(); }
+template <typename T1, typename T2> bool operator!= (pool_ref<T1> p1, pool_ref<T2> p2) noexcept  { return p1.getPointer() != p2.getPointer(); }
+
 template <typename TargetType, typename SrcType>
 inline pool_ptr<TargetType> cast (pool_ptr<SrcType> object)
 {
     pool_ptr<TargetType> p;
     p.reset (dynamic_cast<TargetType*> (object.get()));
+    return p;
+}
+
+template <typename TargetType, typename SrcType>
+inline pool_ptr<TargetType> cast (pool_ref<SrcType> object)
+{
+    pool_ptr<TargetType> p;
+    p.reset (dynamic_cast<TargetType*> (object.getPointer()));
     return p;
 }
 
@@ -109,6 +169,12 @@ template <typename TargetType, typename SrcType>
 inline bool is_type (pool_ptr<SrcType> object)
 {
     return dynamic_cast<TargetType*> (object.get()) != nullptr;
+}
+
+template <typename TargetType, typename SrcType>
+inline bool is_type (pool_ref<SrcType> object)
+{
+    return dynamic_cast<TargetType*> (object.getPointer()) != nullptr;
 }
 
 template <typename TargetType, typename SrcType>

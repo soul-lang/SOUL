@@ -148,7 +148,7 @@ struct heart::Checker
         {
             for (auto& f : m->functions)
             {
-                auto firstAdvanceCall = heart::Utilities::findFirstAdvanceCall (*f);
+                auto firstAdvanceCall = heart::Utilities::findFirstAdvanceCall (f);
 
                 if (f->functionType.isRun() && firstAdvanceCall == nullptr)
                     f->location.throwError (Errors::runFunctionMustCallAdvance());
@@ -168,7 +168,7 @@ struct heart::Checker
                 }
 
                 if (f->functionType.isUserInit())
-                    if (auto w = heart::Utilities::findFirstWrite (*f))
+                    if (auto w = heart::Utilities::findFirstWrite (f))
                         w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
             }
         }
@@ -179,7 +179,7 @@ struct heart::Checker
     {
         for (auto& m : program.getModules())
             for (auto& f : m->functions)
-                if (CallFlowGraph::doesFunctionContainInfiniteLoops (*f))
+                if (CallFlowGraph::doesFunctionContainInfiniteLoops (f))
                     f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
 

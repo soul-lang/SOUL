@@ -188,7 +188,7 @@ private:
         for (size_t i = 0; i < item.functionParamCode.size(); ++i)
         {
             resetPosition (item.functionParamCode[i]);
-            parseFunctionParams (*module->functions[i]);
+            parseFunctionParams (module->functions[i]);
         }
 
         module.reset();
@@ -247,13 +247,13 @@ private:
         for (size_t i = 0; i < item.inputDecls.size(); ++i)
         {
             resetPosition (item.inputDecls[i]);
-            parseInput (*module->inputs[i]);
+            parseInput (module->inputs[i]);
         }
 
         for (size_t i = 0; i < item.outputDecls.size(); ++i)
         {
             resetPosition (item.outputDecls[i]);
-            parseOutput (*module->outputs[i]);
+            parseOutput (module->outputs[i]);
         }
 
         for (auto& g : item.stateVariableDecls)
@@ -267,7 +267,7 @@ private:
             if (item.functionBodyCode[i] != UTF8Reader())
             {
                 resetPosition (item.functionBodyCode[i]);
-                parseFunctionBody (*module->functions[i]);
+                parseFunctionBody (module->functions[i]);
             }
         }
 
@@ -845,14 +845,14 @@ private:
         if (! containsChar (name, ':'))
         {
             for (auto& fn : module->functions)
-                if (fn->name == name && functionArgTypesMatch (*fn, argTypes))
+                if (fn->name == name && functionArgTypesMatch (fn, argTypes))
                     return fn;
         }
         else
         {
             for (auto& m : program.getModules())
                 for (auto& fn : m->functions)
-                    if (TokenisedPathString::join (m->moduleName, fn->name) == name && functionArgTypesMatch (*fn, argTypes))
+                    if (TokenisedPathString::join (m->moduleName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
                         return fn;
         }
 

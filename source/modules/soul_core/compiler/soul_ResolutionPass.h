@@ -2319,8 +2319,8 @@ private:
             {
                 SOUL_ASSERT (outputEndpoint->output->details != nullptr);
 
-                if (ASTUtilities::isConsoleEndpoint (*outputEndpoint->output))
-                    ASTUtilities::ensureEventEndpointHasSampleType (allocator, *outputEndpoint->output, w.value->getResultType());
+                if (ASTUtilities::isConsoleEndpoint (outputEndpoint->output))
+                    ASTUtilities::ensureEventEndpointHasSampleType (allocator, outputEndpoint->output, w.value->getResultType());
 
                 SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), *w.value);
                 return w;

@@ -37,16 +37,16 @@ public:
     std::string getNameWithoutRootNamespace() const;
     std::string getNameWithoutRootNamespaceOrSpecialisations() const;
 
-    std::vector<pool_ptr<heart::InputDeclaration>> inputs;
-    std::vector<pool_ptr<heart::OutputDeclaration>> outputs;
+    std::vector<pool_ref<heart::InputDeclaration>> inputs;
+    std::vector<pool_ref<heart::OutputDeclaration>> outputs;
 
     // Properties if it's a connection graph:
-    std::vector<pool_ptr<heart::Connection>> connections;
-    std::vector<pool_ptr<heart::ProcessorInstance>> processorInstances;
+    std::vector<pool_ref<heart::Connection>> connections;
+    std::vector<pool_ref<heart::ProcessorInstance>> processorInstances;
 
     // Properties if it's a processor
-    std::vector<pool_ptr<heart::Variable>> stateVariables;
-    std::vector<pool_ptr<heart::Function>> functions;
+    std::vector<pool_ref<heart::Variable>> stateVariables;
+    std::vector<pool_ref<heart::Function>> functions;
     std::vector<StructurePtr> structs;
 
     Annotation annotation;

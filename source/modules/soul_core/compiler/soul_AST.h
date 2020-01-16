@@ -1120,7 +1120,7 @@ struct AST
             return details.getSampleArrayTypes().front();
         }
 
-        pool_ptr<EndpointDeclaration> input;
+        pool_ref<EndpointDeclaration> input;
     };
 
     struct OutputEndpointRef  : public Expression
@@ -1128,13 +1128,12 @@ struct AST
         OutputEndpointRef (const Context& c, EndpointDeclaration& o)
             : Expression (ObjectType::OutputEndpointRef, c, ExpressionKind::endpoint), output (o)
         {
-            SOUL_ASSERT (output != nullptr);
         }
 
         bool isOutputEndpoint() const override      { return true; }
         bool isResolved() const override            { return output->isResolved(); }
 
-        pool_ptr<EndpointDeclaration> output;
+        pool_ref<EndpointDeclaration> output;
     };
 
     //==============================================================================
@@ -1375,7 +1374,7 @@ struct AST
         bool isCompileTimeConstant() const override         { return true; }
         pool_ptr<ProcessorBase> getAsProcessor() const override    { return processor; }
 
-        pool_ptr<ProcessorBase> processor;
+        pool_ref<ProcessorBase> processor;
     };
 
     //==============================================================================

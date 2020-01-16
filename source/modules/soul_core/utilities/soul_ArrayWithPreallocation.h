@@ -96,20 +96,50 @@ struct ArrayWithPreallocation
 
     ArrayWithPreallocation& operator= (const ArrayWithPreallocation& other)
     {
-        resize (other.numActive);
+        if (other.size() > numActive)
+        {
+            reserve (other.size());
 
-        for (size_t i = 0; i < numActive; ++i)
-            items[i] = other.items[i];
+            for (size_t i = 0; i < numActive; ++i)
+                items[i] = other.items[i];
+
+            for (size_t i = numActive; i < other.size(); ++i)
+                new (items + i) Item (other.items[i]);
+
+            numActive = other.size();
+        }
+        else
+        {
+            shrink (other.size());
+
+            for (size_t i = 0; i < numActive; ++i)
+                items[i] = other.items[i];
+        }
 
         return *this;
     }
 
     ArrayWithPreallocation& operator= (ArrayView<Item> other)
     {
-        resize (other.size());
+        if (other.size() > numActive)
+        {
+            reserve (other.size());
 
-        for (size_t i = 0; i < numActive; ++i)
-            items[i] = other[i];
+            for (size_t i = 0; i < numActive; ++i)
+                items[i] = other[i];
+
+            for (size_t i = numActive; i < other.size(); ++i)
+                new (items + i) Item (other[i]);
+
+            numActive = other.size();
+        }
+        else
+        {
+            shrink (other.size());
+
+            for (size_t i = 0; i < numActive; ++i)
+                items[i] = other[i];
+        }
 
         return *this;
     }
@@ -157,7 +187,7 @@ struct ArrayWithPreallocation
 	{
         reserve (numActive + 1);
         new (items + numActive) Item (std::forward<Args> (args)...);
-         ++numActive;
+        ++numActive;
 	}
 
     void insert (Item* insertPos, const Item& item)
@@ -200,22 +230,28 @@ struct ArrayWithPreallocation
 
     void resize (size_t newSize)
     {
-        if (newSize == 0)
-        {
-            clear();
-        }
-        else if (newSize < numActive)
-        {
-            while (newSize < numActive && numActive > 0)
-                items[--numActive].~Item();
-        }
-        else if (newSize > numActive)
+        if (newSize > numActive)
         {
             reserve (newSize);
 
             while (numActive < newSize)
                 new (items + numActive++) Item (Item());
         }
+        else
+        {
+            shrink (newSize);
+        }
+    }
+
+    void shrink (size_t newSize)
+    {
+        if (newSize == 0)
+            return clear();
+
+        SOUL_ASSERT (newSize < numActive);
+
+        while (newSize < numActive && numActive > 0)
+            items[--numActive].~Item();
     }
 
     void reserve (size_t minSize)
@@ -258,14 +294,14 @@ struct ArrayWithPreallocation
         SOUL_ASSERT (startElement < endElement);
 
         if (endElement == end())
-            return resize ((size_t) (startElement - begin()));
+            return shrink ((size_t) (startElement - begin()));
 
         auto dest = startElement;
 
         for (auto src = endElement; src < end(); ++dest, ++src)
             *dest = std::move (*src);
 
-        resize (size() - (size_t) (endElement - startElement));
+        shrink (size() - (size_t) (endElement - startElement));
     }
 
 private:

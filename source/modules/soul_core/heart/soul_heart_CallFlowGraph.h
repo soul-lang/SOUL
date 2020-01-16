@@ -37,7 +37,7 @@ struct CallFlowGraph
         visitUpstreamBlocks (start, visitor);
     }
 
-    static std::vector<pool_ptr<heart::Variable>> findVariablesBeingReadBeforeBeingWritten (const heart::Function& function)
+    static std::vector<pool_ref<heart::Variable>> findVariablesBeingReadBeforeBeingWritten (const heart::Function& function)
     {
         return findUninitialisedVariableUse (function);
     }
@@ -67,9 +67,9 @@ struct CallFlowGraph
     /** Returns the first set of functions which call each other in a cycle (or an empty vector if
         no cycles were found)
     */
-    static std::vector<pool_ptr<heart::Function>> findRecursiveFunctionCallSequences (Program& program)
+    static std::vector<pool_ref<heart::Function>> findRecursiveFunctionCallSequences (Program& program)
     {
-        std::vector<pool_ptr<heart::Function>> callerFns;
+        std::vector<pool_ref<heart::Function>> callerFns;
 
         for (auto& m : program.getModules())
         {
@@ -77,7 +77,7 @@ struct CallFlowGraph
             {
                 callerFns.clear();
 
-                auto recursiveCallSequence = findRecursiveFunctions (*f, callerFns);
+                auto recursiveCallSequence = findRecursiveFunctions (f, callerFns);
 
                 if (! recursiveCallSequence.empty())
                     return recursiveCallSequence;
@@ -101,12 +101,12 @@ private:
         {
             if (b->temporaryData == nullptr)
             {
-                if (! visitor (*b))
+                if (! visitor (b))
                     return false;
 
                 b->temporaryData = (void*) 1u;
 
-                if (! visitDownstreamBlocks (*b, visitor))
+                if (! visitDownstreamBlocks (b, visitor))
                     return false;
             }
         }
@@ -134,14 +134,14 @@ private:
     }
 
     //==============================================================================
-    static std::vector<pool_ptr<heart::Variable>> findUninitialisedVariableUse (const heart::Function& f)
+    static std::vector<pool_ref<heart::Variable>> findUninitialisedVariableUse (const heart::Function& f)
     {
         if (f.blocks.empty())
             return {};
 
         struct BlockState
         {
-            ArrayWithPreallocation<pool_ptr<heart::Variable>, 16> variablesUsedDuringBlock, variablesUnsafeAtEnd;
+            ArrayWithPreallocation<pool_ref<heart::Variable>, 16> variablesUsedDuringBlock, variablesUnsafeAtEnd;
             bool isFullyResolved = false;
 
             static BlockState& get (const heart::Block& b)  { return *static_cast<BlockState*> (b.temporaryData); }
@@ -152,7 +152,7 @@ private:
         {
             states.resize (f.blocks.size());
             size_t index = 0;
-            std::vector<pool_ptr<heart::Variable>> allVariables;
+            std::vector<pool_ref<heart::Variable>> allVariables;
 
             for (auto& block : f.blocks)
             {
@@ -163,7 +163,7 @@ private:
                 {
                     if (auto v = cast<heart::Variable> (value))
                         if (! (v->isState() || v->isParameter()))
-                            state.variablesUsedDuringBlock.push_back (v);
+                            state.variablesUsedDuringBlock.push_back (*v);
                 });
 
                 sortAndRemoveDuplicates (state.variablesUsedDuringBlock);
@@ -217,7 +217,7 @@ private:
                 break;
         }
 
-        std::vector<pool_ptr<heart::Variable>> results;
+        std::vector<pool_ref<heart::Variable>> results;
 
         for (auto& b : f.blocks)
         {
@@ -233,8 +233,8 @@ private:
             {
                 if (mode != heart::AccessType::write)
                     if (auto v = cast<heart::Variable> (value))
-                        if (! (v->isState() || v->isParameter()) && contains (unsafeVariables, v))
-                            results.push_back (v);
+                        if (! (v->isState() || v->isParameter()) && contains (unsafeVariables, *v))
+                            results.push_back (*v);
             };
 
             for (auto s : b->statements)
@@ -247,7 +247,7 @@ private:
                 if (auto assignment = cast<heart::Assignment> (*s))
                     if (auto v = cast<heart::Variable> (assignment->target))
                         if (! (v->isState() || v->isParameter()))
-                            removeItem (unsafeVariables, v);
+                            removeItem (unsafeVariables, *v);
             }
 
             b->terminator->visitExpressions (visitRead);
@@ -264,8 +264,8 @@ private:
     }
 
     //==============================================================================
-    static std::vector<pool_ptr<heart::Function>> findRecursiveFunctions (heart::Function& f,
-                                                                          std::vector<pool_ptr<heart::Function>>& callerFns)
+    static std::vector<pool_ref<heart::Function>> findRecursiveFunctions (heart::Function& f,
+                                                                          std::vector<pool_ref<heart::Function>>& callerFns)
     {
         callerFns.emplace_back (f);
 
@@ -279,7 +279,7 @@ private:
                     {
                         if (callerFns[i] == call->function)
                         {
-                            std::vector<pool_ptr<heart::Function>> functions;
+                            std::vector<pool_ref<heart::Function>> functions;
 
                             while (i < callerFns.size())
                                 functions.push_back (callerFns[i++]);

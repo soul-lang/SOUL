@@ -53,15 +53,15 @@ namespace soul::patch
                 auto minValue = input->annotation.getDouble ("min", 0.0);
                 auto maxValue = input->annotation.getDouble ("max", 1.0);
 
-                if (isParameterEvent (*input))
+                if (isParameterEvent (input))
                 {
-                    addInputParameter (*input, "Bela::InputParameterEvent", name, getParameterId (*input, useBelaParameters), minValue, maxValue);
+                    addInputParameter (input, "Bela::InputParameterEvent", name, getParameterId (input, useBelaParameters), minValue, maxValue);
                 }
-                else if (isParameterStream (*input))
+                else if (isParameterStream (input))
                 {
-                    addInputParameter (*input, "Bela::InputParameterStream", name, getParameterId (*input, useBelaParameters), minValue, maxValue);
+                    addInputParameter (input, "Bela::InputParameterStream", name, getParameterId (input, useBelaParameters), minValue, maxValue);
                 }
-                else if (isAudioStream (*input))
+                else if (isAudioStream (input))
                 {
                     auto channels = input->sampleTypes.front().getVectorSize();
 
@@ -74,7 +74,9 @@ namespace soul::patch
                 }
                 else
                 {
-                    streams << "input " << getEndpointKindName (input->kind) << " " << getSampleTypeString (*input) << " " << name << input->annotation.toHEART(program.getStringDictionary()) << ";" << newLine;
+                    streams << "input " << getEndpointKindName (input->kind) << " " << getSampleTypeString (input)
+                            << " " << name << input->annotation.toHEART(program.getStringDictionary()) << ";" << newLine;
+
                     connections << name << " -> " << "wrappedModule." << name << ";" << newLine;
                 }
             }
@@ -82,7 +84,7 @@ namespace soul::patch
             for (auto& output : mainProcessor->outputs)
             {
                 auto& name      = output->name.toString();
-                auto typeString = getSampleTypeString (*output);
+                auto typeString = getSampleTypeString (output);
 
                 streams << "output " << getEndpointKindName (output->kind) <<" " << typeString << " " << name << ";" << newLine;
                 connections << "wrappedModule." << name << " -> " << name << ";" << newLine;

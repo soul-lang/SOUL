@@ -844,9 +844,9 @@ struct heart
                         fn (*t);
         }
 
-        std::vector<pool_ptr<Variable>> getAllLocalVariables() const
+        std::vector<pool_ref<Variable>> getAllLocalVariables() const
         {
-            std::vector<pool_ptr<Variable>> locals;
+            std::vector<pool_ref<Variable>> locals;
 
             for (auto& b : blocks)
                 for (auto s : b->statements)
@@ -854,7 +854,7 @@ struct heart
                         if (a->target != nullptr)
                             if (auto v = a->target->getRootVariable())
                                 if (! (v->isParameter() || v->isState() || contains (locals, v)))
-                                    locals.push_back (v);
+                                    locals.push_back (*v);
 
             return locals;
         }
@@ -900,7 +900,7 @@ struct heart
     //==============================================================================
     struct Terminator  : public Object
     {
-        virtual ArrayView<pool_ptr<Block>> getDestinationBlocks()   { return {}; }
+        virtual ArrayView<pool_ref<Block>> getDestinationBlocks()   { return {}; }
         virtual bool isConditional() const                          { return false; }
         virtual bool isReturn() const                               { return false; }
         virtual bool readsVariable (Variable&) const                { return false; }
@@ -910,22 +910,20 @@ struct heart
     struct Branch  : public Terminator
     {
         Branch (Block& b)  : target (b) {}
-        ArrayView<pool_ptr<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
+        ArrayView<pool_ref<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
 
-        pool_ptr<Block> target;
+        pool_ref<Block> target;
     };
 
     struct BranchIf  : public Terminator
     {
         BranchIf (Expression& cond, Block& trueJump, Block& falseJump)
-            : condition (cond)
+            : condition (cond), targets { trueJump, falseJump }
         {
-            SOUL_ASSERT (std::addressof (trueJump) != std::addressof (falseJump));
-            targets[0] = trueJump;
-            targets[1] = falseJump;
+            SOUL_ASSERT (targets[0] != targets[1]);
         }
 
-        ArrayView<pool_ptr<Block>> getDestinationBlocks() override    { return { targets, targets + (isConditional() ? 2 : 1) }; }
+        ArrayView<pool_ref<Block>> getDestinationBlocks() override    { return { targets, targets + (isConditional() ? 2 : 1) }; }
         bool isConditional() const override                           { return targets[0] != targets[1]; }
 
         void visitExpressions (ExpressionVisitorFn fn) override
@@ -935,7 +933,7 @@ struct heart
         }
 
         pool_ptr<Expression> condition;
-        pool_ptr<Block> targets[2];   // index 0 = true, 1 = false
+        pool_ref<Block> targets[2];   // index 0 = true, 1 = false
     };
 
     struct ReturnVoid  : public Terminator
@@ -1155,7 +1153,7 @@ struct heart
     //==============================================================================
     struct VariableListByType
     {
-        VariableListByType (ArrayView<pool_ptr<Variable>> variables)
+        VariableListByType (ArrayView<pool_ref<Variable>> variables)
         {
             for (auto& v : variables)
                 getType (v->type).variables.push_back (v);
@@ -1164,7 +1162,7 @@ struct heart
         struct VariablesWithType
         {
             Type type;
-            std::vector<pool_ptr<Variable>> variables;
+            std::vector<pool_ref<Variable>> variables;
         };
 
         std::vector<VariablesWithType> types;

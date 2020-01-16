@@ -34,17 +34,17 @@ struct Optimisations
             m->rebuildVariableUseCounts();
 
             for (auto f : m->functions)
-                removeDuplicateConstants (*f);
+                removeDuplicateConstants (f);
 
             m->rebuildVariableUseCounts();
 
             for (auto f : m->functions)
-                convertWriteOnceVariablesToConstants (*f);
+                convertWriteOnceVariablesToConstants (f);
 
             m->rebuildVariableUseCounts();
 
             for (auto f : m->functions)
-                removeUnusedVariables (*f);
+                removeUnusedVariables (f);
         }
     }
 
@@ -58,12 +58,12 @@ struct Optimisations
 
         for (auto f : mainModule.functions)
             if (f->isExported)
-                recursivelyFlagFunctionUse (*f);
+                recursivelyFlagFunctionUse (f);
 
         for (auto& m : program.getModules())
             for (auto& f : m->functions)
                 if (! f->functionUseTestFlag && f->annotation.getBool ("do_not_optimise"))
-                    recursivelyFlagFunctionUse (*f);
+                    recursivelyFlagFunctionUse (f);
 
         for (auto& m : program.getModules())
             removeIf (m->functions, [] (pool_ptr<heart::Function> f) { return ! f->functionUseTestFlag; });
@@ -125,7 +125,7 @@ struct Optimisations
     {
         for (auto& m : program.getModules())
             for (auto f : m->functions)
-                optimiseFunctionBlocks (*f, program.getAllocator());
+                optimiseFunctionBlocks (f, program.getAllocator());
     }
 
     static void optimiseFunctionBlocks (heart::Function& f, heart::Allocator& allocator)
@@ -161,7 +161,7 @@ struct Optimisations
         {
             for (auto& f : m->functions)
             {
-                auto result = inlineAllCallsToFunction (program, *f, functionToInline);
+                auto result = inlineAllCallsToFunction (program, f, functionToInline);
 
                 if (result == InlineResult::failed)
                     return false;
@@ -174,7 +174,7 @@ struct Optimisations
         if (! anyChanged)
             return false;
 
-        removeItem (program.getModuleContainingFunction (functionToInline)->functions, std::addressof (functionToInline));
+        removeItem (program.getModuleContainingFunction (functionToInline)->functions, functionToInline);
         return true;
     }
 
@@ -209,7 +209,7 @@ private:
                 for (auto pred : b->predecessors)
                 {
                     SOUL_ASSERT (pred->terminator != nullptr);
-                    heart::Utilities::replaceBlockDestination (*pred, *b, *destinations.front());
+                    heart::Utilities::replaceBlockDestination (*pred, *b, destinations.front());
                 }
 
                 return true;
@@ -406,7 +406,7 @@ private:
         std::vector<pool_ptr<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
-            if (! epp.findInputEndpointProperties (*i).initialised)
+            if (! epp.findInputEndpointProperties (i).initialised)
                 toRemove.push_back (i);
 
         removeFromVector (module.inputs, toRemove);
@@ -442,7 +442,7 @@ private:
         std::vector<pool_ptr<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
-            if (! epp.findOutputEndpointProperties (*o).initialised)
+            if (! epp.findOutputEndpointProperties (o).initialised)
                 toRemove.push_back (o);
 
         removeFromVector (module.outputs, toRemove);
@@ -572,7 +572,7 @@ private:
 
         heart::Branch& clone (const heart::Branch& old)
         {
-            return module.allocate<heart::Branch> (*remappedBlocks[*old.target]);
+            return module.allocate<heart::Branch> (*remappedBlocks[old.target]);
         }
 
         heart::BranchIf& clone (const heart::BranchIf& old)

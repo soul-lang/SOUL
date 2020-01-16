@@ -347,7 +347,7 @@ pool_ptr<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
         if (auto pa = cast<AST::ProcessorAliasDeclaration> (param))
         {
             if (auto p = cast<AST::ProcessorRef> (arg))
-                pa->targetProcessor = p->processor;
+                pa->targetProcessor = p->processor.get();
             else
                 arg->context.throwError (Errors::expectedProcessorName());
         }

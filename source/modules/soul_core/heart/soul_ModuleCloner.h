@@ -44,31 +44,31 @@ struct ModuleCloner
             populateClonedStruct (*s);
 
         for (auto& f : oldModule.functions)
-            newModule.functions.push_back (createNewFunctionObject (*f));
+            newModule.functions.push_back (createNewFunctionObject (f));
     }
 
     void clone()
     {
         for (auto& io : oldModule.inputs)
-            newModule.inputs.push_back (clone (*io));
+            newModule.inputs.push_back (clone (io));
 
         for (auto& io : oldModule.outputs)
-            newModule.outputs.push_back (clone (*io));
+            newModule.outputs.push_back (clone (io));
 
         if (oldModule.isGraph())
         {
             for (auto& mi : oldModule.processorInstances)
-                newModule.processorInstances.push_back (clone (*mi));
+                newModule.processorInstances.push_back (clone (mi));
 
             for (auto& c : oldModule.connections)
-                newModule.connections.push_back (clone (*c));
+                newModule.connections.push_back (clone (c));
         }
 
         for (auto& v : oldModule.stateVariables)
-            newModule.stateVariables.push_back (cloneVariable (*v));
+            newModule.stateVariables.push_back (cloneVariable (v));
 
         for (size_t i = 0; i < oldModule.functions.size(); ++i)
-            clone (*newModule.functions[i], *oldModule.functions[i]);
+            clone (newModule.functions[i], oldModule.functions[i]);
     }
 
     const Module& oldModule;
@@ -342,14 +342,14 @@ struct ModuleCloner
 
     heart::Branch& clone (const heart::Branch& old)
     {
-        return newModule.allocate<heart::Branch> (getRemappedBlock (*old.target));
+        return newModule.allocate<heart::Branch> (getRemappedBlock (old.target));
     }
 
     heart::BranchIf& clone (const heart::BranchIf& old)
     {
         return newModule.allocate<heart::BranchIf> (getRemappedExpressionRef (*old.condition),
-                                                    getRemappedBlock (*old.targets[0]),
-                                                    getRemappedBlock (*old.targets[1]));
+                                                    getRemappedBlock (old.targets[0]),
+                                                    getRemappedBlock (old.targets[1]));
     }
 
     heart::ReturnVoid& clone (const heart::ReturnVoid&)

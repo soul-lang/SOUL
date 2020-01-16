@@ -50,7 +50,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     pool_ptr<Module> getModuleContainingFunction (const heart::Function& f) const
     {
         for (auto& m : modules)
-            if (contains (m->functions, std::addressof (f)))
+            if (contains (m->functions, f))
                 return m;
 
         return {};
@@ -157,7 +157,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     {
         for (auto& m : modules)
         {
-            if (contains (m->stateVariables, &v))
+            if (contains (m->stateVariables, v))
             {
                 if (m == std::addressof (context))
                     return v.name.toString();

@@ -91,12 +91,12 @@ struct heart::Utilities
             {
                 if (! f->functionType.isRun())
                 {
-                    auto w = findFirstStreamWrite (*f);
-                    auto a = findFirstAdvanceCall (*f);
+                    auto w = findFirstStreamWrite (f);
+                    auto a = findFirstAdvanceCall (f);
 
                     if (w != nullptr || a != nullptr)
                     {
-                        if (OptimiserClass::inlineAllCallsToFunction (program, *f))
+                        if (OptimiserClass::inlineAllCallsToFunction (program, f))
                             return true;
 
                         if (a != nullptr)

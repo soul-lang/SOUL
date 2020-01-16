@@ -352,7 +352,7 @@ struct FunctionBuilder  : public BlockBuilder
     {
         for (auto& f : m.functions)
             if (f->name == name)
-                return *f;
+                return f;
 
         return createFunction (m, name, std::move (returnType), std::move (buildFunction));
     }
