@@ -32,7 +32,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     ProgramImpl (const ProgramImpl&) = delete;
 
     heart::Allocator allocator;
-    std::vector<pool_ptr<Module>> modules;
+    std::vector<pool_ref<Module>> modules;
     ConstantTable constantTable;
     StringDictionary stringDictionary;
 
@@ -69,7 +69,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         auto newModule = Module::createNamespace (allocator);
         newModule->moduleName = name;
         modules.push_back (newModule);
-        return *newModule;
+        return newModule;
     }
 
     pool_ptr<heart::Variable> getVariableWithName (const std::string& name)
@@ -133,9 +133,9 @@ struct Program::ProgramImpl  : public RefCountedObject
 
         for (auto& m : modules)
         {
-            auto& newModule = newProgram.getAllocator().allocate<Module> (newProgram.getAllocator(), *m);
+            auto& newModule = newProgram.getAllocator().allocate<Module> (newProgram.getAllocator(), m);
             newProgram.pimpl->insert (-1, newModule);
-            cloners.emplace_back (*m, newModule, functionMappings, structMappings);
+            cloners.emplace_back (m, newModule, functionMappings, structMappings);
         }
 
         for (auto& c : cloners)
@@ -159,7 +159,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         {
             if (contains (m->stateVariables, v))
             {
-                if (m == std::addressof (context))
+                if (m == context)
                     return v.name.toString();
 
                 return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, v.name));
@@ -214,10 +214,8 @@ struct Program::ProgramImpl  : public RefCountedObject
         return type.getDescription ([this] (const Structure& s) { return getStructNameWithQualificationIfNeeded ({}, s); });
     }
 
-    pool_ptr<Module> insert (int index, pool_ptr<Module> newModule)
+    pool_ptr<Module> insert (int index, pool_ref<Module> newModule)
     {
-        SOUL_ASSERT (newModule != nullptr);
-
         if (index < 0)
             modules.emplace_back (newModule);
         else
@@ -260,7 +258,7 @@ Program Program::clone() const                                                  
 bool Program::isEmpty() const                                                           { return getModules().empty(); }
 Program::operator bool() const                                                          { return ! isEmpty(); }
 std::string Program::toHEART() const                                                    { return heart::Printer::getDump (*this); }
-const std::vector<pool_ptr<Module>>& Program::getModules() const                        { return pimpl->modules; }
+const std::vector<pool_ref<Module>>& Program::getModules() const                        { return pimpl->modules; }
 void Program::removeModule (Module& module)                                             { return pimpl->removeModule (module); }
 
 pool_ptr<Module> Program::getModuleWithName (const std::string& name) const             { return pimpl->getModuleWithName (name); }

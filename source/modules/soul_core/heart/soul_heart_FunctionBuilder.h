@@ -205,13 +205,13 @@ struct BlockBuilder
         }
 
         auto i = values.begin();
-        pool_ptr<heart::Expression> total (*i++);
+        pool_ref<heart::Expression> total (*i++);
         auto type = dest.getType();
 
         while (i != values.end())
-            total = createBinaryOp (CodeLocation(), *total, **i++, BinaryOp::Op::add, type);
+            total = createBinaryOp (CodeLocation(), total, *i++, BinaryOp::Op::add, type);
 
-        addAssignment (dest, *total);
+        addAssignment (dest, total);
     }
 
     heart::Expression& createIntegerChangedByOne (heart::Expression& v, BinaryOp::Op op)
@@ -237,12 +237,12 @@ struct BlockBuilder
         changeIntegerByOne (dest, BinaryOp::Op::subtract);
     }
 
-    void addFunctionCall (heart::Function& function, std::initializer_list<pool_ptr<heart::Expression>> args)
+    void addFunctionCall (heart::Function& function, std::initializer_list<pool_ref<heart::Expression>> args)
     {
         addFunctionCall (nullptr, function, args);
     }
 
-    void addFunctionCall (pool_ptr<heart::Expression> dest, heart::Function& function, std::initializer_list<pool_ptr<heart::Expression>> args)
+    void addFunctionCall (pool_ptr<heart::Expression> dest, heart::Function& function, std::initializer_list<pool_ref<heart::Expression>> args)
     {
         auto& call = module.allocate<heart::FunctionCall> (CodeLocation(), dest, function);
         call.arguments.reserve (args.size());
@@ -436,7 +436,7 @@ struct FunctionBuilder  : public BlockBuilder
                 }
                 else
                 {
-                    b->terminator = module.allocate<heart::Branch> (*blocks[i + 1]);
+                    b->terminator = module.allocate<heart::Branch> (blocks[i + 1]);
                 }
             }
         }
@@ -504,7 +504,7 @@ struct FunctionBuilder  : public BlockBuilder
         if (b != nullptr)
         {
             SOUL_ASSERT (heart::Utilities::findBlock (*currentFunction, b->name) == nullptr);
-            currentFunction->blocks.push_back (b);
+            currentFunction->blocks.push_back (*b);
             lastStatementInCurrentBlock = b->statements.getLast();
         }
     }

@@ -29,7 +29,7 @@ struct ASTUtilities
         {}
     }
 
-    static void findAllMainProcessors (AST::ModuleBase& module, std::vector<pool_ptr<AST::ProcessorBase>>& found)
+    static void findAllMainProcessors (AST::ModuleBase& module, std::vector<pool_ref<AST::ProcessorBase>>& found)
     {
         for (auto& m : module.getSubModules())
         {
@@ -37,9 +37,9 @@ struct ASTUtilities
                 if (auto main = pb->annotation.findProperty ("main"))
                     if (auto c = main->value->getAsConstant())
                         if (c->value.getAsBool())
-                            found.push_back (pb);
+                            found.push_back (*pb);
 
-            findAllMainProcessors (*m, found);
+            findAllMainProcessors (m, found);
         }
     }
 
@@ -53,14 +53,15 @@ struct ASTUtilities
 
             if (p1 != nullptr && ! p1->annotation.findProperty ("main"))
                 lastProcessor = p1;
-            else if (auto p2 = scanForProcessorToUseAsMain (*m))
+            else if (auto p2 = scanForProcessorToUseAsMain (m))
                 lastProcessor = p2;
         }
 
         return lastProcessor;
     }
 
-    static void findAllModulesToCompile (const AST::Namespace& parentNamespace, std::vector<pool_ptr<AST::ModuleBase>>& modulesToCompile)
+    static void findAllModulesToCompile (const AST::Namespace& parentNamespace,
+                                         std::vector<pool_ref<AST::ModuleBase>>& modulesToCompile)
     {
         for (auto& m : parentNamespace.subModules)
         {
@@ -79,16 +80,16 @@ struct ASTUtilities
                 removeModulesWithSpecialisationParams (*sub);
 
         removeIf (ns.subModules,
-                  [] (pool_ptr<AST::ModuleBase>& m) { return ! m->getSpecialisationParameters().empty(); });
+                  [] (pool_ref<AST::ModuleBase>& m) { return ! m->getSpecialisationParameters().empty(); });
     }
 
-    static void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ptr<AST::ProcessorBase>> graphsToKeep)
+    static void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ref<AST::ProcessorBase>> graphsToKeep)
     {
         for (auto& m : ns.subModules)
             if (auto subNamespace = cast<AST::Namespace> (m))
                 removeUnusedGraphs (*subNamespace, graphsToKeep);
 
-        removeIf (ns.subModules, [=] (pool_ptr<AST::ModuleBase> m)
+        removeIf (ns.subModules, [=] (pool_ref<AST::ModuleBase> m)
         {
             if (auto graph = cast<AST::Graph> (m))
                 return ! contains (graphsToKeep, graph);
@@ -100,7 +101,7 @@ struct ASTUtilities
     static void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
     {
         for (auto& m : module.getSubModules())
-            resolveHoistedEndpoints (allocator, *m);
+            resolveHoistedEndpoints (allocator, m);
 
         if (auto graph = cast<AST::Graph> (module))
         {
@@ -334,11 +335,11 @@ private:
     {
         for (size_t i = 0; i < g.endpoints.size(); ++i)
         {
-            auto& e = *g.endpoints[i];
+            auto& e = g.endpoints[i];
 
-            if (e.details == nullptr)
+            if (e->details == nullptr)
             {
-                resolveEndpoint (allocator, g, e, e.childPath->sections);
+                resolveEndpoint (allocator, g, e, e->childPath->sections);
                 return true;
             }
         }
@@ -377,7 +378,7 @@ private:
                             parentEndpoint->name = allocator.get (childEndpoint->name);
                             parentEndpoint->details = std::make_unique<AST::EndpointDetails> (*childEndpoint->details);
                             parentEndpoint->needsToBeExposedInParent = true;
-                            graph.endpoints.push_back (parentEndpoint);
+                            graph.endpoints.push_back (*parentEndpoint);
                         }
 
                         AST::Connection::NameAndEndpoint parent, child;

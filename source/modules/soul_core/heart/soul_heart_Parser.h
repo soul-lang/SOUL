@@ -607,7 +607,7 @@ private:
 
         heart::Function& function;
         std::vector<BlockCode> blocks;
-        std::vector<pool_ptr<heart::Variable>> variables;
+        std::vector<pool_ref<heart::Variable>> variables;
     };
 
     void parseFunctionParams (heart::Function& f)

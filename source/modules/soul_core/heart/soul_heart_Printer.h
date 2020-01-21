@@ -29,7 +29,7 @@ struct heart::Printer
         out << '#' << getHEARTFormatVersionPrefix() << ' ' << getHEARTFormatVersion() << blankLine;
 
         for (auto& module : p.getModules())
-            PrinterStream (p, *module, out).printAll();
+            PrinterStream (p, module, out).printAll();
     }
 
     static std::string getDump (const Program& p)
@@ -295,7 +295,7 @@ private:
             for (auto b : f.blocks)
             {
                 auto labelIndent = out.createIndent (2);
-                out << getBlockName (*b) << ":" << newLine;
+                out << getBlockName (b) << ":" << newLine;
 
                 auto statementIndent = out.createIndent (2);
 
@@ -414,7 +414,7 @@ private:
 
             if (auto subElement = cast<heart::SubElement> (e))
             {
-                printExpression (*subElement->parent);
+                printExpression (subElement->parent);
 
                 if (subElement->dynamicIndex != nullptr)
                 {
@@ -443,7 +443,7 @@ private:
             if (auto c = cast<heart::TypeCast> (e))
             {
                 out << "cast " << getTypeDescription (c->destType) << " (";
-                printExpression (*c->source);
+                printExpression (c->source);
                 out << ')';
                 return;
             }
@@ -451,7 +451,7 @@ private:
             if (auto u = cast<heart::UnaryOperator> (e))
             {
                 out << getUnaryOpName (u->operation) << " (";
-                printExpression (*u->source);
+                printExpression (u->source);
                 out << ')';
                 return;
             }
@@ -459,9 +459,9 @@ private:
             if (auto b = cast<heart::BinaryOperator> (e))
             {
                 out << getBinaryOpName (b->operation) << " (";
-                printExpression (*b->lhs);
+                printExpression (b->lhs);
                 out << ", ";
-                printExpression (*b->rhs);
+                printExpression (b->rhs);
                 out << ')';
                 return;
             }
@@ -558,7 +558,7 @@ private:
         void printDescription (const heart::BranchIf& b)
         {
             out << "branch_if ";
-            printExpression (*b.condition);
+            printExpression (b.condition);
             out << " ? " << getBlockName (b.targets[0]) << " : " << getBlockName (b.targets[1]);
         }
 
@@ -570,16 +570,16 @@ private:
         void printDescription (const heart::ReturnValue& r)
         {
             out << "return ";
-            printExpression (*r.returnValue);
+            printExpression (r.returnValue);
         }
 
         void printDescription (const heart::AssignFromValue& a)
         {
             printAssignmentSyntax (*a.target);
-            printExpression (*a.source);
+            printExpression (a.source);
         }
 
-        void printArgList (ArrayView<pool_ptr<heart::Expression>> args)
+        void printArgList (ArrayView<pool_ref<heart::Expression>> args)
         {
             if (args.empty())
             {
@@ -597,7 +597,7 @@ private:
                 else
                     out << ", ";
 
-                printExpression (*arg);
+                printExpression (arg);
             }
 
             out << ')';
@@ -631,7 +631,7 @@ private:
             }
 
             out << ' ';
-            printExpression (*w.value);
+            printExpression (w.value);
         }
 
         void printDescription (const heart::AdvanceClock&) const

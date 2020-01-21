@@ -116,7 +116,7 @@ struct heart::Utilities
         {
             if (m->isProcessor())
             {
-                while (inlineNextOccurrence (*m))
+                while (inlineNextOccurrence (m))
                 {}
             }
         }
@@ -135,7 +135,7 @@ struct heart::Utilities
                                      LinkedList<Statement>::Iterator lastStatementOfFirstBlock,
                                      const std::string& newSecondBlockName)
     {
-        auto& oldBlock = *f.blocks[blockIndex];
+        auto& oldBlock = f.blocks[blockIndex].get();
         auto& newBlock = insertBlock (module, f, blockIndex + 1, newSecondBlockName);
 
         if (lastStatementOfFirstBlock != nullptr)
@@ -179,7 +179,7 @@ struct heart::Utilities
                 dest = newDest;
     }
 
-    static bool areAllTerminatorsUnconditional (ArrayView<pool_ptr<Block>> blocks)
+    static bool areAllTerminatorsUnconditional (ArrayView<pool_ref<Block>> blocks)
     {
         for (auto b : blocks)
             if (b->terminator->isConditional())

@@ -144,15 +144,15 @@ private:
     void visit (AST::Namespace& n) override
     {
         generateStructs (n.structures);
-        for (auto& f : n.functions)   visitObject (*f);
-        for (auto& s : n.structures)  visitObject (*s);
-        for (auto& u : n.usings)      visitObject (*u);
+        for (auto& f : n.functions)   visitObject (f);
+        for (auto& s : n.structures)  visitObject (s);
+        for (auto& u : n.usings)      visitObject (u);
 
         parsingStateVariables = true;
 
         for (auto& c : n.constants)
             if (c->isExternal)
-                visitObject (*c);
+                visitObject (c);
 
         parsingStateVariables = false;
         generateFunctions (n.functions);
@@ -263,7 +263,7 @@ private:
         {
             if (processorName == *i->instanceName)
             {
-                auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (*i);
+                auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (i);
 
                 auto& p = module.allocate<heart::ProcessorInstance>();
                 p.instanceName = processorName.path.toString();
@@ -356,7 +356,7 @@ private:
                                                             }));
     }
 
-    void generateStructs (ArrayView<pool_ptr<AST::StructDeclaration>> structs)
+    void generateStructs (ArrayView<pool_ref<AST::StructDeclaration>> structs)
     {
         for (auto& s : structs)
             module.structs.push_back (s->getStruct());
@@ -382,11 +382,11 @@ private:
         builder.checkFunctionBlocksForTermination();
     }
 
-    void generateFunctions (ArrayView<pool_ptr<AST::Function>> functions)
+    void generateFunctions (ArrayView<pool_ref<AST::Function>> functions)
     {
         for (auto& f : functions)
             if (! f->isGeneric())
-                generateFunction (*f);
+                generateFunction (f);
     }
 
     void generateFunction (AST::Function& f)
@@ -398,7 +398,7 @@ private:
 
         for (auto p : f.parameters)
         {
-            auto& v = createVariableDeclaration (*p, heart::Variable::Role::parameter);
+            auto& v = createVariableDeclaration (p, heart::Variable::Role::parameter);
 
             if (af.functionType.isEvent() && v.getType().isNonConstReference())
                 p->context.throwError (Errors::eventParamsCannotBeNonConstReference());

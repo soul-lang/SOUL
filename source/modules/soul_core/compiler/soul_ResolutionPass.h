@@ -87,7 +87,7 @@ private:
             // Parse sub-modules too
             for (auto& subModule : module.getSubModules())
             {
-                ResolutionPass resolutionPass (allocator, *subModule);
+                ResolutionPass resolutionPass (allocator, subModule);
                 runStats.add (resolutionPass.run (ignoreTypeAndConstantErrors));
             }
 
@@ -344,7 +344,7 @@ private:
                             visit (*vr.variable);
                     }
 
-                    std::vector<pool_ptr<AST::VariableDeclaration>> stack;
+                    std::vector<pool_ref<AST::VariableDeclaration>> stack;
                 };
 
                 RecursiveVariableInitialiserCheck().visitObject (module);
@@ -1410,7 +1410,7 @@ private:
 
                         if (totalMatches > 1 || matchingGenerics.size() > 1)
                         {
-                            ArrayWithPreallocation<pool_ptr<AST::Function>, 4> functions;
+                            ArrayWithPreallocation<pool_ref<AST::Function>, 4> functions;
 
                             for (auto& f : possibles)
                                 functions.push_back (f.function);
@@ -1629,7 +1629,7 @@ private:
             }
 
             for (auto& sub : scope.getSubModules())
-                findLeastMisspeltFunction (*sub, name, nearest, lowestDistance);
+                findLeastMisspeltFunction (sub, name, nearest, lowestDistance);
         }
 
         AST::Expression& createAdvanceCall (AST::CallOrCast& c)
@@ -1781,7 +1781,7 @@ private:
 
             for (auto& f : parentScope->getFunctions())
                 if (f->name == specialisedFunctionName && f->orginalGenericFunction == genericFunction)
-                    return *f;
+                    return f;
 
             auto& newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
             newFunction.name = specialisedFunctionName;
@@ -1793,7 +1793,7 @@ private:
             {
                 auto parentModule = genericFunction.getParentScope()->getAsModule();
                 SOUL_ASSERT (parentModule != nullptr);
-                removeItem (*parentModule->getFunctionList(), std::addressof (newFunction));
+                removeItem (*parentModule->getFunctionList(), newFunction);
                 return {};
             }
 

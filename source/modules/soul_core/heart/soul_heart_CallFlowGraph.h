@@ -52,7 +52,7 @@ struct CallFlowGraph
 
         bool hasFoundTerminator = false;
 
-        visitDownstreamBlocks (f, *f.blocks.front(), [&] (const heart::Block& b)
+        visitDownstreamBlocks (f, f.blocks.front(), [&] (const heart::Block& b)
                                {
                                    if (! (b.terminator->isReturn() || heart::Utilities::doesBlockCallAdvance (b)))
                                        return true;
@@ -120,12 +120,12 @@ private:
         {
             if (b->temporaryData == nullptr)
             {
-                if (! visitor (*b))
+                if (! visitor (b))
                     return false;
 
                 b->temporaryData = (void*) 1u;
 
-                if (! visitUpstreamBlocks (*b, visitor))
+                if (! visitUpstreamBlocks (b, visitor))
                     return false;
             }
         }
@@ -159,7 +159,7 @@ private:
                 auto& state = states[index++];
                 block->temporaryData = std::addressof (state);
 
-                block->visitExpressions ([&] (pool_ptr<heart::Expression>& value, heart::AccessType)
+                block->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType)
                 {
                     if (auto v = cast<heart::Variable> (value))
                         if (! (v->isState() || v->isParameter()))
@@ -171,7 +171,7 @@ private:
                 sortAndRemoveDuplicates (allVariables);
             }
 
-            auto& firstBlockState = BlockState::get (*f.blocks.front());
+            auto& firstBlockState = BlockState::get (f.blocks.front());
             firstBlockState.variablesUnsafeAtEnd = std::move (allVariables);
             removeFromVector (firstBlockState.variablesUnsafeAtEnd, firstBlockState.variablesUsedDuringBlock);
         }
@@ -182,17 +182,17 @@ private:
 
             for (auto& b : f.blocks)
             {
-                auto& state = BlockState::get (*b);
+                auto& state = BlockState::get (b);
 
                 if (! (state.isFullyResolved || b->predecessors.empty()))
                 {
-                    auto& firstPreState = BlockState::get (*b->predecessors.front());
+                    auto& firstPreState = BlockState::get (b->predecessors.front());
                     auto variablesUnsafeAtEnd = firstPreState.variablesUnsafeAtEnd;
                     bool allPredecessorsResolved = firstPreState.isFullyResolved;
 
                     for (size_t i = 1; i < b->predecessors.size(); ++i)
                     {
-                        auto& predState = BlockState::get (*b->predecessors[i]);
+                        auto& predState = BlockState::get (b->predecessors[i]);
                         appendVector (variablesUnsafeAtEnd, predState.variablesUnsafeAtEnd);
                         sortAndRemoveDuplicates (variablesUnsafeAtEnd);
                         allPredecessorsResolved = allPredecessorsResolved && predState.isFullyResolved;
@@ -225,11 +225,11 @@ private:
 
             for (auto& pred : b->predecessors)
             {
-                appendVector (unsafeVariables, BlockState::get (*pred).variablesUnsafeAtEnd);
+                appendVector (unsafeVariables, BlockState::get (pred).variablesUnsafeAtEnd);
                 sortAndRemoveDuplicates (unsafeVariables);
             }
 
-            auto visitRead = [&] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
+            auto visitRead = [&] (pool_ref<heart::Expression>& value, heart::AccessType mode)
             {
                 if (mode != heart::AccessType::write)
                     if (auto v = cast<heart::Variable> (value))

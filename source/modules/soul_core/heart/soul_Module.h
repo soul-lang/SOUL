@@ -59,7 +59,7 @@ public:
     Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
     //==============================================================================
-    std::vector<pool_ptr<heart::Function>> getExportedFunctions() const;
+    std::vector<pool_ref<heart::Function>> getExportedFunctions() const;
     pool_ptr<heart::Function> findRunFunction() const;
     heart::Function& getRunFunction() const;
     heart::Function& getFunction (const std::string& name) const;
@@ -113,9 +113,9 @@ private:
 
     friend class PoolAllocator;
 
-    static pool_ptr<Module> createProcessor (heart::Allocator&);
-    static pool_ptr<Module> createGraph     (heart::Allocator&);
-    static pool_ptr<Module> createNamespace (heart::Allocator&);
+    static pool_ref<Module> createProcessor (heart::Allocator&);
+    static pool_ref<Module> createGraph     (heart::Allocator&);
+    static pool_ref<Module> createNamespace (heart::Allocator&);
 };
 
 

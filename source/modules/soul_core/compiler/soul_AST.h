@@ -344,18 +344,18 @@ struct AST
             return {};
         }
 
-        virtual ArrayView<pool_ptr<VariableDeclaration>>        getVariables() const            { return {}; }
-        virtual ArrayView<pool_ptr<Function>>                   getFunctions() const            { return {}; }
-        virtual ArrayView<pool_ptr<StructDeclaration>>          getStructDeclarations() const   { return {}; }
-        virtual ArrayView<pool_ptr<UsingDeclaration>>           getUsingDeclarations() const    { return {}; }
-        virtual ArrayView<pool_ptr<ModuleBase>>                 getSubModules() const           { return {}; }
-        virtual ArrayView<pool_ptr<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
+        virtual ArrayView<pool_ref<VariableDeclaration>>        getVariables() const            { return {}; }
+        virtual ArrayView<pool_ref<Function>>                   getFunctions() const            { return {}; }
+        virtual ArrayView<pool_ref<StructDeclaration>>          getStructDeclarations() const   { return {}; }
+        virtual ArrayView<pool_ref<UsingDeclaration>>           getUsingDeclarations() const    { return {}; }
+        virtual ArrayView<pool_ref<ModuleBase>>                 getSubModules() const           { return {}; }
+        virtual ArrayView<pool_ref<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
 
         virtual const Statement* getAsStatement() const      { return nullptr; }
 
         struct NameSearch
         {
-            ArrayWithPreallocation<pool_ptr<ASTObject>, 8> itemsFound;
+            ArrayWithPreallocation<pool_ref<ASTObject>, 8> itemsFound;
             IdentifierPath partiallyQualifiedPath;
             bool stopAtFirstScopeWithResults = false;
             int requiredNumFunctionArgs = -1;
@@ -364,7 +364,7 @@ struct AST
 
             void addResult (ASTObject& o)
             {
-                if (! contains (itemsFound, &o))
+                if (! contains (itemsFound, o))
                     itemsFound.push_back (o);
             }
 
@@ -381,7 +381,7 @@ struct AST
                 {
                     if (o->name == targetName)
                     {
-                        addResult (*o);
+                        addResult (o);
                         break;
                     }
                 }
@@ -532,13 +532,13 @@ struct AST
         virtual bool isGraph() const                { return false; }
         virtual bool isNamespace() const            { return false; }
 
-        virtual ArrayView<pool_ptr<ASTObject>>                 getSpecialisationParameters() const  { return {}; }
-        virtual ArrayView<pool_ptr<EndpointDeclaration>>       getEndpoints() const                 { return {}; }
+        virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const  { return {}; }
+        virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                 { return {}; }
 
-        virtual std::vector<pool_ptr<StructDeclaration>>*      getStructList() = 0;
-        virtual std::vector<pool_ptr<UsingDeclaration>>*       getUsingList() = 0;
-        virtual std::vector<pool_ptr<VariableDeclaration>>*    getStateVariableList() = 0;
-        virtual std::vector<pool_ptr<Function>>*               getFunctionList() = 0;
+        virtual std::vector<pool_ref<StructDeclaration>>*      getStructList() = 0;
+        virtual std::vector<pool_ref<UsingDeclaration>>*       getUsingList() = 0;
+        virtual std::vector<pool_ref<VariableDeclaration>>*    getStateVariableList() = 0;
+        virtual std::vector<pool_ref<Function>>*               getFunctionList() = 0;
 
         size_t getNumInputs() const                 { return countEndpoints (true); }
         size_t getNumOutputs() const                { return countEndpoints (false); }
@@ -572,7 +572,7 @@ struct AST
                          && (search.requiredNumFunctionArgs < 0
                               || f->parameters.size() == static_cast<uint32_t> (search.requiredNumFunctionArgs)))
                     {
-                        search.addResult (*f);
+                        search.addResult (f);
                     }
                 }
             }
@@ -621,8 +621,8 @@ struct AST
 
         ProcessorBase* getAsProcessor() override        { return this; }
 
-        ArrayView<pool_ptr<EndpointDeclaration>>  getEndpoints() const override                   { return endpoints; }
-        ArrayView<pool_ptr<ASTObject>>            getSpecialisationParameters() const override    { return specialisationParams; }
+        ArrayView<pool_ref<EndpointDeclaration>>  getEndpoints() const override                   { return endpoints; }
+        ArrayView<pool_ref<ASTObject>>            getSpecialisationParameters() const override    { return specialisationParams; }
 
         template <typename StringType>
         pool_ptr<EndpointDeclaration> findEndpoint (const StringType& nameToFind, bool isInput) const
@@ -648,8 +648,8 @@ struct AST
         virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
         virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
 
-        std::vector<pool_ptr<EndpointDeclaration>> endpoints;
-        std::vector<pool_ptr<ASTObject>> specialisationParams;
+        std::vector<pool_ref<EndpointDeclaration>> endpoints;
+        std::vector<pool_ref<ASTObject>> specialisationParams;
 
         Annotation annotation;
     };
@@ -670,15 +670,15 @@ struct AST
 
         bool isProcessor() const override   { return true; }
 
-        ArrayView<pool_ptr<VariableDeclaration>>     getVariables() const override           { return stateVariables; }
-        ArrayView<pool_ptr<Function>>                getFunctions() const override           { return functions; }
-        ArrayView<pool_ptr<StructDeclaration>>       getStructDeclarations() const override  { return structures; }
-        ArrayView<pool_ptr<UsingDeclaration>>        getUsingDeclarations() const override   { return usings; }
+        ArrayView<pool_ref<VariableDeclaration>>     getVariables() const override           { return stateVariables; }
+        ArrayView<pool_ref<Function>>                getFunctions() const override           { return functions; }
+        ArrayView<pool_ref<StructDeclaration>>       getStructDeclarations() const override  { return structures; }
+        ArrayView<pool_ref<UsingDeclaration>>        getUsingDeclarations() const override   { return usings; }
 
-        std::vector<pool_ptr<StructDeclaration>>*    getStructList() override                { return &structures; }
-        std::vector<pool_ptr<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
-        std::vector<pool_ptr<VariableDeclaration>>*  getStateVariableList() override         { return &stateVariables; }
-        std::vector<pool_ptr<Function>>*             getFunctionList() override              { return &functions; }
+        std::vector<pool_ref<StructDeclaration>>*    getStructList() override                { return &structures; }
+        std::vector<pool_ref<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
+        std::vector<pool_ref<VariableDeclaration>>*  getStateVariableList() override         { return &stateVariables; }
+        std::vector<pool_ref<Function>>*             getFunctionList() override              { return &functions; }
 
         void addSpecialisationParameter (VariableDeclaration& v) override
         {
@@ -698,10 +698,10 @@ struct AST
             SOUL_ASSERT_FALSE;
         }
 
-        std::vector<pool_ptr<StructDeclaration>> structures;
-        std::vector<pool_ptr<UsingDeclaration>> usings;
-        std::vector<pool_ptr<Function>> functions;
-        std::vector<pool_ptr<VariableDeclaration>> stateVariables;
+        std::vector<pool_ref<StructDeclaration>> structures;
+        std::vector<pool_ref<UsingDeclaration>> usings;
+        std::vector<pool_ref<Function>> functions;
+        std::vector<pool_ref<VariableDeclaration>> stateVariables;
     };
 
     //==============================================================================
@@ -728,18 +728,18 @@ struct AST
 
         bool isGraph() const override                                                        { return true; }
 
-        ArrayView<pool_ptr<ProcessorAliasDeclaration>> getProcessorAliases() const override  { return processorAliases; }
-        ArrayView<pool_ptr<VariableDeclaration>> getVariables() const override               { return constants; }
+        ArrayView<pool_ref<ProcessorAliasDeclaration>> getProcessorAliases() const override  { return processorAliases; }
+        ArrayView<pool_ref<VariableDeclaration>> getVariables() const override               { return constants; }
 
-        std::vector<pool_ptr<StructDeclaration>>* getStructList() override                   { return {}; }
-        std::vector<pool_ptr<UsingDeclaration>>* getUsingList() override                     { return {}; }
-        std::vector<pool_ptr<VariableDeclaration>>* getStateVariableList() override          { return {}; }
-        std::vector<pool_ptr<Function>>* getFunctionList() override                          { return {}; }
+        std::vector<pool_ref<StructDeclaration>>* getStructList() override                   { return {}; }
+        std::vector<pool_ref<UsingDeclaration>>* getUsingList() override                     { return {}; }
+        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override          { return {}; }
+        std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
 
-        std::vector<pool_ptr<ProcessorInstance>> processorInstances;
-        std::vector<pool_ptr<Connection>> connections;
-        std::vector<pool_ptr<VariableDeclaration>> constants;
-        std::vector<pool_ptr<ProcessorAliasDeclaration>> processorAliases;
+        std::vector<pool_ref<ProcessorInstance>> processorInstances;
+        std::vector<pool_ref<Connection>> connections;
+        std::vector<pool_ref<VariableDeclaration>> constants;
+        std::vector<pool_ref<ProcessorAliasDeclaration>> processorAliases;
 
         template <typename StringType>
         pool_ptr<ProcessorInstance> findChildProcessor (const StringType& processorInstanceName) const
@@ -879,23 +879,23 @@ struct AST
         bool isNamespace() const override                                              { return true; }
         Namespace* getAsNamespace() override                                           { return this; }
 
-        ArrayView<pool_ptr<VariableDeclaration>> getVariables() const override         { return constants; }
-        ArrayView<pool_ptr<Function>> getFunctions() const override                    { return functions; }
-        ArrayView<pool_ptr<StructDeclaration>> getStructDeclarations() const override  { return structures; }
-        ArrayView<pool_ptr<UsingDeclaration>> getUsingDeclarations() const override    { return usings; }
-        ArrayView<pool_ptr<ModuleBase>> getSubModules() const override                 { return subModules; }
+        ArrayView<pool_ref<VariableDeclaration>> getVariables() const override         { return constants; }
+        ArrayView<pool_ref<Function>> getFunctions() const override                    { return functions; }
+        ArrayView<pool_ref<StructDeclaration>> getStructDeclarations() const override  { return structures; }
+        ArrayView<pool_ref<UsingDeclaration>> getUsingDeclarations() const override    { return usings; }
+        ArrayView<pool_ref<ModuleBase>> getSubModules() const override                 { return subModules; }
 
-        std::vector<pool_ptr<Function>>* getFunctionList() override                    { return &functions; }
-        std::vector<pool_ptr<StructDeclaration>>* getStructList() override             { return &structures; }
-        std::vector<pool_ptr<UsingDeclaration>>* getUsingList() override               { return &usings; }
-        std::vector<pool_ptr<VariableDeclaration>>* getStateVariableList() override    { return &constants; }
+        std::vector<pool_ref<Function>>* getFunctionList() override                    { return &functions; }
+        std::vector<pool_ref<StructDeclaration>>* getStructList() override             { return &structures; }
+        std::vector<pool_ref<UsingDeclaration>>* getUsingList() override               { return &usings; }
+        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override    { return &constants; }
 
         ImportsList importsList;
-        std::vector<pool_ptr<Function>> functions;
-        std::vector<pool_ptr<StructDeclaration>> structures;
-        std::vector<pool_ptr<UsingDeclaration>> usings;
-        std::vector<pool_ptr<ModuleBase>> subModules;
-        std::vector<pool_ptr<VariableDeclaration>> constants;
+        std::vector<pool_ref<Function>> functions;
+        std::vector<pool_ref<StructDeclaration>> structures;
+        std::vector<pool_ref<UsingDeclaration>> usings;
+        std::vector<pool_ref<ModuleBase>> subModules;
+        std::vector<pool_ref<VariableDeclaration>> constants;
     };
 
     //==============================================================================
@@ -948,7 +948,7 @@ struct AST
         EndpointDetails (const EndpointDetails&) = default;
 
         const EndpointKind kind;
-        std::vector<pool_ptr<Expression>> sampleTypes;
+        std::vector<pool_ref<Expression>> sampleTypes;
         pool_ptr<Expression> arraySize;
 
         void checkSampleTypesValid (const Context& context)
@@ -1180,9 +1180,9 @@ struct AST
         pool_ptr<Expression> returnType;
         Identifier name;
         Context nameLocation;
-        std::vector<pool_ptr<VariableDeclaration>> parameters;
-        std::vector<pool_ptr<QualifiedIdentifier>> genericWildcards;
-        std::vector<pool_ptr<UsingDeclaration>> genericSpecialisations;
+        std::vector<pool_ref<VariableDeclaration>> parameters;
+        std::vector<pool_ref<QualifiedIdentifier>> genericWildcards;
+        std::vector<pool_ref<UsingDeclaration>> genericSpecialisations;
         pool_ptr<Function> orginalGenericFunction;
         pool_ptr<FunctionCall> originalCallLeadingToSpecialisation;
         Annotation annotation;
@@ -1239,7 +1239,7 @@ struct AST
         }
 
         Scope* getParentScope() const override                                       { return ASTObject::getParentScope(); }
-        ArrayView<pool_ptr<UsingDeclaration>> getUsingDeclarations() const override  { return genericSpecialisations; }
+        ArrayView<pool_ref<UsingDeclaration>> getUsingDeclarations() const override  { return genericSpecialisations; }
 
         void performLocalNameSearch (NameSearch& search, const Statement*) const override
         {

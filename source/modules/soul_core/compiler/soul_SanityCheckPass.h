@@ -239,7 +239,7 @@ struct SanityCheckPass  final
         return value;
     }
 
-    static void checkForDuplicateFunctions (ArrayView<pool_ptr<AST::Function>> functions)
+    static void checkForDuplicateFunctions (ArrayView<pool_ref<AST::Function>> functions)
     {
         std::vector<std::string> functionSigs;
         functionSigs.reserve (functions.size());
@@ -266,7 +266,7 @@ private:
             checkOverallStructureOfProcessor (*p);
 
         for (auto m : module->getSubModules())
-            checkOverallStructure (*m);
+            checkOverallStructure (m);
     }
 
     static void checkOverallStructureOfProcessor (pool_ptr<AST::ProcessorBase> processorOrGraph)

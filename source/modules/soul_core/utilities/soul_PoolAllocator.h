@@ -22,6 +22,7 @@ namespace soul
 {
 
 class PoolAllocator;
+template <typename Type> struct pool_ref;
 
 //==============================================================================
 /** A smart-pointer for objects which were created by a PoolAllocator.
@@ -53,6 +54,8 @@ struct pool_ptr  final
     pool_ptr& operator= (pool_ptr<OtherType> other) noexcept    { object = other.get(); return *this; }
 
     Type* get() const noexcept                              { return object; }
+    Type& getReference() const                              { SOUL_ASSERT (object != nullptr); return *object; }
+    pool_ref<Type> getAsPoolRef() const                     { SOUL_ASSERT (object != nullptr); return *object; }
     Type& operator*() const                                 { SOUL_ASSERT (object != nullptr); return *object; }
     Type* operator->() const                                { SOUL_ASSERT (object != nullptr); return object; }
 
@@ -102,6 +105,7 @@ struct pool_ref  final
     operator Type&() const noexcept                         { return *object; }
     operator pool_ptr<Type>() const noexcept                { return pool_ptr<Type> (*object); }
     Type* getPointer() const noexcept                       { return object; }
+    Type& getReference() const noexcept                     { return *object; }
     Type* operator->() const                                { return object; }
 
     void reset (Type& newObject) noexcept                   { object = std::addressof (newObject); }
@@ -181,16 +185,6 @@ template <typename TargetType, typename SrcType>
 inline bool is_type (SrcType& object)
 {
     return dynamic_cast<TargetType*> (&object) != nullptr;
-}
-
-template <typename TargetType, typename SrcType>
-inline pool_ptr<TargetType> static_pool_cast (pool_ptr<SrcType> object)
-{
-    SOUL_ASSERT (is_type<TargetType> (object));
-
-    pool_ptr<TargetType> p;
-    p.reset (static_cast<TargetType*> (object.get()));
-    return p;
 }
 
 //==============================================================================
@@ -324,5 +318,11 @@ namespace std
     struct hash<soul::pool_ptr<Type>>
     {
         size_t operator() (const soul::pool_ptr<Type>& p) const noexcept { return reinterpret_cast<size_t> (p.get()); }
+    };
+
+    template <typename Type>
+    struct hash<soul::pool_ref<Type>>
+    {
+        size_t operator() (const soul::pool_ref<Type>& p) const noexcept { return reinterpret_cast<size_t> (p.getPointer()); }
     };
 }

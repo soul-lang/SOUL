@@ -63,7 +63,7 @@ public:
     operator bool() const;
 
     /** Provides access to the modules. */
-    const std::vector<pool_ptr<Module>>& getModules() const;
+    const std::vector<pool_ref<Module>>& getModules() const;
 
     /** Removes the given module */
     void removeModule (Module&);

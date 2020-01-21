@@ -80,7 +80,7 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
                                              StandardOperatorMatcher,
                                              StandardIdentifierMatcher>
 {
-    static std::vector<pool_ptr<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
+    static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
                                                                              AST::Namespace& parentNamespace)
     {
         StructuralParser p (allocator, code, parentNamespace);
@@ -119,7 +119,7 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         p.parseFunctionOrStateVariable();
         SOUL_ASSERT (functionList->size() == oldSize + 1);
         ignoreUnused (oldSize);
-        return *functionList->back();
+        return functionList->back();
     }
 
     [[noreturn]] void throwError (const CompileMessage& message) const override
@@ -367,7 +367,7 @@ private:
         auto context = getContext();
         auto name = parseIdentifier();
 
-        std::vector<pool_ptr<AST::QualifiedIdentifier>> genericWildcards;
+        std::vector<pool_ref<AST::QualifiedIdentifier>> genericWildcards;
 
         if (matchIf (Operator::lessThan))
             genericWildcards = parseGenericFunctionWildcardList();
@@ -907,9 +907,9 @@ private:
     }
 
     //==============================================================================
-    std::vector<pool_ptr<AST::QualifiedIdentifier>> parseGenericFunctionWildcardList()
+    std::vector<pool_ref<AST::QualifiedIdentifier>> parseGenericFunctionWildcardList()
     {
-        std::vector<pool_ptr<AST::QualifiedIdentifier>> wildcards;
+        std::vector<pool_ref<AST::QualifiedIdentifier>> wildcards;
 
         for (;;)
         {
@@ -956,7 +956,7 @@ private:
 
     AST::Function& parseFunctionDeclaration (const AST::Context& context, AST::Expression& returnType,
                                              Identifier name, const AST::Context& nameLocation,
-                                             std::vector<pool_ptr<AST::QualifiedIdentifier>> genericWildcards)
+                                             std::vector<pool_ref<AST::QualifiedIdentifier>> genericWildcards)
     {
         if (AST::isResolvedAsType (returnType) && returnType.getConstness() == AST::Constness::definitelyConst)
             throwError (Errors::functionReturnTypeCannotBeConst());
@@ -973,7 +973,7 @@ private:
             recursivelyReplaceParentScope (*f.returnType, f);
 
         for (auto& w : f.genericWildcards)
-            recursivelyReplaceParentScope (*w, f);
+            recursivelyReplaceParentScope (w, f);
 
         if (! matchIf (Operator::closeParen))
         {
@@ -1736,9 +1736,9 @@ private:
         return *type;
     }
 
-    std::vector<pool_ptr<AST::Expression>> parseEndpointTypeList (EndpointKind kind)
+    std::vector<pool_ref<AST::Expression>> parseEndpointTypeList (EndpointKind kind)
     {
-        std::vector<pool_ptr<AST::Expression>> result;
+        std::vector<pool_ref<AST::Expression>> result;
         auto loc = location;
 
         if (matchIf (Operator::openParen))

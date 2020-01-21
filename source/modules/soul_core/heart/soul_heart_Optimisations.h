@@ -75,7 +75,7 @@ struct Optimisations
 
         for (auto& m : modules)
             if (m->isProcessor() && m->functions.empty())
-                program.removeModule (*m);
+                program.removeModule (m);
     }
 
     static void removeUnusedNamespaces (Program& program)
@@ -84,7 +84,7 @@ struct Optimisations
 
         for (auto& m : modules)
             if (m->isNamespace() && m->functions.empty() && m->structs.empty())
-                program.removeModule (*m);
+                program.removeModule (m);
     }
 
     static void removeUnusedStructs (Program& program)
@@ -102,7 +102,7 @@ struct Optimisations
                 for (auto& p : f->parameters)
                     recursivelyFlagStructUse (p->getType());
 
-                f->visitExpressions ([] (pool_ptr<heart::Expression>& value, heart::AccessType)
+                f->visitExpressions ([] (pool_ref<heart::Expression>& value, heart::AccessType)
                 {
                     recursivelyFlagStructUse (value->getType());
                 });
@@ -209,7 +209,7 @@ private:
                 for (auto pred : b->predecessors)
                 {
                     SOUL_ASSERT (pred->terminator != nullptr);
-                    heart::Utilities::replaceBlockDestination (*pred, *b, destinations.front());
+                    heart::Utilities::replaceBlockDestination (pred, *b, destinations.front());
                 }
 
                 return true;
@@ -236,7 +236,7 @@ private:
         return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
         {
             return f.blocks.front() != b
-                    && ! isReachableFrom (f, *b, *f.blocks.front());
+                    && ! isReachableFrom (f, *b, f.blocks.front());
         });
     }
 
@@ -290,7 +290,7 @@ private:
                 recursivelyFlagFunctionUse (fc.getFunction());
             });
 
-            sourceFn.visitExpressions ([] (pool_ptr<heart::Expression>& value, heart::AccessType)
+            sourceFn.visitExpressions ([] (pool_ref<heart::Expression>& value, heart::AccessType)
             {
                 if (auto fc = cast<heart::PureFunctionCall> (value))
                     recursivelyFlagFunctionUse (fc->function);
@@ -348,10 +348,10 @@ private:
                                 {
                                     b->statements.removeNext (last);
 
-                                    f.visitExpressions ([target, source] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
+                                    f.visitExpressions ([target, source] (pool_ref<heart::Expression>& value, heart::AccessType mode)
                                     {
                                         if (value == target && mode == heart::AccessType::read)
-                                            value = source;
+                                            value = *source;
                                     });
 
                                     return true;
@@ -403,7 +403,7 @@ private:
     template <typename EndpointPropertyProvider>
     static void removeUnconnectedInputs (Module& module, EndpointPropertyProvider& epp)
     {
-        std::vector<pool_ptr<heart::InputDeclaration>> toRemove;
+        std::vector<pool_ref<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
             if (! epp.findInputEndpointProperties (i).initialised)
@@ -424,7 +424,7 @@ private:
 
         for (auto& f : module.functions)
         {
-            f->visitExpressions ([&] (pool_ptr<heart::Expression>& value, heart::AccessType mode)
+            f->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType mode)
             {
                 if (mode == heart::AccessType::read)
                 {
@@ -439,7 +439,7 @@ private:
     template <typename EndpointPropertyProvider>
     static void removeUnconnectedOutputs (Module& module, EndpointPropertyProvider& epp)
     {
-        std::vector<pool_ptr<heart::OutputDeclaration>> toRemove;
+        std::vector<pool_ref<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
             if (! epp.findOutputEndpointProperties (o).initialised)
@@ -491,7 +491,7 @@ private:
         {
             auto& postBlock = heart::Utilities::splitBlock (module, parentFunction, blockIndex, call, "@" + inlinedFnName + "_end");
             postCallResumeBlock = postBlock;
-            auto& preBlock = *parentFunction.blocks[blockIndex];
+            auto& preBlock = parentFunction.blocks[blockIndex].get();
 
             preBlock.statements.remove (call);
 
@@ -509,10 +509,10 @@ private:
 
                 for (size_t i = 0; i < targetFunction.parameters.size(); ++i)
                 {
-                    auto& param = *targetFunction.parameters[i];
+                    auto& param = targetFunction.parameters[i].get();
                     auto newParamName = inlinedFnName + "_param_" + makeSafeIdentifierName (param.name.toString());
                     auto& localParamVar = builder.createMutableLocalVariable (param.type, newParamName);
-                    builder.addAssignment (localParamVar, *call.arguments[i]);
+                    builder.addAssignment (localParamVar, call.arguments[i]);
                     remappedVariables[param] = localParamVar;
                 }
             }
@@ -532,10 +532,10 @@ private:
             parentFunction.blocks.insert (parentFunction.blocks.begin() + (ssize_t) (blockIndex + 1),
                                           newBlocks.begin(), newBlocks.end());
 
-            preBlock.terminator = module.allocate<heart::Branch> (*newBlocks.front());
+            preBlock.terminator = module.allocate<heart::Branch> (newBlocks.front());
 
             for (size_t i = 0; i < newBlocks.size(); ++i)
-                cloneBlock (*newBlocks[i], *targetFunction.blocks[i]);
+                cloneBlock (newBlocks[i], targetFunction.blocks[i]);
         }
 
         void cloneBlock (heart::Block& target, const heart::Block& source)
@@ -547,7 +547,7 @@ private:
 
             if (auto returnValue = cast<heart::ReturnValue> (source.terminator))
                 target.statements.insertAfter (last, module.allocate<heart::AssignFromValue> (source.location, *returnValueVar,
-                                                                                              getRemappedExpressionRef (*returnValue->returnValue)));
+                                                                                              getRemappedExpressionRef (returnValue->returnValue)));
 
             target.terminator = cloneTerminator (*source.terminator);
         }
@@ -577,7 +577,7 @@ private:
 
         heart::BranchIf& clone (const heart::BranchIf& old)
         {
-            return module.allocate<heart::BranchIf> (getRemappedExpressionRef (*old.condition),
+            return module.allocate<heart::BranchIf> (getRemappedExpressionRef (old.condition),
                                                      *remappedBlocks[old.targets[0]],
                                                      *remappedBlocks[old.targets[1]]);
         }
@@ -589,7 +589,7 @@ private:
         {
             return module.allocate<heart::AssignFromValue> (old.location,
                                                             getRemappedExpressionRef (*old.target),
-                                                            getRemappedExpressionRef (*old.source));
+                                                            getRemappedExpressionRef (old.source));
         }
 
         heart::FunctionCall& clone (const heart::FunctionCall& old)
@@ -597,7 +597,7 @@ private:
             auto& fc = module.allocate<heart::FunctionCall> (old.location, getRemappedExpression (old.target), old.getFunction());
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (*arg));
+                fc.arguments.push_back (getRemappedExpressionRef (arg));
 
             return fc;
         }
@@ -607,7 +607,7 @@ private:
             auto& fc = module.allocate<heart::PureFunctionCall> (old.location, old.function);
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (*arg));
+                fc.arguments.push_back (getRemappedExpressionRef (arg));
 
             return fc;
         }
@@ -617,7 +617,7 @@ private:
             auto& fc = module.allocate<heart::PlaceholderFunctionCall> (old.location, old.name, old.returnType);
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (*arg));
+                fc.arguments.push_back (getRemappedExpressionRef (arg));
 
             return fc;
         }
@@ -629,9 +629,9 @@ private:
 
         heart::WriteStream& clone (const heart::WriteStream& old)
         {
-            return module.allocate<heart::WriteStream> (old.location, *old.target,
+            return module.allocate<heart::WriteStream> (old.location, old.target,
                                                         getRemappedExpression (old.element),
-                                                        getRemappedExpressionRef (*old.value));
+                                                        getRemappedExpressionRef (old.value));
         }
 
         heart::AdvanceClock& clone (const heart::AdvanceClock& a)
@@ -646,16 +646,16 @@ private:
 
             if (auto b = cast<heart::BinaryOperator> (old))
                 return module.allocate<heart::BinaryOperator> (b->location,
-                                                               getRemappedExpressionRef (*b->lhs),
-                                                               getRemappedExpressionRef (*b->rhs),
+                                                               getRemappedExpressionRef (b->lhs),
+                                                               getRemappedExpressionRef (b->rhs),
                                                                b->operation,
                                                                b->destType);
 
             if (auto u = cast<heart::UnaryOperator> (old))
-                return module.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (*u->source), u->operation);
+                return module.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (u->source), u->operation);
 
             if (auto t = cast<heart::TypeCast> (old))
-                return module.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (*t->source), t->destType);
+                return module.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (t->source), t->destType);
 
             if (auto f = cast<heart::PureFunctionCall> (old))
                 return clone (*f);
@@ -706,7 +706,7 @@ private:
         heart::SubElement& cloneSubElement (const heart::SubElement& old)
         {
             auto& s = module.allocate<heart::SubElement> (old.location,
-                                                          getRemappedExpressionRef (*old.parent),
+                                                          getRemappedExpressionRef (old.parent),
                                                           old.fixedStartIndex,
                                                           old.fixedEndIndex);
 
@@ -722,9 +722,9 @@ private:
         size_t blockIndex;
         heart::Function& targetFunction;
         std::string inlinedFnName;
-        std::vector<pool_ptr<heart::Block>> newBlocks;
-        std::unordered_map<pool_ptr<heart::Block>, pool_ptr<heart::Block>> remappedBlocks;
-        std::unordered_map<pool_ptr<heart::Variable>, pool_ptr<heart::Variable>> remappedVariables;
+        std::vector<pool_ref<heart::Block>> newBlocks;
+        std::unordered_map<pool_ref<heart::Block>, pool_ptr<heart::Block>> remappedBlocks;
+        std::unordered_map<pool_ref<heart::Variable>, pool_ptr<heart::Variable>> remappedVariables;
         pool_ptr<heart::Block> postCallResumeBlock;
         pool_ptr<heart::Variable> returnValueVar;
     };

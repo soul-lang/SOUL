@@ -95,7 +95,7 @@ Program Compiler::build (CompileMessageList& messageList, CodeLocation code, con
     return {};
 }
 
-std::vector<pool_ptr<AST::ModuleBase>> Compiler::parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
+std::vector<pool_ref<AST::ModuleBase>> Compiler::parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
                                                                             AST::Namespace& parentNamespace)
 {
     return StructuralParser::parseTopLevelDeclarations (allocator, code, parentNamespace);
@@ -107,7 +107,7 @@ void Compiler::compile (CodeLocation code)
     SOUL_LOG_TIME_OF_SCOPE ("compile: " + code.getFilename());
 
     for (auto& m : StructuralParser::parseTopLevelDeclarations (allocator, code, *topLevelNamespace))
-        SanityCheckPass::runPreResolution (*m);
+        SanityCheckPass::runPreResolution (m);
 
     ResolutionPass::run (allocator, *topLevelNamespace, true);
 
@@ -132,7 +132,7 @@ AST::ProcessorBase& Compiler::findMainProcessor (const LinkOptions& linkOptions)
         CodeLocation().throwError (Errors::cannotFindMainProcessorWithName (nameOfProcessorToRun));
     }
 
-    std::vector<pool_ptr<AST::ProcessorBase>> mainProcessors;
+    std::vector<pool_ref<AST::ProcessorBase>> mainProcessors;
     ASTUtilities::findAllMainProcessors (*topLevelNamespace, mainProcessors);
 
     if (mainProcessors.size() > 1)
@@ -146,7 +146,7 @@ AST::ProcessorBase& Compiler::findMainProcessor (const LinkOptions& linkOptions)
     }
 
     if (mainProcessors.size() == 1)
-        return *mainProcessors.front();
+        return mainProcessors.front();
 
     auto main = ASTUtilities::scanForProcessorToUseAsMain (*topLevelNamespace);
 
@@ -212,17 +212,17 @@ void Compiler::optimise (Program& program)
     Optimisations::removeUnusedVariables (program);
 }
 
-void Compiler::resolveProcessorInstances (pool_ptr<AST::ProcessorBase> processor)
+void Compiler::resolveProcessorInstances (AST::ProcessorBase& processor)
 {
     createImplicitProcessorInstances (*topLevelNamespace);
 
-    std::vector<pool_ptr<AST::ProcessorBase>> usedProcessorInstances;
+    std::vector<pool_ref<AST::ProcessorBase>> usedProcessorInstances;
     recursivelyResolveProcessorInstances (processor, usedProcessorInstances);
     ASTUtilities::removeUnusedGraphs (*topLevelNamespace, usedProcessorInstances);
 }
 
-void Compiler::recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase> processor,
-                                                     std::vector<pool_ptr<AST::ProcessorBase>>& usedProcessorInstances)
+void Compiler::recursivelyResolveProcessorInstances (pool_ref<AST::ProcessorBase> processor,
+                                                     std::vector<pool_ref<AST::ProcessorBase>>& usedProcessorInstances)
 {
     usedProcessorInstances.push_back (processor);
 
@@ -237,7 +237,7 @@ void Compiler::recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase
                 duplicateNameChecker.check (i->instanceName->path.toString(), i->instanceName->context);
         }
 
-        std::vector<pool_ptr<AST::ProcessorBase>> resolvedTargets;
+        std::vector<pool_ref<AST::ProcessorBase>> resolvedTargets;
 
         for (auto& i : graph->processorInstances)
         {
@@ -245,10 +245,10 @@ void Compiler::recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase
                 if (! graph->getMatchingSubModules (i->instanceName->path).empty())
                     i->context.throwError (Errors::alreadyProcessorWithName (i->instanceName->path));
 
-            auto& target = graph->findSingleMatchingProcessor (*i);
+            auto& target = graph->findSingleMatchingProcessor (i);
             resolvedTargets.push_back (target);
-            bool alreadyUsed = contains (usedProcessorInstances, std::addressof (target));
-            auto resolvedProcessor = createSpecialisedInstance (*graph, *i, target, alreadyUsed);
+            bool alreadyUsed = contains (usedProcessorInstances, target);
+            auto resolvedProcessor = createSpecialisedInstance (*graph, i, target, alreadyUsed);
             recursivelyResolveProcessorInstances (resolvedProcessor, usedProcessorInstances);
         }
 
@@ -291,7 +291,7 @@ void Compiler::createImplicitProcessorInstanceIfNeeded (AST::Graph& graph, AST::
 void Compiler::createImplicitProcessorInstances (AST::ModuleBase& module)
 {
     for (auto& m : module.getSubModules())
-        createImplicitProcessorInstances (*m);
+        createImplicitProcessorInstances (m);
 
     if (auto graph = cast<AST::Graph> (module))
     {
@@ -310,7 +310,7 @@ static std::string createSpecialisationNameSuffix (AST::Graph& graph, const AST:
                                                + "_" + processorInstance.instanceName->toString());
 }
 
-pool_ptr<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& graph,
+pool_ref<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& graph,
                                                                   AST::ProcessorInstance& processorInstance,
                                                                   AST::ProcessorBase& target, bool mustCreateClone)
 {
@@ -319,7 +319,7 @@ pool_ptr<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
     if (target.getSpecialisationParameters().size() != numParams)
         processorInstance.context.throwError (Errors::wrongNumArgsForProcessor (target.getFullyQualifiedPath()));
 
-    pool_ptr<AST::ProcessorBase> specialised (target);
+    pool_ref<AST::ProcessorBase> specialised (target);
 
     if (numParams != 0)
         specialised = addClone (target, TokenisedPathString::join (target.name.toString(),
@@ -362,10 +362,10 @@ pool_ptr<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
         {
             if (! v->isResolved())
             {
-                ResolutionPass::run (allocator, *specialised, true);
+                ResolutionPass::run (allocator, specialised, true);
 
                 if (! v->isResolved())
-                    ResolutionPass::run (allocator, *specialised, false);
+                    ResolutionPass::run (allocator, specialised, false);
             }
 
             if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
@@ -407,19 +407,19 @@ pool_ptr<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
     }
 
     specialised->specialisationParams.clear();
-    processorInstance.targetProcessor = allocator.allocate<AST::ProcessorRef> (processorInstance.context, *specialised);
+    processorInstance.targetProcessor = allocator.allocate<AST::ProcessorRef> (processorInstance.context, specialised);
     processorInstance.specialisationArgs.clear();
 
     // Since this clone isn't resolved, do this now
-    ResolutionPass::run (allocator, *specialised, true);
+    ResolutionPass::run (allocator, specialised, true);
 
     return specialised;
 }
 
-pool_ptr<AST::ProcessorBase> Compiler::addClone (const AST::ProcessorBase& m, const std::string& nameRoot)
+pool_ref<AST::ProcessorBase> Compiler::addClone (const AST::ProcessorBase& m, const std::string& nameRoot)
 {
     auto& ns = m.getNamespace();
-    return StructuralParser::cloneProcessorWithNewName (allocator, ns, m, ns.makeUniqueName (nameRoot));
+    return *StructuralParser::cloneProcessorWithNewName (allocator, ns, m, ns.makeUniqueName (nameRoot));
 }
 
 static pool_ptr<Module> createHEARTModule (Program& p, pool_ptr<AST::ModuleBase> module, bool isMainProcessor)
@@ -437,15 +437,15 @@ static pool_ptr<Module> createHEARTModule (Program& p, pool_ptr<AST::ModuleBase>
 void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program& program,
                                   AST::ProcessorBase& processorToRun)
 {
-    std::vector<pool_ptr<AST::ModuleBase>> modulesToCompile;
+    std::vector<pool_ref<AST::ModuleBase>> modulesToCompile;
     ASTUtilities::findAllModulesToCompile (parentNamespace, modulesToCompile);
 
     HEARTGenerator::UnresolvedFunctionCallList unresolvedCalls;
 
     for (auto& m : modulesToCompile)
     {
-        auto newModule = createHEARTModule (program, *m, m == processorToRun);
-        HEARTGenerator::run (*m, *newModule, unresolvedCalls);
+        auto newModule = createHEARTModule (program, m, m == processorToRun);
+        HEARTGenerator::run (m, *newModule, unresolvedCalls);
     }
 
     for (auto& c : unresolvedCalls)

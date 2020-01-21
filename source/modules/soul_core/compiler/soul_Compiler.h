@@ -56,7 +56,7 @@ public:
                           const LinkOptions& linkOptions);
 
     /** Just parses the top-level objects from a chunk of code */
-    static std::vector<pool_ptr<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator&,
+    static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator&,
                                                                              CodeLocation code,
                                                                              AST::Namespace& parentNamespace);
 
@@ -69,15 +69,15 @@ private:
     void addDefaultBuiltInLibrary();
     void compile (CodeLocation);
     Program link (CompileMessageList&, const LinkOptions&, AST::ProcessorBase& processorToRun);
-    void resolveProcessorInstances (pool_ptr<AST::ProcessorBase> processor);
+    void resolveProcessorInstances (AST::ProcessorBase&);
     AST::ProcessorBase& findMainProcessor (const LinkOptions&);
 
-    void recursivelyResolveProcessorInstances (pool_ptr<AST::ProcessorBase>, std::vector<pool_ptr<AST::ProcessorBase>>& usedProcessorInstances);
+    void recursivelyResolveProcessorInstances (pool_ref<AST::ProcessorBase>, std::vector<pool_ref<AST::ProcessorBase>>& usedProcessorInstances);
     void createImplicitProcessorInstanceIfNeeded (AST::Graph&, AST::QualifiedIdentifier& path);
     void createImplicitProcessorInstances (AST::ModuleBase&);
-    pool_ptr<AST::ProcessorBase> createSpecialisedInstance (AST::Graph&, AST::ProcessorInstance&, AST::ProcessorBase& target, bool mustCreateClone);
+    pool_ref<AST::ProcessorBase> createSpecialisedInstance (AST::Graph&, AST::ProcessorInstance&, AST::ProcessorBase& target, bool mustCreateClone);
 
-    pool_ptr<AST::ProcessorBase> addClone (const AST::ProcessorBase&, const std::string& nameRoot);
+    pool_ref<AST::ProcessorBase> addClone (const AST::ProcessorBase&, const std::string& nameRoot);
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, AST::ProcessorBase& processorToRun);
     void optimise (Program&);
 };

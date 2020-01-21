@@ -74,7 +74,7 @@ struct ASTVisitor
     {
         // use index iteration to survive cases where a visit causes the list to be mutated
         for (size_t i = 0; i < array.size(); ++i)
-            visitObject (*array[i]);
+            visitObject (array[i].getReference());
     }
 
     #undef SOUL_INVOKE_FOR_SUBCLASS
@@ -254,7 +254,7 @@ struct ASTVisitor
         visitObject (*f.returnType);
 
         for (auto& v : f.parameters)
-            visitObject (*v);
+            visitObject (v);
 
         if (f.block != nullptr)
             visitObject (*f.block);
@@ -304,7 +304,7 @@ struct ASTVisitor
         if (e.details != nullptr)
         {
             for (auto& type : e.details->sampleTypes)
-                visitObject (*type);
+                visitObject (type);
 
             if (e.details->arraySize != nullptr)
                 visitObject (*e.details->arraySize);
@@ -427,13 +427,22 @@ struct RewritingASTVisitor
         if (o == nullptr)
             return {};
 
-        return static_pool_cast<Type> (visitObject (*o));
+        SOUL_ASSERT (is_type<Type> (o));
+        return *static_cast<Type*> (visitObject (*o).get());
+    }
+
+    template <typename Type>
+    pool_ref<Type> visitAs (pool_ref<Type> o)
+    {
+        auto result = visitObject (o.getReference());
+        SOUL_ASSERT (is_type<Type> (result));
+        return *static_cast<Type*> (result.get());
     }
 
     size_t itemsReplaced = 0;
 
     template <typename Type>
-    void replace (pool_ptr<Type>& dest, pool_ptr<Type> newValue) noexcept
+    void replace (Type& dest, const Type& newValue) noexcept
     {
         if (dest != newValue)
         {
@@ -442,15 +451,14 @@ struct RewritingASTVisitor
         }
     }
 
-    template <typename Type>
-    void replaceAs (pool_ptr<Type>& o)                      { replace (o, visitAs<Type> (o)); }
-    void replaceExpression (pool_ptr<AST::Expression>& e)   { replace (e, visitExpression (e)); }
-    void replaceStatement (pool_ptr<AST::Statement>& s)     { replace (s, visitStatement (s)); }
+    template <typename Type> void replaceAs (pool_ptr<Type>& o)   { replace (o, visitAs<Type> (o)); }
+    template <typename Type> void replaceAs (pool_ref<Type>& o)   { replace (o, visitAs<Type> (o)); }
+    void replaceExpression (pool_ptr<AST::Expression>& e)         { replace (e, visitExpression (e)); }
+    void replaceExpression (pool_ref<AST::Expression>& e)         { replace (e, visitAs<AST::Expression> (e)); }
+    void replaceStatement (pool_ptr<AST::Statement>& s)           { replace (s, visitStatement (s)); }
 
-    pool_ptr<AST::Statement> visitStatement (pool_ptr<AST::Statement> s)
-    {
-        return visitAs<AST::Statement> (s);
-    }
+    pool_ref<AST::Statement> visitStatement (pool_ref<AST::Statement> s) { return visitAs<AST::Statement> (s); }
+    pool_ptr<AST::Statement> visitStatement (pool_ptr<AST::Statement> s) { return visitAs<AST::Statement> (s); }
 
     virtual pool_ptr<AST::Expression> visitExpression (pool_ptr<AST::Expression> e)
     {
@@ -462,7 +470,7 @@ struct RewritingASTVisitor
     {
         // use index iteration to survive cases where a visit causes the list to be mutated
         for (size_t i = 0; i < array.size(); ++i)
-            visitObject (*array[i]);
+            visitObject (array[i].getReference());
     }
 
     template <typename ArrayType>
@@ -472,7 +480,7 @@ struct RewritingASTVisitor
         for (size_t i = 0; i < array.size(); ++i)
         {
             auto oldObject = array[i];
-            auto newObject = visitAs<typename ArrayType::value_type::ObjectType> (*oldObject);
+            auto newObject = visitAs<typename ArrayType::value_type::ObjectType> (oldObject);
 
             if (oldObject != newObject)
             {

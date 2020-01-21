@@ -35,9 +35,9 @@ Module::Module (heart::Allocator& a, const Module& toClone)
 {
 }
 
-pool_ptr<Module> Module::createProcessor (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::processorModule); }
-pool_ptr<Module> Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
-pool_ptr<Module> Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
+pool_ref<Module> Module::createProcessor (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::processorModule); }
+pool_ref<Module> Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
+pool_ref<Module> Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
 
 bool Module::isProcessor() const noexcept       { return moduleType == ModuleType::processorModule; }
 bool Module::isGraph() const noexcept           { return moduleType == ModuleType::graphModule; }
@@ -52,9 +52,9 @@ std::string Module::getNameWithoutRootNamespaceOrSpecialisations() const
             .fullPath;
 }
 
-std::vector<pool_ptr<heart::Function>> Module::getExportedFunctions() const
+std::vector<pool_ref<heart::Function>> Module::getExportedFunctions() const
 {
-    std::vector<pool_ptr<heart::Function>> result;
+    std::vector<pool_ref<heart::Function>> result;
 
     for (auto& f : functions)
         if (f->isExported)
