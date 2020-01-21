@@ -1021,7 +1021,7 @@ private:
         builder.addAdvance (a.context.location);
     }
 
-    void createSeriesOfWrites (AST::Expression& target, ArrayView<pool_ptr<AST::Expression>> values)
+    void createSeriesOfWrites (AST::Expression& target, ArrayView<pool_ref<AST::Expression>> values)
     {
         // Two choices - the target can be an output declaration, or an element of an output declaration
         if (auto output = cast<AST::OutputEndpointRef> (target))
@@ -1030,15 +1030,15 @@ private:
             {
                 if (auto details = output->output->details.get())
                 {
-                    if (! details->supportsSampleType (*v))
+                    if (! details->supportsSampleType (v))
                         target.context.throwError (Errors::cannotWriteTypeToEndpoint (v->getResultType().getDescription(),
                                                                                       details->getSampleTypesDescription()));
 
-                    auto sampleType = details->getSampleType (*v);
+                    auto sampleType = details->getSampleType (v);
 
                     builder.addWriteStream (output->context.location,
                                             *output->output->generatedOutput, nullptr,
-                                            evaluateAsExpression (*v, sampleType));
+                                            evaluateAsExpression (v, sampleType));
                 }
                 else
                 {
@@ -1061,8 +1061,8 @@ private:
                     for (auto v : values)
                     {
                         // Find the element type that our expression will write to
-                        auto sampleType = details->getElementSampleType (*v);
-                        auto& value = evaluateAsExpression (*v, sampleType);
+                        auto sampleType = details->getElementSampleType (v);
+                        auto& value = evaluateAsExpression (v, sampleType);
 
                         if (arraySubscript->isSlice)
                         {
@@ -1110,9 +1110,9 @@ private:
         target.context.throwError (Errors::targetMustBeOutput());
     }
 
-    static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws, ArrayWithPreallocation<pool_ptr<AST::Expression>, 4>& values)
+    static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws, ArrayWithPreallocation<pool_ref<AST::Expression>, 4>& values)
     {
-        values.insert (values.begin(), ws.value);
+        values.insert (values.begin(), *ws.value);
 
         if (auto chainedWrite = cast<AST::WriteToEndpoint> (ws.target))
             return getTopLevelWriteToEndpoint (*chainedWrite, values);
@@ -1122,7 +1122,7 @@ private:
 
     void visit (AST::WriteToEndpoint& ws) override
     {
-        ArrayWithPreallocation<pool_ptr<AST::Expression>, 4> values;
+        ArrayWithPreallocation<pool_ref<AST::Expression>, 4> values;
         auto& topLevelWrite = getTopLevelWriteToEndpoint (ws, values);
         createSeriesOfWrites (*topLevelWrite.target, values);
     }

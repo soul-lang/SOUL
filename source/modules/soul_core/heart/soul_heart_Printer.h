@@ -49,7 +49,7 @@ private:
         const Module& module;
         IndentedStream& out;
 
-        std::unordered_map<pool_ptr<heart::Variable>, std::string> localVariableNames;
+        std::unordered_map<pool_ref<heart::Variable>, std::string> localVariableNames;
         std::vector<std::string> allVisibleVariables;
 
         void printAll()
@@ -396,7 +396,7 @@ private:
             {
                 if (v->isMutableLocal() || v->isConstant())
                 {
-                    auto nm = localVariableNames.find (v);
+                    auto nm = localVariableNames.find (*v);
 
                     if (nm != localVariableNames.end())
                     {

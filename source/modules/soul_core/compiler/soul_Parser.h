@@ -1477,7 +1477,7 @@ private:
 
             if (auto dot = cast<AST::DotOperator> (expression))
             {
-                args.items.insert (args.items.begin(), dot->lhs);
+                args.items.insert (args.items.begin(), *dot->lhs);
                 return parseSuffixes (allocate<AST::CallOrCast> (dot->rhs, args, true));
             }
 

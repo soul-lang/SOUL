@@ -116,15 +116,11 @@ struct pool_ref  final
     bool operator== (pool_ref other) const noexcept         { return object == other.object; }
     bool operator!= (pool_ref other) const noexcept         { return object != other.object; }
     bool operator<  (pool_ref other) const noexcept         { return object <  other.object; }
-    bool operator== (decltype (nullptr)) const noexcept     { return false; }
-    bool operator!= (decltype (nullptr)) const noexcept     { return true; }
-
-    operator bool() const noexcept                          { return true; }
 
     using ObjectType = Type;
 
 private:
-    Type* object = nullptr;
+    Type* object;
 };
 
 template <typename T1, typename T2> bool operator== (pool_ptr<T1> p1, const T2* p2) noexcept     { return p1.get() == p2; }

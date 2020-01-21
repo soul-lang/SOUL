@@ -807,13 +807,13 @@ private:
             {
                 auto numArgs = TypeRules::checkArraySizeAndThrowErrorIfIllegal (c.context, list->items.size());
 
-                ArrayWithPreallocation<pool_ptr<AST::Constant>, 8> constants;
+                ArrayWithPreallocation<pool_ref<AST::Constant>, 8> constants;
                 constants.reserve (numArgs);
 
                 for (auto& v : list->items)
                 {
                     if (auto cv = v->getAsConstant())
-                        constants.push_back (cv);
+                        constants.push_back (*cv);
                     else
                         return c;
                 }
@@ -864,7 +864,7 @@ private:
                         if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))
                             memberValues.push_back (cv.castToTypeExpectingSuccess (memberType));
                         else if (! ignoreErrors)
-                            SanityCheckPass::expectSilentCastPossible (constants[i]->context, memberType, *constants[i]);
+                            SanityCheckPass::expectSilentCastPossible (constants[i]->context, memberType, constants[i]);
                         else
                             return c;
                     }
@@ -1113,7 +1113,7 @@ private:
             if (c.isSizeOfUnsizedType())
             {
                 auto& argList = allocator.allocate<AST::CommaSeparatedList> (c.context);
-                argList.items.push_back (c.source);
+                argList.items.push_back (*c.source);
 
                 auto name = allocator.identifiers.get ("get_array_size");
                 auto& qi = allocator.allocate<AST::QualifiedIdentifier> (c.context, IdentifierPath (name));
@@ -1369,14 +1369,14 @@ private:
                     }
 
                     // If there are any generic functions, see if exactly one of these works
-                    ArrayWithPreallocation<pool_ptr<AST::Expression>, 4> matchingGenerics;
+                    ArrayWithPreallocation<pool_ref<AST::Expression>, 4> matchingGenerics;
 
                     for (auto& f : possibles)
                     {
                         if (! f.isImpossible && f.requiresGeneric)
                         {
                             if (auto e = resolveFunction (f, call, true))
-                                matchingGenerics.push_back (e);
+                                matchingGenerics.push_back (*e);
                             else if (! canResolveGenerics())
                                 return call;
                         }
@@ -1683,7 +1683,7 @@ private:
 
                 if (auto i = cast<AST::InputEndpointRef> (array))
                 {
-                    if (i->input == nullptr || i->input->details == nullptr)
+                    if (i->input->details == nullptr)
                         array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = i->input->details->arraySize;
@@ -1691,7 +1691,7 @@ private:
 
                 if (auto o = cast<AST::OutputEndpointRef> (array))
                 {
-                    if (o->output == nullptr || o->output->details == nullptr)
+                    if (o->output->details == nullptr)
                         array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = o->output->details->arraySize;

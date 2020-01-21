@@ -431,7 +431,7 @@ struct AST
             return s;
         }
 
-        std::vector<pool_ptr<ModuleBase>> getMatchingSubModules (IdentifierPath partiallyQualifiedName) const
+        std::vector<pool_ref<ModuleBase>> getMatchingSubModules (IdentifierPath partiallyQualifiedName) const
         {
             Scope::NameSearch search;
             search.partiallyQualifiedPath = partiallyQualifiedName;
@@ -444,11 +444,11 @@ struct AST
 
             performFullNameSearch (search, nullptr);
 
-            std::vector<pool_ptr<ModuleBase>> found;
+            std::vector<pool_ref<ModuleBase>> found;
 
             for (auto& o : search.itemsFound)
                 if (auto m = cast<ModuleBase> (o))
-                    found.push_back (m);
+                    found.push_back (*m);
 
             return found;
         }
@@ -463,7 +463,7 @@ struct AST
             if (modulesFound.size() > 1)
                 name.context.throwError (Errors::ambiguousSymbol (name.path));
 
-            return *modulesFound.front();
+            return modulesFound.front();
         }
 
         ProcessorBase& findSingleMatchingProcessor (const QualifiedIdentifier& name) const

@@ -38,7 +38,7 @@ struct heart::Utilities
         for (auto& b : f.blocks)
             for (auto s : b->statements)
                 if (auto w = cast<WriteStream> (*s))
-                    if (w->target != nullptr && w->target->isStreamEndpoint())
+                    if (w->target->isStreamEndpoint())
                         return w;
 
         return {};

@@ -635,7 +635,7 @@ private:
     struct PreAndPostIncOperatorCheck  : public ASTVisitor
     {
         using super = ASTVisitor;
-        using VariableList = ArrayWithPreallocation<pool_ptr<AST::VariableDeclaration>, 16>;
+        using VariableList = ArrayWithPreallocation<pool_ref<AST::VariableDeclaration>, 16>;
         VariableList* variablesModified = nullptr;
         VariableList* variablesReferenced = nullptr;
         bool isInsidePreIncOp = false;
@@ -657,7 +657,7 @@ private:
             if (variablesModified != nullptr)
             {
                 throwIfVariableFound (*variablesModified, v);
-                variablesReferenced->push_back (v.variable);
+                variablesReferenced->push_back (*v.variable);
             }
 
             super::visit (v);
@@ -672,8 +672,8 @@ private:
                 if (variablesModified != nullptr)
                 {
                     throwIfVariableFound (*variablesReferenced, *v);
-                    variablesModified->push_back (v->variable);
-                    variablesReferenced->push_back (v->variable);
+                    variablesModified->push_back (*v->variable);
+                    variablesReferenced->push_back (*v->variable);
                 }
             }
             else

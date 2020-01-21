@@ -24,7 +24,7 @@ namespace soul
 /** Performs a deep-clone of a Module object, which is trickier than it sounds.. */
 struct ModuleCloner
 {
-    using FunctionMappings = std::unordered_map<pool_ptr<const heart::Function>, pool_ptr<heart::Function>>;
+    using FunctionMappings = std::unordered_map<pool_ref<const heart::Function>, pool_ptr<heart::Function>>;
     using StructMappings   = std::unordered_map<const Structure*, StructurePtr>;
 
     ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs) noexcept
@@ -76,11 +76,11 @@ struct ModuleCloner
 
     FunctionMappings& functionMappings;
     StructMappings& structMappings;
-    std::unordered_map<pool_ptr<const heart::InputDeclaration>, pool_ptr<heart::InputDeclaration>> inputMappings;
-    std::unordered_map<pool_ptr<const heart::OutputDeclaration>, pool_ptr<heart::OutputDeclaration>> outputMappings;
-    std::unordered_map<pool_ptr<const heart::Variable>, pool_ptr<heart::Variable>> variableMappings;
-    std::unordered_map<pool_ptr<const heart::Block>, pool_ptr<heart::Block>> blockMappings;
-    std::unordered_map<pool_ptr<const heart::ProcessorInstance>, pool_ptr<heart::ProcessorInstance>> processorInstanceMappings;
+    std::unordered_map<pool_ref<const heart::InputDeclaration>, pool_ptr<heart::InputDeclaration>> inputMappings;
+    std::unordered_map<pool_ref<const heart::OutputDeclaration>, pool_ptr<heart::OutputDeclaration>> outputMappings;
+    std::unordered_map<pool_ref<const heart::Variable>, pool_ptr<heart::Variable>> variableMappings;
+    std::unordered_map<pool_ref<const heart::Block>, pool_ptr<heart::Block>> blockMappings;
+    std::unordered_map<pool_ref<const heart::ProcessorInstance>, pool_ptr<heart::ProcessorInstance>> processorInstanceMappings;
 
     heart::Block& getRemappedBlock (heart::Block& old)
     {
@@ -244,7 +244,7 @@ struct ModuleCloner
         if (old == nullptr)
             return {};
 
-        return processorInstanceMappings[old];
+        return processorInstanceMappings[*old];
     }
 
     heart::ProcessorInstance& clone (const heart::ProcessorInstance& old)
