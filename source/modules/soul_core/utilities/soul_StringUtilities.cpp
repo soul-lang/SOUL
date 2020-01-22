@@ -49,6 +49,9 @@ bool containsChar (const std::string& s, char c) noexcept
 
 bool containsChar (const char* s, char c) noexcept
 {
+    if (s == nullptr)
+        return false;
+    
     for (; *s != 0; ++s)
         if (*s == c)
             return true;
@@ -228,42 +231,6 @@ std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targe
                 currentQuoteChar = 0;
         }
     }
-}
-
-std::vector<std::string> removeEmptyStrings (ArrayView<std::string> strings)
-{
-    std::vector<std::string> result;
-    result.reserve (strings.size());
-
-    for (auto& s : strings)
-        if (! s.empty())
-            result.push_back (s);
-
-    return result;
-}
-
-std::vector<std::string> removeWhitespaceOnlyStrings (ArrayView<std::string> strings)
-{
-    std::vector<std::string> result;
-    result.reserve (strings.size());
-
-    for (auto& s : strings)
-        if (! trim (s).empty())
-            result.push_back (s);
-
-    return result;
-}
-
-std::vector<std::string> dedupeStrings (ArrayView<std::string> strings)
-{
-    std::vector<std::string> result;
-    result.reserve (strings.size());
-
-    for (auto& s : strings)
-        if (! contains (result, s))
-            result.push_back (s);
-
-    return result;
 }
 
 std::string replaceLine (const std::string& text, size_t line, const std::string& replacementLine)

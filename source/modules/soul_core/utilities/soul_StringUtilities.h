@@ -74,9 +74,6 @@ std::vector<std::string> splitAtDelimiter (const std::string& text, char delimit
 std::vector<std::string> splitAtWhitespace (const std::string& text);
 std::vector<std::string> splitIntoLines (const std::string& text);
 std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targetLineLength);
-std::vector<std::string> removeEmptyStrings (ArrayView<std::string>);
-std::vector<std::string> removeWhitespaceOnlyStrings (ArrayView<std::string>);
-std::vector<std::string> dedupeStrings (ArrayView<std::string>);
 
 std::string loadFileAsString (const char* filename);
 
