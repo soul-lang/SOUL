@@ -119,14 +119,6 @@ std::string retainCharacters (std::string s, const std::string& charactersToReta
     return s;
 }
 
-bool stringMatchesOneOf (const std::string& stringToTest, ArrayView<const char*> possibleMatches)
-{
-    for (auto m : possibleMatches)
-        if (stringToTest == m)
-            return true;
-
-    return false;
-}
 
 template <typename IsDelimiterStart, typename IsDelimiterBody>
 std::vector<std::string> split (const std::string& text,
@@ -369,7 +361,6 @@ std::string convertToString (const IdentifierPath& name)     { return Program::s
 
 std::string quoteName (const std::string& name)        { return addSingleQuotes (convertToString (name)); }
 std::string quoteName (const Identifier& name)         { return addSingleQuotes (convertToString (name)); }
-std::string quoteName (const IdentifierPath& name)     { return addSingleQuotes (convertToString (name)); }
 
 size_t levenshteinDistance (const std::string& s1, const std::string& s2)
 {

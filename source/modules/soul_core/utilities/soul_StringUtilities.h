@@ -51,7 +51,6 @@ bool endsWith (const std::string& text, const std::string& possibleEnd);
 
 std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement);
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
-bool stringMatchesOneOf (const std::string& stringToTest, ArrayView<const char*> possibleMatches);
 
 template <typename StringArray>
 static std::string joinStrings (const StringArray& strings, const std::string& separator)
@@ -119,7 +118,6 @@ std::string convertToString (const IdentifierPath& name);
 // These apply a standard quoting style for things like a variable or type name.
 std::string quoteName (const std::string& name);
 std::string quoteName (const Identifier& name);
-std::string quoteName (const IdentifierPath& name);
 
 //==============================================================================
 /** A medium speed & strength string hasher.
