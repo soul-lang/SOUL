@@ -170,8 +170,7 @@ struct ASTVisitor
 
     virtual void visit (AST::TypeCast& c)
     {
-        if (c.source != nullptr)
-            visitObject (*c.source);
+        visitObject (c.source);
     }
 
     virtual void visit (AST::ArrayElementRef& s)
@@ -353,7 +352,7 @@ struct ASTVisitor
     virtual void visit (AST::CommaSeparatedList& l)
     {
         for (auto& i : l.items)
-            visitObject (*i);
+            visitObject (i);
     }
 
     virtual void visit (AST::QualifiedIdentifier&)
@@ -453,14 +452,14 @@ struct RewritingASTVisitor
 
     template <typename Type> void replaceAs (pool_ptr<Type>& o)   { replace (o, visitAs<Type> (o)); }
     template <typename Type> void replaceAs (pool_ref<Type>& o)   { replace (o, visitAs<Type> (o)); }
-    void replaceExpression (pool_ptr<AST::Expression>& e)         { replace (e, visitExpression (e)); }
-    void replaceExpression (pool_ref<AST::Expression>& e)         { replace (e, visitAs<AST::Expression> (e)); }
+    void replaceExpression (pool_ptr<AST::Expression>& e)         { if (e != nullptr) replace (e, pool_ptr<AST::Expression> (visitExpression (pool_ref<AST::Expression> (*e)))); }
+    void replaceExpression (pool_ref<AST::Expression>& e)         { replace (e, visitExpression (e)); }
     void replaceStatement (pool_ptr<AST::Statement>& s)           { replace (s, visitStatement (s)); }
 
     pool_ref<AST::Statement> visitStatement (pool_ref<AST::Statement> s) { return visitAs<AST::Statement> (s); }
     pool_ptr<AST::Statement> visitStatement (pool_ptr<AST::Statement> s) { return visitAs<AST::Statement> (s); }
 
-    virtual pool_ptr<AST::Expression> visitExpression (pool_ptr<AST::Expression> e)
+    virtual pool_ref<AST::Expression> visitExpression (pool_ref<AST::Expression> e)
     {
         return visitAs<AST::Expression> (e);
     }
@@ -595,9 +594,7 @@ struct RewritingASTVisitor
 
     virtual pool_ptr<AST::Expression> visit (AST::TypeCast& c)
     {
-        if (c.source != nullptr)
-            replaceExpression (c.source);
-
+        replaceExpression (c.source);
         return c;
     }
 

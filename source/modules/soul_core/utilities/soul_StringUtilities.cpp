@@ -51,7 +51,7 @@ bool containsChar (const char* s, char c) noexcept
 {
     if (s == nullptr)
         return false;
-    
+
     for (; *s != 0; ++s)
         if (*s == c)
             return true;

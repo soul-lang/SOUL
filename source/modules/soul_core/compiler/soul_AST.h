@@ -115,15 +115,25 @@ struct AST
 
     enum class ExpressionKind  { value, type, endpoint, processor, unknown };
 
-    static bool isPossiblyType (pool_ptr<Expression> e)          { return e != nullptr && (e->kind == ExpressionKind::type     || e->kind == ExpressionKind::unknown); }
-    static bool isPossiblyValue (pool_ptr<Expression> e)         { return e != nullptr && (e->kind == ExpressionKind::value    || e->kind == ExpressionKind::unknown); }
-    static bool isPossiblyEndpoint (pool_ptr<Expression> e)      { return e != nullptr && (e->kind == ExpressionKind::endpoint || e->kind == ExpressionKind::unknown); }
+    static bool isPossiblyType (Expression& e)                   { return e.kind == ExpressionKind::type     || e.kind == ExpressionKind::unknown; }
+    static bool isPossiblyValue (Expression& e)                  { return e.kind == ExpressionKind::value    || e.kind == ExpressionKind::unknown; }
+    static bool isPossiblyEndpoint (Expression& e)               { return e.kind == ExpressionKind::endpoint || e.kind == ExpressionKind::unknown; }
 
-    static bool isResolvedAsType (pool_ptr<Expression> e)        { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::type; }
-    static bool isResolvedAsValue (pool_ptr<Expression> e)       { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::value; }
-    static bool isResolvedAsConstant (pool_ptr<Expression> e)    { return isResolvedAsValue (e) && e->getAsConstant() != nullptr; }
-    static bool isResolvedAsEndpoint (pool_ptr<Expression> e)    { return e != nullptr && e->isResolved() && e->isOutputEndpoint(); }
-    static bool isResolvedAsProcessor (pool_ptr<Expression> e)   { return e != nullptr && e->isResolved() && e->kind == ExpressionKind::processor; }
+    static bool isPossiblyType (pool_ptr<Expression> e)          { return e != nullptr && isPossiblyType (*e); }
+    static bool isPossiblyValue (pool_ptr<Expression> e)         { return e != nullptr && isPossiblyValue (*e); }
+    static bool isPossiblyEndpoint (pool_ptr<Expression> e)      { return e != nullptr && isPossiblyEndpoint (*e); }
+
+    static bool isResolvedAsType (Expression& e)                 { return e.isResolved() && e.kind == ExpressionKind::type; }
+    static bool isResolvedAsValue (Expression& e)                { return e.isResolved() && e.kind == ExpressionKind::value; }
+    static bool isResolvedAsConstant (Expression& e)             { return isResolvedAsValue (e) && e.getAsConstant() != nullptr; }
+    static bool isResolvedAsEndpoint (Expression& e)             { return e.isResolved() && e.isOutputEndpoint(); }
+    static bool isResolvedAsProcessor (Expression& e)            { return e.isResolved() && e.kind == ExpressionKind::processor; }
+
+    static bool isResolvedAsType (pool_ptr<Expression> e)        { return e != nullptr && isResolvedAsType (*e); }
+    static bool isResolvedAsValue (pool_ptr<Expression> e)       { return e != nullptr && isResolvedAsValue (*e); }
+    static bool isResolvedAsConstant (pool_ptr<Expression> e)    { return e != nullptr && isResolvedAsConstant (*e); }
+    static bool isResolvedAsEndpoint (pool_ptr<Expression> e)    { return e != nullptr && isResolvedAsEndpoint (*e); }
+    static bool isResolvedAsProcessor (pool_ptr<Expression> e)   { return e != nullptr && isResolvedAsProcessor (*e); }
 
     enum class Constness  { definitelyConst, notConst, unknown };
 
@@ -981,7 +991,7 @@ struct AST
         bool isResolved() const
         {
             for (auto& t : sampleTypes)
-                if (! isResolvedAsType (t))
+                if (! isResolvedAsType (t.get()))
                     return false;
 
             return arraySize == nullptr || isResolvedAsConstant (arraySize);
@@ -994,7 +1004,7 @@ struct AST
 
             for (auto& t : sampleTypes)
             {
-                SOUL_ASSERT (isResolvedAsType (t));
+                SOUL_ASSERT (isResolvedAsType (t.get()));
                 types.push_back (t->resolveAsType());
             }
 
@@ -1987,22 +1997,19 @@ struct AST
 
     struct TypeCast  : public Expression
     {
-        TypeCast (const Context& c, Type destType, pool_ptr<Expression> optionalSource)
+        TypeCast (const Context& c, Type destType, Expression& sourceValue)
             : Expression (ObjectType::TypeCast, c, ExpressionKind::value),
-              targetType (std::move (destType)), source (optionalSource)
+              targetType (std::move (destType)), source (sourceValue)
         {
         }
 
-        bool isResolved() const override             { return source == nullptr || source->isResolved(); }
+        bool isResolved() const override             { return source->isResolved(); }
         Type getResultType() const override          { return targetType; }
-        bool isCompileTimeConstant() const override  { return source == nullptr || source->isCompileTimeConstant(); }
+        bool isCompileTimeConstant() const override  { return source->isCompileTimeConstant(); }
         Constness getConstness() const override      { return targetType.isConst() ? Constness::definitelyConst : source->getConstness(); }
 
         size_t getNumArguments() const
         {
-            if (source == nullptr)
-                return 0;
-
             if (auto list = cast<CommaSeparatedList> (source))
                 return list->items.size();
 
@@ -2010,7 +2017,7 @@ struct AST
         }
 
         Type targetType;
-        pool_ptr<Expression> source;
+        pool_ref<Expression> source;
     };
 
     //==============================================================================
@@ -2019,12 +2026,6 @@ struct AST
         CommaSeparatedList (const Context& c)
             : Expression (ObjectType::CommaSeparatedList, c, ExpressionKind::unknown)
         {
-        }
-
-        CommaSeparatedList (const Context& c, std::vector<pool_ptr<Expression>> itemsToUse)
-            : Expression (ObjectType::CommaSeparatedList, c, ExpressionKind::unknown), items (std::move (itemsToUse))
-        {
-            SOUL_ASSERT (! contains (items, nullptr));
         }
 
         bool isResolved() const override
@@ -2056,7 +2057,7 @@ struct AST
             return types;
         }
 
-        std::vector<pool_ptr<Expression>> items;
+        ArrayWithPreallocation<pool_ref<Expression>, 4> items;
     };
 
     //==============================================================================

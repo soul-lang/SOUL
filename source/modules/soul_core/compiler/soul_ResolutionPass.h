@@ -257,7 +257,7 @@ private:
                         auto param = c.targetFunction.parameters[i];
                         auto oldWriting = isWriting;
                         isWriting = param->isResolved() ? param->getType().isReference() : true;
-                        visitObject (*(c.arguments->items[i]));
+                        visitObject (c.arguments->items[i]);
                         isWriting = oldWriting;
                     }
                 }
@@ -274,13 +274,13 @@ private:
 
     static AST::TypeCast& convertToCast (AST::Allocator& a, AST::CallOrCast& call, Type destType)
     {
-        SOUL_ASSERT (! call.isMethodCall);
+        SOUL_ASSERT (call.arguments != nullptr && ! call.isMethodCall);
 
         if (auto list = cast<AST::CommaSeparatedList> (call.arguments))
             if (list->items.size() == 1)
                 return a.allocate<AST::TypeCast> (call.context, std::move (destType), list->items.front());
 
-        return a.allocate<AST::TypeCast> (call.context, std::move (destType), call.arguments);
+        return a.allocate<AST::TypeCast> (call.context, std::move (destType), *call.arguments);
     }
 
     //==============================================================================
@@ -474,7 +474,7 @@ private:
                                     if (list->items.size() == 1)
                                         return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), list->items.front());
 
-                                return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), call.arguments);
+                                return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), *call.arguments);
                             }
                         }
                     }
@@ -624,16 +624,13 @@ private:
             return true;
         }
 
-        pool_ptr<AST::Expression> createConstant (const AST::Context& c, Value v)
+        AST::Expression& createConstant (const AST::Context& c, Value v)
         {
             return allocator.allocate<AST::Constant> (c, std::move (v));
         }
 
-        pool_ptr<AST::Expression> visitExpression (pool_ptr<AST::Expression> e) override
+        pool_ref<AST::Expression> visitExpression (pool_ref<AST::Expression> e) override
         {
-            if (e == nullptr)
-                return {};
-
             e = super::visitExpression (e);
 
             if (e->isResolved())
@@ -646,7 +643,7 @@ private:
                     if (c != e)
                         return createConstant (e->context, c->value);
 
-                    return c;
+                    return *c;
                 }
 
                 return e;
@@ -668,9 +665,9 @@ private:
                 if (failIfNotResolved (v.variable->initialValue))
                     return e;
 
-                if (auto resolvedInitialiser = visitExpression (v.variable->initialValue))
+                if (v.variable->initialValue != nullptr)
                 {
-                    if (auto c = resolvedInitialiser->getAsConstant())
+                    if (auto c = visitExpression (*v.variable->initialValue)->getAsConstant())
                     {
                         auto t = c->getResultType();
 
@@ -721,12 +718,12 @@ private:
 
                     if (castToTrue)
                     {
-                        t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, t.falseBranch);
+                        t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, *t.falseBranch);
                         ++itemsReplaced;
                     }
                     else
                     {
-                        t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, t.trueBranch);
+                        t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, *t.trueBranch);
                         ++itemsReplaced;
                     }
                 }
@@ -755,7 +752,7 @@ private:
                         isUsedAsReference = paramType.isReference();
 
                         if (isUsedAsReference && paramType.isNonConstReference()
-                             && AST::isResolvedAsValue (a) && ! a->isAssignable())
+                             && AST::isResolvedAsValue (a.get()) && ! a->isAssignable())
                             a->context.throwError (Errors::cannotPassConstAsNonConstRef());
 
                         replaceExpression (a);
@@ -878,7 +875,7 @@ private:
                 return c;
             }
 
-            if (AST::isResolvedAsValue (c.source) && c.source->getResultType().isIdentical (c.targetType))
+            if (AST::isResolvedAsValue (c.source.get()) && c.source->getResultType().isIdentical (c.targetType))
                 return c.source;
 
             if (auto cv = c.source->getAsConstant())
@@ -1279,7 +1276,7 @@ private:
         void resolveVariableDeclarationInitialValue (AST::VariableDeclaration& v, const Type& type)
         {
             if (! (AST::isResolvedAsValue (v.initialValue) && v.initialValue->getResultType().isIdentical (type)))
-                v.initialValue = allocator.allocate<AST::TypeCast> (v.initialValue->context, type, v.initialValue);
+                v.initialValue = allocator.allocate<AST::TypeCast> (v.initialValue->context, type, *v.initialValue);
 
             v.declaredType = {};
             ++itemsReplaced;
@@ -1321,12 +1318,12 @@ private:
                     {
                         for (auto& arg : call.arguments->items)
                         {
-                            if (! AST::isResolvedAsValue (arg))
+                            if (! AST::isResolvedAsValue (arg.get()))
                             {
                                 if (ignoreErrors)
                                     return call;
 
-                                SanityCheckPass::throwErrorIfNotReadableValue (*arg);
+                                SanityCheckPass::throwErrorIfNotReadableValue (arg);
                             }
                         }
                     }
@@ -1401,7 +1398,7 @@ private:
 
                                 for (size_t i = 0; i < paramTypes.size(); ++i)
                                     SanityCheckPass::expectSilentCastPossible (call.arguments->items[i]->context,
-                                                                               paramTypes[i], *call.arguments->items[i]);
+                                                                               paramTypes[i], call.arguments->items[i]);
                             }
 
                             if (totalMatches == 0 || matchingGenerics.size() <= 1)
@@ -1652,7 +1649,7 @@ private:
             if (numArgs == 2)
                 error = getErrorMessageArgument (c.arguments->items[1]);
 
-            return allocator.allocate<AST::StaticAssertion> (c.context, *c.arguments->items.front(), error);
+            return allocator.allocate<AST::StaticAssertion> (c.context, c.arguments->items.front(), error);
         }
 
         std::string getErrorMessageArgument (pool_ptr<AST::Expression> e)
@@ -1671,12 +1668,12 @@ private:
             if (call.getNumArguments() != 2)
                 call.context.throwError (Errors::atMethodTakes1Arg());
 
-            auto array = call.arguments->items[0];
-            auto index = call.arguments->items[1];
+            auto& array = call.arguments->items[0].get();
+            auto& index = call.arguments->items[1].get();
 
-            SanityCheckPass::expectSilentCastPossible (call.context, Type (PrimitiveType::int32), *index);
+            SanityCheckPass::expectSilentCastPossible (call.context, Type (PrimitiveType::int32), index);
 
-            if (array->kind == AST::ExpressionKind::endpoint)
+            if (array.kind == AST::ExpressionKind::endpoint)
             {
                 SOUL_ASSERT (AST::isResolvedAsEndpoint (array));
                 pool_ptr<AST::Expression> endpointArraySize;
@@ -1684,7 +1681,7 @@ private:
                 if (auto i = cast<AST::InputEndpointRef> (array))
                 {
                     if (i->input->details == nullptr)
-                        array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
+                        array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = i->input->details->arraySize;
                 }
@@ -1692,7 +1689,7 @@ private:
                 if (auto o = cast<AST::OutputEndpointRef> (array))
                 {
                     if (o->output->details == nullptr)
-                        array->context.throwError (Errors::cannotResolveSourceOfAtMethod());
+                        array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = o->output->details->arraySize;
                 }
@@ -1711,13 +1708,13 @@ private:
             }
             else
             {
-                auto arrayType = array->getResultType();
+                auto arrayType = array.getResultType();
 
                 if (! arrayType.isArrayOrVector())
                     call.context.throwError (Errors::wrongTypeForAtMethod());
             }
 
-            auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, *array, index, nullptr, false);
+            auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, array, index, nullptr, false);
             ref.suppressWrapWarning = true;
             return ref;
         }
@@ -1980,7 +1977,7 @@ private:
                 return allocator.allocate<AST::Constant> (e->context, c->value.castToTypeExpectingSuccess (targetType));
             }
 
-            return visitExpression (allocator.allocate<AST::TypeCast> (e->context, targetType, e));
+            return visitExpression (allocator.allocate<AST::TypeCast> (e->context, targetType, *e));
         }
 
         pool_ptr<AST::Function> visit (AST::Function& f) override

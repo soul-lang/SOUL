@@ -125,7 +125,7 @@ struct SanityCheckPass  final
                 auto elementType = targetType.getElementType();
 
                 for (auto& i : list->items)
-                    expectSilentCastPossible (i->context, elementType, *i);
+                    expectSilentCastPossible (i->context, elementType, i);
 
                 return;
             }
@@ -135,7 +135,7 @@ struct SanityCheckPass  final
                 auto& s = targetType.getStructRef();
 
                 for (size_t i = 0; i < list->items.size(); ++i)
-                    expectSilentCastPossible (list->items[i]->context, s.members[i].type, *list->items[i]);
+                    expectSilentCastPossible (list->items[i]->context, s.members[i].type, list->items[i]);
 
                 return;
             }

@@ -98,17 +98,12 @@ struct pool_ref  final
     template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
     pool_ref (pool_ref<OtherType> other) noexcept : object (other.getPointer()) {}
 
-    template <typename OtherType, typename = typename std::enable_if<std::is_convertible<OtherType*, Type*>::value>::type>
-    pool_ref& operator= (pool_ref<OtherType> other) noexcept    { object = other.getPointer(); return *this; }
-
     Type& get() const noexcept                              { return *object; }
     operator Type&() const noexcept                         { return *object; }
     operator pool_ptr<Type>() const noexcept                { return pool_ptr<Type> (*object); }
     Type* getPointer() const noexcept                       { return object; }
     Type& getReference() const noexcept                     { return *object; }
     Type* operator->() const                                { return object; }
-
-    void reset (Type& newObject) noexcept                   { object = std::addressof (newObject); }
 
     bool operator== (const Type& other) const noexcept      { return object == std::addressof (other); }
     bool operator!= (const Type& other) const noexcept      { return object != std::addressof (other); }

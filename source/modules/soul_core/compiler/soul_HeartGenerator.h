@@ -547,7 +547,7 @@ private:
                 if (numArgs > 1)
                     return createAggregateWithInitialisers (*c);
 
-                auto& sourceExp = evaluateAsExpression (*c->source);
+                auto& sourceExp = evaluateAsExpression (c->source);
                 const auto& sourceType = sourceExp.getType();
 
                 if (TypeRules::canCastTo (c->targetType, sourceType))
@@ -861,7 +861,7 @@ private:
         for (size_t i = 0; i < call.getNumArguments(); ++i)
         {
             auto paramType = call.targetFunction.parameters[i]->getType();
-            auto& arg = *call.arguments->items[i];
+            auto& arg = call.arguments->items[i].get();
 
             if (paramType.isReference())
                 fc.arguments.push_back (getAsReference (arg, paramType.isConst()));
@@ -900,7 +900,7 @@ private:
         createAssignmentToCurrentTarget (c);
     }
 
-    void initialiseArrayOrStructElements (heart::Expression& target, ArrayView<pool_ptr<AST::Expression>> list,
+    void initialiseArrayOrStructElements (heart::Expression& target, ArrayView<pool_ref<AST::Expression>> list,
                                           const AST::Context& errorLocation)
     {
         const auto& targetType = target.getType();
@@ -911,7 +911,7 @@ private:
 
         for (size_t i = 0; i < list.size(); ++i)
         {
-            auto& v = *list[i];
+            auto& v = list[i].get();
 
             if (auto constElement = v.getAsConstant())
                 if (constElement->value.isZero()) // no need to assign to elements which are zero
@@ -928,7 +928,7 @@ private:
         if (auto list = cast<AST::CommaSeparatedList> (tc.source))
             initialiseArrayOrStructElements (target, list->items, tc.source->context);
         else
-            initialiseArrayOrStructElements (target, { &tc.source, 1u }, tc.source->context);
+            initialiseArrayOrStructElements (target, { std::addressof (tc.source), 1u }, tc.source->context);
     }
 
     heart::Variable& createAggregateWithInitialisers (const AST::TypeCast& tc)
