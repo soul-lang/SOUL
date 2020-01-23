@@ -234,6 +234,9 @@ std::string replaceLine (const std::string& text, size_t line, const std::string
 
 std::string loadFileAsString (const char* filename)
 {
+    if (filename == nullptr)
+        return {};
+
     if (std::ifstream stream { filename, std::ios::binary | std::ios::ate })
     {
         auto size = stream.tellg();
