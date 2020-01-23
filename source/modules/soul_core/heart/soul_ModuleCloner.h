@@ -406,7 +406,7 @@ struct ModuleCloner
     {
         return newModule.allocate<heart::ReadStream> (old.location,
                                                       getRemappedExpressionRef (*old.target),
-                                                      getRemappedInput (*old.source));
+                                                      getRemappedInput (old.source));
     }
 
     heart::WriteStream& clone (const heart::WriteStream& old)

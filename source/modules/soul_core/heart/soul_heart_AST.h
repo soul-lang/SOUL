@@ -1055,7 +1055,7 @@ struct heart
 
         bool mayHaveSideEffects() const override     { return true; }
 
-        pool_ptr<InputDeclaration> source;
+        pool_ref<InputDeclaration> source;
     };
 
     struct WriteStream  : public Statement

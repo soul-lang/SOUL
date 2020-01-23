@@ -624,7 +624,7 @@ private:
 
         heart::ReadStream& clone (const heart::ReadStream& old)
         {
-            return module.allocate<heart::ReadStream> (old.location, getRemappedExpressionRef (*old.target), *old.source);
+            return module.allocate<heart::ReadStream> (old.location, getRemappedExpressionRef (*old.target), old.source);
         }
 
         heart::WriteStream& clone (const heart::WriteStream& old)

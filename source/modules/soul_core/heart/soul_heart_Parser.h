@@ -104,7 +104,9 @@ private:
     //==============================================================================
     struct ScannedTopLevelItem
     {
-        pool_ptr<Module> module;
+        ScannedTopLevelItem (Module& m) : module (m) {}
+
+        Module& module;
         UTF8Reader moduleStartPos;
         std::vector<UTF8Reader> functionParamCode, functionBodyCode, structBodyCode, inputDecls, outputDecls, stateVariableDecls;
     };
@@ -144,13 +146,12 @@ private:
         return program;
     }
 
-    void scanTopLevelItem (std::vector<ScannedTopLevelItem>& scannedTopLevelItems, pool_ptr<Module> newModule)
+    void scanTopLevelItem (std::vector<ScannedTopLevelItem>& scannedTopLevelItems, Module& newModule)
     {
-        ScannedTopLevelItem newItem;
-        newItem.module = newModule;
+        ScannedTopLevelItem newItem (newModule);
         module = newModule;
-        newModule->moduleName = readQualifiedIdentifier();
-        parseAnnotation (newModule->annotation);
+        newModule.moduleName = readQualifiedIdentifier();
+        parseAnnotation (newModule.annotation);
         newItem.moduleStartPos = getCurrentTokeniserPosition();
         scanTopLevelItems (newItem);
         scannedTopLevelItems.push_back (std::move (newItem));

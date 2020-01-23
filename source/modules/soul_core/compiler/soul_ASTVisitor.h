@@ -109,7 +109,7 @@ struct ASTVisitor
     virtual void visit (AST::Block& b)
     {
         for (auto& s : b.statements)
-            visitObject (*s);
+            visitObject (s);
     }
 
     virtual void visit (AST::Constant&)
@@ -119,7 +119,7 @@ struct ASTVisitor
     virtual void visit (AST::Annotation& a)
     {
         for (auto& property : a.properties)
-            visitObject (*property.value);
+            visitObject (property.value);
     }
 
     virtual void visit (AST::BinaryOperator& o)
@@ -266,7 +266,7 @@ struct ASTVisitor
     virtual void visit (AST::StructDeclaration& s)
     {
         for (auto& m : s.getMembers())
-            visitObject (*m.type);
+            visitObject (m.type);
     }
 
     virtual void visit (AST::UsingDeclaration& u)
@@ -336,7 +336,7 @@ struct ASTVisitor
         visitObject (*i.targetProcessor);
 
         for (auto& a : i.specialisationArgs)
-            visitObject (*a);
+            visitObject (a);
 
         if (i.clockMultiplierRatio != nullptr)
             visitObject (*i.clockMultiplierRatio);
@@ -455,6 +455,7 @@ struct RewritingASTVisitor
     void replaceExpression (pool_ptr<AST::Expression>& e)         { if (e != nullptr) replace (e, pool_ptr<AST::Expression> (visitExpression (pool_ref<AST::Expression> (*e)))); }
     void replaceExpression (pool_ref<AST::Expression>& e)         { replace (e, visitExpression (e)); }
     void replaceStatement (pool_ptr<AST::Statement>& s)           { replace (s, visitStatement (s)); }
+    void replaceStatement (pool_ref<AST::Statement>& s)           { replace (s, visitStatement (s)); }
 
     pool_ref<AST::Statement> visitStatement (pool_ref<AST::Statement> s) { return visitAs<AST::Statement> (s); }
     pool_ptr<AST::Statement> visitStatement (pool_ptr<AST::Statement> s) { return visitAs<AST::Statement> (s); }

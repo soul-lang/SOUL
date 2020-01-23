@@ -29,7 +29,7 @@ struct HEARTGenerator  : public ASTVisitor
 {
     struct UnresolvedFunctionCall
     {
-        pool_ptr<heart::FunctionCall> call;
+        pool_ref<heart::FunctionCall> call;
         pool_ptr<AST::Function> function;
 
         void resolve()   { call->function = function->getGeneratedFunction(); }
@@ -290,7 +290,7 @@ private:
                 {
                     heart::SpecialisationArgument newArg;
 
-                    if (AST::isResolvedAsType (arg))
+                    if (AST::isResolvedAsType (arg.get()))
                         newArg.type = arg->resolveAsType();
                     else if (auto pr = cast<AST::ProcessorRef> (arg))
                         newArg.processorName = pr->processor->getFullyQualifiedPath().toString();
@@ -454,7 +454,7 @@ private:
         {
             builder.ensureBlockIsReady();
             expressionDepth = 0;
-            visitAsStatement (*s);
+            visitAsStatement (s.get());
         }
     }
 

@@ -230,8 +230,8 @@ struct AST
     {
         struct Property
         {
-            pool_ptr<QualifiedIdentifier> name;
-            pool_ptr<Expression> value;
+            pool_ref<QualifiedIdentifier> name;
+            pool_ref<Expression> value;
         };
 
         std::vector<Property> properties;
@@ -285,7 +285,6 @@ struct AST
 
             return a;
         }
-
     };
 
     //==============================================================================
@@ -827,10 +826,10 @@ struct AST
                 struct Source
                 {
                     Node* node;
-                    pool_ptr<Connection> connection;
+                    pool_ref<Connection> connection;
                 };
 
-                pool_ptr<ProcessorInstance> processor;
+                pool_ref<ProcessorInstance> processor;
                 ArrayWithPreallocation<Source, 4> sources;
             };
 
@@ -1173,10 +1172,8 @@ struct AST
 
         pool_ptr<QualifiedIdentifier> instanceName;
         pool_ptr<Expression> targetProcessor;
-        std::vector<pool_ptr<Expression>> specialisationArgs;
-        pool_ptr<Expression> clockMultiplierRatio;
-        pool_ptr<Expression> clockDividerRatio;
-        pool_ptr<Expression> arraySize;
+        std::vector<pool_ref<Expression>> specialisationArgs;
+        pool_ptr<Expression> clockMultiplierRatio, clockDividerRatio, arraySize;
         bool wasCreatedImplicitly = false;
     };
 
@@ -1302,7 +1299,7 @@ struct AST
 
         struct Member
         {
-            pool_ptr<Expression> type;
+            pool_ref<Expression> type;
             Identifier name;
         };
 
@@ -1317,7 +1314,7 @@ struct AST
         bool isResolved() const override
         {
             for (auto& m : members)
-                if (! isResolvedAsType (m.type))
+                if (! isResolvedAsType (m.type.get()))
                     return false;
 
             return true;
@@ -1404,7 +1401,7 @@ struct AST
 
                 for (auto& s : statements)
                 {
-                    if (s == statementToSearchUpTo)
+                    if (s.getPointer() == statementToSearchUpTo)
                         break;
 
                     if (auto v = cast<VariableDeclaration> (s))
@@ -1433,7 +1430,7 @@ struct AST
         void addStatement (Statement& s)          { statements.push_back (s); }
 
         pool_ptr<Function> functionForWhichThisIsMain;
-        std::vector<pool_ptr<Statement>> statements;
+        std::vector<pool_ref<Statement>> statements;
     };
 
     //==============================================================================

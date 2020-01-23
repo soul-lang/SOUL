@@ -255,7 +255,7 @@ private:
 
         sortAndRemoveDuplicates (results);
 
-        std::sort (results.begin(), results.end(), [] (pool_ptr<heart::Variable> a, pool_ptr<heart::Variable> b) -> bool
+        std::sort (results.begin(), results.end(), [] (pool_ref<heart::Variable> a, pool_ref<heart::Variable> b) -> bool
                                                    {
                                                        return a->name.toString() < b->name.toString();
                                                    });

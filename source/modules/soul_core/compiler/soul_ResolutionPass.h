@@ -2158,7 +2158,7 @@ private:
             super::visit (a);
 
             for (auto& property : a.properties)
-                checkPropertyValue (*property.value);
+                checkPropertyValue (property.value);
         }
 
         pool_ptr<AST::Expression> visit (AST::Assignment& a) override

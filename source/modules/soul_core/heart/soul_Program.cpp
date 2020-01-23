@@ -214,7 +214,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         return type.getDescription ([this] (const Structure& s) { return getStructNameWithQualificationIfNeeded ({}, s); });
     }
 
-    pool_ptr<Module> insert (int index, pool_ref<Module> newModule)
+    Module& insert (int index, Module& newModule)
     {
         if (index < 0)
             modules.emplace_back (newModule);
@@ -268,9 +268,9 @@ pool_ptr<heart::Function> Program::getFunctionWithName (const std::string& name)
 pool_ptr<heart::Variable> Program::getVariableWithName (const std::string& name) const  { return pimpl->getVariableWithName (name); }
 
 heart::Allocator& Program::getAllocator()                                               { return pimpl->allocator; }
-pool_ptr<Module> Program::addGraph (int index)                                          { return pimpl->insert (index, Module::createGraph     (pimpl->allocator)); }
-pool_ptr<Module> Program::addProcessor (int index)                                      { return pimpl->insert (index, Module::createProcessor (pimpl->allocator)); }
-pool_ptr<Module> Program::addNamespace (int index)                                      { return pimpl->insert (index, Module::createNamespace (pimpl->allocator)); }
+Module& Program::addGraph (int index)                                                   { return pimpl->insert (index, Module::createGraph     (pimpl->allocator)); }
+Module& Program::addProcessor (int index)                                               { return pimpl->insert (index, Module::createProcessor (pimpl->allocator)); }
+Module& Program::addNamespace (int index)                                               { return pimpl->insert (index, Module::createNamespace (pimpl->allocator)); }
 pool_ptr<Module> Program::getMainProcessor() const                                      { return pimpl->getMainProcessor(); }
 StringDictionary& Program::getStringDictionary()                                        { return pimpl->stringDictionary; }
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }

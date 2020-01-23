@@ -333,13 +333,13 @@ pool_ref<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
     // so that they can use these types if needed..
     for (size_t i = 0; i < numParams; ++i)
     {
-        auto& arg = processorInstance.specialisationArgs[i];
+        auto& arg = processorInstance.specialisationArgs[i].get();
         auto& param = params[i];
 
         if (auto u = cast<AST::UsingDeclaration> (param))
         {
             if (! AST::isResolvedAsType (arg))
-                arg->context.throwError (Errors::expectedType());
+                arg.context.throwError (Errors::expectedType());
 
             u->targetType = arg;
         }
@@ -349,13 +349,13 @@ pool_ref<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
             if (auto p = cast<AST::ProcessorRef> (arg))
                 pa->targetProcessor = p->processor.get();
             else
-                arg->context.throwError (Errors::expectedProcessorName());
+                arg.context.throwError (Errors::expectedProcessorName());
         }
     }
 
     for (size_t i = 0; i < numParams; ++i)
     {
-        auto& arg = *processorInstance.specialisationArgs[i];
+        auto& arg = processorInstance.specialisationArgs[i].get();
         auto& param = params[i];
 
         if (auto v = cast<AST::VariableDeclaration> (param))

@@ -117,13 +117,13 @@ public:
     heart::Allocator& getAllocator();
 
     /** Adds a new graph module at the given index. */
-    pool_ptr<Module> addGraph (int index = -1);
+    Module& addGraph (int index = -1);
 
     /** Adds a new processor module at the given index. */
-    pool_ptr<Module> addProcessor (int index = -1);
+    Module& addProcessor (int index = -1);
 
     /** Adds a new namespace module at the given index. */
-    pool_ptr<Module> addNamespace (int index = -1);
+    Module& addNamespace (int index = -1);
 
     /** Returns the name of a variable using a fully-qualified name if the variable lies outside the given module. */
     std::string getVariableNameWithQualificationIfNeeded (const Module& context, const heart::Variable&) const;
