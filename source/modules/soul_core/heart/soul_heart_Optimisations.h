@@ -66,7 +66,7 @@ struct Optimisations
                     recursivelyFlagFunctionUse (f);
 
         for (auto& m : program.getModules())
-            removeIf (m->functions, [] (pool_ptr<heart::Function> f) { return ! f->functionUseTestFlag; });
+            removeIf (m->functions, [] (heart::Function& f) { return ! f.functionUseTestFlag; });
     }
 
     static void removeUnusedProcessors (Program& program)
@@ -181,21 +181,21 @@ struct Optimisations
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {
-        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::Block& b) -> bool
         {
-            if (b->doNotOptimiseAway || b == f.blocks.front())
+            if (b.doNotOptimiseAway || f.blocks.front() == b)
                 return false;
 
-            if (b->predecessors.empty())
+            if (b.predecessors.empty())
                 return true;
 
-            if (! b->statements.empty())
+            if (! b.statements.empty())
                 return false;
 
-            if (b->terminator == nullptr)
+            if (b.terminator == nullptr)
                 return false;
 
-            auto destinations = b->terminator->getDestinationBlocks();
+            auto destinations = b.terminator->getDestinationBlocks();
             auto numDestinations = destinations.size();
 
             if (numDestinations > 1)
@@ -206,20 +206,20 @@ private:
                 if (b == destinations.front())
                     return false;
 
-                for (auto pred : b->predecessors)
+                for (auto pred : b.predecessors)
                 {
                     SOUL_ASSERT (pred->terminator != nullptr);
-                    heart::Utilities::replaceBlockDestination (pred, *b, destinations.front());
+                    heart::Utilities::replaceBlockDestination (pred, b, destinations.front());
                 }
 
                 return true;
             }
 
-            if (is_type<heart::ReturnVoid> (b->terminator))
+            if (is_type<heart::ReturnVoid> (b.terminator))
             {
-                if (heart::Utilities::areAllTerminatorsUnconditional (b->predecessors))
+                if (heart::Utilities::areAllTerminatorsUnconditional (b.predecessors))
                 {
-                    for (auto pred : b->predecessors)
+                    for (auto pred : b.predecessors)
                         pred->terminator = allocator.allocate<heart::ReturnVoid>();
 
                     return true;
@@ -233,10 +233,10 @@ private:
     //==============================================================================
     static bool eliminateUnreachableBlockCycles (heart::Function& f)
     {
-        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::Block& b) -> bool
         {
             return f.blocks.front() != b
-                    && ! isReachableFrom (f, *b, f.blocks.front());
+                    && ! isReachableFrom (f, b, f.blocks.front());
         });
     }
 
@@ -257,23 +257,23 @@ private:
     //==============================================================================
     static bool mergeAdjacentBlocks (heart::Function& f)
     {
-        return heart::Utilities::removeBlocks (f, [&] (pool_ptr<heart::Block> b) -> bool
+        return heart::Utilities::removeBlocks (f, [&] (heart::Block& b) -> bool
         {
-            if (b->predecessors.size() != 1 || b->doNotOptimiseAway)
+            if (b.predecessors.size() != 1 || b.doNotOptimiseAway)
                 return false;
 
-            auto pred = b->predecessors.front();
+            auto pred = b.predecessors.front();
 
             if (pred == b || pred->terminator->isConditional())
                 return false;
 
             SOUL_ASSERT (*pred->terminator->getDestinationBlocks().begin() == b);
 
-            if (auto first = b->statements.begin())
+            if (auto first = b.statements.begin())
                 if (*first != nullptr)
                     pred->statements.append (**first);
 
-            pred->terminator = b->terminator;
+            pred->terminator = b.terminator;
             return true;
         });
     }
@@ -412,11 +412,11 @@ private:
         removeFromVector (module.inputs, toRemove);
 
         removeIf (module.connections,
-                  [&] (pool_ptr<heart::Connection> connection)
+                  [&] (heart::Connection& connection)
                   {
-                      if (connection->sourceProcessor == nullptr)
+                      if (connection.sourceProcessor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection->sourceEndpoint == i->name.toString())
+                              if (connection.sourceEndpoint == i->name.toString())
                                   return true;
 
                       return false;
@@ -427,11 +427,9 @@ private:
             f->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType mode)
             {
                 if (mode == heart::AccessType::read)
-                {
                     if (auto i = cast<heart::InputDeclaration> (value))
                         if (contains (toRemove, i))
                             value = module.allocator.allocateZeroInitialiser (value->getType());
-                }
             });
         }
     }
@@ -448,11 +446,11 @@ private:
         removeFromVector (module.outputs, toRemove);
 
         removeIf (module.connections,
-                  [&] (pool_ptr<heart::Connection> connection)
+                  [&] (heart::Connection& connection)
                   {
-                      if (connection->destProcessor == nullptr)
+                      if (connection.destProcessor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection->destEndpoint == i->name.toString())
+                              if (connection.destEndpoint == i->name.toString())
                                   return true;
 
                       return false;
@@ -462,7 +460,7 @@ private:
         {
             for (auto& b : f->blocks)
             {
-                b->statements.removeMatches ([&] (pool_ptr<heart::Statement> s)
+                b->statements.removeMatches ([&] (heart::Statement& s)
                 {
                     if (auto w = cast<heart::WriteStream> (s))
                         return contains (toRemove, w->target);

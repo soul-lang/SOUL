@@ -422,16 +422,15 @@ pool_ref<AST::ProcessorBase> Compiler::addClone (const AST::ProcessorBase& m, co
     return *StructuralParser::cloneProcessorWithNewName (allocator, ns, m, ns.makeUniqueName (nameRoot));
 }
 
-static pool_ptr<Module> createHEARTModule (Program& p, pool_ptr<AST::ModuleBase> module, bool isMainProcessor)
+static Module& createHEARTModule (Program& p, pool_ptr<AST::ModuleBase> module, bool isMainProcessor)
 {
     int index = isMainProcessor ? 0 : -1;
 
     if (module->isNamespace())   return p.addNamespace (index);
     if (module->isGraph())       return p.addGraph (index);
-    if (module->isProcessor())   return p.addProcessor (index);
 
-    SOUL_ASSERT_FALSE;
-    return {};
+    SOUL_ASSERT (module->isProcessor());
+    return p.addProcessor (index);
 }
 
 void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program& program,
@@ -444,8 +443,8 @@ void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program
 
     for (auto& m : modulesToCompile)
     {
-        auto newModule = createHEARTModule (program, m, m == processorToRun);
-        HEARTGenerator::run (m, *newModule, unresolvedCalls);
+        auto& newModule = createHEARTModule (program, m, m == processorToRun);
+        HEARTGenerator::run (m, newModule, unresolvedCalls);
     }
 
     for (auto& c : unresolvedCalls)

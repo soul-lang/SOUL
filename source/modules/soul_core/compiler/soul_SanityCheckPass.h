@@ -260,19 +260,19 @@ struct SanityCheckPass  final
 
 private:
     //==============================================================================
-    static void checkOverallStructure (pool_ptr<AST::ModuleBase> module)
+    static void checkOverallStructure (AST::ModuleBase& module)
     {
         if (auto p = cast<AST::ProcessorBase> (module))
             checkOverallStructureOfProcessor (*p);
 
-        for (auto m : module->getSubModules())
+        for (auto m : module.getSubModules())
             checkOverallStructure (m);
     }
 
-    static void checkOverallStructureOfProcessor (pool_ptr<AST::ProcessorBase> processorOrGraph)
+    static void checkOverallStructureOfProcessor (AST::ProcessorBase& processorOrGraph)
     {
-        if (processorOrGraph->getNumOutputs() == 0)
-            processorOrGraph->context.throwError (Errors::processorNeedsAnOutput());
+        if (processorOrGraph.getNumOutputs() == 0)
+            processorOrGraph.context.throwError (Errors::processorNeedsAnOutput());
 
         if (auto processor = cast<AST::Processor> (processorOrGraph))
         {
@@ -296,7 +296,7 @@ private:
             if (numRunFunctions == 0)
             {
                 // If the processor has non-event I/O then we need a run processor
-                for (auto e : processorOrGraph->getEndpoints())
+                for (auto e : processorOrGraph.getEndpoints())
                     if (e->details != nullptr && ! isEvent (e->details->kind))
                         processor->context.throwError (Errors::processorNeedsRunFunction());
             }

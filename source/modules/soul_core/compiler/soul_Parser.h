@@ -1183,10 +1183,10 @@ private:
 
     AST::Expression& parseLogicalOr()
     {
-        for (pool_ptr<AST::Expression> a = parseLogicalAnd();;)
+        for (pool_ref<AST::Expression> a = parseLogicalAnd();;)
         {
             if (! matches (Operator::logicalOr))
-                return *a;
+                return a;
 
             auto& ternary = allocate<AST::TernaryOp> (getContext());
             skip();
@@ -1199,10 +1199,10 @@ private:
 
     AST::Expression& parseLogicalAnd()
     {
-        for (pool_ptr<AST::Expression> a = parseBitwiseOr();;)
+        for (pool_ref<AST::Expression> a = parseBitwiseOr();;)
         {
             if (! matches (Operator::logicalAnd))
-                return *a;
+                return a;
 
             auto& ternary = allocate<AST::TernaryOp> (getContext());
             skip();
@@ -1215,86 +1215,86 @@ private:
 
     AST::Expression& parseBitwiseOr()
     {
-        for (pool_ptr<AST::Expression> a = parseBitwiseXor();;)
+        for (pool_ref<AST::Expression> a = parseBitwiseXor();;)
         {
             if (! matches (Operator::bitwiseOr))
-                return *a;
+                return a;
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, *a, parseBitwiseXor(), BinaryOp::Op::bitwiseOr);
+            a = createBinaryOperator (context, a, parseBitwiseXor(), BinaryOp::Op::bitwiseOr);
         }
     }
 
     AST::Expression& parseBitwiseXor()
     {
-        for (pool_ptr<AST::Expression> a = parseBitwiseAnd();;)
+        for (pool_ref<AST::Expression> a = parseBitwiseAnd();;)
         {
             if (! matches (Operator::bitwiseXor))
-                return *a;
+                return a;
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, *a, parseBitwiseAnd(), BinaryOp::Op::bitwiseXor);
+            a = createBinaryOperator (context, a, parseBitwiseAnd(), BinaryOp::Op::bitwiseXor);
         }
     }
 
     AST::Expression& parseBitwiseAnd()
     {
-        for (pool_ptr<AST::Expression> a = parseEqualityOperator();;)
+        for (pool_ref<AST::Expression> a = parseEqualityOperator();;)
         {
             if (! matches (Operator::bitwiseAnd))
-                return *a;
+                return a;
 
             auto context = getContext();
             skip();
-            a = createBinaryOperator (context, *a, parseEqualityOperator(), BinaryOp::Op::bitwiseAnd);
+            a = createBinaryOperator (context, a, parseEqualityOperator(), BinaryOp::Op::bitwiseAnd);
         }
     }
 
     AST::Expression& parseEqualityOperator()
     {
-        for (pool_ptr<AST::Expression> a = parseComparisonOperator();;)
+        for (pool_ref<AST::Expression> a = parseComparisonOperator();;)
         {
             if (! matchesAny (Operator::equals, Operator::notEquals))
-                return *a;
+                return a;
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, *a, parseComparisonOperator(), type);
+            a = createBinaryOperator (context, a, parseComparisonOperator(), type);
         }
     }
 
     AST::Expression& parseComparisonOperator()
     {
-        for (pool_ptr<AST::Expression> a = parseShiftOperator();;)
+        for (pool_ref<AST::Expression> a = parseShiftOperator();;)
         {
             if (! (matchesAny (Operator::lessThan, Operator::lessThanOrEqual, Operator::greaterThanOrEqual)
                     || (matches (Operator::greaterThan) && ignoreGreaterThanToken == 0)))
-                return *a;
+                return a;
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, *a, parseShiftOperator(), type);
+            a = createBinaryOperator (context, a, parseShiftOperator(), type);
         }
     }
 
     AST::Expression& parseShiftOperator()
     {
-        for (pool_ptr<AST::Expression> a = parseAdditionSubtraction();;)
+        for (pool_ref<AST::Expression> a = parseAdditionSubtraction();;)
         {
             if (! matchesAny (Operator::leftShift, Operator::rightShift, Operator::rightShiftUnsigned))
-                return *a;
+                return a;
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, *a, parseAdditionSubtraction(), type);
+            a = createBinaryOperator (context, a, parseAdditionSubtraction(), type);
         }
     }
 
     AST::Expression& parseAdditionSubtraction()
     {
-        for (pool_ptr<AST::Expression> a = parseMultiplyDivide();;)
+        for (pool_ref<AST::Expression> a = parseMultiplyDivide();;)
         {
             if (! matchesAny (Operator::plus, Operator::minus))
             {
@@ -1304,29 +1304,29 @@ private:
                      || (matchesAny (Token::literalFloat64, Token::literalFloat32) && literalDoubleValue < 0))
                 {
                     auto context = getContext();
-                    a = createBinaryOperator (context, *a, parseMultiplyDivide(), BinaryOp::Op::add);
+                    a = createBinaryOperator (context, a, parseMultiplyDivide(), BinaryOp::Op::add);
                     continue;
                 }
 
-                return *a;
+                return a;
             }
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, *a, parseMultiplyDivide(), type);
+            a = createBinaryOperator (context, a, parseMultiplyDivide(), type);
         }
     }
 
     AST::Expression& parseMultiplyDivide()
     {
-        for (pool_ptr<AST::Expression> a = parseUnary();;)
+        for (pool_ref<AST::Expression> a = parseUnary();;)
         {
             if (! matchesAny (Operator::times, Operator::divide, Operator::modulo))
-                return *a;
+                return a;
 
             auto context = getContext();
             auto type = getBinaryOpForToken (skip());
-            a = createBinaryOperator (context, *a, parseUnary(), type);
+            a = createBinaryOperator (context, a, parseUnary(), type);
         }
     }
 

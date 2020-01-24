@@ -96,12 +96,12 @@ struct BlockBuilder
         SOUL_ASSERT (! indexes.empty());
 
         auto i = indexes.begin();
-        pool_ptr<heart::SubElement> result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
+        pool_ref<heart::SubElement> result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
 
         while (i != indexes.end())
-            result = module.allocate<heart::SubElement> (result->location, *result, *i++);
+            result = module.allocate<heart::SubElement> (result->location, result, *i++);
 
-        return *result;
+        return result;
     }
 
     heart::SubElement& createSubElementSlice (CodeLocation l, heart::Expression& parent, size_t start, size_t end)

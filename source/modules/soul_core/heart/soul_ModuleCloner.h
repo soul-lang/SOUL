@@ -96,19 +96,8 @@ struct ModuleCloner
 
     heart::Expression& getRemappedExpressionRef (heart::Expression& old)
     {
-        return *getRemappedExpression (old);
-    }
-
-    pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
-    {
-        if (old == nullptr)
-            return {};
-
         if (auto c = cast<heart::Constant> (old))
             return newModule.allocate<heart::Constant> (c->location, getRemappedValue (c->value));
-
-        if (auto pp = cast<heart::ProcessorProperty> (old))
-            return newModule.allocate<heart::ProcessorProperty> (pp->location, pp->property);
 
         if (auto b = cast<heart::BinaryOperator> (old))
             return newModule.allocate<heart::BinaryOperator> (b->location,
@@ -135,7 +124,16 @@ struct ModuleCloner
         if (auto s = cast<heart::SubElement> (old))
             return cloneSubElement (*s);
 
-        SOUL_ASSERT_FALSE;
+        auto pp = cast<heart::ProcessorProperty> (old);
+        SOUL_ASSERT (pp != nullptr);
+        return newModule.allocate<heart::ProcessorProperty> (pp->location, pp->property);
+    }
+
+    pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
+    {
+        if (old != nullptr)
+            return getRemappedExpressionRef (*old);
+
         return {};
     }
 

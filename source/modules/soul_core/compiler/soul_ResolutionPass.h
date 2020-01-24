@@ -615,9 +615,9 @@ private:
 
         bool isUsedAsReference = false;
 
-        bool failIfNotResolved (pool_ptr<AST::Expression> e)
+        bool failIfNotResolved (AST::Expression& e)
         {
-            if (e->isResolved())
+            if (e.isResolved())
                 return false;
 
             ++numFails;
@@ -657,12 +657,12 @@ private:
         {
             auto e = super::visit (v);
 
-            if (failIfNotResolved (e))
+            if (failIfNotResolved (*e))
                 return e;
 
             if (v.variable->numWrites == 0 && v.variable->initialValue != nullptr)
             {
-                if (failIfNotResolved (v.variable->initialValue))
+                if (failIfNotResolved (*v.variable->initialValue))
                     return e;
 
                 if (v.variable->initialValue != nullptr)
@@ -893,7 +893,7 @@ private:
         {
             auto e = super::visit (o);
 
-            if (failIfNotResolved (e))
+            if (failIfNotResolved (*e))
                 return e;
 
             if (auto u = cast<AST::UnaryOperator> (e))
@@ -1652,14 +1652,14 @@ private:
             return allocator.allocate<AST::StaticAssertion> (c.context, c.arguments->items.front(), error);
         }
 
-        std::string getErrorMessageArgument (pool_ptr<AST::Expression> e)
+        std::string getErrorMessageArgument (AST::Expression& e)
         {
             if (AST::isResolvedAsConstant (e))
-                if (auto c = e->getAsConstant())
+                if (auto c = e.getAsConstant())
                     if (c->value.getType().isStringLiteral())
                         return allocator.stringDictionary.getStringForHandle (c->value.getStringLiteral());
 
-            e->context.throwError (Errors::expectedStringLiteralAsArg2());
+            e.context.throwError (Errors::expectedStringLiteralAsArg2());
             return {};
         }
 
@@ -1956,29 +1956,6 @@ private:
 
         AST::Allocator& allocator;
         AST::ModuleBase& module;
-
-        pool_ptr<AST::Expression> silentCastToType (const AST::Context& castLocation, pool_ptr<AST::Expression> e, const Type& targetType)
-        {
-            if (e == nullptr)
-                return {};
-
-            SOUL_ASSERT (AST::isResolvedAsValue (e));
-
-            auto srcType = e->getResultType();
-
-            if (srcType.isIdentical (targetType))
-                return e;
-
-            SanityCheckPass::expectSilentCastPossible (castLocation, targetType, *e);
-
-            if (auto c = e->getAsConstant())
-            {
-                SOUL_ASSERT (TypeRules::canSilentlyCastTo (targetType, c->value));
-                return allocator.allocate<AST::Constant> (e->context, c->value.castToTypeExpectingSuccess (targetType));
-            }
-
-            return visitExpression (allocator.allocate<AST::TypeCast> (e->context, targetType, *e));
-        }
 
         pool_ptr<AST::Function> visit (AST::Function& f) override
         {

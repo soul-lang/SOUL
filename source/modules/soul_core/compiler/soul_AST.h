@@ -1830,14 +1830,6 @@ struct AST
             SOUL_ASSERT (initialValue == nullptr || isPossiblyValue (initialValue));
         }
 
-        static pool_ptr<VariableDeclaration> getFrom (pool_ptr<Expression> e)
-        {
-            if (auto vr = cast<VariableRef> (e))
-                return vr->variable;
-
-            return {};
-        }
-
         bool isResolved() const
         {
             if (declaredType != nullptr)
