@@ -1172,13 +1172,12 @@ private:
         if (! matches (Operator::question))
             return a;
 
-        auto& e = allocate<AST::TernaryOp> (getContext());
+        auto context = getContext();
         skip();
-        e.condition = a;
-        e.trueBranch = parseTernaryOperator();
+        auto& trueBranch = parseTernaryOperator();
         expect (Operator::colon);
-        e.falseBranch = parseTernaryOperator();
-        return e;
+        auto& falseBranch = parseTernaryOperator();
+        return allocate<AST::TernaryOp> (context, a, trueBranch, falseBranch);
     }
 
     AST::Expression& parseLogicalOr()
@@ -1188,12 +1187,11 @@ private:
             if (! matches (Operator::logicalOr))
                 return a;
 
-            auto& ternary = allocate<AST::TernaryOp> (getContext());
+            auto context = getContext();
             skip();
-            ternary.condition = a;
-            ternary.trueBranch = allocate<AST::Constant> (ternary.context, Value (true));
-            ternary.falseBranch = parseLogicalAnd();
-            a = ternary;
+            auto& trueBranch = allocate<AST::Constant> (context, Value (true));
+            auto& falseBranch = parseLogicalAnd();
+            a = allocate<AST::TernaryOp> (context, a, trueBranch, falseBranch);
         }
     }
 
@@ -1204,12 +1202,11 @@ private:
             if (! matches (Operator::logicalAnd))
                 return a;
 
-            auto& ternary = allocate<AST::TernaryOp> (getContext());
+            auto context = getContext();
             skip();
-            ternary.condition = a;
-            ternary.trueBranch = parseBitwiseOr();
-            ternary.falseBranch = allocate<AST::Constant> (ternary.context, Value (false));
-            a = ternary;
+            auto& trueBranch = parseBitwiseOr();
+            auto& falseBranch = allocate<AST::Constant> (context, Value (false));
+            a = allocate<AST::TernaryOp> (context, a, trueBranch, falseBranch);
         }
     }
 
@@ -1477,7 +1474,7 @@ private:
 
             if (auto dot = cast<AST::DotOperator> (expression))
             {
-                args.items.insert (args.items.begin(), *dot->lhs);
+                args.items.insert (args.items.begin(), dot->lhs);
                 return parseSuffixes (allocate<AST::CallOrCast> (dot->rhs, args, true));
             }
 
@@ -1514,15 +1511,15 @@ private:
     {
         auto context = getContext();
         bool isConst = matchIf (Keyword::const_);
-        auto& s = allocate<AST::IfStatement> (context, isConst);
         expect (Operator::openParen);
-        s.condition = matchCloseParen (parseExpression());
-        s.trueBranch = parseStatement();
+        auto& condition = matchCloseParen (parseExpression());
+        auto& trueBranch = parseStatement();
+        pool_ptr<AST::Statement> falseBranch;
 
         if (matchIf (Keyword::else_))
-            s.falseBranch = parseStatement();
+            falseBranch = parseStatement();
 
-        return s;
+        return allocate<AST::IfStatement> (context, isConst, condition, trueBranch, falseBranch);
     }
 
     AST::Statement& parseReturn()

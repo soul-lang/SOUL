@@ -124,13 +124,13 @@ struct ASTVisitor
 
     virtual void visit (AST::BinaryOperator& o)
     {
-        visitObject (*o.lhs);
-        visitObject (*o.rhs);
+        visitObject (o.lhs);
+        visitObject (o.rhs);
     }
 
     virtual void visit (AST::UnaryOperator& o)
     {
-        visitObject (*o.source);
+        visitObject (o.source);
     }
 
     virtual void visit (AST::VariableDeclaration& v)
@@ -150,8 +150,8 @@ struct ASTVisitor
 
     virtual void visit (AST::Assignment& a)
     {
-        visitObject (*a.target);
-        visitObject (*a.newValue);
+        visitObject (a.target);
+        visitObject (a.newValue);
     }
 
     virtual void visit (AST::CallOrCast& c)
@@ -184,12 +184,12 @@ struct ASTVisitor
 
     virtual void visit (AST::StructMemberRef& s)
     {
-        visitObject (*s.object);
+        visitObject (s.object);
     }
 
     virtual void visit (AST::PreOrPostIncOrDec& p)
     {
-        visitObject (*p.target);
+        visitObject (p.target);
     }
 
     virtual void visit (AST::ReturnStatement& r)
@@ -200,15 +200,15 @@ struct ASTVisitor
 
     virtual void visit (AST::TernaryOp& o)
     {
-        visitObject (*o.condition);
-        visitObject (*o.trueBranch);
-        visitObject (*o.falseBranch);
+        visitObject (o.condition);
+        visitObject (o.trueBranch);
+        visitObject (o.falseBranch);
     }
 
     virtual void visit (AST::IfStatement& i)
     {
-        visitObject (*i.condition);
-        visitObject (*i.trueBranch);
+        visitObject (i.condition);
+        visitObject (i.trueBranch);
 
         if (i.falseBranch != nullptr)
             visitObject (*i.falseBranch);
@@ -236,8 +236,8 @@ struct ASTVisitor
 
     virtual void visit (AST::WriteToEndpoint& w)
     {
-        visitObject (*w.target);
-        visitObject (*w.value);
+        visitObject (w.target);
+        visitObject (w.value);
     }
 
     virtual void visit (AST::ProcessorProperty&)
@@ -277,7 +277,7 @@ struct ASTVisitor
 
     virtual void visit (AST::SubscriptWithBrackets& s)
     {
-        visitObject (*s.lhs);
+        visitObject (s.lhs);
 
         if (s.rhs != nullptr)
             visitObject (*s.rhs);
@@ -285,13 +285,13 @@ struct ASTVisitor
 
     virtual void visit (AST::SubscriptWithChevrons& s)
     {
-        visitObject (*s.lhs);
+        visitObject (s.lhs);
         visitObject (*s.rhs);
     }
 
     virtual void visit (AST::TypeMetaFunction& c)
     {
-        visitObject (*c.source);
+        visitObject (c.source);
     }
 
     virtual void visit (AST::ProcessorAliasDeclaration&)
@@ -361,12 +361,12 @@ struct ASTVisitor
 
     virtual void visit (AST::DotOperator& o)
     {
-        visitObject (*o.lhs);
+        visitObject (o.lhs);
     }
 
     virtual void visit (AST::StaticAssertion& a)
     {
-        visitObject (*a.condition);
+        visitObject (a.condition);
     }
 };
 

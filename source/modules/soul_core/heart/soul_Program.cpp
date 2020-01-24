@@ -58,7 +58,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     void removeModule (Module& module)
     {
-        removeIf (modules, [&] (const pool_ptr<Module>& m) { return m == module; });
+        removeIf (modules, [&] (pool_ref<Module> m) { return m == module; });
     }
 
     Module& getOrCreateNamespace (const std::string& name)

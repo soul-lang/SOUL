@@ -167,7 +167,6 @@ struct BlockBuilder
 
     virtual void addStatement (heart::Statement& s)
     {
-        SOUL_ASSERT (currentBlock != nullptr);
         SOUL_ASSERT (s.nextObject == nullptr);
         lastStatementInCurrentBlock = currentBlock->statements.insertAfter (lastStatementInCurrentBlock, s);
     }

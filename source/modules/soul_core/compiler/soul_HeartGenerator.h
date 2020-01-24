@@ -464,7 +464,7 @@ private:
             return v->variable->getGeneratedVariable();
 
         if (auto member = cast<AST::StructMemberRef> (e))
-            return createStructSubElement (*member, getAsReference (*member->object, isConstRef));
+            return createStructSubElement (*member, getAsReference (member->object, isConstRef));
 
         if (auto subscript = cast<AST::ArrayElementRef> (e))
             return createArraySubElement (*subscript, getAsReference (*subscript->object, isConstRef));
@@ -528,7 +528,7 @@ private:
             {
                 auto structType = getStructType (*member);
 
-                auto& source = evaluateAsExpression (*member->object, structType);
+                auto& source = evaluateAsExpression (member->object, structType);
                 return createStructSubElement (*member, source);
             }
 
@@ -564,8 +564,8 @@ private:
                 auto operandType = op->getOperandType();
 
                 // (putting these into locals to make sure we evaluate everything in left-to-right order)
-                auto& lhs = builder.createCastIfNeeded (evaluateAsExpression (*op->lhs), operandType);
-                auto& rhs = builder.createCastIfNeeded (evaluateAsExpression (*op->rhs), operandType);
+                auto& lhs = builder.createCastIfNeeded (evaluateAsExpression (op->lhs), operandType);
+                auto& rhs = builder.createCastIfNeeded (evaluateAsExpression (op->rhs), operandType);
 
                 return builder.createBinaryOp (op->context.location, lhs, rhs, op->operation, op->getResultType());
             }
@@ -573,7 +573,7 @@ private:
             if (auto op = cast<AST::UnaryOperator> (e))
             {
                 auto sourceType = op->getResultType();
-                auto& source = builder.createCastIfNeeded (evaluateAsExpression (*op->source), sourceType);
+                auto& source = builder.createCastIfNeeded (evaluateAsExpression (op->source), sourceType);
                 return builder.createUnaryOp (op->context.location, source, op->operation);
             }
 
@@ -666,9 +666,9 @@ private:
         auto& trueBlock   = builder.createBlock ("@if_", labelIndex);
         auto& falseBlock  = builder.createBlock ("@ifnot_", labelIndex);
 
-        addBranchIf (*i.condition, trueBlock, falseBlock, trueBlock);
+        addBranchIf (i.condition, trueBlock, falseBlock, trueBlock);
 
-        visitAsStatement (*i.trueBranch);
+        visitAsStatement (i.trueBranch.get());
 
         if (i.falseBranch != nullptr)
         {
@@ -799,10 +799,10 @@ private:
                                                           heart::Variable::Role::mutableLocal);
         builder.addZeroAssignment (tempVar);
 
-        addBranchIf (*t.condition, trueBlock, falseBlock, trueBlock);
-        visitWithDestination (tempVar, *t.trueBranch);
+        addBranchIf (t.condition, trueBlock, falseBlock, trueBlock);
+        visitWithDestination (tempVar, t.trueBranch);
         builder.addBranch (endBlock, falseBlock);
-        visitWithDestination (tempVar, *t.falseBranch);
+        visitWithDestination (tempVar, t.falseBranch);
         builder.beginBlock (endBlock);
         builder.addAssignment (targetVar, tempVar);
     }
@@ -950,7 +950,7 @@ private:
 
     void visit (AST::Assignment& o) override
     {
-        createAssignment (getAsReference (*o.target, false), *o.newValue);
+        createAssignment (getAsReference (o.target, false), o.newValue);
     }
 
     void visit (AST::ArrayElementRef& a) override
@@ -980,7 +980,7 @@ private:
     void visit (AST::StructMemberRef& a) override
     {
         auto structType = getStructType (a);
-        auto& source = evaluateAsExpression (*a.object, structType);
+        auto& source = evaluateAsExpression (a.object, structType);
 
         if (currentTargetVariable != nullptr)
             builder.addCastOrAssignment (*currentTargetVariable, builder.createFixedSubElement (source, a.index));
@@ -992,7 +992,7 @@ private:
         auto op = p.isIncrement ? BinaryOp::Op::add
                                 : BinaryOp::Op::subtract;
 
-        auto& dest = getAsReference (*p.target, false);
+        auto& dest = getAsReference (p.target, false);
         auto type = dest.getType().removeReferenceIfPresent();
 
         auto& oldValue = builder.createRegisterVariable (type);
@@ -1112,7 +1112,7 @@ private:
 
     static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws, ArrayWithPreallocation<pool_ref<AST::Expression>, 4>& values)
     {
-        values.insert (values.begin(), *ws.value);
+        values.insert (values.begin(), ws.value);
 
         if (auto chainedWrite = cast<AST::WriteToEndpoint> (ws.target))
             return getTopLevelWriteToEndpoint (*chainedWrite, values);
@@ -1124,7 +1124,7 @@ private:
     {
         ArrayWithPreallocation<pool_ref<AST::Expression>, 4> values;
         auto& topLevelWrite = getTopLevelWriteToEndpoint (ws, values);
-        createSeriesOfWrites (*topLevelWrite.target, values);
+        createSeriesOfWrites (topLevelWrite.target, values);
     }
 
     void visit (AST::OutputEndpointRef& o) override

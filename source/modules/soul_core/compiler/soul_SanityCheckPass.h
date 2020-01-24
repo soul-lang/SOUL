@@ -334,7 +334,6 @@ private:
                         if (e->isInput && e->name == f->name)
                         {
                             nameFound = true;
-
                             SOUL_ASSERT (e->details != nullptr);
 
                             if (e->details->arraySize == nullptr && f->parameters.size() == 1)
@@ -358,7 +357,9 @@ private:
                                    f->context.throwError (Errors::eventFunctionInvalidType (f->name, eventType.getDescription()));
                             }
                             else
+                            {
                                 f->context.throwError (Errors::eventFunctionInvalidArguments());
+                            }
                         }
                    }
 
@@ -377,7 +378,6 @@ private:
         void visit (AST::Processor& p) override
         {
             super::visit (p);
-
             soul::DuplicateNameChecker duplicateNameChecker;
 
             for (auto& e : p.endpoints)        duplicateNameChecker.check (e->name, e->context);
@@ -657,7 +657,7 @@ private:
             if (variablesModified != nullptr)
             {
                 throwIfVariableFound (*variablesModified, v);
-                variablesReferenced->push_back (*v.variable);
+                variablesReferenced->push_back (v.variable);
             }
 
             super::visit (v);
@@ -672,8 +672,8 @@ private:
                 if (variablesModified != nullptr)
                 {
                     throwIfVariableFound (*variablesReferenced, *v);
-                    variablesModified->push_back (*v->variable);
-                    variablesReferenced->push_back (*v->variable);
+                    variablesModified->push_back (v->variable);
+                    variablesReferenced->push_back (v->variable);
                 }
             }
             else

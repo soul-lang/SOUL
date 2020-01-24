@@ -89,7 +89,7 @@ struct ASTUtilities
             if (auto subNamespace = cast<AST::Namespace> (m))
                 removeUnusedGraphs (*subNamespace, graphsToKeep);
 
-        removeIf (ns.subModules, [=] (pool_ref<AST::ModuleBase> m)
+        removeIf (ns.subModules, [=] (AST::ModuleBase& m)
         {
             if (auto graph = cast<AST::Graph> (m))
                 return ! contains (graphsToKeep, graph);

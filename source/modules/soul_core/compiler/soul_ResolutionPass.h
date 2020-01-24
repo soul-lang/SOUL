@@ -205,10 +205,10 @@ private:
                 auto oldReading = isReading;
                 isReading = false;
                 isWriting = true;
-                visitObject (*a.target);
+                visitObject (a.target);
                 isWriting = oldWriting;
                 isReading = oldReading;
-                visitObject (*a.newValue);
+                visitObject (a.newValue);
             }
 
             void visit (AST::PreOrPostIncOrDec& p) override
@@ -298,7 +298,7 @@ private:
 
             if (o.isOutputEndpoint())
             {
-                auto& w = allocator.allocate<AST::WriteToEndpoint> (o.context, *o.lhs, *o.rhs);
+                auto& w = allocator.allocate<AST::WriteToEndpoint> (o.context, o.lhs, o.rhs);
                 visitObject (w);
                 return w;
             }
@@ -340,8 +340,7 @@ private:
 
                     void visit (AST::VariableRef& vr) override
                     {
-                        if (vr.variable != nullptr)
-                            visit (*vr.variable);
+                        visit (vr.variable);
                     }
 
                     std::vector<pool_ref<AST::VariableDeclaration>> stack;
@@ -539,17 +538,17 @@ private:
             if (result != d)
                 return result;
 
-            if (AST::isResolvedAsType (d.lhs))
+            if (AST::isResolvedAsType (d.lhs.get()))
             {
                 if (d.rhs.path.isUnqualified())
                 {
                     auto lhsType = d.lhs->resolveAsType();
 
-                    if (auto metaFunction = createTypeMetaFunction (d.rhs, *d.lhs))
+                    if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
                         return metaFunction;
                 }
             }
-            else if (AST::isResolvedAsValue (d.lhs))
+            else if (AST::isResolvedAsValue (d.lhs.get()))
             {
                 auto lhsType = d.lhs->getResultType();
 
@@ -559,21 +558,21 @@ private:
 
                     for (size_t i = 0; i < s.members.size(); ++i)
                         if (d.rhs.path.isUnqualifiedName (s.members[i].name))
-                            return allocator.allocate<AST::StructMemberRef> (d.context, *d.lhs, s, i);
+                            return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, i);
 
                     if (! ignoreErrors)
                         d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), s.name));
                 }
 
                 if (d.rhs.path.isUnqualified())
-                    if (auto metaFunction = createTypeMetaFunction (d.rhs, *d.lhs))
+                    if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
                         return metaFunction;
             }
             else if (d.lhs->isOutputEndpoint())
             {
                 d.context.throwError (Errors::noSuchOperationOnEndpoint());
             }
-            else if (AST::isResolvedAsProcessor (d.lhs))
+            else if (AST::isResolvedAsProcessor (d.lhs.get()))
             {
                 d.context.throwError (Errors::noSuchOperationOnProcessor());
             }
@@ -695,11 +694,11 @@ private:
             if (failIfNotResolved (t))
                 return t;
 
-            if (AST::isResolvedAsValue (t.condition)
-                 && AST::isResolvedAsValue (t.trueBranch)
-                 && AST::isResolvedAsValue (t.falseBranch))
+            if (AST::isResolvedAsValue (t.condition.get())
+                 && AST::isResolvedAsValue (t.trueBranch.get())
+                 && AST::isResolvedAsValue (t.falseBranch.get()))
             {
-                SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), *t.condition);
+                SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), t.condition);
 
                 auto trueType  = t.trueBranch->getResultType();
                 auto falseType = t.falseBranch->getResultType();
@@ -718,12 +717,12 @@ private:
 
                     if (castToTrue)
                     {
-                        t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, *t.falseBranch);
+                        t.falseBranch = allocator.allocate<AST::TypeCast> (t.falseBranch->context, trueType, t.falseBranch);
                         ++itemsReplaced;
                     }
                     else
                     {
-                        t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, *t.trueBranch);
+                        t.trueBranch = allocator.allocate<AST::TypeCast> (t.trueBranch->context, falseType, t.trueBranch);
                         ++itemsReplaced;
                     }
                 }
@@ -917,7 +916,7 @@ private:
             if (failIfNotResolved (b))
                 return b;
 
-            SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
 
             if (b.isOutputEndpoint())
             {
@@ -925,7 +924,7 @@ private:
                 return b;
             }
 
-            SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
             auto resultType = b.getOperandType();
 
             if (resultType.isValid())
@@ -989,10 +988,10 @@ private:
         {
             super::visit (s);
 
-            if (AST::isResolvedAsValue (s.lhs))
-                return allocator.allocate<AST::ArrayElementRef> (s.context, *s.lhs, s.rhs, nullptr, false);
+            if (AST::isResolvedAsValue (s.lhs.get()))
+                return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
 
-            if (AST::isResolvedAsType (s.lhs))
+            if (AST::isResolvedAsType (s.lhs.get()))
             {
                 if (s.rhs == nullptr)
                     return allocator.allocate<AST::ConcreteType> (s.lhs->context,
@@ -1019,12 +1018,12 @@ private:
                 }
             }
 
-            if (AST::isResolvedAsEndpoint (s.lhs))
-                return allocator.allocate<AST::ArrayElementRef> (s.context, *s.lhs, s.rhs, nullptr, false);
+            if (AST::isResolvedAsEndpoint (s.lhs.get()))
+                return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
 
             if (ignoreErrors)
                 ++numFails;
-            else if (AST::isResolvedAsProcessor (s.lhs))
+            else if (AST::isResolvedAsProcessor (s.lhs.get()))
                 s.context.throwError (Errors::arraySuffixOnProcessor());
             else
                 s.context.throwError (Errors::cannotResolveBracketedExp());
@@ -1036,7 +1035,7 @@ private:
         {
             super::visit (s);
 
-            if (AST::isResolvedAsType (s.lhs))
+            if (AST::isResolvedAsType (s.lhs.get()))
             {
                 auto type = s.lhs->resolveAsType();
 
@@ -1110,7 +1109,7 @@ private:
             if (c.isSizeOfUnsizedType())
             {
                 auto& argList = allocator.allocate<AST::CommaSeparatedList> (c.context);
-                argList.items.push_back (*c.source);
+                argList.items.push_back (c.source);
 
                 auto name = allocator.identifiers.get ("get_array_size");
                 auto& qi = allocator.allocate<AST::QualifiedIdentifier> (c.context, IdentifierPath (name));
@@ -1214,7 +1213,7 @@ private:
 
             if (b.isResolved())
             {
-                SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
+                SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
 
                 if (b.isOutputEndpoint())
                 {
@@ -1222,7 +1221,7 @@ private:
                     return b;
                 }
 
-                SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
+                SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
                 auto resultType = b.getOperandType();
 
                 if (! resultType.isValid() && ! ignoreErrors)
@@ -1898,18 +1897,18 @@ private:
             else if (auto mf = cast<AST::TypeMetaFunction> (paramType))
             {
                 if (mf->isMakingConst())
-                    return matchParameterAgainstWildcard (*mf->source, callerArgumentType.removeConstIfPresent(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (mf->source, callerArgumentType.removeConstIfPresent(), wildcardToFind, anyReferencesInvolved);
 
                 if (mf->isMakingReference())
                 {
                     anyReferencesInvolved = true;
-                    return matchParameterAgainstWildcard (*mf->source, callerArgumentType.removeReferenceIfPresent(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (mf->source, callerArgumentType.removeReferenceIfPresent(), wildcardToFind, anyReferencesInvolved);
                 }
             }
             else if (auto sb = cast<AST::SubscriptWithBrackets> (paramType))
             {
                 if (callerArgumentType.isArray() && sb->rhs == nullptr)
-                    return matchParameterAgainstWildcard (*sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                    return matchParameterAgainstWildcard (sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
 
                 if (callerArgumentType.isFixedSizeArray() && sb->rhs != nullptr)
                 {
@@ -1920,7 +1919,7 @@ private:
                             auto size = sizeConst->value.getAsInt64();
 
                             if (size == (int64_t) callerArgumentType.getArraySize())
-                                return matchParameterAgainstWildcard (*sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                                return matchParameterAgainstWildcard (sb->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
                         }
                     }
                 }
@@ -1936,7 +1935,7 @@ private:
                             auto size = sizeConst->value.getAsInt64();
 
                             if (size == (int64_t) callerArgumentType.getVectorSize())
-                                return matchParameterAgainstWildcard (*sc->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
+                                return matchParameterAgainstWildcard (sc->lhs, callerArgumentType.getElementType(), wildcardToFind, anyReferencesInvolved);
                         }
                     }
                 }
@@ -2028,10 +2027,10 @@ private:
         pool_ptr<AST::Expression> visit (AST::TernaryOp& t) override
         {
             super::visit (t);
-            SanityCheckPass::throwErrorIfNotReadableValue (*t.condition);
-            SanityCheckPass::throwErrorIfNotReadableValue (*t.trueBranch);
-            SanityCheckPass::throwErrorIfNotReadableValue (*t.falseBranch);
-            SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), *t.condition);
+            SanityCheckPass::throwErrorIfNotReadableValue (t.condition);
+            SanityCheckPass::throwErrorIfNotReadableValue (t.trueBranch);
+            SanityCheckPass::throwErrorIfNotReadableValue (t.falseBranch);
+            SanityCheckPass::expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), t.condition);
             return t;
         }
 
@@ -2059,12 +2058,12 @@ private:
         {
             super::visit (b);
 
-            SanityCheckPass::throwErrorIfNotReadableValue (*b.rhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (b.rhs);
 
             if (b.isOutputEndpoint())
                 return b;
 
-            SanityCheckPass::throwErrorIfNotReadableValue (*b.lhs);
+            SanityCheckPass::throwErrorIfNotReadableValue (b.lhs);
 
             auto operandType = b.getOperandType();
 
@@ -2148,7 +2147,7 @@ private:
             SanityCheckPass::expectSilentCastPossible (a.context,
                                                        a.target->getResultType().removeReferenceIfPresent()
                                                                                 .removeConstIfPresent(),
-                                                       *a.newValue);
+                                                       a.newValue);
             return a;
         }
 
@@ -2285,7 +2284,7 @@ private:
         {
             super::visit (w);
 
-            SanityCheckPass::throwErrorIfNotReadableValue (*w.value);
+            SanityCheckPass::throwErrorIfNotReadableValue (w.value);
             auto& topLevelWrite = getTopLevelWriteToEndpoint (w);
 
             // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
@@ -2296,7 +2295,7 @@ private:
                 if (ASTUtilities::isConsoleEndpoint (outputEndpoint->output))
                     ASTUtilities::ensureEventEndpointHasSampleType (allocator, outputEndpoint->output, w.value->getResultType());
 
-                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), *w.value);
+                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), w.value);
                 return w;
             }
 
@@ -2305,7 +2304,7 @@ private:
                 if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
                 {
                     SOUL_ASSERT (outputEndpoint->output->details != nullptr);
-                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedSampleTypes(), *w.value);
+                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedSampleTypes(), w.value);
                     return w;
                 }
             }

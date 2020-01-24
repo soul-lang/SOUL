@@ -1320,9 +1320,9 @@ struct AST
             return true;
         }
 
-        pool_ptr<StructDeclaration> getAsStruct() override   { return *this; }
-        Constness getConstness() const override       { return Constness::notConst; }
-        Type resolveAsType() const override           { return Type::createStruct (getStruct()); }
+        pool_ptr<StructDeclaration> getAsStruct() override  { return *this; }
+        Constness getConstness() const override             { return Constness::notConst; }
+        Type resolveAsType() const override                 { return Type::createStruct (getStruct()); }
 
         Structure& getStruct() const
         {
@@ -1350,10 +1350,10 @@ struct AST
             SOUL_ASSERT (targetType == nullptr || isPossiblyType (targetType));
         }
 
-        pool_ptr<StructDeclaration> getAsStruct() override    { return targetType->getAsStruct(); }
-        bool isResolved() const override               { return targetType != nullptr && targetType->isResolved(); }
-        Type resolveAsType() const override            { return targetType->resolveAsType(); }
-        Constness getConstness() const override        { return targetType == nullptr ? Constness::unknown : targetType->getConstness(); }
+        pool_ptr<StructDeclaration> getAsStruct() override  { return targetType->getAsStruct(); }
+        bool isResolved() const override                    { return targetType != nullptr && targetType->isResolved(); }
+        Type resolveAsType() const override                 { return targetType->resolveAsType(); }
+        Constness getConstness() const override             { return targetType == nullptr ? Constness::unknown : targetType->getConstness(); }
 
         pool_ptr<Expression> targetType;
     };
@@ -1377,8 +1377,8 @@ struct AST
         {
         }
 
-        bool isResolved() const override                    { return true; }
-        bool isCompileTimeConstant() const override         { return true; }
+        bool isResolved() const override                           { return true; }
+        bool isCompileTimeConstant() const override                { return true; }
         pool_ptr<ProcessorBase> getAsProcessor() const override    { return processor; }
 
         pool_ref<ProcessorBase> processor;
@@ -1446,7 +1446,7 @@ struct AST
 
         pool_ptr<Statement> iterator, body;
         pool_ptr<Expression> condition, numIterations;
-        bool isDoLoop;
+        const bool isDoLoop;
     };
 
     //==============================================================================
@@ -1472,17 +1472,22 @@ struct AST
     //==============================================================================
     struct IfStatement  : public Statement
     {
-        IfStatement (const Context& c, bool isConst)  : Statement (ObjectType::IfStatement, c), isConstIf (isConst) {}
+        IfStatement (const Context& c, bool isConst, Expression& cond, Statement& t, pool_ptr<Statement> f)
+            : Statement (ObjectType::IfStatement, c),
+              condition (cond), trueBranch (t), falseBranch (f), isConstIf (isConst) {}
 
-        pool_ptr<Expression> condition;
-        pool_ptr<Statement> trueBranch, falseBranch;
+        pool_ref<Expression> condition;
+        pool_ref<Statement> trueBranch;
+        pool_ptr<Statement> falseBranch;
         const bool isConstIf;
     };
 
     //==============================================================================
     struct TernaryOp  : public Expression
     {
-        TernaryOp (const Context& c)  : Expression (ObjectType::TernaryOp, c, ExpressionKind::value) {}
+        TernaryOp (const Context& c, Expression& cond, Expression& trueValue, Expression& falseValue)
+            : Expression (ObjectType::TernaryOp, c, ExpressionKind::value),
+              condition (cond), trueBranch (trueValue), falseBranch (falseValue) {}
 
         bool isResolved() const override
         {
@@ -1500,7 +1505,7 @@ struct AST
 
         Type getResultType() const override         { return trueBranch->getResultType(); }
 
-        pool_ptr<Expression> condition, trueBranch, falseBranch;
+        pool_ref<Expression> condition, trueBranch, falseBranch;
     };
 
     //==============================================================================
@@ -1548,7 +1553,8 @@ struct AST
         bool isResolved() const override         { return false; }
         Constness getConstness() const override  { return lhs->getConstness(); }
 
-        pool_ptr<Expression> lhs, rhs;
+        pool_ref<Expression> lhs;
+        pool_ptr<Expression> rhs;
     };
 
     struct SubscriptWithChevrons  : public Expression
@@ -1558,7 +1564,8 @@ struct AST
 
         bool isResolved() const override            { return false; }
 
-        pool_ptr<Expression> lhs, rhs;
+        pool_ref<Expression> lhs;
+        pool_ptr<Expression> rhs;
     };
 
     struct TypeMetaFunction  : public Expression
@@ -1679,10 +1686,10 @@ struct AST
 
         bool isResolved() const override
         {
-            if (isResolvedAsValue (source))
+            if (isResolvedAsValue (source.get()))
                 return checkSourceType (source->getResultType());
 
-            if (isResolvedAsType (source))
+            if (isResolvedAsType (source.get()))
                 return checkSourceType (source->resolveAsType());
 
             return false;
@@ -1733,9 +1740,9 @@ struct AST
 
         void throwErrorIfUnresolved() const
         {
-            if (isResolvedAsValue (source))
+            if (isResolvedAsValue (source.get()))
                 throwErrorIfUnresolved (source->getResultType());
-            else if (isResolvedAsType (source))
+            else if (isResolvedAsType (source.get()))
                 throwErrorIfUnresolved (source->resolveAsType());
         }
 
@@ -1756,8 +1763,8 @@ struct AST
 
         Type getSourceType() const
         {
-            return isResolvedAsType (source) ? source->resolveAsType()
-                                             : source->getResultType();
+            return isResolvedAsType (source.get()) ? source->resolveAsType()
+                                                   : source->getResultType();
         }
 
         Value getResultValue() const
@@ -1803,7 +1810,7 @@ struct AST
             return operation == Op::size && source->isResolved() && getSourceType().isUnsizedArray();
         }
 
-        pool_ptr<Expression> source;
+        pool_ref<Expression> source;
         const Op operation;
     };
 
@@ -1814,7 +1821,7 @@ struct AST
 
         bool isResolved() const override            { return false; }
 
-        pool_ptr<Expression> lhs;
+        pool_ref<Expression> lhs;
         QualifiedIdentifier& rhs;
     };
 
@@ -1902,7 +1909,7 @@ struct AST
             return Expression::getAsConstant();
         }
 
-        pool_ptr<VariableDeclaration> variable;
+        pool_ref<VariableDeclaration> variable;
     };
 
     //==============================================================================
@@ -2070,7 +2077,7 @@ struct AST
             return source->getResultType();
         }
 
-        pool_ptr<Expression> source;
+        pool_ref<Expression> source;
         UnaryOp::Op operation;
     };
 
@@ -2080,11 +2087,11 @@ struct AST
         BinaryOperator (const Context& c, Expression& a, Expression& b, BinaryOp::Op op)
            : Expression (ObjectType::BinaryOperator, c, ExpressionKind::value), lhs (a), rhs (b), operation (op)
         {
-            SOUL_ASSERT (isPossiblyValue (lhs) && isPossiblyValue (rhs));
+            SOUL_ASSERT (isPossiblyValue (lhs.get()) && isPossiblyValue (rhs.get()));
         }
 
         bool isOutputEndpoint() const override      { return operation == BinaryOp::Op::leftShift && lhs->isOutputEndpoint(); }
-        bool isResolved() const override            { return isResolvedAsValue (lhs) && isResolvedAsValue (rhs); }
+        bool isResolved() const override            { return isResolvedAsValue (lhs.get()) && isResolvedAsValue (rhs.get()); }
         bool isCompileTimeConstant() const override { return lhs->isCompileTimeConstant() && rhs->isCompileTimeConstant(); }
         Type getOperandType() const                 { resolveOpTypes(); return resolvedOpTypes.operandType; }
         Type getResultType() const override         { resolveOpTypes(); return resolvedOpTypes.resultType; }
@@ -2096,7 +2103,7 @@ struct AST
             return const1 == const2 ? const1 : Constness::unknown;
         }
 
-        pool_ptr<Expression> lhs, rhs;
+        pool_ref<Expression> lhs, rhs;
         BinaryOp::Op operation;
 
     private:
@@ -2120,13 +2127,13 @@ struct AST
         Assignment (const Context& c, Expression& dest, Expression& source)
             : Expression (ObjectType::Assignment, c, ExpressionKind::value), target (dest), newValue (source)
         {
-            SOUL_ASSERT (isPossiblyValue (target) && isPossiblyValue (newValue));
+            SOUL_ASSERT (isPossiblyValue (target.get()) && isPossiblyValue (newValue.get()));
         }
 
         bool isResolved() const override            { return target->isResolved() && newValue->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        pool_ptr<Expression> target, newValue;
+        pool_ref<Expression> target, newValue;
     };
 
     //==============================================================================
@@ -2141,7 +2148,7 @@ struct AST
         bool isResolved() const override            { return target->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        pool_ptr<Expression> target;
+        pool_ref<Expression> target;
         bool isIncrement, isPost;
     };
 
@@ -2259,7 +2266,7 @@ struct AST
             : Expression (ObjectType::StructMemberRef, c, ExpressionKind::value),
               object (o), structure (s), index (memberIndex)
         {
-            SOUL_ASSERT (isPossiblyValue (object) && structure != nullptr);
+            SOUL_ASSERT (isPossiblyValue (object.get()) && structure != nullptr);
         }
 
         bool isResolved() const override        { return object->isResolved(); }
@@ -2271,7 +2278,7 @@ struct AST
             return structure->members[index].type;
         }
 
-        pool_ptr<Expression> object;
+        pool_ref<Expression> object;
         StructurePtr structure;
         size_t index;
     };
@@ -2295,7 +2302,7 @@ struct AST
         bool isResolved() const override            { return value->isResolved(); }
         Type getResultType() const override         { return target->getResultType(); }
 
-        pool_ptr<Expression> target, value;
+        pool_ref<Expression> target, value;
     };
 
     //==============================================================================
@@ -2321,7 +2328,7 @@ struct AST
             : Expression (ObjectType::StaticAssertion, c, ExpressionKind::unknown),
               condition (failureCondition), errorMessage (std::move (error))
         {
-            SOUL_ASSERT (isPossiblyValue (condition));
+            SOUL_ASSERT (isPossiblyValue (condition.get()));
         }
 
         bool isResolved() const override            { return condition->isResolved(); }
@@ -2329,14 +2336,14 @@ struct AST
 
         void testAndThrowErrorOnFailure()
         {
-            if (isResolvedAsValue (condition))
+            if (isResolvedAsValue (condition.get()))
                 if (auto c = condition->getAsConstant())
                     if (! c->value.getAsBool())
                         context.throwError (errorMessage.empty() ? Errors::staticAssertionFailure()
                                                                  : Errors::staticAssertionFailureWithMessage (errorMessage), true);
         }
 
-        pool_ptr<Expression> condition;
+        pool_ref<Expression> condition;
         std::string errorMessage;
     };
 
