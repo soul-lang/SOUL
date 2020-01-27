@@ -448,9 +448,16 @@ std::string Type::getShortIdentifierDescription() const
 
 size_t Type::getPackedSizeInBytes() const
 {
-    if (isVector())         return primitiveType.getPackedSizeInBytes() * (size_t) getVectorSize();
+    if (isVector())
+    {
+        if (primitiveType.isBool())
+            return static_cast<size_t> (1 + getVectorSize() / 8);
+
+        return primitiveType.getPackedSizeInBytes() * static_cast<size_t> (getVectorSize());
+    }
+
     if (isUnsizedArray())   return sizeof (void*);
-    if (isArray())          return arrayElementType->getPackedSizeInBytes() * (size_t) getArraySize();
+    if (isArray())          return arrayElementType->getPackedSizeInBytes() * static_cast<size_t> (getArraySize());
     if (isStruct())         return structure->getPackedSizeInBytes();
     if (isStringLiteral())  return sizeof (StringDictionary::Handle);
 
