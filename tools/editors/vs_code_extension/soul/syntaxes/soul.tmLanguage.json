@@ -5,15 +5,19 @@
 	"patterns": [
 		{
 			"name": "keyword.control.soul",
-			"match": "\\b(if|else|do|while|for|loop|break|continue|return|try|catch|throw)\\b"
+			"match": "\\b(if|else|do|while|for|loop|break|continue|return)\\b"
 		},
 		{
 			"name": "storage.type.soul",
-			"match": "\\b(const|void|int|int32|int64|float|float32|float64|fixed|bool|string|event|wrap|clamp)\\b"
+			"match": "\\b(const|void|int|int32|int64|float|float32|float64|fixed|bool|string|event|wrap|clamp|external)\\b"
 		},
 		{
 			"name": "entity.name.type.soul",
-			"match": "\\b(let|var|graph|processor|namespace|struct|input|output|connection|import)\\b"
+			"match": "\\b(let|var|graph|processor|namespace|struct|using|enum|input|output|connection|import)\\b"
+		},
+		{
+			"name": "invalid.illegal.soul",
+			"match": "\\b(try|catch|throw|class|default|operator|switch|case)\\b"
 		},
 		{
 			"name": "comment.block.soul",
@@ -135,7 +139,7 @@
 					"name": "punctuation.section.block.begin.bracket.curly.soul"
 				}
 			},
-			"end": "}|(?=\\s*#\\s*(?:elif|else|endif)\\b)",
+			"end": "}",
 			"endCaptures": {
 				"0": {
 					"name": "punctuation.section.block.end.bracket.curly.soul"
@@ -156,6 +160,17 @@
 				},
 				"2": {
 					"name": "punctuation.definition.end.bracket.square.soul"
+				}
+			}
+		},
+		{
+			"match": "(\\[\\[)|(\\]\\])",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.block.begin.bracket.square.soul"
+				},
+				"2": {
+					"name": "punctuation.definition.block.end.bracket.square.soul"
 				}
 			}
 		},
