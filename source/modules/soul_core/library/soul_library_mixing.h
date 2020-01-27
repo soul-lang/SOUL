@@ -186,13 +186,13 @@ namespace soul::envelope
                                           float attackTimeSeconds,
                                           float releaseTimeSeconds)
     {
-        input event (soul::NoteEvents::NoteOn,
-                     soul::NoteEvents::NoteOff) noteIn;
+        input event (soul::note_events::NoteOn,
+                     soul::note_events::NoteOff) noteIn;
 
         output stream float levelOut;
 
-        event noteIn (soul::NoteEvents::NoteOn e)      { active = true; targetLevel = e.velocity; }
-        event noteIn (soul::NoteEvents::NoteOff e)     { active = false; }
+        event noteIn (soul::note_events::NoteOn e)      { active = true; targetLevel = e.velocity; }
+        event noteIn (soul::note_events::NoteOff e)     { active = false; }
 
         bool active = false;
         float targetLevel;

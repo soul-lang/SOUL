@@ -45,23 +45,23 @@ processor SineOsc
 {
     input event
     {
-        soul::NoteEvents::NoteOn noteOn;
-        soul::NoteEvents::NoteOff noteOff;
-        soul::NoteEvents::PitchBend pitchBend;
+        soul::note_events::NoteOn noteOn;
+        soul::note_events::NoteOff noteOff;
+        soul::note_events::PitchBend pitchBend;
     }
 
     output stream float audioOut;
 
-    event noteOn (soul::NoteEvents::NoteOn e)
+    event noteOn (soul::note_events::NoteOn e)
     {
         notePitch = e.note;
         bendSemitones = 0.0f;
         calculatePhaseIncrement();
     }
 
-    event noteOff (soul::NoteEvents::NoteOff e) {}
+    event noteOff (soul::note_events::NoteOff e) {}
 
-    event pitchBend (soul::NoteEvents::PitchBend e)
+    event pitchBend (soul::note_events::PitchBend e)
     {
         bendSemitones = e.bendSemitones;
         calculatePhaseIncrement();
@@ -91,9 +91,9 @@ graph Voice
 {
     input event
     {
-        soul::NoteEvents::NoteOn noteOn;
-        soul::NoteEvents::NoteOff noteOff;
-        soul::NoteEvents::PitchBend pitchBend;
+        soul::note_events::NoteOn noteOn;
+        soul::note_events::NoteOff noteOff;
+        soul::note_events::PitchBend pitchBend;
     }
 
     output stream float audioOut;

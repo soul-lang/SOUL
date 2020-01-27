@@ -46,8 +46,8 @@ graph Piano  [[ main ]]
 //==============================================================================
 processor PianoSamplePlayer
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff) eventIn;
 
     output stream float audioOut;
 
@@ -67,7 +67,7 @@ processor PianoSamplePlayer
     float[] sourceFrames;
     float64 playbackPosition, positionIncrement;
 
-    event eventIn (soul::NoteEvents::NoteOn e)
+    event eventIn (soul::note_events::NoteOn e)
     {
         let sample = findBestSampleForNote (int (e.note));
         sourceFrames = sample.audioData.frames;
@@ -77,7 +77,7 @@ processor PianoSamplePlayer
         playbackPosition = 0;
     }
 
-    event eventIn (soul::NoteEvents::NoteOff e)  {}
+    event eventIn (soul::note_events::NoteOff e)  {}
 
     void initialiseSamples()
     {
@@ -130,8 +130,8 @@ processor PianoSamplePlayer
 //==============================================================================
 graph Voice
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff) eventIn;
 
     output stream float audioOut;
 

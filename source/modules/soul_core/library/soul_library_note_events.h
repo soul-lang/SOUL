@@ -28,7 +28,7 @@ R"library(
     note events. They do a similar job to MIDI events, but as strongly-typed structs
     instead of a group of bytes. Things like the midi::MPEParser class generate them.
 */
-namespace soul::NoteEvents
+namespace soul::note_events
 {
     struct NoteOn
     {
@@ -82,19 +82,19 @@ namespace soul::VoiceAllocators
     */
     processor Basic (int voiceCount)  [[ main: false ]]
     {
-        input event (soul::NoteEvents::NoteOn,
-                     soul::NoteEvents::NoteOff,
-                     soul::NoteEvents::PitchBend,
-                     soul::NoteEvents::Pressure,
-                     soul::NoteEvents::Slide) eventIn;
+        input event (soul::note_events::NoteOn,
+                     soul::note_events::NoteOff,
+                     soul::note_events::PitchBend,
+                     soul::note_events::Pressure,
+                     soul::note_events::Slide) eventIn;
 
-        output event (soul::NoteEvents::NoteOn,
-                      soul::NoteEvents::NoteOff,
-                      soul::NoteEvents::PitchBend,
-                      soul::NoteEvents::Pressure,
-                      soul::NoteEvents::Slide) voiceEventOut[voiceCount];
+        output event (soul::note_events::NoteOn,
+                      soul::note_events::NoteOff,
+                      soul::note_events::PitchBend,
+                      soul::note_events::Pressure,
+                      soul::note_events::Slide) voiceEventOut[voiceCount];
 
-        event eventIn (soul::NoteEvents::NoteOn e)
+        event eventIn (soul::note_events::NoteOn e)
         {
             wrap<voiceCount> allocatedVoice = 0;
             var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
@@ -117,7 +117,7 @@ namespace soul::VoiceAllocators
             // If the voice was previously active, we're stealing it, so send a note off too
             if (voiceInfo[allocatedVoice].active)
             {
-                soul::NoteEvents::NoteOff noteOff;
+                soul::note_events::NoteOff noteOff;
 
                 noteOff.channel = voiceInfo[allocatedVoice].channel;
                 noteOff.note    = voiceInfo[allocatedVoice].note;
@@ -132,7 +132,7 @@ namespace soul::VoiceAllocators
             voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
         }
 
-        event eventIn (soul::NoteEvents::NoteOff e)
+        event eventIn (soul::note_events::NoteOff e)
         {
             // Release all voices associated with this note/channel
             wrap<voiceCount> voice = 0;
@@ -153,7 +153,7 @@ namespace soul::VoiceAllocators
             }
         }
 
-        event eventIn (soul::NoteEvents::PitchBend e)
+        event eventIn (soul::note_events::PitchBend e)
         {
             // Forward the pitch bend to all notes on this channel
             wrap<voiceCount> voice = 0;
@@ -167,7 +167,7 @@ namespace soul::VoiceAllocators
             }
         }
 
-        event eventIn (soul::NoteEvents::Pressure p)
+        event eventIn (soul::note_events::Pressure p)
         {
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;
@@ -181,7 +181,7 @@ namespace soul::VoiceAllocators
             }
         }
 
-        event eventIn (soul::NoteEvents::Slide s)
+        event eventIn (soul::note_events::Slide s)
         {
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;

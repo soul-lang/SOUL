@@ -40,7 +40,7 @@ namespace soul::midi
     int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
     /** This event processor receives incoming MIDI events, parses them as MPE,
-        and then emits a stream of note events using the types in soul::NoteEvents.
+        and then emits a stream of note events using the types in soul::note_events.
         A synthesiser can then handle the resulting events without needing to go
         near any actual MIDI or MPE data.
     */
@@ -48,12 +48,12 @@ namespace soul::midi
     {
         input event Message parseMIDI;
 
-        output event (soul::NoteEvents::NoteOn,
-                      soul::NoteEvents::NoteOff,
-                      soul::NoteEvents::PitchBend,
-                      soul::NoteEvents::Pressure,
-                      soul::NoteEvents::Slide,
-                      soul::NoteEvents::Control) eventOut;
+        output event (soul::note_events::NoteOn,
+                      soul::note_events::NoteOff,
+                      soul::note_events::PitchBend,
+                      soul::note_events::Pressure,
+                      soul::note_events::Slide,
+                      soul::note_events::Control) eventOut;
 
         let MPESlideControllerID = 74;
 
@@ -68,30 +68,30 @@ namespace soul::midi
 
             if (messageType == 0x80)
             {
-                eventOut << soul::NoteEvents::NoteOff (channel, float (messageByte2), normaliseValue (messageByte3));
+                eventOut << soul::note_events::NoteOff (channel, float (messageByte2), normaliseValue (messageByte3));
             }
             else if (messageType == 0x90)
             {
                 // Note on with zero velocity should be treated as a note off
                 if (messageByte3 == 0)
-                    eventOut << soul::NoteEvents::NoteOff (channel, float (messageByte2), 0);
+                    eventOut << soul::note_events::NoteOff (channel, float (messageByte2), 0);
                 else
-                    eventOut << soul::NoteEvents::NoteOn (channel, float (messageByte2), normaliseValue (messageByte3));
+                    eventOut << soul::note_events::NoteOn (channel, float (messageByte2), normaliseValue (messageByte3));
             }
             else if (messageType == 0xb0)
             {
                 if (messageByte2 == MPESlideControllerID)
-                    eventOut << soul::NoteEvents::Slide (channel, normaliseValue (messageByte3));
+                    eventOut << soul::note_events::Slide (channel, normaliseValue (messageByte3));
                 else
-                    eventOut << soul::NoteEvents::Control (channel, messageByte2, normaliseValue (messageByte3));
+                    eventOut << soul::note_events::Control (channel, messageByte2, normaliseValue (messageByte3));
             }
             else if (messageType == 0xd0)
             {
-                eventOut << soul::NoteEvents::Pressure (channel, normaliseValue (messageByte2));
+                eventOut << soul::note_events::Pressure (channel, normaliseValue (messageByte2));
             }
             else if (messageType == 0xe0)
             {
-                eventOut << soul::NoteEvents::PitchBend (channel, translateBendSemitones (messageByte3, messageByte2));
+                eventOut << soul::note_events::PitchBend (channel, translateBendSemitones (messageByte3, messageByte2));
             }
         }
 

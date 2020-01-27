@@ -43,8 +43,8 @@ graph SOUL909  [[ main ]]
 //==============================================================================
 processor DrumHitPlayer
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff) eventIn;
 
     output stream float<2> audioOut;
 
@@ -61,7 +61,7 @@ processor DrumHitPlayer
     float64 playbackPosition, positionIncrement, playbackEndPosition;
     float<2> gain;
 
-    event eventIn (soul::NoteEvents::NoteOn e)
+    event eventIn (soul::note_events::NoteOn e)
     {
         let targetNote = int (e.note);
 
@@ -81,7 +81,7 @@ processor DrumHitPlayer
         }
     }
 
-    event eventIn (soul::NoteEvents::NoteOff e) {}
+    event eventIn (soul::note_events::NoteOff e) {}
 
     void run()
     {

@@ -533,20 +533,20 @@ processor ParameterStream
 */
 processor Controller
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff,
-                 soul::NoteEvents::PitchBend,
-                 soul::NoteEvents::Pressure,
-                 soul::NoteEvents::Slide) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff,
+                 soul::note_events::PitchBend,
+                 soul::note_events::Pressure,
+                 soul::note_events::Slide) eventIn;
 
     output stream float note1_noteOut, note1_frequencyOut, note1_velocity, note1_active,
                         note2_frequencyOut, note1_pressure, note1_slide;
 
-    event eventIn (soul::NoteEvents::NoteOn e)     { NoteHandler::addNote      (noteHandler, e.channel, e.note, e.velocity); }
-    event eventIn (soul::NoteEvents::NoteOff e)    { NoteHandler::removeNote   (noteHandler, e.channel, e.note); }
-    event eventIn (soul::NoteEvents::PitchBend e)  { NoteHandler::addPitchBend (noteHandler, e.channel, e.bendSemitones); }
-    event eventIn (soul::NoteEvents::Pressure p)   { NoteHandler::addPressure  (noteHandler, p.channel, p.pressure); }
-    event eventIn (soul::NoteEvents::Slide s)      { NoteHandler::addSlide     (noteHandler, s.channel, s.slide); }
+    event eventIn (soul::note_events::NoteOn e)     { NoteHandler::addNote      (noteHandler, e.channel, e.note, e.velocity); }
+    event eventIn (soul::note_events::NoteOff e)    { NoteHandler::removeNote   (noteHandler, e.channel, e.note); }
+    event eventIn (soul::note_events::PitchBend e)  { NoteHandler::addPitchBend (noteHandler, e.channel, e.bendSemitones); }
+    event eventIn (soul::note_events::Pressure p)   { NoteHandler::addPressure  (noteHandler, p.channel, p.pressure); }
+    event eventIn (soul::note_events::Slide s)      { NoteHandler::addSlide     (noteHandler, s.channel, s.slide); }
 
     NoteHandler::NoteHandler noteHandler;
 
@@ -609,11 +609,11 @@ processor CutoffHandler
 //==============================================================================
 graph Voice
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff,
-                 soul::NoteEvents::PitchBend,
-                 soul::NoteEvents::Pressure,
-                 soul::NoteEvents::Slide) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff,
+                 soul::note_events::PitchBend,
+                 soul::note_events::Pressure,
+                 soul::note_events::Slide) eventIn;
 
     input event float cutoffParam, resonanceParam,
                       ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity,

@@ -37,9 +37,9 @@ graph LatelyBass  [[ main ]]
 //==============================================================================
 graph LatelyBassVoice
 {
-    input event (soul::NoteEvents::NoteOn,
-                 soul::NoteEvents::NoteOff,
-                 soul::NoteEvents::PitchBend) eventIn;
+    input event (soul::note_events::NoteOn,
+                 soul::note_events::NoteOff,
+                 soul::note_events::PitchBend) eventIn;
 
     output stream float audioOut;
 
@@ -235,15 +235,15 @@ namespace TX81Z
     //==============================================================================
     processor Oscillator (int waveshape, int level, float fixedPitch, float multiplier, int feedbackFactor)
     {
-        input event (soul::NoteEvents::NoteOn,
-                     soul::NoteEvents::NoteOff,
-                     soul::NoteEvents::PitchBend) eventIn;
+        input event (soul::note_events::NoteOn,
+                     soul::note_events::NoteOff,
+                     soul::note_events::PitchBend) eventIn;
 
         input stream float amplitudeIn, modulatorIn;
 
         output stream float audioOut;
 
-        event eventIn (soul::NoteEvents::NoteOn e)
+        event eventIn (soul::note_events::NoteOn e)
         {
             notePitch = e.note;
             bendSemitones = 0.0f;
@@ -255,12 +255,12 @@ namespace TX81Z
             noteActive = true;
         }
 
-        event eventIn (soul::NoteEvents::NoteOff e)
+        event eventIn (soul::note_events::NoteOff e)
         {
             noteActive = false;
         }
 
-        event eventIn (soul::NoteEvents::PitchBend e)
+        event eventIn (soul::note_events::PitchBend e)
         {
             bendSemitones = e.bendSemitones;
             calculatePhaseIncrement();
@@ -302,8 +302,8 @@ namespace TX81Z
     processor Envelope (float attackRate, float decay1Rate, int decay1Level, float decay2Rate,
                         float releaseRate, int keyVelocitySensitivity, int keyRateScaling)
     {
-        input event (soul::NoteEvents::NoteOn,
-                     soul::NoteEvents::NoteOff) eventIn;
+        input event (soul::note_events::NoteOn,
+                     soul::note_events::NoteOff) eventIn;
 
         output stream float audioOut;
 
@@ -312,7 +312,7 @@ namespace TX81Z
         float64 attackFactor, decay1Target, decay1Factor, decay2Factor, releaseFactor;
         let envelopeLimit = 0.0001;
 
-        event eventIn (soul::NoteEvents::NoteOn e)
+        event eventIn (soul::note_events::NoteOn e)
         {
             active = true;
             keyScaling = TX81Z::keyVelocityMapping (keyVelocitySensitivity, e.velocity);
@@ -326,7 +326,7 @@ namespace TX81Z
             releaseFactor = TX81Z::envelopeReleaseRateFactor (processor.frequency, releaseRate, rateScalingFactor);
         }
 
-        event eventIn (soul::NoteEvents::NoteOff e)
+        event eventIn (soul::note_events::NoteOff e)
         {
             active = false;
         }
@@ -413,16 +413,16 @@ namespace TX81Z
     // The voice allocator supports an offset as some patches are pitched up/down
     processor PolyVoiceAllocator (int noteOffset, int voiceCount)
     {
-        input event (soul::NoteEvents::NoteOn,
-                     soul::NoteEvents::NoteOff,
-                     soul::NoteEvents::PitchBend) eventIn;
+        input event (soul::note_events::NoteOn,
+                     soul::note_events::NoteOff,
+                     soul::note_events::PitchBend) eventIn;
 
 
-        output event (soul::NoteEvents::NoteOn,
-                      soul::NoteEvents::NoteOff,
-                      soul::NoteEvents::PitchBend) eventOut[voiceCount];
+        output event (soul::note_events::NoteOn,
+                      soul::note_events::NoteOff,
+                      soul::note_events::PitchBend) eventOut[voiceCount];
 
-        event eventIn (soul::NoteEvents::NoteOn e)
+        event eventIn (soul::note_events::NoteOn e)
         {
             e.note = clamp (e.note + noteOffset, 24.0f, 127.0f);
 
@@ -450,7 +450,7 @@ namespace TX81Z
             eventOut[allocatedVoice] << e;
         }
 
-        event eventIn (soul::NoteEvents::NoteOff e)
+        event eventIn (soul::note_events::NoteOff e)
         {
             e.note = clamp (e.note + noteOffset, 24.0f, 127.0f);
 
@@ -471,7 +471,7 @@ namespace TX81Z
             }
         }
 
-        event eventIn (soul::NoteEvents::PitchBend e)
+        event eventIn (soul::note_events::PitchBend e)
         {
             // Forward the pitch bend to all notes on this channel
             wrap<voiceCount> voice = 0;

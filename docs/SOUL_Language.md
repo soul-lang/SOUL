@@ -1296,7 +1296,7 @@ namespace soul
     note events. They do a similar job to MIDI events, but in a more modern, strongly
     typed way. Things like the midi::MPEParser class generate them.
 */
-namespace soul::NoteEvents
+namespace soul::note_events
 {
     struct NoteOn
     {
@@ -1358,7 +1358,7 @@ namespace soul::midi
     int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
     /** This event processor receives incoming MIDI events, parses them as MPE,
-        and then emits a stream of note events using the types in soul::NoteEvents.
+        and then emits a stream of note events using the types in soul::note_events.
         A synthesiser can then handle the resulting events without needing to go
         near any actual MIDI or MPE data.
     */
@@ -1366,12 +1366,12 @@ namespace soul::midi
     {
         input event Message parseMIDI;
 
-        output event (soul::NoteEvents::NoteOn,
-                      soul::NoteEvents::NoteOff,
-                      soul::NoteEvents::PitchBend,
-                      soul::NoteEvents::Pressure,
-                      soul::NoteEvents::Slide,
-                      soul::NoteEvents::Control) eventOut;
+        output event (soul::note_events::NoteOn,
+                      soul::note_events::NoteOff,
+                      soul::note_events::PitchBend,
+                      soul::note_events::Pressure,
+                      soul::note_events::Slide,
+                      soul::note_events::Control) eventOut;
     }
 }```
 
