@@ -57,9 +57,9 @@ namespace soul
 /** This namespace contains some handy stuctures to use when declaring external
     variables which are going to be loaded with data from audio files.
 */
-namespace soul::AudioSamples
+namespace soul::audio_samples
 {
-    /** An external variable declared with the type soul::AudioSamples::Mono
+    /** An external variable declared with the type soul::audio_samples::Mono
         can be loaded with monoised data from an audio file.
     */
     struct Mono
@@ -68,7 +68,7 @@ namespace soul::AudioSamples
         float64 sampleRate;
     }
 
-    /** An external variable declared with the type soul::AudioSamples::Stereo
+    /** An external variable declared with the type soul::audio_samples::Stereo
         can be loaded with stereo data from an audio file.
     */
     struct Stereo
@@ -79,7 +79,7 @@ namespace soul::AudioSamples
 }
 
 /** This namespace contains various pan-related helper functions */
-namespace soul::PanLaw
+namespace soul::pan_law
 {
     /** Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to
         a (left, right) pair of stereo gains.

@@ -16,7 +16,7 @@ graph SineSynth  [[ main ]]
         midiParser = soul::midi::MPEParser;
 
         voices = Voice[8];
-        voiceAllocator = soul::VoiceAllocators::Basic(8);
+        voiceAllocator = soul::voice_allocators::Basic(8);
 
         smoothedGain = soul::gain::SmoothedGainParameter (0.5f);
         gainProcessor = soul::gain::DynamicGain (float);

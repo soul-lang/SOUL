@@ -22,7 +22,7 @@ graph SOUL909  [[ main ]]
         midiParser = soul::midi::MPEParser;
 
         voices          = DrumHitPlayer[8];
-        voiceAllocator  = soul::VoiceAllocators::Basic(8);
+        voiceAllocator  = soul::voice_allocators::Basic(8);
         smoothedGain    = soul::gain::SmoothedGainParameter (0.5f);
         gainProcessor   = soul::gain::DynamicGain (float<2>);
     }
@@ -55,7 +55,7 @@ processor DrumHitPlayer
         float gaindB, pan;
     }
 
-    external soul::AudioSamples::Mono drumkit;
+    external soul::audio_samples::Mono drumkit;
     external DrumHit[] drumhits;
 
     float64 playbackPosition, positionIncrement, playbackEndPosition;
@@ -75,7 +75,7 @@ processor DrumHitPlayer
                 playbackPosition = sampleRate * hit.startTimeSeconds;
                 playbackEndPosition = min (playbackPosition + sampleRate * hit.lengthSeconds, drumkit.frames.size);
                 positionIncrement = sampleRate / processor.frequency;
-                gain = e.velocity * soul::dBtoGain (hit.gaindB) * soul::PanLaw::centre3dB (hit.pan);
+                gain = e.velocity * soul::dBtoGain (hit.gaindB) * soul::pan_law::centre3dB (hit.pan);
                 break;
             }
         }

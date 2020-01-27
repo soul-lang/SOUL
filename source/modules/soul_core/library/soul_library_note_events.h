@@ -75,7 +75,7 @@ namespace soul::note_events
     Various simple voice allocation processors, which take a single stream of
     input events, and redirect them to an array of target voices.
 */
-namespace soul::VoiceAllocators
+namespace soul::voice_allocators
 {
     /** A simple allocator which chooses either an inactive voice, or the
         least-recently used active one if it needs to steal.

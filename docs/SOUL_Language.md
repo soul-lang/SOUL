@@ -1379,7 +1379,7 @@ namespace soul::midi
 /** This namespace contains some handy stuctures to use when declaring external 
     variables which are going to be loaded with data from audio files.
 */
-namespace soul::AudioSamples
+namespace soul::audio_samples
 {
     struct Mono
     {

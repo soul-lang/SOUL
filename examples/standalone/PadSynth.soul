@@ -840,7 +840,7 @@ graph Oscillators
         midiParser = soul::midi::MPEParser;
 
         voices = Voice[8];
-        voiceAllocator = soul::VoiceAllocators::Basic(8);
+        voiceAllocator = soul::voice_allocators::Basic(8);
     }
 
     connection
