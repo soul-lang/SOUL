@@ -487,13 +487,13 @@ processor RoundRobinVoiceAllocator (int voiceCount)
 // Allocates voices, does dynamic voice management, connect to MIDI parser
 graph clarinetMIDI_poly [[ main ]]
 {
-    input event midi::Message midiIn;
+    input event soul::midi::Message midiIn;
     output stream float audioOut0;
     output stream float audioOut1;
 
     let
     {
-        midiParser = midi::MPEParser;
+        midiParser = soul::midi::MPEParser;
         voices = dsp_voice[16];
         voiceAllocator = RoundRobinVoiceAllocator (16);
     }

@@ -9,7 +9,7 @@ graph PadSynth  [[main]]
 {
     input
     {
-        event midi::Message midiIn;
+        event soul::midi::Message midiIn;
 
         event float      cutoff                [[ name: "Cutoff",                min: 0,       max: 127,    init: 80,    unit: "semi",   step: 0.1   ]];
         event float      resonance             [[ name: "Resonance",             min: 0,       max: 100,    init: 20,    unit: "%",      step: 1     ]];
@@ -837,7 +837,7 @@ graph Oscillators
 
     let
     {
-        midiParser = midi::MPEParser;
+        midiParser = soul::midi::MPEParser;
 
         voices = Voice[8];
         voiceAllocator = soul::VoiceAllocators::Basic(8);

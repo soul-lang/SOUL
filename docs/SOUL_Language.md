@@ -1342,7 +1342,7 @@ namespace soul::NoteEvents
 Some MIDI helper classes are provided:
 
 ```C++
-namespace midi
+namespace soul::midi
 {
     /** This type is used to represent a packed short MIDI message. When you create
         an input event endpoint and would like it to receive MIDI, this is the type
@@ -1350,9 +1350,12 @@ namespace midi
     */
     struct Message
     {
-        /** Format: (byte[0] << 24) | (byte[1] << 16) | byte[2] */
-        int data;
+        int midiBytes;  /**< Format: (byte[0] << 16) | (byte[1] << 8) | byte[2] */
     }
+
+    int getByte1 (Message m)     { return (m.midiBytes >> 16) & 0xff; }
+    int getByte2 (Message m)     { return (m.midiBytes >> 8) & 0xff; }
+    int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
     /** This event processor receives incoming MIDI events, parses them as MPE,
         and then emits a stream of note events using the types in soul::NoteEvents.
@@ -1361,7 +1364,7 @@ namespace midi
     */
     processor MPEParser  [[ main: false ]]
     {
-        input event midi::Message parseMIDI;
+        input event Message parseMIDI;
 
         output event (soul::NoteEvents::NoteOn,
                       soul::NoteEvents::NoteOff,
@@ -1370,8 +1373,7 @@ namespace midi
                       soul::NoteEvents::Slide,
                       soul::NoteEvents::Control) eventOut;
     }
-}
-```
+}```
 
 ```C++
 /** This namespace contains some handy stuctures to use when declaring external 

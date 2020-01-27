@@ -13,13 +13,13 @@
 
 graph SOUL909  [[ main ]]
 {
-    input smoothedGain.volume   volume   [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
-    input event midi::Message   midiIn;
-    output stream float<2>      audioOut;
+    input smoothedGain.volume        volume   [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
+    input event soul::midi::Message  midiIn;
+    output stream float<2>           audioOut;
 
     let
     {
-        midiParser = midi::MPEParser;
+        midiParser = soul::midi::MPEParser;
 
         voices          = DrumHitPlayer[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);

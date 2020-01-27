@@ -8,12 +8,12 @@
 graph SineSynth  [[ main ]]
 {
     input smoothedGain.volume [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
-    input event midi::Message midiIn;
+    input event soul::midi::Message midiIn;
     output stream float audioOut;
 
     let
     {
-        midiParser = midi::MPEParser;
+        midiParser = soul::midi::MPEParser;
 
         voices = Voice[8];
         voiceAllocator = soul::VoiceAllocators::Basic(8);

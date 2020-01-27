@@ -19,7 +19,7 @@ graph ElectoPiano  [[ main ]]
     let
     {
         voices         = ElectroPiano[8];
-        midiParser     = midi::MPEParser;
+        midiParser     = soul::midi::MPEParser;
         filter         = TX81Z::OutputFilter;
         voiceAllocator = TX81Z::PolyVoiceAllocator (-12, 8);
     }

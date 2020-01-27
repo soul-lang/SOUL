@@ -24,7 +24,7 @@
 R"library(
 
 //==============================================================================
-namespace midi
+namespace soul::midi
 {
     /** This type is used to represent a packed short MIDI message. When you create
         an input event endpoint and would like it to receive MIDI, this is the type
@@ -46,7 +46,7 @@ namespace midi
     */
     processor MPEParser  [[ main: false ]]
     {
-        input event midi::Message parseMIDI;
+        input event Message parseMIDI;
 
         output event (soul::NoteEvents::NoteOn,
                       soul::NoteEvents::NoteOff,
@@ -57,7 +57,7 @@ namespace midi
 
         let MPESlideControllerID = 74;
 
-        event parseMIDI (midi::Message message)
+        event parseMIDI (Message message)
         {
             let messageByte1 = message.getByte1();
             let messageByte2 = message.getByte2();
