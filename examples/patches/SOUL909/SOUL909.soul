@@ -23,8 +23,8 @@ graph SOUL909  [[ main ]]
 
         voices          = DrumHitPlayer[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);
-        smoothedGain    = soul::Gain::SmoothedGainParameter (0.5f);
-        gainProcessor   = soul::Gain::DynamicGain (float<2>);
+        smoothedGain    = soul::gain::SmoothedGainParameter (0.5f);
+        gainProcessor   = soul::gain::DynamicGain (float<2>);
     }
 
     connection

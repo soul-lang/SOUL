@@ -18,8 +18,8 @@ graph SineSynth  [[ main ]]
         voices = Voice[8];
         voiceAllocator = soul::VoiceAllocators::Basic(8);
 
-        smoothedGain = soul::Gain::SmoothedGainParameter (0.5f);
-        gainProcessor = soul::Gain::DynamicGain (float);
+        smoothedGain = soul::gain::SmoothedGainParameter (0.5f);
+        gainProcessor = soul::gain::DynamicGain (float);
     }
 
     connection
@@ -101,8 +101,8 @@ graph Voice
     let
     {
         osc = SineOsc;
-        amplitudeEnvelope = soul::Envelope::FixedAttackReleaseEnvelope (0.2f, 0.02f, 0.1f);
-        attenuator = soul::Gain::DynamicGain (float);
+        amplitudeEnvelope = soul::envelope::FixedAttackReleaseEnvelope (0.2f, 0.02f, 0.1f);
+        attenuator = soul::gain::DynamicGain (float);
     }
 
     connection

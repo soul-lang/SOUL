@@ -23,7 +23,7 @@ graph Piano  [[ main ]]
         voices          = Voice[8];
         voiceAllocator  = soul::VoiceAllocators::Basic(8);
         gainParameter   = GainParameterRamp (1.0f);
-        masterVolume    = soul::Gain::DynamicGain (float);
+        masterVolume    = soul::gain::DynamicGain (float);
     }
 
     connection
@@ -138,8 +138,8 @@ graph Voice
     let
     {
         samplePlayer = PianoSamplePlayer;
-        envelope = soul::Envelope::FixedAttackReleaseEnvelope (1.0f, 0.0f, 0.3f);
-        attenuator = soul::Gain::DynamicGain (float);
+        envelope = soul::envelope::FixedAttackReleaseEnvelope (1.0f, 0.0f, 0.3f);
+        attenuator = soul::gain::DynamicGain (float);
     }
 
     connection

@@ -26,7 +26,7 @@ R"library(
 /**
     This namespace contains some random number generation helpers.
 */
-namespace soul::Random
+namespace soul::random
 {
     /** State for a Park-Miller random number generator */
     struct RandomNumberState
@@ -58,7 +58,7 @@ namespace soul::Random
 /**
     This namespace contains various noise-generation utilities.
 */
-namespace soul::Noise
+namespace soul::noise
 {
     /** White noise generator */
     processor White
@@ -67,7 +67,7 @@ namespace soul::Noise
 
         void run()
         {
-            var rng = Random::RandomNumberState (1);
+            var rng = random::RandomNumberState (1);
 
             loop
             {
@@ -86,7 +86,7 @@ namespace soul::Noise
         {
             let limit = 32.0f;
             float runningTotal;
-            var rng = Random::RandomNumberState (1);
+            var rng = random::RandomNumberState (1);
 
             loop
             {
@@ -114,7 +114,7 @@ namespace soul::Noise
             int counter;
             float[pinkBits] values;
             float total;
-            var rng = Random::RandomNumberState (1);
+            var rng = random::RandomNumberState (1);
 
             loop
             {

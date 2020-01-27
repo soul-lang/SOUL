@@ -41,7 +41,7 @@ graph PadSynth  [[main]]
     {
         delay = Delay (20000, 0.5f);
         oscillators = Oscillators;
-        dryWetMixer = soul::Mixers::DynamicMix (float, 100.0f);
+        dryWetMixer = soul::mixers::DynamicMix (float, 100.0f);
     }
 
     connection
@@ -632,7 +632,7 @@ graph Voice
         amplitudeEnvelope   = ADSREnvelope;
         cutoffEnvelope      = ADSREnvelope;
         voiceController     = Controller;
-        voiceOscillatorMix  = soul::Mixers::DynamicMix (float, 100.0f);
+        voiceOscillatorMix  = soul::mixers::DynamicMix (float, 100.0f);
         voiceCutoffHandler  = CutoffHandler;
         voiceLowPassFilter  = LowPassFilter;
 
@@ -716,7 +716,7 @@ graph Reverb
         comb_1557 = CombFilter(1557);
         comb_1617 = CombFilter(1617);
 
-        dryWetMixer = soul::Mixers::FixedSum (float, 0.8f, 0.01485f);
+        dryWetMixer = soul::mixers::FixedSum (float, 0.8f, 0.01485f);
     }
 
     connection

@@ -24,7 +24,7 @@
 R"library(
 
 /** Utility processors for common tasks like mixing together sources. */
-namespace soul::Mixers
+namespace soul::mixers
 {
     //==============================================================================
     /** Simple processor which simply sums two sources together with fixed gains
@@ -94,7 +94,7 @@ namespace soul::Mixers
 
 //==============================================================================
 /** Utility processors for common tasks like applying gain in various ways. */
-namespace soul::Gain
+namespace soul::gain
 {
     //==============================================================================
     /** Simple processor which applies a fixed gain to a signal. */
@@ -172,7 +172,7 @@ namespace soul::Gain
 
 //==============================================================================
 /** Generators for common envelope shapes. */
-namespace soul::Envelope
+namespace soul::envelope
 {
     //==============================================================================
     /** Creates an envelope which applies convex attack and release curves based
