@@ -109,7 +109,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
                   ExternalDataProvider* externalDataProvider,
-                  DebugMessageHandler* debugMessageHandler)
+                  ConsoleMessageHandler* consoleHandler)
     {
         if (performer == nullptr)
             return messageList.addError ("Failed to initialise JIT engine", {});
@@ -130,7 +130,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         createBuses();
         createParameters (program.getStringDictionary());
-        connectEndpoints (program, debugMessageHandler);
+        connectEndpoints (program, consoleHandler);
 
         auto options = linkOptions;
         options.externalValueProvider = [this, externalDataProvider] (ConstantTable& constantTable,
@@ -152,10 +152,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
                   ExternalDataProvider* externalDataProvider,
-                  DebugMessageHandler* debugMessageHandler)
+                  ConsoleMessageHandler* consoleHandler)
     {
         soul::CompileMessageList messageList;
-        compile (messageList, linkOptions, cache, preprocessor, externalDataProvider, debugMessageHandler);
+        compile (messageList, linkOptions, cache, preprocessor, externalDataProvider, consoleHandler);
 
         compileMessages.reserve (messageList.messages.size());
 
@@ -251,18 +251,18 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         parameterSpan = makeSpan (parameters);
     }
 
-    void connectEndpoints (Program& program, DebugMessageHandler* debugMessageHandler)
+    void connectEndpoints (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         wrapper = std::make_unique<SynchronousPerformerWrapper> (*performer);
         auto properties = getEndpointProperties();
         wrapper->attach (properties);
 
-        if (debugMessageHandler != nullptr)
+        if (consoleHandler != nullptr)
             for (auto& outputEndpoint : performer->getOutputEndpoints())
                 if (isEvent (outputEndpoint->getDetails().kind))
                     soul::utilities::attachConsoleOutputHandler (program, *outputEndpoint, properties,
-                                                                 [debugMessageHandler] (uint64_t eventTime, const char* endpointName, const char* message)
-                                                                 { debugMessageHandler->handleDebugMessage (eventTime, endpointName, message); });
+                                                                 [consoleHandler] (uint64_t eventTime, const char* endpointName, const char* message)
+                                                                 { consoleHandler->handleConsoleMessage (eventTime, endpointName, message); });
     }
 
     //==============================================================================

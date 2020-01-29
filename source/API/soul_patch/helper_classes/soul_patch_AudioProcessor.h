@@ -53,14 +53,14 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                              soul::patch::CompilerCache::Ptr compilerCache = {},
                              soul::patch::SourceFilePreprocessor::Ptr sourcePreprocessor = {},
                              soul::patch::ExternalDataProvider::Ptr externalDataProvider = {},
-                             soul::patch::DebugMessageHandler::Ptr debugMessageHandler = {},
+                             soul::patch::ConsoleMessageHandler::Ptr consoleMessageHandler = {},
                              int millisecondsBetweenFileChangeChecks = 1000)
        : juce::Thread ("SOUL Compiler"),
          patch (std::move (patchToLoad)),
          cache (std::move (compilerCache)),
          preprocessor (std::move (sourcePreprocessor)),
          externalData (std::move (externalDataProvider)),
-         debugHandler (std::move (debugMessageHandler)),
+         consoleHandler (std::move (consoleMessageHandler)),
          millisecsBetweenFileChecks (millisecondsBetweenFileChangeChecks <= 0 ? -1 : millisecondsBetweenFileChangeChecks)
     {
         jassert (patch != nullptr);
@@ -463,7 +463,7 @@ private:
     soul::patch::CompilerCache::Ptr cache;
     soul::patch::SourceFilePreprocessor::Ptr preprocessor;
     soul::patch::ExternalDataProvider::Ptr externalData;
-    soul::patch::DebugMessageHandler::Ptr debugHandler;
+    soul::patch::ConsoleMessageHandler::Ptr consoleHandler;
 
     juce::String name, description;
 
@@ -539,7 +539,7 @@ private:
                     {
                         auto newPlayer = patch->compileNewPlayer (currentConfig, cache.get(),
                                                                   preprocessor.get(), externalData.get(),
-                                                                  debugHandler.get());
+                                                                  consoleHandler.get());
 
                         if (threadShouldExit())
                             return;
