@@ -41,7 +41,7 @@ struct Value::PackedData
         {
             if (type.isInteger32())    return p.printInt32 (getAs<int32_t>());
             if (type.isInteger64())    return p.printInt64 (getAs<int64_t>());
-            if (type.isBool())         return p.printBool (getAs<bool>());
+            if (type.isBool())         return p.printBool (getAs<uint8_t>() != 0);
             if (type.isFloat32())      return p.printFloat32 (getAs<float>());
             if (type.isFloat64())      return p.printFloat64 (getAs<double>());
         }
@@ -116,7 +116,7 @@ struct Value::PackedData
     {
         SOUL_ASSERT (type.isPrimitive() || type.isBoundedInt() || type.isVectorOfSize1());
 
-        if (type.isBool())           return getAs<bool>();
+        if (type.isBool())           return getAs<uint8_t>() != 0;
         if (type.isInteger())        return getAsInt64() != 0;
         if (type.isFloatingPoint())  return getAsDouble() != 0;
 
@@ -130,7 +130,7 @@ struct Value::PackedData
 
         if (type.isFloat32())        return getAs<float>();
         if (type.isFloat64())        return getAs<double>();
-        if (type.isBool())           return getAs<bool>() ? 1.0 : 0.0;
+        if (type.isBool())           return getAs<uint8_t>() != 0 ? 1.0 : 0.0;
         if (type.isInteger())        return static_cast<double> (getAsInt64());
 
         SOUL_ASSERT_FALSE;
@@ -143,7 +143,7 @@ struct Value::PackedData
 
         if (type.isInteger32())      return getAs<int32_t>();
         if (type.isInteger64())      return getAs<int64_t>();
-        if (type.isBool())           return getAs<bool>() ? 1 : 0;
+        if (type.isBool())           return getAs<uint8_t>() != 0 ? 1 : 0;
         if (type.isFloatingPoint())  return static_cast<int64_t> (getAsDouble());
 
         SOUL_ASSERT_FALSE;
@@ -167,7 +167,7 @@ struct Value::PackedData
             if (type.isInteger64())     return setAs (other.type.isFloatingPoint() ? (int64_t) other.getAsDouble() : (int64_t) other.getAsInt64());
             if (type.isFloat32())       return setAs ((float) other.getAsDouble());
             if (type.isFloat64())       return setAs (other.getAsDouble());
-            if (type.isBool())          return setAs (other.getAsBool());
+            if (type.isBool())          return setAs (other.getAsBool() ? (uint8_t) 1 : (uint8_t) 0);
 
             SOUL_ASSERT_FALSE;
         }
@@ -425,7 +425,7 @@ Value::Value (int32_t  v)  : Value (Type (PrimitiveType::int32))     { getData()
 Value::Value (int64_t  v)  : Value (Type (PrimitiveType::int64))     { getData().setAs (v); }
 Value::Value (float    v)  : Value (Type (PrimitiveType::float32))   { getData().setAs (v); }
 Value::Value (double   v)  : Value (Type (PrimitiveType::float64))   { getData().setAs (v); }
-Value::Value (bool     v)  : Value (Type (PrimitiveType::bool_))     { getData().setAs (v); }
+Value::Value (bool     v)  : Value (Type (PrimitiveType::bool_))     { getData().setAs (v ? (uint8_t) 1 : (uint8_t) 0); }
 
 Value Value::createArrayOrVector (Type t, ArrayView<Value> elements)
 {
@@ -586,6 +586,7 @@ bool Value::operator!= (const Value& other) const       { return ! operator== (o
 
 Value Value::cloneWithEquivalentType (Type newType) const
 {
+    SOUL_ASSERT (newType.hasIdenticalLayout (type));
     return Value (std::move (newType), getPackedData());
 }
 
