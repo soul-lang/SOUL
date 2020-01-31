@@ -729,6 +729,7 @@ struct heart
         bool isExported = false;
         bool hasNoBody = false;
         bool functionUseTestFlag = false;
+        uint64_t localVariableStackSize = 0;
 
         pool_ptr<Block> findBlockByName (const std::string& blockName) const
         {

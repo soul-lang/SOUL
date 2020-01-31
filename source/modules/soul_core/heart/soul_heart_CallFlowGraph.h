@@ -64,27 +64,28 @@ struct CallFlowGraph
         return ! hasFoundTerminator;
     }
 
-    /** Returns the first set of functions which call each other in a cycle (or an empty vector if
-        no cycles were found)
-    */
-    static std::vector<pool_ref<heart::Function>> findRecursiveFunctionCallSequences (Program& program)
+    struct CallSequenceCheckResults
     {
-        std::vector<pool_ref<heart::Function>> callerFns;
+        uint64_t maximumStackSize = 0;
+        std::vector<pool_ref<heart::Function>> recursiveFunctionCallSequence;
+    };
+
+    /** Iterates all function call seqeunces to calculate stack usage and also to spot
+        recursive call sequences.
+    */
+    static CallSequenceCheckResults checkFunctionCallSequences (Program& program)
+    {
+        for (auto& m : program.getModules())
+            for (auto& f : m->functions)
+                f->localVariableStackSize = 0;
+
+        CallSequenceCheckResults results;
 
         for (auto& m : program.getModules())
-        {
             for (auto& f : m->functions)
-            {
-                callerFns.clear();
+                iterateCallSequences (f, results, nullptr, 0);
 
-                auto recursiveCallSequence = findRecursiveFunctions (f, callerFns);
-
-                if (! recursiveCallSequence.empty())
-                    return recursiveCallSequence;
-            }
-        }
-
-        return {};
+        return results;
     }
 
 private:
@@ -264,40 +265,65 @@ private:
     }
 
     //==============================================================================
-    static std::vector<pool_ref<heart::Function>> findRecursiveFunctions (heart::Function& f,
-                                                                          std::vector<pool_ref<heart::Function>>& callerFns)
+    static constexpr uint64_t perCallStackOverhead = 16;
+    static constexpr uint64_t stackItemAlignment = 8;
+
+    struct PreviousCall
     {
-        callerFns.emplace_back (f);
+        PreviousCall* previous;
+        heart::Function& function;
 
-        for (auto& b : f.blocks)
+        bool contains (heart::Function& f) const
         {
-            for (auto s : b->statements)
-            {
-                if (auto call = cast<heart::FunctionCall> (*s))
-                {
-                    for (size_t i = 0; i < callerFns.size(); ++i)
-                    {
-                        if (callerFns[i] == call->function)
-                        {
-                            std::vector<pool_ref<heart::Function>> functions;
-
-                            while (i < callerFns.size())
-                                functions.push_back (callerFns[i++]);
-
-                            return functions;
-                        }
-                    }
-
-                    auto result = findRecursiveFunctions (call->getFunction(), callerFns);
-
-                    if (! result.empty())
-                        return result;
-                }
-            }
+            return std::addressof (f) == std::addressof (function)
+                    || (previous != nullptr && previous->contains (f));
         }
 
-        callerFns.pop_back();
-        return {};
+        void findCallSequenceUpTo (heart::Function& f, std::vector<pool_ref<heart::Function>>& sequence) const
+        {
+            sequence.insert (sequence.begin(), function);
+
+            if (previous != nullptr && std::addressof (f) != std::addressof (function))
+                previous->findCallSequenceUpTo (f, sequence);
+        }
+    };
+
+    static void iterateCallSequences (heart::Function& f,
+                                      CallSequenceCheckResults& results,
+                                      PreviousCall* previous,
+                                      uint64_t stackSize)
+    {
+        calculateLocalVariableStackSize (f);
+        stackSize += perCallStackOverhead + f.localVariableStackSize;
+        results.maximumStackSize = std::max (results.maximumStackSize, stackSize);
+
+        PreviousCall newPrevious { previous, f };
+
+        if (previous != nullptr && previous->contains (f))
+        {
+            if (results.recursiveFunctionCallSequence.empty())
+                previous->findCallSequenceUpTo (f, results.recursiveFunctionCallSequence);
+
+            return;
+        }
+
+        for (auto& b : f.blocks)
+            for (auto s : b->statements)
+                if (auto call = cast<heart::FunctionCall> (*s))
+                    iterateCallSequences (call->getFunction(), results, std::addressof (newPrevious), stackSize);
+    }
+
+    static void calculateLocalVariableStackSize (heart::Function& f)
+    {
+        if (f.localVariableStackSize == 0)
+        {
+            uint64_t total = 0;
+
+            for (auto& v : f.getAllLocalVariables())
+                total += getAlignedSize<stackItemAlignment> (v->getType().getPackedSizeInBytes());
+
+            f.localVariableStackSize = total;
+        }
     }
 };
 

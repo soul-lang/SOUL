@@ -185,25 +185,20 @@ struct heart::Checker
 
     static void checkForRecursiveFunctions (Program& program)
     {
-        auto recursiveCallSequence = CallFlowGraph::findRecursiveFunctionCallSequences (program);
+        auto callSequenceCheckResult = CallFlowGraph::checkFunctionCallSequences (program);
 
-        if (! recursiveCallSequence.empty())
+        if (! callSequenceCheckResult.recursiveFunctionCallSequence.empty())
         {
             std::vector<std::string> functionNames;
 
-            for (auto& fn : recursiveCallSequence)
+            for (auto& fn : callSequenceCheckResult.recursiveFunctionCallSequence)
                 functionNames.push_back (quoteName (fn->getReadableName()));
 
-            auto location = recursiveCallSequence.front()->location;
+            auto location = callSequenceCheckResult.recursiveFunctionCallSequence.front()->location;
 
-            if (functionNames.size() == 1)
-                location.throwError (Errors::functionCallsItselfRecursively (functionNames.front()));
-
-            if (functionNames.size() == 2)
-                location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
-
-            if (functionNames.size() > 2)
-                location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
+            if (functionNames.size() == 1)  location.throwError (Errors::functionCallsItselfRecursively (functionNames.front()));
+            if (functionNames.size() == 2)  location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
+            if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
         }
     }
 
