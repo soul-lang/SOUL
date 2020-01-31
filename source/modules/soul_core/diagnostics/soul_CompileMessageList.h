@@ -118,22 +118,12 @@ struct CompileMessageHandler
     static bool isHandlerEnabled();
 
     HandleMessageFn handleMessageFn;
-
-private:
     CompileMessageHandler* const lastHandler;
 };
 
 //==============================================================================
-/** A message handler that converts non-terminal parse errors into a throw of
-    its ErrorWasIgnoredException class. Handy for attempting a parse when you don't
-    actually want the failures to bubble up any further.
-*/
-struct ParseErrorIgnoringMessageHandler  : public CompileMessageHandler
-{
-    ParseErrorIgnoringMessageHandler();
-
-    struct ErrorWasIgnoredException {};
-};
+/** Calls the given function while catching any non-fatal parse errors that get thrown. */
+void catchParseErrors (std::function<void()>&& functionToPerform);
 
 //==============================================================================
 /** Throwing one of these in any compile task will stop the current compilation. */

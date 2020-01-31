@@ -161,13 +161,11 @@ private:
 
                     if (ignoreErrors)
                     {
-                        try
+                        catchParseErrors ([this, &i]
                         {
-                            ParseErrorIgnoringMessageHandler errorIgnoringHandler;
                             replaceStatement (i.trueBranch);
                             replaceStatement (i.falseBranch);
-                        }
-                        catch (ParseErrorIgnoringMessageHandler::ErrorWasIgnoredException) {}
+                        });
                     }
                 }
 

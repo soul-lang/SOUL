@@ -39,9 +39,9 @@ Module& Module::createProcessor (heart::Allocator& a)    { return a.allocate<Mod
 Module& Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
 Module& Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
 
-bool Module::isProcessor() const noexcept       { return moduleType == ModuleType::processorModule; }
-bool Module::isGraph() const noexcept           { return moduleType == ModuleType::graphModule; }
-bool Module::isNamespace() const noexcept       { return moduleType == ModuleType::namespaceModule; }
+bool Module::isProcessor() const        { return moduleType == ModuleType::processorModule; }
+bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
+bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
 
 std::string Module::getNameWithoutRootNamespace() const         { return Program::stripRootNamespaceFromQualifiedPath (moduleName); }
 

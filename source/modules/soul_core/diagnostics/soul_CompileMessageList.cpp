@@ -186,7 +186,7 @@ std::string CompileMessageList::toString() const
 static thread_local CompileMessageHandler* messageHandler = nullptr;
 
 CompileMessageHandler::CompileMessageHandler (HandleMessageFn m)
-    : handleMessageFn (m), lastHandler (messageHandler)
+   : handleMessageFn (std::move (m)), lastHandler (messageHandler)
 {
     messageHandler = this;
 }
@@ -210,14 +210,31 @@ bool CompileMessageHandler::isHandlerEnabled()
 }
 
 //==============================================================================
-ParseErrorIgnoringMessageHandler::ParseErrorIgnoringMessageHandler()
-    : CompileMessageHandler ([] (const CompileMessageGroup& messageGroup)
-                             {
-                                 for (auto& m : messageGroup.messages)
-                                     if (! m.isInternalCompilerError())
-                                         throw ErrorWasIgnoredException();
-                             })
+void catchParseErrors (std::function<void()>&& functionToPerform)
 {
+    struct ErrorWasIgnoredException {};
+
+    struct ParseErrorIgnoringMessageHandler  : public CompileMessageHandler
+    {
+        ParseErrorIgnoringMessageHandler()
+            : CompileMessageHandler ([this] (const CompileMessageGroup& messageGroup)
+                                     {
+                                         for (auto& m : messageGroup.messages)
+                                             if (! m.isInternalCompilerError())
+                                                 throw ErrorWasIgnoredException();
+
+                                         if (lastHandler != nullptr)
+                                             lastHandler->handleMessageFn (messageGroup);
+                                     })
+        {}
+    };
+
+    try
+    {
+        ParseErrorIgnoringMessageHandler handler;
+        functionToPerform();
+    }
+    catch (ErrorWasIgnoredException) {}
 }
 
 //==============================================================================

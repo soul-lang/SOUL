@@ -29,9 +29,9 @@ namespace soul
 class Module  final
 {
 public:
-    bool isProcessor() const noexcept;
-    bool isGraph() const noexcept;
-    bool isNamespace() const noexcept;
+    bool isProcessor() const;
+    bool isGraph() const;
+    bool isNamespace() const;
 
     std::string moduleName;
     std::string getNameWithoutRootNamespace() const;

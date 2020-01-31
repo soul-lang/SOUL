@@ -209,10 +209,10 @@ struct IdentifierPath  final
     explicit IdentifierPath (Identifier i) { addSuffix (i); }
     IdentifierPath (IdentifierPath parent, Identifier i) : pathSections (std::move (parent.pathSections)) { addSuffix (i); }
 
-    bool empty() const noexcept             { return size() == 0; }
-    bool isValid() const noexcept           { return size() > 0; }
-    bool isUnqualified() const noexcept     { return size() == 1; }
-    bool isQualified() const noexcept       { return size() > 1; }
+    bool empty() const              { return size() == 0; }
+    bool isValid() const            { return size() > 0; }
+    bool isUnqualified() const      { return size() == 1; }
+    bool isQualified() const        { return size() > 1; }
 
     bool isUnqualifiedName (const char* nameToCompare) const          { return isUnqualified() && pathSections.front() == nameToCompare; }
     bool isUnqualifiedName (const std::string& nameToCompare) const   { return isUnqualified() && pathSections.front() == nameToCompare; }

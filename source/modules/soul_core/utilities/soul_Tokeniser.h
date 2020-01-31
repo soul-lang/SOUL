@@ -96,13 +96,13 @@ struct Tokeniser
     void resetPosition (UTF8Reader newPos)                      { input = newPos; skip(); }
 
     bool matches (TokenType t) const noexcept                   { return currentType == t; }
-    bool matches (const char* name) const noexcept              { return matches (Token::identifier) && currentStringValue == name; }
+    bool matches (const char* name) const                       { return matches (Token::identifier) && currentStringValue == name; }
 
     template <typename Type>
-    bool matchesAny (Type t) const noexcept                     { return matches (t); }
+    bool matchesAny (Type t) const                              { return matches (t); }
 
     template <typename Type1, typename... Args>
-    bool matchesAny (Type1 t1, Args... others) const noexcept   { return matches (t1) || matchesAny (others...); }
+    bool matchesAny (Type1 t1, Args... others) const            { return matches (t1) || matchesAny (others...); }
 
     template <typename Type>
     bool matchIf (Type expected)                                { if (matches (expected)) { skip(); return true; } return false; }

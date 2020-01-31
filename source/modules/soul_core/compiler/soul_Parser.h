@@ -1088,14 +1088,9 @@ private:
 
     pool_ptr<AST::Expression> tryToParseExpressionIgnoringErrors()
     {
-        try
-        {
-            ParseErrorIgnoringMessageHandler errorIgnoringHandler;
-            return parseExpression();
-        }
-        catch (ParseErrorIgnoringMessageHandler::ErrorWasIgnoredException) {}
-
-        return {};
+        pool_ptr<AST::Expression> result;
+        catchParseErrors ([this, &result] { result = parseExpression(); });
+        return result;
     }
 
     AST::Expression& parseExpression (bool allowAssignment = false)

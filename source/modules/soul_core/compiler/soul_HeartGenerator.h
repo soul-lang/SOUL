@@ -50,7 +50,7 @@ private:
     using super = ASTVisitor;
 
     HEARTGenerator (AST::ModuleBase& source, Module& targetModule,
-                    std::vector<UnresolvedFunctionCall>& unresolvedCalls, uint32_t maxDepth) noexcept
+                    std::vector<UnresolvedFunctionCall>& unresolvedCalls, uint32_t maxDepth)
         : module (targetModule), builder (targetModule),
           maxExpressionDepth (maxDepth), unresolvedFunctionCalls (unresolvedCalls)
     {

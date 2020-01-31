@@ -188,7 +188,7 @@ struct heart::Utilities
         return true;
     }
 
-    static pool_ptr<Block> findBlock (const Function& f, const std::string& targetName) noexcept
+    static pool_ptr<Block> findBlock (const Function& f, const std::string& targetName)
     {
         for (auto b : f.blocks)
             if (b->name == targetName)

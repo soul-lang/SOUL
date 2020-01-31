@@ -27,7 +27,7 @@ struct ModuleCloner
     using FunctionMappings = std::unordered_map<pool_ref<const heart::Function>, pool_ptr<heart::Function>>;
     using StructMappings   = std::unordered_map<const Structure*, StructurePtr>;
 
-    ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs) noexcept
+    ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs)
         : oldModule (source), newModule (dest), functionMappings (functions), structMappings (structs)
     {
     }
