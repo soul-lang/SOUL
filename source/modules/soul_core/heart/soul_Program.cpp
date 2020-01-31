@@ -66,8 +66,8 @@ struct Program::ProgramImpl  : public RefCountedObject
         if (auto m = getModuleWithName (name))
             return *m;
 
-        auto newModule = Module::createNamespace (allocator);
-        newModule->moduleName = name;
+        auto& newModule = Module::createNamespace (allocator);
+        newModule.moduleName = name;
         modules.push_back (newModule);
         return newModule;
     }

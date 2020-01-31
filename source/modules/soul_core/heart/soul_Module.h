@@ -113,9 +113,9 @@ private:
 
     friend class PoolAllocator;
 
-    static pool_ref<Module> createProcessor (heart::Allocator&);
-    static pool_ref<Module> createGraph     (heart::Allocator&);
-    static pool_ref<Module> createNamespace (heart::Allocator&);
+    static Module& createProcessor (heart::Allocator&);
+    static Module& createGraph     (heart::Allocator&);
+    static Module& createNamespace (heart::Allocator&);
 };
 
 

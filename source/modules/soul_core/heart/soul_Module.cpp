@@ -35,9 +35,9 @@ Module::Module (heart::Allocator& a, const Module& toClone)
 {
 }
 
-pool_ref<Module> Module::createProcessor (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::processorModule); }
-pool_ref<Module> Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
-pool_ref<Module> Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
+Module& Module::createProcessor (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::processorModule); }
+Module& Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
+Module& Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
 
 bool Module::isProcessor() const noexcept       { return moduleType == ModuleType::processorModule; }
 bool Module::isGraph() const noexcept           { return moduleType == ModuleType::graphModule; }
@@ -74,9 +74,7 @@ pool_ptr<heart::Function> Module::findRunFunction() const
 
 heart::Function& Module::getRunFunction() const
 {
-    auto f = findRunFunction();
-    SOUL_ASSERT (f != nullptr);
-    return *f;
+    return *findRunFunction();
 }
 
 pool_ptr<heart::InputDeclaration> Module::findInput (const std::string& name) const
@@ -99,9 +97,7 @@ pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) 
 
 heart::Function& Module::getFunction (const std::string& name) const
 {
-    auto f = findFunction (name);
-    SOUL_ASSERT (f != nullptr);
-    return *f;
+    return *findFunction (name);
 }
 
 pool_ptr<heart::Function> Module::findFunction (const std::string& name) const
@@ -121,7 +117,6 @@ pool_ptr<heart::Variable> Module::findStateVariable (const std::string& name) co
 
     return {};
 }
-
 
 void Module::addStruct (StructurePtr newStruct)
 {
