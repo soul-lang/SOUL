@@ -477,6 +477,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
     EndpointProperties getEndpointProperties() const
     {
+        if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
+        if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size");
+
         return { config.sampleRate, (uint32_t) config.maxFramesPerBlock };
     }
 
