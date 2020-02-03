@@ -172,7 +172,7 @@ struct heart
             {
                 auto type = isElementAccess ? sampleType : getSampleArrayType (sampleType);
 
-                if (TypeRules::canSilentlyCastTo (type, t))
+                if (TypeRules::canPassAsArgumentTo (type, t, true))
                     return getSampleArrayType (sampleType);
             }
 
