@@ -182,7 +182,7 @@ struct AST
                     if (f->originalCallLeadingToSpecialisation != nullptr)
                     {
                         CompileMessage error { "Failed to instantiate generic function "
-                                                  + f->originalCallLeadingToSpecialisation->getDescription (f->orginalGenericFunction->name),
+                                                  + f->originalCallLeadingToSpecialisation->getDescription (f->originalGenericFunction->name),
                                                f->originalCallLeadingToSpecialisation->context.location,
                                                CompileMessage::Type::error };
 
@@ -1190,7 +1190,7 @@ struct AST
         std::vector<pool_ref<VariableDeclaration>> parameters;
         std::vector<pool_ref<QualifiedIdentifier>> genericWildcards;
         std::vector<pool_ref<UsingDeclaration>> genericSpecialisations;
-        pool_ptr<Function> orginalGenericFunction;
+        pool_ptr<Function> originalGenericFunction;
         pool_ptr<FunctionCall> originalCallLeadingToSpecialisation;
         Annotation annotation;
         IntrinsicType intrinsic = IntrinsicType::none;

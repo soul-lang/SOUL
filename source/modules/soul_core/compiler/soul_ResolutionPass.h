@@ -1376,7 +1376,7 @@ private:
                     if (matchingGenerics.size() == 1)
                         return matchingGenerics.front();
 
-                    if (! ignoreErrors)
+                    if (! ignoreErrors || matchingGenerics.size() > 1)
                     {
                         if (totalMatches == 0)
                             throwErrorForUnknownFunction (call, *name);
@@ -1525,7 +1525,7 @@ private:
 
             for (auto& i : search.itemsFound)
                 if (auto f = cast<AST::Function> (i))
-                    if (f->orginalGenericFunction == nullptr)
+                    if (f->originalGenericFunction == nullptr)
                         results.push_back (PossibleFunction (*f, argTypes));
 
             return results;
@@ -1744,7 +1744,8 @@ private:
 
         bool canResolveGenerics() const override        { return true; }
 
-        pool_ptr<AST::Expression> createCallToGenericFunction (AST::CallOrCast& call, AST::Function& genericFunction, bool shouldIgnoreErrors) override
+        pool_ptr<AST::Expression> createCallToGenericFunction (AST::CallOrCast& call, AST::Function& genericFunction,
+                                                               bool shouldIgnoreErrors) override
         {
             SOUL_ASSERT (genericFunction.isGeneric());
 
@@ -1771,12 +1772,12 @@ private:
             SOUL_ASSERT (parentScope != nullptr);
 
             for (auto& f : parentScope->getFunctions())
-                if (f->name == specialisedFunctionName && f->orginalGenericFunction == genericFunction)
+                if (f->name == specialisedFunctionName && f->originalGenericFunction == genericFunction)
                     return f;
 
             auto& newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
             newFunction.name = specialisedFunctionName;
-            newFunction.orginalGenericFunction = genericFunction;
+            newFunction.originalGenericFunction = genericFunction;
 
             SOUL_ASSERT (callerArgumentTypes.size() == newFunction.parameters.size());
 
