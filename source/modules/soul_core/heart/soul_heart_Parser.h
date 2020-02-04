@@ -134,14 +134,10 @@ private:
             else                                throwError (Errors::expectedTopLevelDecl());
         }
 
-        for (auto& m : scannedTopLevelItems)
-            parseModuleStructs (m);
-
-        for (auto& m : scannedTopLevelItems)
-            parseFunctionDecls (m);
-
-        for (auto& m : scannedTopLevelItems)
-            parseModule (m);
+        for (auto& item : scannedTopLevelItems)  parseModuleStructs (item);
+        for (auto& item : scannedTopLevelItems)  parseFunctionDecls (item);
+        for (auto& item : scannedTopLevelItems)  parseStateVariables (item);
+        for (auto& item : scannedTopLevelItems)  parseModule (item);
 
         return program;
     }
@@ -190,6 +186,19 @@ private:
         {
             resetPosition (item.functionParamCode[i]);
             parseFunctionParams (module->functions[i]);
+        }
+
+        module.reset();
+    }
+
+    void parseStateVariables (ScannedTopLevelItem& item)
+    {
+        prepareToRescan (item);
+
+        for (auto& g : item.stateVariableDecls)
+        {
+            resetPosition (g);
+            parseStateVariable();
         }
 
         module.reset();
@@ -255,12 +264,6 @@ private:
         {
             resetPosition (item.outputDecls[i]);
             parseOutput (module->outputs[i]);
-        }
-
-        for (auto& g : item.stateVariableDecls)
-        {
-            resetPosition (g);
-            parseStateVariable();
         }
 
         for (size_t i = 0; i < item.functionBodyCode.size(); ++i)
@@ -980,6 +983,14 @@ private:
 
     pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
     {
+        if (containsChar (name, ':'))
+        {
+            SOUL_ASSERT (name[0] == '$');
+            TokenisedPathString path (name.substr (1));
+            auto variableName = path.getLastPart();
+            return program.getVariableWithName (TokenisedPathString::join (path.getParentPath(), "$" + variableName));
+        }
+
         for (auto& v : state.variables)
             if (v->name == name)
                 return v;
@@ -1144,6 +1155,7 @@ private:
                 if (auto v = findVariable (state, name, true))
                     return parseVariableSuffixes (state, *v);
 
+                auto v = findVariable (state, name, true);
                 errorPos.throwError (Errors::unresolvedSymbol (name));
             }
 

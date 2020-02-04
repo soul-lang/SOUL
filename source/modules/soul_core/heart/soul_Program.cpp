@@ -129,13 +129,14 @@ struct Program::ProgramImpl  : public RefCountedObject
 
         ModuleCloner::FunctionMappings functionMappings;
         ModuleCloner::StructMappings structMappings;
+        ModuleCloner::VariableMappings variableMappings;
         std::vector<ModuleCloner> cloners;
 
         for (auto& m : modules)
         {
             auto& newModule = newProgram.getAllocator().allocate<Module> (newProgram.getAllocator(), m);
             newProgram.pimpl->insert (-1, newModule);
-            cloners.emplace_back (m, newModule, functionMappings, structMappings);
+            cloners.emplace_back (m, newModule, functionMappings, structMappings, variableMappings);
         }
 
         for (auto& c : cloners)
@@ -155,19 +156,21 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     std::string getVariableNameWithQualificationIfNeeded (const Module& context, const heart::Variable& v) const
     {
-        for (auto& m : modules)
+        if (v.isState())
         {
-            if (contains (m->stateVariables, v))
+            for (auto& m : modules)
             {
-                if (m == context)
-                    return v.name.toString();
+                if (contains (m->stateVariables, v))
+                {
+                    if (m == context)
+                        return v.name.toString();
 
-                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, v.name));
+                    return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, v.name));
+                }
             }
         }
 
-        SOUL_ASSERT_FALSE;
-        return v.name.toString();
+        return v.name;
     }
 
     std::string getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function& f) const
@@ -181,7 +184,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         }
 
         SOUL_ASSERT_FALSE;
-        return f.name.toString();
+        return f.name;
     }
 
     std::string getStructNameWithQualificationIfNeeded (pool_ptr<const Module> context, const Structure& s) const

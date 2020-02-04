@@ -26,9 +26,10 @@ struct ModuleCloner
 {
     using FunctionMappings = std::unordered_map<pool_ref<const heart::Function>, pool_ptr<heart::Function>>;
     using StructMappings   = std::unordered_map<const Structure*, StructurePtr>;
+    using VariableMappings = std::unordered_map<pool_ref<const heart::Variable>, pool_ptr<heart::Variable>>;
 
-    ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs)
-        : oldModule (source), newModule (dest), functionMappings (functions), structMappings (structs)
+    ModuleCloner (const Module& source, Module& dest, FunctionMappings& functions, StructMappings& structs, VariableMappings& vars)
+        : oldModule (source), newModule (dest), functionMappings (functions), structMappings (structs), variableMappings (vars)
     {
     }
 
@@ -65,7 +66,7 @@ struct ModuleCloner
         }
 
         for (auto& v : oldModule.stateVariables)
-            newModule.stateVariables.push_back (cloneVariable (v));
+            newModule.stateVariables.push_back (getRemappedVariable (v));
 
         for (size_t i = 0; i < oldModule.functions.size(); ++i)
             clone (newModule.functions[i], oldModule.functions[i]);
@@ -76,9 +77,9 @@ struct ModuleCloner
 
     FunctionMappings& functionMappings;
     StructMappings& structMappings;
+    VariableMappings& variableMappings;
     std::unordered_map<pool_ref<const heart::InputDeclaration>, pool_ptr<heart::InputDeclaration>> inputMappings;
     std::unordered_map<pool_ref<const heart::OutputDeclaration>, pool_ptr<heart::OutputDeclaration>> outputMappings;
-    std::unordered_map<pool_ref<const heart::Variable>, pool_ptr<heart::Variable>> variableMappings;
     std::unordered_map<pool_ref<const heart::Block>, pool_ptr<heart::Block>> blockMappings;
     std::unordered_map<pool_ref<const heart::ProcessorInstance>, pool_ptr<heart::ProcessorInstance>> processorInstanceMappings;
 

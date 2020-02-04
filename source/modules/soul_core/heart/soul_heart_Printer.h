@@ -226,7 +226,7 @@ private:
                 for (auto& v : type.variables)
                 {
                     out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << ' ';
-                    printVarWithPrefix (v->name.toString());
+                    printVarWithPrefix (v->name);
                     printDescription (v->annotation);
                     out << ';' << newLine;
                 }
@@ -270,7 +270,7 @@ private:
                         out << ", ";
 
                     out << getTypeDescription (p->type) << ' ';
-                    printVarWithPrefix (p->name.toString());
+                    printVarWithPrefix (p->name);
                 }
 
                 out << ')';
@@ -404,8 +404,7 @@ private:
                     SOUL_ASSERT_FALSE;
                 }
 
-                SOUL_ASSERT (v->name.isValid());
-                return printVarWithPrefix (v->name);
+                return printVarWithPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
             }
 
             if (auto subElement = cast<heart::SubElement> (e))
@@ -489,10 +488,10 @@ private:
         {
             SOUL_ASSERT (! name.empty());
 
-            if (name[0] != '$')
-                out << "$";
-
-            out << name;
+            if (name[0] == '$')
+                out << name;
+            else
+                out << "$" << removeCharacter (name, '$');
         }
 
         std::string getTypeDescription (const Type& type) const

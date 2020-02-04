@@ -51,6 +51,7 @@ bool endsWith (const std::string& text, const std::string& possibleEnd);
 
 std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement);
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
+std::string removeCharacter (std::string s, char charToRemove);
 
 template <typename StringArray>
 static std::string joinStrings (const StringArray& strings, const std::string& separator)

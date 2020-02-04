@@ -119,6 +119,11 @@ std::string retainCharacters (std::string s, const std::string& charactersToReta
     return s;
 }
 
+std::string removeCharacter (std::string s, char charToRemove)
+{
+    s.erase (std::remove_if (s.begin(), s.end(), [=] (char c) { return c == charToRemove; }), s.end());
+    return s;
+}
 
 template <typename IsDelimiterStart, typename IsDelimiterBody>
 std::vector<std::string> split (const std::string& text,
