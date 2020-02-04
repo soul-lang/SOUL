@@ -27,34 +27,48 @@ namespace soul
 */
 struct HEARTGenerator  : public ASTVisitor
 {
-    struct UnresolvedFunctionCall
+    static void build (ArrayView<pool_ref<AST::ModuleBase>> sourceModules,
+                       ArrayView<pool_ref<Module>> targetModules,
+                       uint32_t maxNestedExpressionDepth = 255)
     {
-        pool_ref<heart::FunctionCall> call;
-        pool_ptr<AST::Function> function;
+        for (auto& m : sourceModules)
+            SanityCheckPass::runPostResolution (m);
 
-        void resolve()   { call->function = function->getGeneratedFunction(); }
-    };
+        std::vector<HEARTGenerator> generators;
 
-    using UnresolvedFunctionCallList = std::vector<UnresolvedFunctionCall>;
+        for (size_t i = 0; i < sourceModules.size(); ++i)
+            generators.push_back ({ sourceModules[i], targetModules[i], maxNestedExpressionDepth });
 
-    //==============================================================================
-    static void run (AST::ModuleBase& source, Module& targetModule,
-                     UnresolvedFunctionCallList& unresolvedCalls,
-                     uint32_t maxNestedExpressionDepth = 255)
-    {
-        SanityCheckPass::runPostResolution (source);
-        HEARTGenerator (source, targetModule, unresolvedCalls, maxNestedExpressionDepth).visitObject (source);
+        for (size_t i = 0; i < sourceModules.size(); ++i)
+            generators[i].visitObject (sourceModules[i]);
     }
 
 private:
     using super = ASTVisitor;
 
-    HEARTGenerator (AST::ModuleBase& source, Module& targetModule,
-                    std::vector<UnresolvedFunctionCall>& unresolvedCalls, uint32_t maxDepth)
-        : module (targetModule), builder (targetModule),
-          maxExpressionDepth (maxDepth), unresolvedFunctionCalls (unresolvedCalls)
+    HEARTGenerator (AST::ModuleBase& source, Module& targetModule, uint32_t maxDepth)
+        : module (targetModule), builder (targetModule), maxExpressionDepth (maxDepth)
     {
         module.moduleName = source.getFullyQualifiedPath().toString();
+
+        if (auto fns = source.getFunctionList())
+        {
+            for (auto& f : *fns)
+            {
+                if (! f->isGeneric())
+                {
+                    auto& af = module.allocate<heart::Function>();
+                    af.name = getFunctionName (f);
+                    module.functions.push_back (af);
+                    f->generatedFunction = af;
+                }
+            }
+        }
+
+        if (auto vars = source.getStateVariableList())
+            for (auto& v : *vars)
+                if (v->isExternal)
+                    addExternalVariable (v);
     }
 
     pool_ptr<const AST::Graph> sourceGraph;
@@ -69,7 +83,6 @@ private:
     uint32_t expressionDepth = 0;
     const uint32_t maxExpressionDepth;
     pool_ptr<heart::Block> breakTarget, continueTarget;
-    UnresolvedFunctionCallList& unresolvedFunctionCalls;
 
     //==============================================================================
     Identifier convertIdentifier (Identifier i)
@@ -85,6 +98,14 @@ private:
         v.generatedVariable = av;
         av.annotation = v.annotation.toPlainAnnotation();
         return av;
+    }
+
+    heart::Variable& addExternalVariable (AST::VariableDeclaration& v)
+    {
+        SOUL_ASSERT (v.isExternal);
+        auto& hv = createVariableDeclaration (v, heart::Variable::Role::external);
+        module.stateVariables.push_back (hv);
+        return hv;
     }
 
     void addBranchIf (AST::Expression& condition, heart::Block& trueBranch,
@@ -121,6 +142,7 @@ private:
     {
         sourceProcessor = p;
         generateStructs (p.structures);
+
         module.annotation = p.annotation.toPlainAnnotation();
 
         parsingStateVariables = true;
@@ -148,13 +170,6 @@ private:
         for (auto& s : n.structures)  visitObject (s);
         for (auto& u : n.usings)      visitObject (u);
 
-        parsingStateVariables = true;
-
-        for (auto& c : n.constants)
-            if (c->isExternal)
-                visitObject (c);
-
-        parsingStateVariables = false;
         generateFunctions (n.functions);
     }
 
@@ -314,10 +329,7 @@ private:
     {
         if (! f.isGeneric())
         {
-            auto& af = module.allocate<heart::Function>();
-            af.name = getFunctionName (f);
-            module.functions.push_back (af);
-            f.generatedFunction = af;
+            auto& af = f.getGeneratedFunction();
 
             if (f.isIntrinsic())
             {
@@ -820,11 +832,7 @@ private:
 
         if (parsingStateVariables)
         {
-            if (v.isExternal)
-            {
-                module.stateVariables.push_back (createVariableDeclaration (v, heart::Variable::Role::external));
-            }
-            else
+            if (! v.isExternal)
             {
                 const auto& type = v.getType();
 
@@ -852,11 +860,10 @@ private:
 
     void createFunctionCall (const AST::FunctionCall& call, pool_ptr<heart::Variable> targetVariable)
     {
+        SOUL_ASSERT (call.targetFunction.generatedFunction != nullptr);
+
         auto& fc = module.allocate<heart::FunctionCall> (call.context.location, targetVariable,
                                                          call.targetFunction.generatedFunction);
-
-        if (call.targetFunction.generatedFunction == nullptr)
-            unresolvedFunctionCalls.push_back ({ fc, call.targetFunction });
 
         for (size_t i = 0; i < call.getNumArguments(); ++i)
         {

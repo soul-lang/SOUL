@@ -399,13 +399,9 @@ private:
                     auto nm = localVariableNames.find (*v);
 
                     if (nm != localVariableNames.end())
-                    {
-                        printVarWithPrefix (nm->second);
-                        return;
-                    }
+                        return printVarWithPrefix (nm->second);
 
-                    SOUL_ASSERT (v->name.isValid());
-                    return printVarWithPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
+                    SOUL_ASSERT_FALSE;
                 }
 
                 SOUL_ASSERT (v->name.isValid());

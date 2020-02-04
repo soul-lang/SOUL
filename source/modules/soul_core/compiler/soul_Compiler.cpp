@@ -436,19 +436,15 @@ static Module& createHEARTModule (Program& p, pool_ptr<AST::ModuleBase> module, 
 void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program& program,
                                   AST::ProcessorBase& processorToRun)
 {
-    std::vector<pool_ref<AST::ModuleBase>> modulesToCompile;
-    ASTUtilities::findAllModulesToCompile (parentNamespace, modulesToCompile);
+    std::vector<pool_ref<AST::ModuleBase>> soulModules;
+    ASTUtilities::findAllModulesToCompile (parentNamespace, soulModules);
 
-    HEARTGenerator::UnresolvedFunctionCallList unresolvedCalls;
+    std::vector<pool_ref<Module>> heartModules;
 
-    for (auto& m : modulesToCompile)
-    {
-        auto& newModule = createHEARTModule (program, m, m == processorToRun);
-        HEARTGenerator::run (m, newModule, unresolvedCalls);
-    }
+    for (auto& m : soulModules)
+        heartModules.push_back (createHEARTModule (program, m, m == processorToRun));
 
-    for (auto& c : unresolvedCalls)
-        c.resolve();
+    HEARTGenerator::build (soulModules, heartModules);
 }
 
 } // namespace soul
