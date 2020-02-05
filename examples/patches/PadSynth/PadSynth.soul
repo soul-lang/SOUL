@@ -11,28 +11,28 @@ graph PadSynth  [[main]]
     {
         event soul::midi::Message midiIn;
 
-        event float      cutoff                [[ name: "Cutoff",                min: 0,       max: 127,    init: 80,    unit: "semi",   step: 0.1   ]];
-        event float      resonance             [[ name: "Resonance",             min: 0,       max: 100,    init: 20,    unit: "%",      step: 1     ]];
-        event float      ampAttack             [[ name: "Amp Attack",            min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
-        event float      ampDecay              [[ name: "Amp Decay",             min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
-        event float      ampSustain            [[ name: "Amp Sustain",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
-        event float      ampRelease            [[ name: "Amp Release",           min: 0,       max: 100,    init: 88,    unit: "%",      step: 1     ]];
-        event float      ampSensitivity        [[ name: "Amp Sensitivity",       min: 0,       max: 100,    init: 50,    unit: "%",      step: 1     ]];
-        event float      osc1waveshape         [[ name: "Osc1 Waveshape",        min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
-        event float      osc1detuneSemitones   [[ name: "Osc1 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
-        event float      osc1detune            [[ name: "Osc1 Detune",           min: -100,    max: 100,    init: 0,     unit: "cent",   step: 1     ]];
-        event float      osc2waveshape         [[ name: "Osc2 Waveshape",        min: 0,       max: 100,    init: 1.0,   unit: "%",      step: 1     ]];
-        event float      osc2detuneSemitones   [[ name: "Osc2 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
-        event float      osc2detune            [[ name: "Osc2 Detune",           min: -100,    max: 100,    init: 1,     unit: "cent",   step: 1     ]];
-        event float      oscillatorMix         [[ name: "Osc Mix",               min: 0,       max: 100,    init: 22,    unit: "%",      step: 1     ]];
-        event float      filterAttack          [[ name: "Filter Attack",         min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
-        event float      filterDecay           [[ name: "Filter Decay",          min: 0,       max: 100,    init: 74,    unit: "%",      step: 1     ]];
-        event float      filterSustain         [[ name: "Filter Sustain",        min: 0,       max: 100,    init: 75,    unit: "%",      step: 1     ]];
-        event float      filterRelease         [[ name: "Filter Release",        min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
-        event float      filterSensitivity     [[ name: "Filter Sensitivity",    min: 0,       max: 100,    init: 25,    unit: "%",      step: 1     ]];
-        event float      filterEnvMod          [[ name: "Filter Env Mod",        min: -24,     max: 24,     init: 12,    unit: "semi",   step: 1     ]];
-        event float      filterCutoffTrack     [[ name: "Filter Cutoff Track",   min: 0,       max: 1,      init: 1,     unit: "semi",   step: 0.01  ]];
-        dryWetMixer.mix  dryWetMix             [[ name: "Dry Wet Mix",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        oscillators.cutoffParam           [[ name: "Cutoff",                min: 0,       max: 127,    init: 80,    unit: "semi",   step: 0.1   ]];
+        oscillators.resonanceParam        [[ name: "Resonance",             min: 0,       max: 100,    init: 20,    unit: "%",      step: 1     ]];
+        oscillators.ampAttack             [[ name: "Amp Attack",            min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
+        oscillators.ampDecay              [[ name: "Amp Decay",             min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
+        oscillators.ampSustain            [[ name: "Amp Sustain",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        oscillators.ampRelease            [[ name: "Amp Release",           min: 0,       max: 100,    init: 88,    unit: "%",      step: 1     ]];
+        oscillators.ampSensitivity        [[ name: "Amp Sensitivity",       min: 0,       max: 100,    init: 50,    unit: "%",      step: 1     ]];
+        oscillators.osc1waveshape         [[ name: "Osc1 Waveshape",        min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
+        oscillators.osc1detuneSemitones   [[ name: "Osc1 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
+        oscillators.osc1detune            [[ name: "Osc1 Detune",           min: -100,    max: 100,    init: 0,     unit: "cent",   step: 1     ]];
+        oscillators.osc2waveshape         [[ name: "Osc2 Waveshape",        min: 0,       max: 100,    init: 1.0,   unit: "%",      step: 1     ]];
+        oscillators.osc2detuneSemitones   [[ name: "Osc2 Detune",           min: -24,     max: 24,     init: 0,     unit: "semi",   step: 1     ]];
+        oscillators.osc2detune            [[ name: "Osc2 Detune",           min: -100,    max: 100,    init: 1,     unit: "cent",   step: 1     ]];
+        oscillators.oscillatorMix         [[ name: "Osc Mix",               min: 0,       max: 100,    init: 22,    unit: "%",      step: 1     ]];
+        oscillators.filterAttack          [[ name: "Filter Attack",         min: 0,       max: 100,    init: 80,    unit: "%",      step: 1     ]];
+        oscillators.filterDecay           [[ name: "Filter Decay",          min: 0,       max: 100,    init: 74,    unit: "%",      step: 1     ]];
+        oscillators.filterSustain         [[ name: "Filter Sustain",        min: 0,       max: 100,    init: 75,    unit: "%",      step: 1     ]];
+        oscillators.filterRelease         [[ name: "Filter Release",        min: 0,       max: 100,    init: 66,    unit: "%",      step: 1     ]];
+        oscillators.filterSensitivity     [[ name: "Filter Sensitivity",    min: 0,       max: 100,    init: 25,    unit: "%",      step: 1     ]];
+        oscillators.filterEnvMod          [[ name: "Filter Env Mod",        min: -24,     max: 24,     init: 12,    unit: "semi",   step: 1     ]];
+        oscillators.filterCutoffTrack     [[ name: "Filter Cutoff Track",   min: 0,       max: 1,      init: 1,     unit: "semi",   step: 0.01  ]];
+        dryWetMixer.mix  dryWetMix        [[ name: "Dry Wet Mix",           min: 0,       max: 100,    init: 100,   unit: "%",      step: 1     ]];
     }
 
     output stream float audioOut;
@@ -47,28 +47,6 @@ graph PadSynth  [[main]]
     connection
     {
         midiIn               -> oscillators.midiIn;
-
-        cutoff               -> oscillators.cutoffParam;
-        resonance            -> oscillators.resonanceParam;
-        ampAttack            -> oscillators.ampAttack;
-        ampDecay             -> oscillators.ampDecay;
-        ampSustain           -> oscillators.ampSustain;
-        ampRelease           -> oscillators.ampRelease;
-        ampSensitivity       -> oscillators.ampSensitivity;
-        osc1waveshape        -> oscillators.osc1waveshape;
-        osc1detuneSemitones  -> oscillators.osc1detuneSemitones;
-        osc1detune           -> oscillators.osc1detune;
-        osc2waveshape        -> oscillators.osc2waveshape;
-        osc2detuneSemitones  -> oscillators.osc2detuneSemitones;
-        osc2detune           -> oscillators.osc2detune;
-        filterAttack         -> oscillators.filterAttack;
-        filterDecay          -> oscillators.filterDecay;
-        filterSustain        -> oscillators.filterSustain;
-        filterRelease        -> oscillators.filterRelease;
-        filterSensitivity    -> oscillators.filterSensitivity;
-        oscillatorMix        -> oscillators.oscillatorMix;
-        filterEnvMod         -> oscillators.filterEnvMod;
-        filterCutoffTrack    -> oscillators.filterCutoffTrack;
 
         oscillators.audioOut -> delay.audioIn;
         delay.audioOut       -> Reverb.audioIn;
