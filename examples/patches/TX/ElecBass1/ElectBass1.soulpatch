@@ -9,6 +9,6 @@
         "manufacturer":     "soul.dev",
         "isInstrument":     true,
 
-        "source":           "ElecBass1.soul"
+        "source":           [ "ElecBass1.soul", "TX81Z.soul" ]
     }
 }
