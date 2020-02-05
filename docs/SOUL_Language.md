@@ -533,7 +533,7 @@ processor ExampleProcessor
 
 State variables are inaccessible from outside the processor instance which they belong to, and all calls within that processor instance are guaranteed to be non-interleaved so there's no danger of race conditions.
 
-#### Input/Output declarations
+#### Input/Output Endpoint declarations
 
 Processors and graphs share a syntax for declaring their inputs and outputs, collectively referred to as endpoints. Each item in the list is either marked as an `input` or `output` endpoint, along with its type and unique name, e.g.
 
@@ -594,6 +594,26 @@ The 'input' or 'output' keyword is followed by the name of its type, which may b
 A processor must have *at least one output*. Because processors can only interact with the outside world via their endpoints, a processor with no outputs would be unable to do anything useful.
 
 The endpoint declarations must be the first items that appear in the processor or graph declaration. They are then followed by all the other items such as functions, state variables, connections, etc. (These other items can be mixed up in any order).
+
+##### Exposing child endpoints
+
+Graphs can also declare endpoints which map directly only those of a child processor, e.g.
+
+```C++
+graph TopLevel
+{
+    input  child.input1;     // exposes an input stream from the 'child' processor
+    input  child.proc1.proc2.input1;  // you can expose child endpoints from sub-graph at any depth
+    output child.output1;
+    output child.output2  output3; // this exposes 'output2' and gives it the new name 'output3'
+
+    let child = SomeProcessor;
+
+    ...
+}
+```
+
+Annotations from the original child endpoints will be carried forward, and any new annotations added to the top-level declarations will be merged over them.
 
 #### Endpoint Annotations
 
