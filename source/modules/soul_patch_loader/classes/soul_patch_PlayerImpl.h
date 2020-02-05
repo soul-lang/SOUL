@@ -224,13 +224,13 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     void createBuses()
     {
         for (auto& i : performer->getInputEndpoints())
-            if (auto numChans = i->getDetails().getNumAudioChannels())
-                if (! isParameterInput (*i))
-                    inputBuses.push_back ({ makeString (i->getDetails().name), (uint32_t) numChans });
+            if (auto numChans = i.getNumAudioChannels())
+                if (! isParameterInput (i))
+                    inputBuses.push_back ({ makeString (i.name), (uint32_t) numChans });
 
         for (auto& o : performer->getOutputEndpoints())
-            if (auto numChans = o->getDetails().getNumAudioChannels())
-                outputBuses.push_back ({ makeString (o->getDetails().name), (uint32_t) numChans });
+            if (auto numChans = o.getNumAudioChannels())
+                outputBuses.push_back ({ makeString (o.name), (uint32_t) numChans });
 
         inputBusesSpan  = makeSpan (inputBuses);
         outputBusesSpan = makeSpan (outputBuses);
@@ -244,8 +244,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         for (auto& i : inputEndpoints)
         {
-            if (isParameterInput (*i))
-                parameters.push_back (Parameter::Ptr (new ParameterImpl (stringDictionary, *i, endpointProperties)));
+            if (isParameterInput (i))
+                parameters.push_back (Parameter::Ptr (new ParameterImpl (stringDictionary,
+                                                                         *performer->getInputSource (i.endpointID),
+                                                                         i, endpointProperties)));
         }
 
         parameterSpan = makeSpan (parameters);
@@ -259,8 +261,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         if (consoleHandler != nullptr)
             for (auto& outputEndpoint : performer->getOutputEndpoints())
-                if (isEvent (outputEndpoint->getDetails().kind))
-                    soul::utilities::attachConsoleOutputHandler (program, *outputEndpoint, properties,
+                if (isEvent (outputEndpoint.kind))
+                    soul::utilities::attachConsoleOutputHandler (program,
+                                                                 *performer->getOutputSink (outputEndpoint.endpointID),
+                                                                 outputEndpoint, properties,
                                                                  [consoleHandler] (uint64_t eventTime, const char* endpointName, const char* message)
                                                                  { consoleHandler->handleConsoleMessage (eventTime, endpointName, message); });
     }
@@ -308,11 +312,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     //==============================================================================
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
-        ParameterImpl (const StringDictionary& d, InputEndpoint& input, EndpointProperties endpointProperties)
+        ParameterImpl (const StringDictionary& d, InputSource& input,
+                       const EndpointDetails& details, EndpointProperties endpointProperties)
             : stringDictionary (d)
         {
-            const auto& details = input.getDetails();
-
             annotation = details.annotation;
             ID = makeString (details.name);
             name = makeString (stringDictionary.getStringForHandle (details.annotation.getStringLiteral ("name")));

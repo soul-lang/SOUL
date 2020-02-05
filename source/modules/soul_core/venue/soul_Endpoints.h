@@ -86,16 +86,13 @@ namespace callbacks
 //==============================================================================
 /**
 */
-class InputEndpoint  : public RefCountedObject
+class InputSource  : public RefCountedObject
 {
 public:
-    InputEndpoint() {}
-    virtual ~InputEndpoint() {}
+    InputSource() {}
+    virtual ~InputSource() {}
 
-    using Ptr = RefCountedPtr<InputEndpoint>;
-
-    /** Returns the basic details about this endpoint */
-    virtual const EndpointDetails& getDetails() = 0;
+    using Ptr = RefCountedPtr<InputSource>;
 
     /** If the endpoint is a value (i.e. EndpointKind::value) then this method will update its
         current value. This can be called at any time, including after the performer has been
@@ -141,16 +138,13 @@ public:
 //==============================================================================
 /**
 */
-class OutputEndpoint  : public RefCountedObject
+class OutputSink  : public RefCountedObject
 {
 public:
-    OutputEndpoint() {}
-    virtual ~OutputEndpoint() {}
+    OutputSink() {}
+    virtual ~OutputSink() {}
 
-    using Ptr = RefCountedPtr<OutputEndpoint>;
-
-    /** Returns the basic details about this endpoint */
-    virtual const EndpointDetails& getDetails() = 0;
+    using Ptr = RefCountedPtr<OutputSink>;
 
     /** If the endpoint is a value (i.e. EndpointKind::value) then this method will return its
         current value. This can be called at any time, including after the performer has been
@@ -186,22 +180,33 @@ public:
 
 
 //==============================================================================
-template <typename VenueOrPerformer>
-InputEndpoint::Ptr findFirstInputOfType (VenueOrPerformer& session, EndpointKind kind)
+template <typename ArrayType>
+const EndpointDetails& findDetailsForID (const ArrayType& endpoints, const EndpointID& endpointID)
 {
-    for (auto& i : session.getInputEndpoints())
-        if (i->getDetails().kind == kind)
-            return i;
+    for (auto& e : endpoints)
+        if (e.endpointID == endpointID)
+            return e;
+
+    SOUL_ASSERT_FALSE;
+    return endpoints.front();
+}
+
+template <typename VenueOrPerformer>
+EndpointID findFirstInputOfType (VenueOrPerformer& p, EndpointKind kind)
+{
+    for (auto& i : p.getInputEndpoints())
+        if (i.kind == kind)
+            return i.endpointID;
 
     return {};
 }
 
 template <typename VenueOrPerformer>
-OutputEndpoint::Ptr findFirstOutputOfType (VenueOrPerformer& session, EndpointKind kind)
+EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointKind kind)
 {
-    for (auto& o : session.getOutputEndpoints())
-        if (o->getDetails().kind == kind)
-            return o;
+    for (auto& o : p.getOutputEndpoints())
+        if (o.kind == kind)
+            return o.endpointID;
 
     return {};
 }
@@ -223,9 +228,6 @@ inline bool isMIDIEventEndpoint (const EndpointDetails& details)
             && isMIDIMessageStruct (details.getSingleSampleType().getStructRef());
 }
 
-inline bool isMIDIEventEndpoint (InputEndpoint& i)  { return isMIDIEventEndpoint (i.getDetails()); }
-inline bool isMIDIEventEndpoint (OutputEndpoint& o) { return isMIDIEventEndpoint (o.getDetails()); }
-
 inline bool isParameterInput (const EndpointDetails& details)
 {
     if (isEvent (details.kind) && ! isMIDIEventEndpoint (details))
@@ -238,11 +240,6 @@ inline bool isParameterInput (const EndpointDetails& details)
         return true;
 
     return false;
-}
-
-inline bool isParameterInput (InputEndpoint& input)
-{
-    return isParameterInput (input.getDetails());
 }
 
 } // namespace soul

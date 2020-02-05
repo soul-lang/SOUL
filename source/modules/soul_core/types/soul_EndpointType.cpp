@@ -33,12 +33,12 @@ EndpointProperties::EndpointProperties (double rate, uint32_t size)
     SOUL_ASSERT (blockSize != 0);
 }
 
-EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind kind_,
-                                  std::vector<Type> sampleTypes_, uint32_t stride, Annotation a)
+EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
+                                  std::vector<Type> types, uint32_t stride, Annotation a)
    : endpointID (std::move (id)),
      name (std::move (nm)),
-     kind (kind_),
-     sampleTypes (std::move (sampleTypes_)),
+     kind (k),
+     sampleTypes (std::move (types)),
      strideBytes (stride),
      annotation (std::move (a))
 {

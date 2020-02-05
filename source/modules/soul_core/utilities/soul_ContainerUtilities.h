@@ -115,9 +115,11 @@ struct ArrayView
 {
     ArrayView() = default;
     ArrayView (const ArrayView&) = default;
+    ArrayView (ArrayView&&) = default;
+    ArrayView& operator= (ArrayView&&) = default;
+    
     ArrayView (Type* start, Type* end) noexcept  : s (start), e (end) {}
-    ArrayView (Type* start, size_t length) noexcept  : ArrayView (start, start + length) {}
-    ArrayView (const Type* start, size_t length) noexcept  : ArrayView (const_cast<Type*> (start), length) {}
+    ArrayView (const Type* start, size_t length) noexcept  : ArrayView (const_cast<Type*> (start), const_cast<Type*> (start) + length) {}
 
     template <typename VectorType>
     ArrayView (const VectorType& v)  : ArrayView (v.data(), v.size()) {}
@@ -157,6 +159,22 @@ struct ArrayView
     }
 
     bool operator!= (ArrayView other) const    { return ! operator== (other); }
+
+    operator std::vector<typename std::remove_const<Type>::type>() const
+    {
+        return toVector();
+    }
+
+    std::vector<typename std::remove_const<Type>::type> toVector() const
+    {
+        std::vector<typename std::remove_const<Type>::type> v;
+        v.reserve (size());
+
+        for (auto& i : *this)
+            v.emplace_back (i);
+
+        return v;
+    }
 
 private:
     Type* s = nullptr;

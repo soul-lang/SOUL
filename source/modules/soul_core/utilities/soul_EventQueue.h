@@ -72,10 +72,10 @@ struct EventFIFO
 template <typename FIFOType>
 struct InputEventQueue
 {
-    InputEventQueue (InputEndpoint& stream, EndpointProperties endpointProperties)
+    InputEventQueue (InputSource& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
         : inputStream (stream)
     {
-        SOUL_ASSERT (isEvent (stream.getDetails().kind));
+        SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
 
         inputStream->setEventSource ([this] (uint64_t currentTime, uint32_t blockLength, callbacks::PostNextEvent postEvent)
                                      {
@@ -127,7 +127,7 @@ struct InputEventQueue
         return currentBlockSize;
     }
 
-    InputEndpoint::Ptr inputStream;
+    InputSource::Ptr inputStream;
     FIFOType fifo;
     typename FIFOType::TimeType currentBlockTime { 0 };
 };
@@ -140,10 +140,10 @@ struct InputEventQueue
 template <typename FIFOType>
 struct OutputEventQueue
 {
-    OutputEventQueue (OutputEndpoint& stream, EndpointProperties endpointProperties)
+    OutputEventQueue (OutputSink& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
         : outputStream (stream)
     {
-        SOUL_ASSERT (isEvent (stream.getDetails().kind));
+        SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
 
         outputStream->setEventSink ([this] (const soul::Type& eventType, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
                                     {
@@ -189,7 +189,7 @@ struct OutputEventQueue
         currentBlockTime = blockEndTime;
     }
 
-    OutputEndpoint::Ptr outputStream;
+    OutputSink::Ptr outputStream;
     FIFOType fifo;
     typename FIFOType::TimeType currentBlockTime { 0 };
 };

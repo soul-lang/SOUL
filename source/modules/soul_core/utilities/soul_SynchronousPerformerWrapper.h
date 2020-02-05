@@ -43,29 +43,31 @@ struct SynchronousPerformerWrapper
 
         for (auto& i : performer.getInputEndpoints())
         {
-            if (auto numChans = i->getDetails().getNumAudioChannels())
+            if (auto numChans = i.getNumAudioChannels())
             {
-                if (! isParameterInput (*i))
+                if (! isParameterInput (i))
                 {
-                    sources.push_back (std::make_unique<InputBufferSliceSource> (*i, totalNumInputChannels, numChans, properties));
+                    sources.push_back (std::make_unique<InputBufferSliceSource> (*performer.getInputSource (i.endpointID),
+                                                                                 i, totalNumInputChannels, numChans, properties));
                     totalNumInputChannels += numChans;
                 }
             }
 
-            if (isMIDIEventEndpoint (*i))
-                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (*i, properties));
+            if (isMIDIEventEndpoint (i))
+                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (*performer.getInputSource (i.endpointID), i, properties));
         }
 
         for (auto& o : performer.getOutputEndpoints())
         {
-            if (auto numChans = o->getDetails().getNumAudioChannels())
+            if (auto numChans = o.getNumAudioChannels())
             {
-                sinks.push_back (std::make_unique<OutputBufferSliceSink> (*o, totalNumOutputChannels, numChans, properties));
+                sinks.push_back (std::make_unique<OutputBufferSliceSink> (*performer.getOutputSink (o.endpointID),
+                                                                          o, totalNumOutputChannels, numChans, properties));
                 totalNumOutputChannels += numChans;
             }
 
-            if (isMIDIEventEndpoint (*o) && midiOutputQueue == nullptr)
-                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (*o, properties);
+            if (isMIDIEventEndpoint (o) && midiOutputQueue == nullptr)
+                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (*performer.getOutputSink (o.endpointID), o, properties);
         }
     }
 
@@ -122,15 +124,13 @@ struct SynchronousPerformerWrapper
 private:
     struct InputBufferSliceSource
     {
-        InputBufferSliceSource (InputEndpoint& inputToAttachTo,
+        InputBufferSliceSource (InputSource& inputToAttachTo, const EndpointDetails& details,
                                 uint32_t startChannel, uint32_t numChannels,
                                 EndpointProperties properties)
             : input (inputToAttachTo),
               sliceStartChannel (startChannel),
               sliceNumChannels (numChannels)
         {
-            auto& details = inputToAttachTo.getDetails();
-
             if (details.getSingleSampleType().isFloat64())
             {
                 inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t requestedFrames) -> uint32_t
@@ -187,7 +187,7 @@ private:
             bufferOffset = 0;
         }
 
-        const InputEndpoint::Ptr input;
+        const InputSource::Ptr input;
         const uint32_t sliceStartChannel, sliceNumChannels;
         bool isBufferAvailable = false;
         DiscreteChannelSet<const float> currentBuffer;
@@ -197,15 +197,13 @@ private:
     //==============================================================================
     struct OutputBufferSliceSink
     {
-        OutputBufferSliceSink (OutputEndpoint& outputToAttachTo,
+        OutputBufferSliceSink (OutputSink& outputToAttachTo, const EndpointDetails& details,
                                uint32_t startChannel, uint32_t numChannels,
                                EndpointProperties properties)
             : output (outputToAttachTo),
               sliceStartChannel (startChannel),
               sliceNumChannels (numChannels)
         {
-            auto& details = outputToAttachTo.getDetails();
-
             if (details.getSingleSampleType().isFloat64())
             {
                 outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t numFrames) -> uint32_t
@@ -252,7 +250,7 @@ private:
             bufferOffset = 0;
         }
 
-        const OutputEndpoint::Ptr output;
+        const OutputSink::Ptr output;
         const uint32_t sliceStartChannel, sliceNumChannels;
         bool isBufferAvailable = false;
         DiscreteChannelSet<float> currentBuffer;

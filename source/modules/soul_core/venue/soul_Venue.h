@@ -53,15 +53,27 @@ public:
         */
         virtual bool load (CompileMessageList&, const Program&) = 0;
 
-        /** Returns a list of available inputs in the currently-loaded program.
-            This can only be called after a successful load() method.
+        /** When a program has been loaded, this returns a list of the input endpoints that
+            the program provides.
         */
-        virtual std::vector<InputEndpoint::Ptr> getInputEndpoints() = 0;
+        virtual ArrayView<const EndpointDetails> getInputEndpoints() = 0;
 
-        /** Returns a list of available outputs in the currently-loaded program.
-            This can only be called after a successful load() method.
+        /** When a program has been loaded, this returns a list of the output endpoints that
+            the program provides.
         */
-        virtual std::vector<OutputEndpoint::Ptr> getOutputEndpoints() = 0;
+        virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
+
+        /** When a program has been loaded (but not yet linked), this returns
+            an object that allows user data sources to be attached to the given input.
+            Will return a nullptr if the ID is not found.
+        */
+        virtual InputSource::Ptr getInputSource (const EndpointID&) = 0;
+
+        /** When a program has been loaded (but not yet linked), this returns
+            an object that allows user data sources to be attached to the given output.
+            Will return a nullptr if the ID is not found.
+        */
+        virtual OutputSink::Ptr getOutputSink (const EndpointID&) = 0;
 
         /** When a program has been loaded and its endpoints have had suitable data
             sources attached, call link() to finish the process of preparing the program
@@ -129,8 +141,8 @@ public:
     virtual std::vector<EndpointDetails> getSourceEndpoints() = 0;
     virtual std::vector<EndpointDetails> getSinkEndpoints() = 0;
 
-    virtual bool connectSessionInputEndpoint  (Session&, soul::InputEndpoint&,  EndpointID venueSourceID) = 0;
-    virtual bool connectSessionOutputEndpoint (Session&, soul::OutputEndpoint&, EndpointID venueSinkID) = 0;
+    virtual bool connectSessionInputEndpoint  (Session&, EndpointID inputID, EndpointID venueSourceID) = 0;
+    virtual bool connectSessionOutputEndpoint (Session&, EndpointID outputID, EndpointID venueSinkID) = 0;
 };
 
 /// Create a standard threaded venue where a separate render thread renders the performer

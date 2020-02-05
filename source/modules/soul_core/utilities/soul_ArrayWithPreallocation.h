@@ -65,10 +65,13 @@ struct ArrayWithPreallocation
         }
     }
 
-    ArrayWithPreallocation (ArrayView<Item> initialItems)  : ArrayWithPreallocation()
+    template <typename ArrayType>
+    ArrayWithPreallocation (const ArrayType& initialItems)  : ArrayWithPreallocation()
     {
+        reserve (initialItems.size());
+
         for (auto& i : initialItems)
-            push_back (i);
+            emplace_back (i);
     }
 
     ArrayWithPreallocation& operator= (ArrayWithPreallocation&& other) noexcept
@@ -119,7 +122,8 @@ struct ArrayWithPreallocation
         return *this;
     }
 
-    ArrayWithPreallocation& operator= (ArrayView<Item> other)
+    template <typename ArrayType>
+    ArrayWithPreallocation& operator= (const ArrayType& other)
     {
         if (other.size() > numActive)
         {

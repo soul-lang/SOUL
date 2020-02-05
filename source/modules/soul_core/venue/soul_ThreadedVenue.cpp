@@ -39,12 +39,12 @@ struct ThreadedVenue  : public soul::Venue
     std::vector<EndpointDetails> getSourceEndpoints() override    { return {}; }
     std::vector<EndpointDetails> getSinkEndpoints() override      { return {}; }
 
-    bool connectSessionInputEndpoint (Venue::Session&, soul::InputEndpoint&, EndpointID) override
+    bool connectSessionInputEndpoint (Venue::Session&, EndpointID, EndpointID) override
     {
         return false;
     }
 
-    bool connectSessionOutputEndpoint (Venue::Session&, soul::OutputEndpoint&, EndpointID) override
+    bool connectSessionOutputEndpoint (Venue::Session&, EndpointID, EndpointID) override
     {
         return false;
     }
@@ -118,8 +118,11 @@ struct ThreadedVenue  : public soul::Venue
             }
         }
 
-        std::vector<InputEndpoint::Ptr>  getInputEndpoints() override       { return performer->getInputEndpoints(); }
-        std::vector<OutputEndpoint::Ptr> getOutputEndpoints() override      { return performer->getOutputEndpoints(); }
+        ArrayView<const EndpointDetails> getInputEndpoints() override   { return performer->getInputEndpoints(); }
+        ArrayView<const EndpointDetails> getOutputEndpoints() override  { return performer->getOutputEndpoints(); }
+
+        InputSource::Ptr getInputSource (const EndpointID& endpointID) override   { return performer->getInputSource (endpointID); }
+        OutputSink::Ptr  getOutputSink  (const EndpointID& endpointID) override   { return performer->getOutputSink (endpointID); }
 
         bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
         {

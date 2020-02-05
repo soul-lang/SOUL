@@ -56,17 +56,27 @@ public:
     /** Unloads any currently loaded program, and resets the state of the performer. */
     virtual void unload() = 0;
 
-    /** When a program has been loaded (but not necessarily linked), this returns
-        a list of the input endpoints that the program offers.
-        Before linking, a caller will typically want to attach their callbacks to
-        the
+    /** When a program has been loaded, this returns a list of the input endpoints that
+        the program provides.
     */
-    virtual std::vector<InputEndpoint::Ptr> getInputEndpoints() = 0;
+    virtual ArrayView<const EndpointDetails> getInputEndpoints() = 0;
 
-    /** When a program has been loaded (but not necessarily linked), this returns
-        a list of the output endpoints that the program offers.
+    /** When a program has been loaded, this returns a list of the output endpoints that
+        the program provides.
     */
-    virtual std::vector<OutputEndpoint::Ptr> getOutputEndpoints() = 0;
+    virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
+
+    /** When a program has been loaded (but not yet linked), this returns
+        an object that allows user data sources to be attached to the given input.
+        Will return a nullptr if the ID is not found.
+    */
+    virtual InputSource::Ptr getInputSource (const EndpointID&) = 0;
+
+    /** When a program has been loaded (but not yet linked), this returns
+        an object that allows user data sources to be attached to the given output.
+        Will return a nullptr if the ID is not found.
+    */
+    virtual OutputSink::Ptr getOutputSink (const EndpointID&) = 0;
 
     /** After loading a program, and optionally connecting up to some of its endpoints,
         link() will complete any preparations needed before the code can be executed.

@@ -65,28 +65,24 @@ public:
     std::vector<EndpointDetails> getSourceEndpoints() override    { return convertEndpointList (sourceEndpoints); }
     std::vector<EndpointDetails> getSinkEndpoints() override      { return convertEndpointList (sinkEndpoints); }
 
-    bool connectSessionInputEndpoint (Session& session,
-                                      InputEndpoint& inputEndpoint,
-                                      EndpointID venueSourceID) override
+    bool connectSessionInputEndpoint (Session& session, EndpointID inputID, EndpointID venueSourceID) override
     {
         if (audioDevice != nullptr)
             if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
                 if (auto venueEndpoint = findEndpoint (sourceEndpoints, venueSourceID))
                     return audioSession->connectInputEndpoint (venueEndpoint->audioChannelIndex,
-                                                               venueEndpoint->isMIDI, inputEndpoint);
+                                                               venueEndpoint->isMIDI, inputID);
 
         return false;
     }
 
-    bool connectSessionOutputEndpoint (Session& session,
-                                       OutputEndpoint& outputEndpoint,
-                                       EndpointID venueSinkID) override
+    bool connectSessionOutputEndpoint (Session& session, EndpointID outputID, EndpointID venueSinkID) override
     {
         if (audioDevice != nullptr)
             if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
                 if (auto venueEndpoint = findEndpoint (sinkEndpoints, venueSinkID))
                     return audioSession->connectOutputEndpoint (venueEndpoint->audioChannelIndex,
-                                                                venueEndpoint->isMIDI, outputEndpoint);
+                                                                venueEndpoint->isMIDI, outputID);
 
         return false;
     }
@@ -107,8 +103,10 @@ public:
             unload();
         }
 
-        std::vector<InputEndpoint::Ptr>  getInputEndpoints() override   { return performer->getInputEndpoints(); }
-        std::vector<OutputEndpoint::Ptr> getOutputEndpoints() override  { return performer->getOutputEndpoints(); }
+        soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() override             { return performer->getInputEndpoints(); }
+        soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() override            { return performer->getOutputEndpoints(); }
+        soul::InputSource::Ptr getInputSource (const soul::EndpointID& endpointID) override   { return performer->getInputSource (endpointID); }
+        soul::OutputSink::Ptr  getOutputSink  (const soul::EndpointID& endpointID) override   { return performer->getOutputSink (endpointID); }
 
         bool load (CompileMessageList& messageList, const Program& p) override
         {
@@ -167,8 +165,6 @@ public:
             performer->unload();
             setState (State::empty);
         }
-
-
 
         Status getStatus() override
         {
@@ -240,62 +236,68 @@ public:
             performer->advance (numSamples);
         }
 
-        bool connectInputEndpoint (uint32_t audioChannelIndex, bool isMIDI, InputEndpoint& inputEndpoint)
+        bool connectInputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID inputID)
         {
             if (currentEndpointProperties.isValid())
             {
-                auto kind = inputEndpoint.getDetails().kind;
-
-                if (isStream (kind))
+                if (auto inputSource = performer->getInputSource (inputID))
                 {
-                    if (isMIDI)
-                        return false;
+                    auto& details = findDetailsForID (performer->getInputEndpoints(), inputID);
+                    auto kind = details.kind;
 
-                    audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (inputEndpoint,
-                                                                                       audioChannelIndex,
-                                                                                       currentEndpointProperties);
-                    return true;
-                }
+                    if (isStream (kind))
+                    {
+                        if (isMIDI)
+                            return false;
 
-                if (isEvent (kind))
-                {
-                    if (! isMIDI)
-                        return false;
+                        audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (details, *inputSource,
+                                                                                           audioChannelIndex,
+                                                                                           currentEndpointProperties);
+                        return true;
+                    }
 
-                    midiEventQueue = std::make_unique<MidiEventQueueType> (inputEndpoint, currentEndpointProperties);
-                    return true;
+                    if (isEvent (kind))
+                    {
+                        if (! isMIDI)
+                            return false;
+
+                        midiEventQueue = std::make_unique<MidiEventQueueType> (*inputSource, details, currentEndpointProperties);
+                        return true;
+                    }
+
+                    return false;
                 }
             }
-            else
-            {
-                SOUL_ASSERT_FALSE;
-            }
 
+            SOUL_ASSERT_FALSE;
             return false;
         }
 
-        bool connectOutputEndpoint (uint32_t audioChannelIndex, bool isMIDI, OutputEndpoint& outputEndpoint)
+        bool connectOutputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID outputID)
         {
             if (currentEndpointProperties.isValid())
             {
-                auto kind = outputEndpoint.getDetails().kind;
-
-                if (isStream (kind))
+                if (auto outputSink = performer->getOutputSink (outputID))
                 {
-                    if (isMIDI)
-                        return false;
+                    auto& details = findDetailsForID (performer->getOutputEndpoints(), outputID);
+                    auto kind = details.kind;
 
-                    audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (outputEndpoint,
-                                                                                         audioChannelIndex,
-                                                                                         currentEndpointProperties);
-                    return true;
+                    if (isStream (kind))
+                    {
+                        if (isMIDI)
+                            return false;
+
+                        audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink,
+                                                                                             audioChannelIndex,
+                                                                                             currentEndpointProperties);
+                        return true;
+                    }
+
+                    return false;
                 }
             }
-            else
-            {
-                SOUL_ASSERT_FALSE;
-            }
 
+            SOUL_ASSERT_FALSE;
             return false;
         }
 
@@ -328,11 +330,10 @@ public:
         //==============================================================================
         struct AudioDeviceInputStream
         {
-            AudioDeviceInputStream (InputEndpoint& inputToAttachTo,
+            AudioDeviceInputStream (const EndpointDetails& details, InputSource& inputToAttachTo,
                                     uint32_t startChannel, EndpointProperties properties)
                 : input (inputToAttachTo), startChannelIndex (startChannel)
             {
-                auto& details = inputToAttachTo.getDetails();
                 auto numDestChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
                 if (details.getSingleSampleType().isFloat64())
@@ -406,7 +407,7 @@ public:
                 inputBufferOffset = 0;
             }
 
-            InputEndpoint::Ptr input;
+            InputSource::Ptr input;
             uint32_t startChannelIndex;
             bool inputBufferAvailable = false;
             DiscreteChannelSet<const float> inputChannelData;
@@ -416,11 +417,10 @@ public:
         //==============================================================================
         struct AudioDeviceOutputStream
         {
-            AudioDeviceOutputStream (OutputEndpoint& outputToAttachTo,
+            AudioDeviceOutputStream (const EndpointDetails& details, OutputSink& outputToAttachTo,
                                      uint32_t startChannel, EndpointProperties properties)
                 : output (outputToAttachTo), startChannelIndex (startChannel)
             {
-                auto& details = outputToAttachTo.getDetails();
                 auto numSrcChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
                 if (details.getSingleSampleType().isFloat64())
@@ -487,7 +487,7 @@ public:
                 outputBufferAvailable = true;
             }
 
-            OutputEndpoint::Ptr output;
+            OutputSink::Ptr output;
             uint32_t startChannelIndex;
             bool outputBufferAvailable = false;
             DiscreteChannelSet<float> outputChannelData;

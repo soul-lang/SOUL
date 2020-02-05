@@ -62,6 +62,10 @@ static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
 //==============================================================================
 using EndpointID = std::string;
 
+/**
+    Contains properties describing the unchanging characteristics of an input
+    or output endpoint.
+*/
 struct EndpointDetails
 {
     EndpointDetails() = default;
@@ -87,10 +91,14 @@ struct EndpointDetails
 };
 
 //==============================================================================
+/**
+    Holds properties which are needed when setting up an input or output endpoint
+    for use.
+*/
 struct EndpointProperties
 {
-    EndpointProperties (double rate, uint32_t size);
     EndpointProperties() = default;
+    EndpointProperties (double rate, uint32_t size);
 
     bool isValid() const        { return initialised; }
 
