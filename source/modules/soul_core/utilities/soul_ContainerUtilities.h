@@ -117,7 +117,7 @@ struct ArrayView
     ArrayView (const ArrayView&) = default;
     ArrayView (ArrayView&&) = default;
     ArrayView& operator= (ArrayView&&) = default;
-    
+
     ArrayView (Type* start, Type* end) noexcept  : s (start), e (end) {}
     ArrayView (const Type* start, size_t length) noexcept  : ArrayView (const_cast<Type*> (start), const_cast<Type*> (start) + length) {}
 
