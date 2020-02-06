@@ -163,19 +163,31 @@ inline pool_ptr<TargetType> cast (SrcType& object)
 template <typename TargetType, typename SrcType>
 inline bool is_type (pool_ptr<SrcType> object)
 {
-    return dynamic_cast<TargetType*> (object.get()) != nullptr;
+    if (object.get() == nullptr)
+        return false;
+
+    if constexpr (std::is_same<TargetType, SrcType>::value)
+        return true;
+    else
+        return dynamic_cast<TargetType*> (object.get()) != nullptr;
 }
 
 template <typename TargetType, typename SrcType>
 inline bool is_type (pool_ref<SrcType> object)
 {
-    return dynamic_cast<TargetType*> (object.getPointer()) != nullptr;
+    if constexpr (std::is_same<TargetType, SrcType>::value)
+        return true;
+    else
+        return dynamic_cast<TargetType*> (object.getPointer()) != nullptr;
 }
 
 template <typename TargetType, typename SrcType>
 inline bool is_type (SrcType& object)
 {
-    return dynamic_cast<TargetType*> (&object) != nullptr;
+    if constexpr (std::is_same<TargetType, SrcType>::value)
+        return true;
+    else
+        return dynamic_cast<TargetType*> (&object) != nullptr;
 }
 
 //==============================================================================
