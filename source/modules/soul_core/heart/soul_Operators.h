@@ -88,25 +88,26 @@ namespace UnaryOp
 
     inline bool apply (Value& value, Op op)
     {
-        if (op == Op::negate && value.canNegate())
+        if (! isTypeSuitable (op, value.getType()))
+            return false;
+
+        if (op == Op::negate)
         {
             value = value.negated();
-            return true;
         }
-
-        if (op == Op::bitwiseNot && value.getType().isInteger())
+        else if (op == Op::bitwiseNot)
         {
-            value = Value (~value.getAsInt64());
-            return true;
+            if (value.getType().isInteger32())
+                value = Value::createInt32 (~value.getAsInt32());
+            else
+                value = Value::createInt64 (~value.getAsInt64());
         }
-
-        if (op == Op::logicalNot)
+        else if (op == Op::logicalNot)
         {
             value = Value (value.getAsDouble() == 0);
-            return true;
         }
 
-        return false;
+        return true;
     }
 }
 

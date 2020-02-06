@@ -173,7 +173,7 @@ private:
             ++input;
             auto tok = parseNumericLiteral (true);
 
-            if (tok == Token::literalInt32)
+            if (tok == Token::literalInt32 || tok == Token::literalInt64)
                 literalIntValue = -literalIntValue;
             else
                 literalDoubleValue = -literalDoubleValue;
