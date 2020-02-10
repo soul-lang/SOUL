@@ -2,23 +2,23 @@
 
 SOUL is short for __SOU__*nd* __L__*anguage*.
 
-Its mission is to give audio development a long-overdue kick in the pants, both in terms of how we write audio code, and where the code executes.
-
-The SOUL platform is a language and an API. The language is a small, carefully crafted DSL for writing the real-time parts of an audio algorithm. The API is designed to deploy that SOUL code to heterogeneous CPUs and DSPs, both locally and remotely.
+It's a platform for writing and running audio code, consisting of two elements: a **language** and a **runtime**. 
+- The SOUL _language_ is a small, carefully crafted DSL for writing real-time DSP code. Its design goals are to be fast, secure, safe, and simple for even beginners to learn.
+- The SOUL _runtime_ is a collection of tools and technologies for running SOUL code with very high efficiency, on heterogeneous CPUs and DSPs, both locally and remotely.
 
 ### What problems does it solve?
 
-Audio coding has a steep learning curve for beginners, is laborious and error-prone for experts, and we run most of our audio code on hardware that's poorly-suited to the task.
+Audio coding has a steep learning curve for beginners. Even for experts, it's laborious and error-prone. And we run most of our audio code on general-purpose systems that aren't really designed for the demands of an audio work-load.
 
 - **CPUs are a bad place to run audio code** - To get good latency, a processor needs to wake up hundreds of times per second to render small chunks of audio data. These wake-ups require extremely precise timing, and mustn't be interrupted by other tasks. Non-realtime operating systems aren't designed for this kind of scheduling, and modern power-throttling and asymmetrical-core CPU architectures make it tough to achieve the kind of long-term stability needed.
 
 - **Domain-specific Architectures (DSAs) are the future** - The Moore's-Law party is over and the semiconductor industry is turning to DSAs for future performance and power gains. This trend involves finding workloads that can be moved off CPUs and onto special-purpose processors - graphics, machine learning and other areas of computing have already been transformed in this way, and it's time for audio to follow the same path.
 
-- **Current tools for audio coding are complex and non-portable** - The standard way to write high-performance audio code involves C/C++, which is a big barrier to the vast majority of developers. It's also a dangerous language for beginners to play with, and since most audio enthusiasts are more interested in writing DSP algorithms than spending time learning to write safe C++, it's no surprise that the audio industry is rife with buggy software.
+- **Current tools for audio coding are complex and non-portable** - The standard way to write high-performance audio code involves C/C++, which is a big barrier to the vast majority of developers. As well as being difficult, it's also a dangerous language with many pitfalls for beginners, requiring years of effort to gain the skills needed to write it safely and securely. Most audio developers are more interested in DSP mathematics and algorithms than in honing their C++ skills, so it's no surprise that the audio industry is awash with buggy software.
 
 ### Surely the world doesn't need another programming language?
 
-Don't panic! SOUL isn't trying to replace any existing languages. It's a *domain-specific* embedded language for writing just the realtime code in an audio app or plugin.
+SOUL isn't trying to replace any existing languages. It's a *domain-specific* embedded language for writing just the realtime code in an audio app or plugin.
 
 The goals of the project require a language because:
 
@@ -52,7 +52,7 @@ Sadly, no existing language fitted the bill, so we created one!
 
 ### Who is the target audience?
 
-We're aiming for SOUL to be valuable to audio developers at all levels - from absolute beginners (for whom the dramatically simpler syntax, API and browser-based dev tools will be helpful) to veteran audio professionals (who will appreciate its promise of lower latency, faster development and deployment to emerging accelerated hardware).
+We expect SOUL to be valuable to audio developers at all levels - from absolute beginners (for whom the dramatically simpler syntax, API and browser-based dev tools will be helpful) to veteran audio professionals (who will appreciate its promise of lower latency, faster development and deployment to emerging accelerated hardware).
 
 ### What does the code look like?
 
@@ -83,13 +83,13 @@ processor MinimalGainExample
             audioOut << audioIn * gain;  // Read the next input sample, multiply by our
                                          // constant, and write it to our output
 
-            advance();    // Moves all our streams forward by one 'tick'
+            advance();    // Moves all our streams forward by one frame
         }
     }
 }
 ```
 
-You write a `processor` as if it's a thread. It has a `run()` function which will usually contain an infinite loop, inside which you read from your inputs and write to your outputs, doing whatever operations are needed on the values involved. Each time round the loop you call `advance()` to move all the streams forward by a fixed time interval. State can be stored in local or processor scoped variables (think of these as class members). You can create helper functions and structs just like you'd expect to. All of these things can go into namespaces to make library code easy to manage.
+You write a `processor` as if it's a thread. It has a `run()` function which will usually contain an infinite loop, inside which you read from your inputs and write to your outputs, doing whatever operations are needed on the values involved. Each time round the loop you call `advance()` to move all the streams forward by a fixed time interval. State can be stored in local variables, or processor-scoped variables (think of these as class members). You can create helper functions and structs just like you'd expect to. All of these things can go into namespaces to make library code easy to manage.
 
 A `graph` is equally straightforward - it also declares some inputs and outputs, a list of processors/sub-graphs, and a list of connections to show where the data goes.
 
@@ -118,29 +118,33 @@ graph PlayTwoSineWaves
 }
 ```
 
-Your host program passes all this SOUL code into the API, which compiles and links it together (and converts it into an internal low-level language called HEART), ready for running on a device. The API contains a range of features for finding an available device to use, and for controlling and streaming data to and from the running program.
+Your host program passes all this SOUL code into the API, which compiles and links it (converting it into an internal low-level language called HEART), ready for running on a device. The API contains a range of features for finding an available device to use, and for controlling and streaming data to and from the running program.
+
+To learn more about the language syntax, see the [language guide](./SOUL_Language.md).
 
 ### APIs
 
-So far we're offering two different styles of API that developers can use to add SOUL code to their apps:
+To write an app which can load and run SOUL code, there are two levels of API:
 
 #### SOUL Patches
 
 The SOUL patch format is described in detail [here](./SOUL_Patch_Format.md).
 
-Its purpose is to provide a high-level audio-plugin-like format for SOUL programs. This is the format that's most appropriate for enabling DAWs and other plugin hosts to add SOUL support alongside formats like VST, AU, etc. It provides audio in/out, MIDI in/out and parameter.
+This is a high-level audio-plugin-like format for writing SOUL that can be loaded into a host like a DAW. It is designed to be fairly similar in structure to formats like VST/AU/AAX so that it could be supported alongside them in a typical DAW without it being too disruptive. 
+
+A SOUL patch can declare a set of audio and MIDI i/o channels, and parameter controls. The format also contains a convention for patches to follow if they want to provide GUI code for a host to show (not written in SOUL!)
 
 #### SOUL Low-level API
 
-The most flexible system for compiling and running SOUL code will be via a C/C++ API (and via other languages which can wrap this API).
+Patches are a high-level abstraction with a limited interface, but we will also allow access to the lower-level API for compiling and running SOUL, which can be used in a much more flexible way.
 
-The main concepts involved in this API are "SOUL Venues" and "SOUL Performers".
+The main concepts involved in this API are **Performers** and **Venues**.
 
-- A *Performer* is an implementation of a JIT compiler which can be given a SOUL program and asked to render blocks of data.
+- A *Performer* is an implementation of a JIT compiler which can be given a SOUL program and asked to synchronously render blocks of data.
 
-- A *Venue* is an independant device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely.
+- A *Venue* is an independant device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely and asynchronously.
 
-A developer can build a SOUL host which either compiles and runs SOUL synchronously inside its own process using a *performer*, or dispatch the code to run remotely (and at low latency) in a suitable *venue*. Either way, using these APIs means that the programs are not limited to simple audio/MIDI i/o like the SOUL Patch format, and can do more versatile routing.
+A developer can build a SOUL host which either compiles and runs SOUL synchronously inside its own process using a *performer*, or which dispatches the code to run remotely (and at low latency) in a suitable *venue*. Either way, using these APIs means that the programs are not limited to simple audio/MIDI i/o like the SOUL Patch format, and can have input and output channels containing any kind of data stream.
 
 #### Code-generation tools
 
@@ -150,8 +154,8 @@ The SOUL command-line tools will provide various conversion utilities for transl
 
 For end-users, we expect to see several environments in which they can write and test SOUL:
 
-- In a browser playground: at [soul.dev](https://soul.dev/lab), where the code is compiled and run in the browser as WASM/Web-audio
-- In a DAW which supports SOUL patches, such as Tracktion Waveform
+- In a browser playground: at [soul.dev](https://soul.dev/lab), where the code is compiled and run in a browser as WASM/Web-audio.
+- In a DAW which supports SOUL patches, such as Tracktion Waveform (v10 or later)
 - Running the SOUL command-line tool to compile and play a particular file or patch
 
 Most of these environments support live-reloading of the code when it is modified and re-saved in a text editor.
