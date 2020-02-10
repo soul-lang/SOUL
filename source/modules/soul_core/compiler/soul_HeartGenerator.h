@@ -837,7 +837,7 @@ private:
                 const auto& type = v.getType();
 
                 // Skip writing constant or unwritten-to variables to the state
-                if (! (type.isConst() || (v.numWrites == 0 && (type.isPrimitive() || type.isBoundedInt()))))
+                if (! (v.numWrites == 0 && (type.isPrimitive() || type.isBoundedInt())))
                     module.stateVariables.push_back (createVariableDeclaration (v, heart::Variable::Role::state));
             }
         }
