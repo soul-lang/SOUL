@@ -638,20 +638,20 @@ private:
         return builder.createCastIfNeeded (resolved, targetType);
     }
 
-    heart::SubElement& createStructSubElement (AST::StructMemberRef& member, heart::Expression& source)
+    heart::StructElement& createStructSubElement (AST::StructMemberRef& member, heart::Expression& source)
     {
         SOUL_ASSERT (member.index < getStructType (member).getStructRef().members.size());
-        return builder.createFixedSubElement (source, member.index);
+        return builder.createStructElement (source, member.index);
     }
 
-    heart::SubElement& createArraySubElement (AST::ArrayElementRef& subscript, heart::Expression& source)
+    heart::ArrayElement& createArraySubElement (AST::ArrayElementRef& subscript, heart::Expression& source)
     {
         auto arrayOrVectorType = getArrayOrVectorType (subscript);
 
         if (arrayOrVectorType.isUnsizedArray() && subscript.isSlice)
             subscript.context.throwError (Errors::notYetImplemented ("Slices of dynamic arrays"));
 
-        auto& result = builder.module.allocate<heart::SubElement> (subscript.context.location, source);
+        auto& result = builder.module.allocate<heart::ArrayElement> (subscript.context.location, source);
         result.suppressWrapWarning = subscript.suppressWrapWarning;
 
         if (subscript.isSlice)
@@ -913,18 +913,21 @@ private:
         const auto& targetType = target.getType();
         SOUL_ASSERT (targetType.isFixedSizeAggregate());
         SanityCheckPass::throwErrorIfWrongNumberOfElements (errorLocation, targetType, list.size());
+        bool isStruct = target.getType().isStruct();
 
         builder.addZeroAssignment (target);
 
         for (size_t i = 0; i < list.size(); ++i)
         {
-            auto& v = list[i].get();
+            auto& sourceValue = list[i].get();
 
-            if (auto constElement = v.getAsConstant())
+            if (auto constElement = sourceValue.getAsConstant())
                 if (constElement->value.isZero()) // no need to assign to elements which are zero
                     continue;
 
-            createAssignment (builder.createFixedSubElement (target, i), v);
+            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, i)
+                                       : (heart::Expression&) builder.createFixedArrayElement (target, i),
+                              sourceValue);
         }
     }
 
@@ -971,7 +974,7 @@ private:
 
             if (currentTargetVariable != nullptr)
                 builder.addCastOrAssignment (*currentTargetVariable,
-                                             builder.createSubElementSlice (a.context.location,
+                                             builder.createFixedArraySlice (a.context.location,
                                                                             source, sliceRange.start, sliceRange.end));
             return;
         }
@@ -990,7 +993,7 @@ private:
         auto& source = evaluateAsExpression (a.object, structType);
 
         if (currentTargetVariable != nullptr)
-            builder.addCastOrAssignment (*currentTargetVariable, builder.createFixedSubElement (source, a.index));
+            builder.addCastOrAssignment (*currentTargetVariable, builder.createStructElement (source, a.index));
     }
 
     void visit (AST::PreOrPostIncOrDec& p) override

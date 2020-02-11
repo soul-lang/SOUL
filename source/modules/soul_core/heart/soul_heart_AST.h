@@ -35,7 +35,8 @@ struct heart
         X(Block) \
         X(Expression) \
         X(Variable) \
-        X(SubElement) \
+        X(ArrayElement) \
+        X(StructElement) \
         X(Constant) \
         X(TypeCast) \
         X(UnaryOperator) \
@@ -377,13 +378,13 @@ struct heart
     };
 
     //==============================================================================
-    struct SubElement  : public Expression
+    struct ArrayElement  : public Expression
     {
-        SubElement() = delete;
-        SubElement (CodeLocation l, Expression& v) : Expression (std::move (l)), parent (v) {}
-        SubElement (CodeLocation l, Expression& v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) {}
-        SubElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) {}
-        SubElement (CodeLocation l, Expression& v, Expression& elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) {}
+        ArrayElement() = delete;
+        ArrayElement (CodeLocation l, Expression& v) : Expression (std::move (l)), parent (v) { SOUL_ASSERT (! v.getType().isStruct()); }
+        ArrayElement (CodeLocation l, Expression& v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) { SOUL_ASSERT (! v.getType().isStruct()); }
+        ArrayElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) { SOUL_ASSERT (! v.getType().isStruct()); }
+        ArrayElement (CodeLocation l, Expression& v, Expression& elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) { SOUL_ASSERT (! v.getType().isStruct()); }
 
         pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
         bool isMutable() const override                 { return parent->isMutable(); }
@@ -393,14 +394,6 @@ struct heart
         const Type& getType() const override
         {
             const auto& aggregateType = parent->getType();
-
-            if (aggregateType.isStruct())
-            {
-                SOUL_ASSERT (! isDynamic());
-                SOUL_ASSERT (isSingleElement());
-                return aggregateType.getStructRef().members[fixedStartIndex].type;
-            }
-
             auto sliceSize = getSliceSize();
 
             if (sliceSize == 1)
@@ -409,14 +402,15 @@ struct heart
                     temporaryType = aggregateType;
                 else
                     temporaryType = aggregateType.getElementType();
+            }
+            else
+            {
+                SOUL_ASSERT (aggregateType.isArray() || aggregateType.isVector());
+                SOUL_ASSERT (aggregateType.isUnsizedArray() || aggregateType.isValidArrayOrVectorRange (fixedStartIndex, fixedEndIndex));
 
-                return temporaryType;
+                temporaryType = aggregateType.createCopyWithNewArraySize (sliceSize);
             }
 
-            SOUL_ASSERT (aggregateType.isArray() || aggregateType.isVector());
-            SOUL_ASSERT (aggregateType.isUnsizedArray() || aggregateType.isValidArrayOrVectorRange (fixedStartIndex, fixedEndIndex));
-
-            temporaryType = aggregateType.createCopyWithNewArraySize (sliceSize);
             return temporaryType;
         }
 
@@ -497,6 +491,48 @@ struct heart
     private:
         mutable Type temporaryType; // used for holding a temp copy of the value returned from getType(), to avoid that method needing to return
                                     // by-value, which would impact performance of all the other classes that call it
+    };
+
+    //==============================================================================
+    struct StructElement  : public Expression
+    {
+        StructElement() = delete;
+        StructElement (CodeLocation l, Expression& v, size_t index)
+            : Expression (std::move (l)), parent (v), memberIndex (index) { SOUL_ASSERT (v.getType().isStruct()); }
+
+        pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
+        bool isMutable() const override                 { return parent->isMutable(); }
+        bool isAssignable() const override              { return parent->isAssignable(); }
+
+        const Type& getType() const override
+        {
+            const auto& aggregateType = parent->getType();
+            SOUL_ASSERT (aggregateType.isStruct());
+            return aggregateType.getStructRef().members[memberIndex].type;
+        }
+
+        void visitExpressions (ExpressionVisitorFn fn, AccessType mode) override
+        {
+            parent->visitExpressions (fn, mode);
+            fn (parent, mode);
+            SOUL_ASSERT (parent != *this);
+        }
+
+        bool readsVariable (Variable& v) const override    { return parent->readsVariable (v); }
+        bool writesVariable (Variable& v) const override   { return parent->writesVariable (v); }
+
+        Value getAsConstant() const override
+        {
+            auto parentValue = parent->getAsConstant();
+
+            if (parentValue.isValid())
+                return parentValue.getSubElement (memberIndex);
+
+            return {};
+        }
+
+        pool_ref<Expression> parent;
+        size_t memberIndex;
     };
 
     //==============================================================================

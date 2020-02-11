@@ -90,37 +90,42 @@ struct BlockBuilder
         return v;
     }
 
-    heart::SubElement& createFixedSubElement (heart::Expression& parent, const SubElementPath& path)
+    heart::StructElement& createStructElement (heart::Expression& parent, size_t memberIndex)
+    {
+        return module.allocate<heart::StructElement> (parent.location, parent, memberIndex);
+    }
+
+    heart::ArrayElement& createFixedArrayElement (heart::Expression& parent, const SubElementPath& path)
     {
         auto indexes = path.getPath();
         SOUL_ASSERT (! indexes.empty());
 
         auto i = indexes.begin();
-        pool_ref<heart::SubElement> result (module.allocate<heart::SubElement> (parent.location, parent, *i++));
+        pool_ref<heart::ArrayElement> result (module.allocate<heart::ArrayElement> (parent.location, parent, *i++));
 
         while (i != indexes.end())
-            result = module.allocate<heart::SubElement> (result->location, result, *i++);
+            result = module.allocate<heart::ArrayElement> (result->location, result, *i++);
 
         return result;
     }
 
-    heart::SubElement& createSubElementSlice (CodeLocation l, heart::Expression& parent, size_t start, size_t end)
+    heart::ArrayElement& createFixedArraySlice (CodeLocation l, heart::Expression& parent, size_t start, size_t end)
     {
         if (end == start + 1)
-            return createFixedSubElement (parent, start);
+            return createFixedArrayElement (parent, start);
 
-        return module.allocate<heart::SubElement> (std::move (l), parent, start, end);
+        return module.allocate<heart::ArrayElement> (std::move (l), parent, start, end);
     }
 
-    heart::SubElement& createTrustedDynamicSubElement (heart::Expression& parent, heart::Expression& index)
+    heart::ArrayElement& createTrustedDynamicSubElement (heart::Expression& parent, heart::Expression& index)
     {
         return createDynamicSubElement ({}, parent, index, true, false);
     }
 
-    heart::SubElement& createDynamicSubElement (CodeLocation l, heart::Expression& parent, heart::Expression& index,
-                                                bool isTrusted, bool suppressWrapWarning)
+    heart::ArrayElement& createDynamicSubElement (CodeLocation l, heart::Expression& parent, heart::Expression& index,
+                                                  bool isTrusted, bool suppressWrapWarning)
     {
-        auto& s = module.allocate<heart::SubElement> (std::move (l), parent, index);
+        auto& s = module.allocate<heart::ArrayElement> (std::move (l), parent, index);
         s.isRangeTrusted = isTrusted;
         s.suppressWrapWarning = suppressWrapWarning;
         return s;

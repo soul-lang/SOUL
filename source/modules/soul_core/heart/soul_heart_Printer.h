@@ -407,31 +407,32 @@ private:
                 return printVarWithPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
             }
 
-            if (auto subElement = cast<heart::SubElement> (e))
+            if (auto arrayElement = cast<heart::ArrayElement> (e))
             {
-                printExpression (subElement->parent);
+                printExpression (arrayElement->parent);
 
-                if (subElement->dynamicIndex != nullptr)
+                if (arrayElement->dynamicIndex != nullptr)
                 {
                     out << '[';
-                    printExpression (*subElement->dynamicIndex);
+                    printExpression (*arrayElement->dynamicIndex);
                     out << ']';
                     return;
                 }
 
-                if (subElement->parent->getType().isStruct())
+                if (arrayElement->isSingleElement())
                 {
-                    out << "." << subElement->parent->getType().getStructRef().members[subElement->fixedStartIndex].name;
+                    out << '[' << arrayElement->fixedStartIndex << ']';
                     return;
                 }
 
-                if (subElement->isSingleElement())
-                {
-                    out << '[' << subElement->fixedStartIndex << ']';
-                    return;
-                }
+                out << '[' << arrayElement->fixedStartIndex << ":" << arrayElement->fixedEndIndex << ']';
+                return;
+            }
 
-                out << '[' << subElement->fixedStartIndex << ":" << subElement->fixedEndIndex << ']';
+            if (auto structElement = cast<heart::StructElement> (e))
+            {
+                printExpression (structElement->parent);
+                out << "." << structElement->parent->getType().getStructRef().members[structElement->memberIndex].name;
                 return;
             }
 

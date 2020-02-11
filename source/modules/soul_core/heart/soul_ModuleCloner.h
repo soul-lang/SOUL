@@ -122,8 +122,11 @@ struct ModuleCloner
         if (auto v = cast<heart::Variable> (old))
             return getRemappedVariable (*v);
 
-        if (auto s = cast<heart::SubElement> (old))
-            return cloneSubElement (*s);
+        if (auto a = cast<heart::ArrayElement> (old))
+            return cloneArrayElement (*a);
+
+        if (auto s = cast<heart::StructElement> (old))
+            return cloneStructElement (*s);
 
         auto pp = cast<heart::ProcessorProperty> (old);
         SOUL_ASSERT (pp != nullptr);
@@ -273,17 +276,24 @@ struct ModuleCloner
         return v;
     }
 
-    heart::SubElement& cloneSubElement (const heart::SubElement& old)
+    heart::ArrayElement& cloneArrayElement (const heart::ArrayElement& old)
     {
-        auto& s = newModule.allocate<heart::SubElement> (old.location,
-                                                         getRemappedExpressionRef (old.parent),
-                                                         old.fixedStartIndex,
-                                                         old.fixedEndIndex);
+        auto& s = newModule.allocate<heart::ArrayElement> (old.location,
+                                                           getRemappedExpressionRef (old.parent),
+                                                           old.fixedStartIndex,
+                                                           old.fixedEndIndex);
 
         s.dynamicIndex = getRemappedExpression (old.dynamicIndex);
         s.suppressWrapWarning = old.suppressWrapWarning;
         s.isRangeTrusted = old.isRangeTrusted;
         return s;
+    }
+
+    heart::StructElement& cloneStructElement (const heart::StructElement& old)
+    {
+        return newModule.allocate<heart::StructElement> (old.location,
+                                                         getRemappedExpressionRef (old.parent),
+                                                         old.memberIndex);
     }
 
     StructurePtr createStructPlaceholder (const Structure& old)

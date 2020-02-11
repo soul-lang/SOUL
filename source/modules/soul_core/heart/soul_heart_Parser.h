@@ -1012,7 +1012,7 @@ private:
         if (! lhs.getType().isValidArrayOrVectorRange (start, end))
             throwError (Errors::illegalSliceSize());
 
-        auto& s = module->allocate<heart::SubElement> (location, lhs, (size_t) start, (size_t) end);
+        auto& s = module->allocate<heart::ArrayElement> (location, lhs, (size_t) start, (size_t) end);
         return parseVariableSuffixes (state, s);
     }
 
@@ -1029,7 +1029,7 @@ private:
 
             for (size_t i = 0; i < structure.members.size(); ++i)
                 if (structure.members[i].name == member)
-                    return parseVariableSuffixes (state, module->allocate<heart::SubElement> (location, lhs, i));
+                    return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, i));
 
             throwError (Errors::unknownMemberInStruct (member, structure.name));
         }
@@ -1073,10 +1073,10 @@ private:
                 throwError (Errors::nonIntegerArrayIndex());
 
             if (matchAndReplaceIf (Operator::closeDoubleBracket, Operator::closeBracket))
-                return parseVariableSuffixes (state, module->allocate<heart::SubElement> (location, lhs, startIndex));
+                return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
 
             expect (HEARTOperator::closeBracket);
-            return parseVariableSuffixes (state, module->allocate<heart::SubElement> (location, lhs, startIndex));
+            return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
         }
 
         return lhs;
