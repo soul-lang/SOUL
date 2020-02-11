@@ -90,9 +90,9 @@ struct BlockBuilder
         return v;
     }
 
-    heart::StructElement& createStructElement (heart::Expression& parent, size_t memberIndex)
+    heart::StructElement& createStructElement (heart::Expression& parent, std::string memberName)
     {
-        return module.allocate<heart::StructElement> (parent.location, parent, memberIndex);
+        return module.allocate<heart::StructElement> (parent.location, parent, std::move (memberName));
     }
 
     heart::ArrayElement& createFixedArrayElement (heart::Expression& parent, size_t index)

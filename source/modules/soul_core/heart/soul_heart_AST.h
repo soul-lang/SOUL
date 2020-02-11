@@ -506,19 +506,17 @@ struct heart
     struct StructElement  : public Expression
     {
         StructElement() = delete;
-        StructElement (CodeLocation l, Expression& v, size_t index)
-            : Expression (std::move (l)), parent (v), memberIndex (index) { SOUL_ASSERT (v.getType().isStruct()); }
+
+        StructElement (CodeLocation l, Expression& v, std::string member)
+           : Expression (std::move (l)), parent (v), memberName (std::move (member))
+        {
+            SOUL_ASSERT (v.getType().isStruct() && v.getType().getStructRef().hasMemberWithName (memberName));
+        }
 
         pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
         bool isMutable() const override                 { return parent->isMutable(); }
         bool isAssignable() const override              { return parent->isAssignable(); }
-
-        const Type& getType() const override
-        {
-            const auto& aggregateType = parent->getType();
-            SOUL_ASSERT (aggregateType.isStruct());
-            return aggregateType.getStructRef().members[memberIndex].type;
-        }
+        const Type& getType() const override            { return parent->getType().getStructRef().getMemberWithName (memberName).type; }
 
         void visitExpressions (ExpressionVisitorFn fn, AccessType mode) override
         {
@@ -535,13 +533,18 @@ struct heart
             auto parentValue = parent->getAsConstant();
 
             if (parentValue.isValid())
-                return parentValue.getSubElement (memberIndex);
+                return parentValue.getSubElement (getMemberIndex());
 
             return {};
         }
 
+        size_t getMemberIndex() const
+        {
+            return parent->getType().getStructRef().getMemberIndex (memberName);
+        }
+
         pool_ref<Expression> parent;
-        size_t memberIndex;
+        std::string memberName;
     };
 
     //==============================================================================

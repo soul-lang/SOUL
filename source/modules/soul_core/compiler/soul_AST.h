@@ -2262,25 +2262,20 @@ struct AST
     //==============================================================================
     struct StructMemberRef  : public Expression
     {
-        StructMemberRef (const Context& c, Expression& o, StructurePtr s, size_t memberIndex)
+        StructMemberRef (const Context& c, Expression& o, StructurePtr s, std::string member)
             : Expression (ObjectType::StructMemberRef, c, ExpressionKind::value),
-              object (o), structure (s), index (memberIndex)
+              object (o), structure (s), memberName (std::move (member))
         {
             SOUL_ASSERT (isPossiblyValue (object.get()) && structure != nullptr);
         }
 
         bool isResolved() const override        { return object->isResolved(); }
         bool isAssignable() const override      { return object->isAssignable(); }
-
-        Type getResultType() const override
-        {
-            SOUL_ASSERT (index < structure->members.size());
-            return structure->members[index].type;
-        }
+        Type getResultType() const override     { return structure->getMemberWithName (memberName).type; }
 
         pool_ref<Expression> object;
         StructurePtr structure;
-        size_t index;
+        std::string memberName;
     };
 
     //==============================================================================

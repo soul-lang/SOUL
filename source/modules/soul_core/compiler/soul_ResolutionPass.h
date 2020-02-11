@@ -539,12 +539,8 @@ private:
             if (AST::isResolvedAsType (d.lhs.get()))
             {
                 if (d.rhs.path.isUnqualified())
-                {
-                    auto lhsType = d.lhs->resolveAsType();
-
                     if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
                         return *metaFunction;
-                }
             }
             else if (AST::isResolvedAsValue (d.lhs.get()))
             {
@@ -553,13 +549,13 @@ private:
                 if (lhsType.isStruct())
                 {
                     auto& s = lhsType.getStructRef();
+                    auto name = d.rhs.path.toString();
 
-                    for (size_t i = 0; i < s.members.size(); ++i)
-                        if (d.rhs.path.isUnqualifiedName (s.members[i].name))
-                            return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, i);
+                    if (s.hasMemberWithName (name))
+                        return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, std::move (name));
 
                     if (! ignoreErrors)
-                        d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), s.name));
+                        d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), name));
                 }
 
                 if (d.rhs.path.isUnqualified())

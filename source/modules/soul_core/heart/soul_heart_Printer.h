@@ -432,7 +432,7 @@ private:
             if (auto structElement = cast<heart::StructElement> (e))
             {
                 printExpression (structElement->parent);
-                out << "." << structElement->parent->getType().getStructRef().members[structElement->memberIndex].name;
+                out << "." << structElement->memberName;
                 return;
             }
 

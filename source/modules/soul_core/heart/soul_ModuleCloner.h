@@ -293,7 +293,7 @@ struct ModuleCloner
     {
         return newModule.allocate<heart::StructElement> (old.location,
                                                          getRemappedExpressionRef (old.parent),
-                                                         old.memberIndex);
+                                                         old.memberName);
     }
 
     StructurePtr createStructPlaceholder (const Structure& old)

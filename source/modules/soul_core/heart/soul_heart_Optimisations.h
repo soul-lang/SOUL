@@ -722,7 +722,7 @@ private:
         {
             return module.allocate<heart::StructElement> (old.location,
                                                           getRemappedExpressionRef (old.parent),
-                                                          old.memberIndex);
+                                                          old.memberName);
         }
 
         Module& module;

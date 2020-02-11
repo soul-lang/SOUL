@@ -640,8 +640,7 @@ private:
 
     heart::StructElement& createStructSubElement (AST::StructMemberRef& member, heart::Expression& source)
     {
-        SOUL_ASSERT (member.index < getStructType (member).getStructRef().members.size());
-        return builder.createStructElement (source, member.index);
+        return builder.createStructElement (source, member.memberName);
     }
 
     heart::ArrayElement& createArraySubElement (AST::ArrayElementRef& subscript, heart::Expression& source)
@@ -923,7 +922,7 @@ private:
                 if (constElement->value.isZero()) // no need to assign to elements which are zero
                     continue;
 
-            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, i)
+            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, target.getType().getStructRef().members[i].name)
                                        : (heart::Expression&) builder.createFixedArrayElement (target, i),
                               sourceValue);
         }
@@ -991,7 +990,7 @@ private:
         auto& source = evaluateAsExpression (a.object, structType);
 
         if (currentTargetVariable != nullptr)
-            builder.addCastOrAssignment (*currentTargetVariable, builder.createStructElement (source, a.index));
+            builder.addCastOrAssignment (*currentTargetVariable, builder.createStructElement (source, a.memberName));
     }
 
     void visit (AST::PreOrPostIncOrDec& p) override

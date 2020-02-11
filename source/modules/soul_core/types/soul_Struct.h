@@ -51,10 +51,12 @@ public:
 
     bool activeUseFlag = false;
 
-    size_t addMember (Type, std::string memberName);
-    bool hasMemberWithName (const std::string& memberName) const;
-    size_t getMemberIndex (const std::string& memberName) const;
-    size_t addMemberWithUniqueName (Type, const std::string& memberName);
+    const Member& getMemberWithName (std::string_view memberName) const;
+    bool hasMemberWithName (std::string_view memberName) const;
+    size_t getMemberIndex (std::string_view memberName) const;
+
+    void addMember (Type, std::string memberName);
+    std::string addMemberWithUniqueName (Type, const std::string& memberName);
 
     bool isEmpty() const noexcept;
     size_t getPackedSizeInBytes() const;

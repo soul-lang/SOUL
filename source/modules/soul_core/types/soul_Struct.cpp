@@ -32,14 +32,22 @@ Structure::Structure (std::string nm, void* backlink)
     SOUL_ASSERT (! containsChar (name, '#'));
 }
 
-size_t Structure::addMember (Type type, std::string memberName)
+const Structure::Member& Structure::getMemberWithName (std::string_view memberName) const
 {
-    auto index = members.size();
-    members.push_back ({ type, std::move (memberName) });
-    return index;
+    for (auto& m : members)
+        if (m.name == memberName)
+            return m;
+
+    SOUL_ASSERT_FALSE;
+    return members.front();
 }
 
-bool Structure::hasMemberWithName (const std::string& memberName) const
+void Structure::addMember (Type type, std::string memberName)
+{
+    members.push_back ({ type, std::move (memberName) });
+}
+
+bool Structure::hasMemberWithName (std::string_view memberName) const
 {
     for (auto& m : members)
         if (m.name == memberName)
@@ -48,7 +56,7 @@ bool Structure::hasMemberWithName (const std::string& memberName) const
     return false;
 }
 
-size_t Structure::getMemberIndex (const std::string& memberName) const
+size_t Structure::getMemberIndex (std::string_view memberName) const
 {
     size_t index = 0;
 
@@ -64,10 +72,12 @@ size_t Structure::getMemberIndex (const std::string& memberName) const
     return index;
 }
 
-size_t Structure::addMemberWithUniqueName (Type type, const std::string& memberName)
+std::string Structure::addMemberWithUniqueName (Type type, const std::string& memberName)
 {
-    return addMember (type, addSuffixToMakeUnique (memberName.empty() ? "temp" : memberName,
-                                                   [this] (const std::string& nm) { return hasMemberWithName (nm); }));
+    auto newName = addSuffixToMakeUnique (memberName.empty() ? "temp" : memberName,
+                                          [this] (const std::string& nm) { return hasMemberWithName (nm); });
+    addMember (type, newName);
+    return newName;
 }
 
 bool Structure::isEmpty() const noexcept

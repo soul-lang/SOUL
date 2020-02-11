@@ -1027,9 +1027,8 @@ private:
 
             auto& structure = lhs.getType().getStructRef();
 
-            for (size_t i = 0; i < structure.members.size(); ++i)
-                if (structure.members[i].name == member)
-                    return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, i));
+            if (structure.hasMemberWithName (member))
+                return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, member));
 
             throwError (Errors::unknownMemberInStruct (member, structure.name));
         }
