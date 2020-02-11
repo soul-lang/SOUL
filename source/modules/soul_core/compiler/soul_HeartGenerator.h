@@ -648,24 +648,22 @@ private:
     {
         auto arrayOrVectorType = getArrayOrVectorType (subscript);
 
-        if (arrayOrVectorType.isUnsizedArray() && subscript.isSlice)
-            subscript.context.throwError (Errors::notYetImplemented ("Slices of dynamic arrays"));
-
-        auto& result = builder.module.allocate<heart::ArrayElement> (subscript.context.location, source);
-        result.suppressWrapWarning = subscript.suppressWrapWarning;
-
         if (subscript.isSlice)
         {
-            auto range = subscript.getResolvedSliceRange();
+            if (arrayOrVectorType.isUnsizedArray())
+                subscript.context.throwError (Errors::notYetImplemented ("Slices of dynamic arrays"));
 
+            auto range = subscript.getResolvedSliceRange();
             SOUL_ASSERT (arrayOrVectorType.isValidArrayOrVectorRange (range.start, range.end));
-            result.fixedStartIndex = range.start;
-            result.fixedEndIndex = range.end;
+
+            auto& result = builder.module.allocate<heart::ArrayElement> (subscript.context.location, source, range.start, range.end);
+            result.suppressWrapWarning = subscript.suppressWrapWarning;
             result.isRangeTrusted = true;
             return result;
         }
 
-        result.dynamicIndex = evaluateAsExpression (*subscript.startIndex);
+        auto& index = evaluateAsExpression (*subscript.startIndex);
+        auto& result = builder.module.allocate<heart::ArrayElement> (subscript.context.location, source, index);
         result.suppressWrapWarning = subscript.suppressWrapWarning;
         result.optimiseDynamicIndexIfPossible();
         return result;

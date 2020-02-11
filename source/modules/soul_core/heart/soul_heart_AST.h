@@ -381,10 +381,19 @@ struct heart
     struct ArrayElement  : public Expression
     {
         ArrayElement() = delete;
-        ArrayElement (CodeLocation l, Expression& v) : Expression (std::move (l)), parent (v) { SOUL_ASSERT (! v.getType().isStruct()); }
-        ArrayElement (CodeLocation l, Expression& v, size_t index) : Expression (std::move (l)), parent (v), fixedStartIndex (index), fixedEndIndex (index + 1) { SOUL_ASSERT (! v.getType().isStruct()); }
-        ArrayElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex) : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex) { SOUL_ASSERT (! v.getType().isStruct()); }
-        ArrayElement (CodeLocation l, Expression& v, Expression& elementIndex) : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex) { SOUL_ASSERT (! v.getType().isStruct()); }
+        ArrayElement (CodeLocation l, Expression& v, size_t index) : ArrayElement (std::move (l), v, index, index + 1) {}
+
+        ArrayElement (CodeLocation l, Expression& v, size_t startIndex, size_t endIndex)
+            : Expression (std::move (l)), parent (v), fixedStartIndex (startIndex), fixedEndIndex (endIndex)
+        {
+            SOUL_ASSERT (v.getType().isArrayOrVector());
+        }
+
+        ArrayElement (CodeLocation l, Expression& v, Expression& elementIndex)
+            : Expression (std::move (l)), parent (v), dynamicIndex (elementIndex)
+        {
+            SOUL_ASSERT (v.getType().isArrayOrVector());
+        }
 
         pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
         bool isMutable() const override                 { return parent->isMutable(); }

@@ -95,25 +95,22 @@ struct BlockBuilder
         return module.allocate<heart::StructElement> (parent.location, parent, memberIndex);
     }
 
-    heart::ArrayElement& createFixedArrayElement (heart::Expression& parent, const SubElementPath& path)
+    heart::ArrayElement& createFixedArrayElement (heart::Expression& parent, size_t index)
     {
-        auto indexes = path.getPath();
-        SOUL_ASSERT (! indexes.empty());
+        return module.allocate<heart::ArrayElement> (parent.location, parent, index);
+    }
 
-        auto i = indexes.begin();
-        pool_ref<heart::ArrayElement> result (module.allocate<heart::ArrayElement> (parent.location, parent, *i++));
+    heart::Expression& createFixedArrayElementIfNotPrimitive (heart::Expression& parent, size_t index)
+    {
+        if (parent.getType().isArrayOrVector())
+            return createFixedArrayElement (parent, index);
 
-        while (i != indexes.end())
-            result = module.allocate<heart::ArrayElement> (result->location, result, *i++);
-
-        return result;
+        SOUL_ASSERT (index == 0 && parent.getType().isPrimitive());
+        return parent;
     }
 
     heart::ArrayElement& createFixedArraySlice (CodeLocation l, heart::Expression& parent, size_t start, size_t end)
     {
-        if (end == start + 1)
-            return createFixedArrayElement (parent, start);
-
         return module.allocate<heart::ArrayElement> (std::move (l), parent, start, end);
     }
 
