@@ -39,7 +39,7 @@ struct LinkOptions  : public Annotation
 
     //==============================================================================
     static const char* getMaxStateSizeKey()         { return "max_state_size"; }
-    void setMaxStateSize (int64_t size)             { if (size > 0) set (getMaxStateSizeKey(), Value::createInt64 (size)); }
+    void setMaxStateSize (uint64_t size)             { if (size > 0) set (getMaxStateSizeKey(), Value::createInt64 (size)); }
 
     uint64_t getMaxStateSize() const
     {
@@ -62,6 +62,27 @@ struct LinkOptions  : public Annotation
     void setSessionId (int32_t sessionId)           { set (getSessionIdKey(), Value::createInt32 (sessionId)); }
     int32_t getSessionId() const                    { return int32_t (getInt64 (getSessionIdKey())); }
     bool hasSessionId() const                       { return hasValue (getSessionIdKey()); }
+
+    //==============================================================================
+    static const char* getBlockSizeKey()            { return "blockSize"; }
+    void setBlockSize (uint32_t blockSize)          { set (getBlockSizeKey(), Value::createInt32 (blockSize)); }
+    uint32_t getBlockSize() const
+    {
+        auto defaultBlockSize = 1024;
+        return uint32_t (getInt64 (getBlockSizeKey(), defaultBlockSize));
+    }
+
+    //==============================================================================
+    static const char* getSampleRateKey()           { return "sample_rate"; }
+    void setSampleRate (double sampleRate)          { if (sampleRate > 0) set (getSampleRateKey(), Value (sampleRate)); }
+
+    double getSampleRate() const
+    {
+        if (! hasValue (getSampleRateKey()))
+            SOUL_ASSERT_FALSE;
+
+        return getDouble (getSampleRateKey());
+    }
 
     using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
                                                                          const char* name,
