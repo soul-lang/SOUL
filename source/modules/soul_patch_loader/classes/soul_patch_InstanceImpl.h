@@ -98,6 +98,9 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
             linkOptions.setPlatform ("bela");
            #endif
 
+            linkOptions.setBlockSize (config.maxFramesPerBlock);
+            linkOptions.setSampleRate (config.sampleRate);
+
             patchImpl->compile (linkOptions, cache, preprocessor, externalDataProvider, consoleHandler);
         }
         catch (const PatchLoadError& e)
