@@ -75,7 +75,7 @@ namespace soul::patch
                 else
                 {
                     streams << "input " << getEndpointKindName (input->kind) << " " << getSampleTypeString (input)
-                            << " " << name << input->annotation.toHEART(program.getStringDictionary()) << ";" << newLine;
+                            << " " << name << input->annotation.toHEART (program.getStringDictionary()) << ";" << newLine;
 
                     connections << name << " -> " << "wrappedModule." << name << ";" << newLine;
                 }

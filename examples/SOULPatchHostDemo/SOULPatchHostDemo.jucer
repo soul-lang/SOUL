@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="v8pqkL" name="SOULPatchHostDemo" projectType="guiapp" jucerVersion="5.4.5">
+<JUCERPROJECT id="v8pqkL" name="SOULPatchHostDemo" projectType="guiapp" jucerVersion="5.4.7">
   <MAINGROUP id="uJnotN" name="SOULPatchHostDemo">
     <GROUP id="{61855D96-DDCD-96D9-B7FD-5AE623E9A261}" name="Source">
       <GROUP id="{AD4BFB33-082C-EEB4-7A1C-C89C4FAF536A}" name="API">

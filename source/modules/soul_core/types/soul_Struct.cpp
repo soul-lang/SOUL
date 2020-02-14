@@ -44,7 +44,7 @@ const Structure::Member& Structure::getMemberWithName (std::string_view memberNa
 
 void Structure::addMember (Type type, std::string memberName)
 {
-    members.push_back ({ type, std::move (memberName) });
+    members.push_back ({ std::move (type), std::move (memberName) });
 }
 
 bool Structure::hasMemberWithName (std::string_view memberName) const
@@ -76,7 +76,7 @@ std::string Structure::addMemberWithUniqueName (Type type, const std::string& me
 {
     auto newName = addSuffixToMakeUnique (memberName.empty() ? "temp" : memberName,
                                           [this] (const std::string& nm) { return hasMemberWithName (nm); });
-    addMember (type, newName);
+    addMember (std::move (type), newName);
     return newName;
 }
 

@@ -220,7 +220,7 @@ struct heart
     {
         InputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
-        std::string getEventFunctionName(const Type& t) const   { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
+        std::string getEventFunctionName (const Type& t) const  { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
         std::string getFramesTillNextEventFunctionName() const  { SOUL_ASSERT (isEventEndpoint());  return "_setFramesTillNextEvent_" + name.toString(); }
         std::string getAddFramesFunctionName() const            { SOUL_ASSERT (isStreamEndpoint()); return "_addFramesToInput_" + name.toString(); }
         std::string getAddSparseFramesFunctionName() const      { SOUL_ASSERT (isStreamEndpoint()); return "_addSparseFramesToInput_" + name.toString(); }
@@ -238,13 +238,12 @@ struct heart
     {
         OutputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
-        std::string getEventFunctionName(const Type& t) const   { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
+        std::string getEventFunctionName (const Type& t) const  { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
         std::string getReadFramesFunctionName() const           { SOUL_ASSERT (isStreamEndpoint()); return "_readFramesFromOutput_" + name.toString(); }
         std::string getGetEventsFunctionName() const            { SOUL_ASSERT (isEventEndpoint());  return "_getEventsFromOutput_" + name.toString(); }
 
         EndpointDetails getDetails() const
         {
-
             return { "out:" + name.toString(), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
         }
     };
@@ -1231,7 +1230,7 @@ struct heart
                 if (type.type.isIdentical (typeNeeded))
                     return type;
 
-            types.push_back ({ typeNeeded, {} });
+            types.push_back ({ std::move (typeNeeded), {} });
             return types.back();
         }
     };
