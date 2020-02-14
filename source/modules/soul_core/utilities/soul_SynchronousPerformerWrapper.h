@@ -103,7 +103,18 @@ struct SynchronousPerformerWrapper
         for (auto& s : sinks)
             s->prepareBuffer (output);
 
-        performer.advance (output.numFrames);
+        auto blockSize = performer.getBlockSize();
+        auto framesToRender = output.numFrames;
+
+        while (framesToRender > 0)
+        {
+            auto framesThisBlock = std::min (blockSize, framesToRender);
+
+            performer.prepare (framesThisBlock);
+            performer.advance ();
+
+            framesToRender -= framesThisBlock;
+        }
 
         numMIDIOutMessages = 0;
 

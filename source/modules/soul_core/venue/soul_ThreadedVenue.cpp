@@ -186,7 +186,8 @@ struct ThreadedVenue  : public soul::Venue
             while (! shouldStop.load())
             {
                 loadMeasurer.startMeasurement();
-                performer->advance (512);
+                performer->prepare (512);
+                performer->advance();
                 loadMeasurer.stopMeasurement();
             }
 

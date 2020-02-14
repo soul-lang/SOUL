@@ -101,21 +101,34 @@ public:
     */
     virtual void reset() = 0;
 
-    /** Renders the next block of samples.
-        Once a program has been loaded and linked, a caller will typically make repeated
-        calls to advance() to actually perform the rendering work. During these calls, the
-        performer will make whatever callbacks it needs to fill and empty its endpoint buffers,
-        using the callbacks that the caller attached before linking.
-        Because you're likely to be calling advance() from an audio thread, be careful not to
-        allow any calls to other methods such as unload() to overlap with calls to advance()!
+    /** Prepares to render a block of samples
+     Once a program has been loaded and linked, a caller will typically make repeated
+     calls to prepare() and advance() to actually perform the rendering work. Between prepare()
+     and advance() the caller will fill input buffers with the prepared number of samples
+     and following advance() will retieve the prepared number of samples of output.
+     samplesToAdvance must be <= the blockSize specified in the link() options.
+     Because you're likely to be calling advance() from an audio thread, be careful not to
+     allow any calls to other methods such as unload() to overlap with calls to advance()!
+     */
+    virtual void prepare (uint32_t samplesToAdvance) =  0;
+
+    /** Renders the prepared block of samples.
+     Once a a caller has called prepare() a call to advance() will cause the prepared block of
+     samples to be rendered. If any inputs have not been correctly populated, over and underruns
+     may occur and the associated counters will be incremented to indicate such issues
     */
-    virtual void advance (uint32_t samplesToAdvance) = 0;
+    virtual void advance () = 0;
 
     /** Returns the number of over- or under-runs that have happened since the program was linked.
         Underruns can happen when an endpoint callback fails to empty or fill the amount of data
         that it is asked to handle.
     */
     virtual uint32_t getXRuns() = 0;
+
+    /** Returns the block size which is the maximum number of frames that can be rendered in one
+        prepare call
+     */
+    virtual uint32_t getBlockSize() = 0;
 };
 
 

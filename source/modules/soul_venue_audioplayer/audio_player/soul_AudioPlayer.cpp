@@ -233,7 +233,8 @@ public:
             if (auto s = audioDeviceOutputStream.get())
                 s->setOutputBuffer ({ outputChannelData, (uint32_t) numOutputChannels, 0, numSamples });
 
-            performer->advance (numSamples);
+            performer->prepare (numSamples);
+            performer->advance();
         }
 
         bool connectInputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID inputID)
