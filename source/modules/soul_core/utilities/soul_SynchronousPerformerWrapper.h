@@ -111,7 +111,7 @@ struct SynchronousPerformerWrapper
             auto framesThisBlock = std::min (blockSize, framesToRender);
 
             performer.prepare (framesThisBlock);
-            performer.advance ();
+            performer.advance();
 
             framesToRender -= framesThisBlock;
         }

@@ -385,7 +385,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             {
                 input.setCurrentValue (&initialValue, sizeof (initialValue));
 
-                onValueUpdated = [this, &input] ()
+                onValueUpdated = [this, &input]
                 {
                     input.setCurrentValue (&value, sizeof (value));
                 };

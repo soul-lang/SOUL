@@ -94,29 +94,7 @@ struct Optimisations
             for (auto& s : m->structs)
                 s->activeUseFlag = false;
 
-        for (auto& m : program.getModules())
-        {
-            for (auto& f : m->functions)
-            {
-                recursivelyFlagStructUse (f->returnType);
-
-                for (auto& p : f->parameters)
-                    recursivelyFlagStructUse (p->getType());
-
-                f->visitExpressions ([] (pool_ref<heart::Expression>& value, heart::AccessType)
-                {
-                    recursivelyFlagStructUse (value->getType());
-                });
-            }
-
-            for (auto& i : m->inputs)
-                for (auto& t : i->sampleTypes)
-                    recursivelyFlagStructUse (t);
-
-            for (auto& o : m->outputs)
-                for (auto& t : o->sampleTypes)
-                    recursivelyFlagStructUse (t);
-        }
+        heart::Utilities::visitAllTypes (program, [] (const Type& t) { recursivelyFlagStructUse (t); });
 
         for (auto& m : program.getModules())
             removeIf (m->structs, [] (const StructurePtr& s) { return ! s->activeUseFlag; });

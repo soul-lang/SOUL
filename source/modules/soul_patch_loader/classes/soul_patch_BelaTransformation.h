@@ -29,7 +29,7 @@ namespace soul::patch
         {
             BelaWrapper wrapper (program);
 
-            return wrapper.buildWrapper ();
+            return wrapper.buildWrapper();
         }
 
     private:
@@ -37,7 +37,7 @@ namespace soul::patch
         {
         }
 
-        std::string buildWrapper ()
+        std::string buildWrapper()
         {
             auto mainProcessor = program.getMainProcessor();
 
@@ -45,7 +45,7 @@ namespace soul::patch
 
             uint32_t nextOutputChannel = 0;
 
-            const bool useBelaParameters = useBelaParameterNumbers ();
+            const bool useBelaParameters = useBelaParameterNumbers();
 
             for (auto& input : mainProcessor->inputs)
             {
@@ -171,7 +171,7 @@ namespace soul::patch
             return output.getSingleSampleType().getDescription();
         }
 
-        bool useBelaParameterNumbers ()
+        bool useBelaParameterNumbers()
         {
             auto mainProcessor = program.getMainProcessor();
 

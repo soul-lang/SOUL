@@ -23,6 +23,34 @@ namespace soul
 
 struct heart::Utilities
 {
+    template <typename VisitorFn>
+    static void visitAllTypes (Program& program, VisitorFn&& visit)
+    {
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions)
+            {
+                visit (f->returnType);
+
+                for (auto& p : f->parameters)
+                    visit (p->getType());
+
+                f->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType)
+                {
+                    visit (value->getType());
+                });
+            }
+
+            for (auto& i : m->inputs)
+                for (auto& t : i->sampleTypes)
+                    visit (t);
+
+            for (auto& o : m->outputs)
+                for (auto& t : o->sampleTypes)
+                    visit (t);
+        }
+    }
+
     static pool_ptr<WriteStream> findFirstWrite (Function& f)
     {
         for (auto& b : f.blocks)
@@ -101,10 +129,11 @@ struct heart::Utilities
 
                         if (a != nullptr)
                             a->location.throwError (Errors::advanceCannotBeCalledHere());
-                        else if (f->functionType.isUserInit())
+
+                        if (f->functionType.isUserInit())
                             w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
-                        else
-                            w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
+
+                        w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
                     }
                 }
             }

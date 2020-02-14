@@ -117,7 +117,7 @@ public:
      samples to be rendered. If any inputs have not been correctly populated, over and underruns
      may occur and the associated counters will be incremented to indicate such issues
     */
-    virtual void advance () = 0;
+    virtual void advance() = 0;
 
     /** Returns the number of over- or under-runs that have happened since the program was linked.
         Underruns can happen when an endpoint callback fails to empty or fill the amount of data
