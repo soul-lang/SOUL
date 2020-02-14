@@ -269,7 +269,7 @@ private:
                 recursivelyFlagFunctionUse (fc.getFunction());
             });
 
-            sourceFn.visitExpressions ([] (pool_ref<heart::Expression>& value, heart::AccessType)
+            sourceFn.visitExpressions ([] (pool_ref<heart::Expression>& value, AccessType)
             {
                 if (auto fc = cast<heart::PureFunctionCall> (value))
                     recursivelyFlagFunctionUse (fc->function);
@@ -327,9 +327,9 @@ private:
                                 {
                                     b->statements.removeNext (last);
 
-                                    f.visitExpressions ([target, source] (pool_ref<heart::Expression>& value, heart::AccessType mode)
+                                    f.visitExpressions ([target, source] (pool_ref<heart::Expression>& value, AccessType mode)
                                     {
-                                        if (value == target && mode == heart::AccessType::read)
+                                        if (value == target && mode == AccessType::read)
                                             value = *source;
                                     });
 
@@ -361,7 +361,7 @@ private:
             {
                 if (auto a = cast<heart::Assignment> (s))
                     if (auto target = cast<heart::Variable> (a->target))
-                        return target->numWrites == 1 && target->numReads == 0 && target->isFunctionLocal();
+                        return target->readWriteCount.numReads == 0 && target->isFunctionLocal();
 
                 return false;
             });
@@ -373,7 +373,7 @@ private:
         f.visitStatements<heart::Assignment> ([] (heart::Assignment& a)
         {
             if (auto target = cast<heart::Variable> (a.target))
-                if (target->numWrites == 1 && target->isMutableLocal())
+                if (target->readWriteCount.numWrites == 1 && target->isMutableLocal())
                     target->role = heart::Variable::Role::constant;
         });
     }
@@ -403,9 +403,9 @@ private:
 
         for (auto& f : module.functions)
         {
-            f->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType mode)
+            f->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType mode)
             {
-                if (mode == heart::AccessType::read)
+                if (mode == AccessType::read)
                     if (auto i = cast<heart::InputDeclaration> (value))
                         if (contains (toRemove, i))
                             value = module.allocator.allocateZeroInitialiser (value->getType());

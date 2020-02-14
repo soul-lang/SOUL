@@ -308,13 +308,6 @@ struct heart
     }
 
     //==============================================================================
-    enum class AccessType
-    {
-        read,
-        write,
-        readWrite
-    };
-
     using ExpressionVisitorFn = const std::function<void(pool_ref<Expression>&, AccessType)>&;
 
     struct Expression  : public Object
@@ -368,12 +361,11 @@ struct heart
 
         void visitExpressions (ExpressionVisitorFn, AccessType) override    {}
 
-        void resetUseCount()                                { numReads = numWrites = 0; }
         bool readsVariable (Variable& v) const override     { return this == std::addressof (v); }
         bool writesVariable (Variable& v) const override    { return this == std::addressof (v); }
         Value getAsConstant() const override                { return {}; }
 
-        uint32_t numReads = 0, numWrites = 0;
+        ReadWriteCount readWriteCount;
     };
 
     //==============================================================================
@@ -515,7 +507,7 @@ struct heart
         pool_ptr<Variable> getRootVariable() override   { return parent->getRootVariable(); }
         bool isMutable() const override                 { return parent->isMutable(); }
         bool isAssignable() const override              { return parent->isAssignable(); }
-        const Type& getType() const override            { return parent->getType().getStructRef().getMemberWithName (memberName).type; }
+        const Type& getType() const override            { return getStruct().getMemberWithName (memberName).type; }
 
         void visitExpressions (ExpressionVisitorFn fn, AccessType mode) override
         {
@@ -537,10 +529,8 @@ struct heart
             return {};
         }
 
-        size_t getMemberIndex() const
-        {
-            return parent->getType().getStructRef().getMemberIndex (memberName);
-        }
+        Structure& getStruct() const     { return parent->getType().getStructRef(); }
+        size_t getMemberIndex() const    { return getStruct().getMemberIndex (memberName); }
 
         pool_ref<Expression> parent;
         std::string memberName;
@@ -855,21 +845,18 @@ struct heart
         void rebuildVariableUseCounts()
         {
             for (auto& p : parameters)
-                p->resetUseCount();
+                p->readWriteCount.reset();
 
             visitExpressions ([] (pool_ref<Expression>& value, AccessType)
                               {
                                   if (auto v = cast<Variable> (value))
-                                      v->resetUseCount();
+                                      v->readWriteCount.reset();
                               });
 
             visitExpressions ([] (pool_ref<Expression>& value, AccessType mode)
                               {
                                   if (auto v = cast<Variable> (value))
-                                  {
-                                      if (mode != AccessType::write) v->numReads++;
-                                      if (mode != AccessType::read)  v->numWrites++;
-                                  }
+                                      v->readWriteCount.increment (mode);
                               });
         }
 

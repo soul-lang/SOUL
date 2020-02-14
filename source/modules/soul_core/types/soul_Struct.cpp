@@ -32,7 +32,7 @@ Structure::Structure (std::string nm, void* backlink)
     SOUL_ASSERT (! containsChar (name, '#'));
 }
 
-const Structure::Member& Structure::getMemberWithName (std::string_view memberName) const
+Structure::Member& Structure::getMemberWithName (std::string_view memberName)
 {
     for (auto& m : members)
         if (m.name == memberName)

@@ -39,6 +39,7 @@ public:
     {
         Type type;
         std::string name;
+        ReadWriteCount readWriteCount;
     };
 
     std::string name;
@@ -51,7 +52,7 @@ public:
 
     bool activeUseFlag = false;
 
-    const Member& getMemberWithName (std::string_view memberName) const;
+    Member& getMemberWithName (std::string_view memberName);
     bool hasMemberWithName (std::string_view memberName) const;
     size_t getMemberIndex (std::string_view memberName) const;
 

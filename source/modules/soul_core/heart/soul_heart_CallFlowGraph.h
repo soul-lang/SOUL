@@ -160,7 +160,7 @@ private:
                 auto& state = states[index++];
                 block->temporaryData = std::addressof (state);
 
-                block->visitExpressions ([&] (pool_ref<heart::Expression>& value, heart::AccessType)
+                block->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType)
                 {
                     if (auto v = cast<heart::Variable> (value))
                         if (! (v->isState() || v->isParameter()))
@@ -230,9 +230,9 @@ private:
                 sortAndRemoveDuplicates (unsafeVariables);
             }
 
-            auto visitRead = [&] (pool_ref<heart::Expression>& value, heart::AccessType mode)
+            auto visitRead = [&] (pool_ref<heart::Expression>& value, AccessType mode)
             {
-                if (mode != heart::AccessType::write)
+                if (mode != AccessType::write)
                     if (auto v = cast<heart::Variable> (value))
                         if (! (v->isState() || v->isParameter()) && contains (unsafeVariables, *v))
                             results.push_back (*v);

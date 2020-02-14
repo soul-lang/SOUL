@@ -148,7 +148,7 @@ void Module::rebuildBlockPredecessors()
 void Module::rebuildVariableUseCounts()
 {
     for (auto& v : stateVariables)
-        v->resetUseCount();
+        v->readWriteCount.reset();
 
     for (auto& f : functions)
         f->rebuildVariableUseCounts();

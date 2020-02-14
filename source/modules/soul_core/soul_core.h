@@ -99,6 +99,7 @@ namespace soul
 #include "utilities/soul_FIFO.h"
 #include "utilities/soul_ChannelSetFIFO.h"
 #include "utilities/soul_Resampler.h"
+#include "utilities/soul_AccessCount.h"
 
 #include "diagnostics/soul_Logging.h"
 #include "diagnostics/soul_Timing.h"
