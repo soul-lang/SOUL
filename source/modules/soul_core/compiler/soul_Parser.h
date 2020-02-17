@@ -1621,6 +1621,9 @@ private:
             return elementType;
         }
 
+        if (matches (Operator::lessThan))
+            throwError (Errors::wrongTypeForVectorElement());
+
         auto& e = allocate<AST::SubscriptWithChevrons> (context, elementType, *size);
         return parseArrayTypeSuffixes (e, parseContext);
     }
