@@ -357,8 +357,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                     if (changed)
                     {
                         changed = false;
-                        auto v = value;
-                        postEvent (std::addressof (v));
+                        auto v = Value (value);
+                        postEvent (v);
                     }
 
                     return 1024;

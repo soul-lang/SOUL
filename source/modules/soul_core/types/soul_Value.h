@@ -148,6 +148,9 @@ struct Value  final
     bool operator== (const Value&) const;
     bool operator!= (const Value&) const;
 
+    /** Copies the value from the source value - this is only valid if the type are identical*/
+    void copyValue (const Value& source);
+
 private:
     Type type;
     ArrayWithPreallocation<uint8_t, 8> allocatedData;

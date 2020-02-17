@@ -562,6 +562,18 @@ Value Value::getSlice (size_t start, size_t end) const
     return {};
 }
 
+void Value::copyValue (const Value& source)
+{
+    if (type.isIdentical (source.type))
+    {
+        memcpy (allocatedData.data(), source.allocatedData.data(), allocatedData.size());
+        return;
+    }
+
+    SOUL_ASSERT_FALSE;
+}
+
+
 bool Value::canNegate() const
 {
     return type.isFloatingPoint() || type.isInteger();

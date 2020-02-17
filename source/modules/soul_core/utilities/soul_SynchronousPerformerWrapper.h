@@ -54,7 +54,7 @@ struct SynchronousPerformerWrapper
             }
 
             if (isMIDIEventEndpoint (i))
-                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (*performer.getInputSource (i.endpointID), i, properties));
+                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (PrimitiveType::int32, *performer.getInputSource (i.endpointID), i, properties));
         }
 
         for (auto& o : performer.getOutputEndpoints())
@@ -67,7 +67,7 @@ struct SynchronousPerformerWrapper
             }
 
             if (isMIDIEventEndpoint (o) && midiOutputQueue == nullptr)
-                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (*performer.getOutputSink (o.endpointID), o, properties);
+                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (PrimitiveType::int32, *performer.getOutputSink (o.endpointID), o, properties);
         }
     }
 
@@ -94,7 +94,7 @@ struct SynchronousPerformerWrapper
 
         for (auto& queue : midiInputQueues)
             for (auto midi = midiInStart; midi != midiInEnd; ++midi)
-                queue->enqueueEvent (getFrameIndex (*midi), (int) getPackedMIDIEvent (*midi));
+                queue->enqueueEvent (getFrameIndex (*midi), Value ((int) getPackedMIDIEvent (*midi)));
 
         if (input.numChannels != 0)
             for (auto& s : sources)
@@ -120,10 +120,10 @@ struct SynchronousPerformerWrapper
 
         if (midiOutputQueue != nullptr)
             midiOutputQueue->readNextEvents (midiOutCapacity,
-                                            [midiOut, midiOutCapacity, &numMIDIOutMessages] (uint32_t frameOffset, int32_t packedData)
+                                            [midiOut, midiOutCapacity, &numMIDIOutMessages] (uint32_t frameOffset, const Value& value)
                                             {
                                                 if (numMIDIOutMessages < midiOutCapacity)
-                                                    createMIDIMessage (midiOut[numMIDIOutMessages], frameOffset, (uint32_t) packedData);
+                                                    createMIDIMessage (midiOut[numMIDIOutMessages], frameOffset, (uint32_t) value.getAsInt32());
 
                                                 ++numMIDIOutMessages;
                                             });
@@ -274,8 +274,8 @@ private:
     std::vector<std::unique_ptr<InputBufferSliceSource>> sources;
     std::vector<std::unique_ptr<OutputBufferSliceSink>> sinks;
 
-    using MidiInEventQueueType = InputEventQueue<EventFIFO<int32_t, uint64_t>>;
-    using MidiOutEventQueueType = OutputEventQueue<EventFIFO<int32_t, uint64_t>>;
+    using MidiInEventQueueType = InputEventQueue<EventFIFO<uint64_t>>;
+    using MidiOutEventQueueType = OutputEventQueue<EventFIFO<uint64_t>>;
 
     std::vector<std::unique_ptr<MidiInEventQueueType>> midiInputQueues;
     std::unique_ptr<MidiOutEventQueueType> midiOutputQueue;

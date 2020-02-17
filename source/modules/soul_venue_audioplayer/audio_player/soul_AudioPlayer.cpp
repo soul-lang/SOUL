@@ -262,7 +262,7 @@ public:
                         if (! isMIDI)
                             return false;
 
-                        midiEventQueue = std::make_unique<MidiEventQueueType> (*inputSource, details, currentEndpointProperties);
+                        midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details, currentEndpointProperties);
                         return true;
                     }
 
@@ -308,7 +308,7 @@ public:
                                                             (uint32_t) device.getCurrentBufferSizeSamples());
         }
 
-        static int packMIDIMessageIntoInt (const juce::MidiMessage& message)
+        static Value packMIDIMessageIntoInt (const juce::MidiMessage& message)
         {
             uint32_t m = 0;
             auto length = message.getRawDataSize();
@@ -325,7 +325,7 @@ public:
                     m |= (uint32_t) rawData[2];
             }
 
-            return (int) m;
+            return Value ((int) m);
         }
 
         //==============================================================================
@@ -495,7 +495,7 @@ public:
             uint32_t outputBufferOffset = 0;
         };
 
-        using MidiEventQueueType = InputEventQueue<EventFIFO<int32_t, std::atomic<uint64_t>>>;
+        using MidiEventQueueType = InputEventQueue<EventFIFO<std::atomic<uint64_t>>>;
 
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;

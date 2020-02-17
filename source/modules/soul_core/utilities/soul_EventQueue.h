@@ -27,42 +27,53 @@ namespace soul
     TimestampType could be a uint64_t or a std::atomic<uint64_t> depending
     on whether atomicity is needed.
 */
-template <typename EventObject, typename TimestampType>
+template <typename TimestampType>
 struct EventFIFO
 {
-    EventFIFO()
+    EventFIFO (const Type& type) : eventType (type)
     {
+        auto emptyValue = Value::zeroInitialiser (eventType);
+
         events.resize (capacity);
+
+        for (uint32_t i = 0; i < capacity; i++)
+        {
+            events[i].time  = 0;
+            events[i].value = emptyValue;
+        }
     }
 
-    using EventType = EventObject;
     using TimeType = TimestampType;
 
     struct Event
     {
         uint64_t time;
-        EventType value;
+        soul::Value value;
     };
 
     Event& getEvent (uint64_t pos) noexcept    { return events[pos % capacity]; }
 
-    void pushEvent (uint64_t eventTime, EventType value) noexcept
+    void pushEvent (uint64_t eventTime, const soul::Value& value) noexcept
     {
+        SOUL_ASSERT (value.getType().isIdentical(eventType));
+
         auto& e = getEvent (writePos);
         e.time = eventTime;
-        e.value = value;
+        e.value.copyValue (value);
+
         ++writePos;
     }
 
-    void pushEvents (uint64_t eventTime, const EventType* p, uint32_t count)
+    void pushEvents (uint64_t eventTime, const soul::Value* eventsToAdd, uint32_t count)
     {
         for (uint32_t i = 0; i < count; ++i)
-            pushEvent (eventTime, p[i]);
+            pushEvent (eventTime, eventsToAdd[i]);
     }
 
     static constexpr uint32_t capacity = 1024;
     std::vector<Event> events;
     TimeType readPos { 0 }, writePos { 0 };
+    Type eventType;
 };
 
 //==============================================================================
@@ -72,8 +83,8 @@ struct EventFIFO
 template <typename FIFOType>
 struct InputEventQueue
 {
-    InputEventQueue (InputSource& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
-        : inputStream (stream)
+    InputEventQueue (const Type& eventType, InputSource& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
+        : fifo (eventType), inputStream (stream)
     {
         SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
 
@@ -90,7 +101,7 @@ struct InputEventQueue
         inputStream.reset();
     }
 
-    void enqueueEvent (uint32_t offset, typename FIFOType::EventType value)
+    void enqueueEvent (uint32_t offset, const Value& value)
     {
         fifo.pushEvent (currentBlockTime + offset, value);
     }
@@ -107,7 +118,7 @@ struct InputEventQueue
             if (e.time > currentTime)
                 break;
 
-            postEvent (std::addressof (e.value));
+            postEvent (e.value);
             ++(fifo.readPos);
         }
 
@@ -127,8 +138,8 @@ struct InputEventQueue
         return currentBlockSize;
     }
 
-    InputSource::Ptr inputStream;
     FIFOType fifo;
+    InputSource::Ptr inputStream;
     typename FIFOType::TimeType currentBlockTime { 0 };
 };
 
@@ -140,16 +151,18 @@ struct InputEventQueue
 template <typename FIFOType>
 struct OutputEventQueue
 {
-    OutputEventQueue (OutputSink& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
-        : outputStream (stream)
+    OutputEventQueue (Type eventType, OutputSink& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
+        : fifo (eventType), outputStream (stream)
     {
         SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
 
-        outputStream->setEventSink ([this] (const soul::Type& eventType, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+        outputStream->setEventSink ([this] (const soul::Type& t, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
                                     {
-                                        return enqueueEvent (eventType, eventData, eventSize, eventFrameTime);
+                                        return enqueueEvent (t, eventData, eventSize, eventFrameTime);
                                     },
                                     endpointProperties);
+
+        eventValue = Value::zeroInitialiser (eventType);
     }
 
     ~OutputEventQueue()
@@ -160,11 +173,10 @@ struct OutputEventQueue
 
     bool enqueueEvent (const soul::Type&, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
     {
-        typename FIFOType::EventType value;
+        SOUL_ASSERT (eventSize == eventValue.getPackedDataSize());
 
-        SOUL_ASSERT (eventSize == sizeof (value));
-        memcpy (std::addressof (value), eventData, sizeof (value));
-        fifo.pushEvent (eventFrameTime, value);
+        memcpy (eventValue.getPackedData(), eventData, eventSize);
+        fifo.pushEvent (eventFrameTime, eventValue);
         return true;
     }
 
@@ -189,9 +201,10 @@ struct OutputEventQueue
         currentBlockTime = blockEndTime;
     }
 
-    OutputSink::Ptr outputStream;
     FIFOType fifo;
+    OutputSink::Ptr outputStream;
     typename FIFOType::TimeType currentBlockTime { 0 };
+    Value eventValue;
 };
 
 }

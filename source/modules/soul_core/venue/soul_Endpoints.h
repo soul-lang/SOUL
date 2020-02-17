@@ -30,7 +30,7 @@ namespace callbacks
     /** Used as a parameter to the FillEventBuffer callback function.
         @param eventData    the data to copy into the event object
     */
-    using PostNextEvent = const std::function<void(const void* eventData)>&;
+    using PostNextEvent = const std::function<void(const soul::Value& eventData)>&;
 
     /** This is called to provide the next block of events for an event input endpoint.
 
