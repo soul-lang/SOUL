@@ -162,26 +162,7 @@ private:
                 if (mi->arraySize > 1)
                     out << '[' << (size_t) mi->arraySize << ']';
 
-                if (! mi->specialisationArgs.empty())
-                {
-                    out << '(';
-                    bool first = true;
-
-                    for (auto& a : mi->specialisationArgs)
-                    {
-                        if (first)
-                            first = false;
-                        else
-                            out << ", ";
-
-                        out << a.toString();
-                    }
-
-                    out << ')';
-                }
-
-                // Can't have both
-                SOUL_ASSERT (! (mi->hasClockMultiplier() && mi->hasClockDivider()));
+                SOUL_ASSERT (! (mi->hasClockMultiplier() && mi->hasClockDivider())); // Can't have both
 
                 if (mi->hasClockMultiplier())   out << " * " << mi->clockMultiplier;
                 if (mi->hasClockDivider())      out << " / " << mi->clockDivider;

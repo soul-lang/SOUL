@@ -261,7 +261,6 @@ struct ModuleCloner
         mapping = p;
         p.instanceName = old.instanceName;
         p.sourceName = old.sourceName;
-        p.specialisationArgs = old.specialisationArgs;
         p.clockMultiplier = old.clockMultiplier;
         p.clockDivider = old.clockDivider;
         p.arraySize = old.arraySize;

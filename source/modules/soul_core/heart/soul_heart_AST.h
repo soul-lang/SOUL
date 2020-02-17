@@ -249,28 +249,9 @@ struct heart
     };
 
     //==============================================================================
-    struct SpecialisationArgument
-    {
-        Value value;
-        Type type;
-        std::string processorName;
-
-        std::string toString() const
-        {
-            if (! processorName.empty())
-                return processorName;
-
-            if (type.isValid())
-                return type.getDescription();
-
-            return value.getDescription();
-        }
-    };
-
     struct ProcessorInstance  : public Object
     {
         std::string instanceName, sourceName;
-        std::vector<SpecialisationArgument> specialisationArgs;
         int64_t clockMultiplier = 1;
         int64_t clockDivider = 1;
         uint32_t arraySize = 1;

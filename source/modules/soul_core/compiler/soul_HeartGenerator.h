@@ -301,21 +301,7 @@ private:
                         i->clockDividerRatio->context.throwError (Errors::ratioMustBeInteger());
                 }
 
-                for (auto& arg : i->specialisationArgs)
-                {
-                    heart::SpecialisationArgument newArg;
-
-                    if (AST::isResolvedAsType (arg.get()))
-                        newArg.type = arg->resolveAsType();
-                    else if (auto pr = cast<AST::ProcessorRef> (arg))
-                        newArg.processorName = pr->processor->getFullyQualifiedPath().toString();
-                    else if (auto c = arg->getAsConstant())
-                        newArg.value = c->value;
-                    else
-                        arg->context.throwError (Errors::cannotResolveSpecialisationValue());
-
-                    p.specialisationArgs.push_back (newArg);
-                }
+                SOUL_ASSERT (i->specialisationArgs.empty());
 
                 module.processorInstances.push_back (p);
                 return p;
