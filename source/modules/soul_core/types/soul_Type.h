@@ -174,6 +174,7 @@ struct Type  final
     static Type createStruct (Structure&);
     StructurePtr getStruct() const;
     Structure& getStructRef() const;
+    bool isStruct (const Structure&) const;
 
     //==============================================================================
     static Type createStringLiteral();

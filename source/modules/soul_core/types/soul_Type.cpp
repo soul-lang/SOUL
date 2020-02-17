@@ -372,11 +372,12 @@ bool Type::isBoundedIntWithinLimit (BoundedIntSize maxSize) const
 }
 
 //==============================================================================
-Type Type::createStruct (Structure& s)       { return Type (s); }
-StructurePtr Type::getStruct() const         { SOUL_ASSERT (isStruct()); return structure; }
-Structure& Type::getStructRef() const        { SOUL_ASSERT (isStruct()); return *structure; }
+Type Type::createStruct (Structure& s)           { return Type (s); }
+StructurePtr Type::getStruct() const             { SOUL_ASSERT (isStruct()); return structure; }
+Structure& Type::getStructRef() const            { SOUL_ASSERT (isStruct()); return *structure; }
+bool Type::isStruct (const Structure& s) const   { return structure == s; }
 
-Type Type::createStringLiteral()             { return Type (Category::stringLiteral); }
+Type Type::createStringLiteral()                 { return Type (Category::stringLiteral); }
 
 //==============================================================================
 Type Type::createReference() const           { SOUL_ASSERT (! isReference()); auto t = *this; t.isRef = true; return t; }
