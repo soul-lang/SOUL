@@ -85,6 +85,8 @@ struct RefCountedPtr  final
     bool operator!= (const RefCountedPtr& other) const      { return object != other.get(); }
     bool operator== (const ObjectType* other) const         { return object == other; }
     bool operator!= (const ObjectType* other) const         { return object != other; }
+    bool operator== (const ObjectType& other) const         { return object == std::addressof (other); }
+    bool operator!= (const ObjectType& other) const         { return object != std::addressof (other); }
 
 private:
     //==============================================================================

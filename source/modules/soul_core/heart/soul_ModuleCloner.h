@@ -36,7 +36,11 @@ struct ModuleCloner
     void createStructPlaceholders()
     {
         for (auto& s : oldModule.structs)
-            newModule.structs.push_back (createStructPlaceholder (*s));
+        {
+            auto& mapping = structMappings[s.get()];
+            SOUL_ASSERT (mapping == nullptr);
+            mapping = newModule.addStructCopy (*s);
+        }
     }
 
     void cloneStructAndFunctionPlaceholders()
@@ -294,14 +298,6 @@ struct ModuleCloner
         return newModule.allocate<heart::StructElement> (old.location,
                                                          getRemappedExpressionRef (old.parent),
                                                          old.memberName);
-    }
-
-    StructurePtr createStructPlaceholder (const Structure& old)
-    {
-        SOUL_ASSERT (structMappings[&old] == nullptr);
-        StructurePtr s (new Structure (old));
-        structMappings[&old] = s;
-        return s;
     }
 
     void populateClonedStruct (const Structure& old)

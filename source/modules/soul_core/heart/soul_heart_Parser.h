@@ -522,12 +522,10 @@ private:
     {
         auto name = readQualifiedIdentifier();
 
-        for (auto& st : module->structs)
-            if (st->name == name)
-                throwError (Errors::nameInUse (name));
+        if (module->findStruct (name) != nullptr)
+            throwError (Errors::nameInUse (name));
 
-        StructurePtr s (new Structure (name, nullptr));
-        module->structs.push_back (s);
+        module->addStruct (std::move (name));
         expect (HEARTOperator::openBrace);
         item.structBodyCode.push_back (getCurrentTokeniserPosition());
         skipPastNextOccurrenceOf (HEARTOperator::closeBrace);
@@ -1470,9 +1468,8 @@ private:
 
     StructurePtr findStruct (const std::string& name)
     {
-        for (auto& s : module->structs)
-            if (s->name == name)
-                return s;
+        if (auto s = module->findStruct (name))
+            return s;
 
         for (auto& m : program.getModules())
             for (auto& s : m->structs)

@@ -71,9 +71,9 @@ public:
     pool_ptr<heart::OutputDeclaration> findOutput (const std::string& name) const;
 
     //==============================================================================
-    void addStruct (StructurePtr newStruct);
     Structure& addStruct (std::string name);
-    Structure& findOrAddStruct (Identifier name);
+    Structure& addStructCopy (Structure&);
+    Structure& findOrAddStruct (std::string name);
 
     template <typename StringOrIdentifier>
     StructurePtr findStruct (const StringOrIdentifier& name) const noexcept

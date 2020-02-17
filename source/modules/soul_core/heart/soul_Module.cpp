@@ -118,25 +118,26 @@ pool_ptr<heart::Variable> Module::findStateVariable (const std::string& name) co
     return {};
 }
 
-void Module::addStruct (StructurePtr newStruct)
-{
-    SOUL_ASSERT (findStruct (newStruct->name) == nullptr); // name clash!
-    structs.push_back (newStruct);
-}
-
 Structure& Module::addStruct (std::string name)
 {
-    StructurePtr s (new Structure (name, nullptr));
-    addStruct (s);
-    return *s;
+    SOUL_ASSERT (findStruct (name) == nullptr); // name clash!
+    structs.push_back (*new Structure (std::move (name), nullptr));
+    return *structs.back();
 }
 
-Structure& Module::findOrAddStruct (Identifier name)
+Structure& Module::addStructCopy (Structure& s)
+{
+    SOUL_ASSERT (findStruct (s.name) == nullptr); // name clash!
+    structs.push_back (*new Structure (s));
+    return *structs.back();
+}
+
+Structure& Module::findOrAddStruct (std::string name)
 {
     if (auto s = findStruct (name))
         return *s;
 
-    return addStruct (name);
+    return addStruct (std::move (name));
 }
 
 void Module::rebuildBlockPredecessors()

@@ -191,7 +191,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     {
         for (auto& m : modules)
         {
-            if (contains (m->structs, &s))
+            if (contains (m->structs, s))
             {
                 if (context != nullptr && m == context)
                     return s.name;
