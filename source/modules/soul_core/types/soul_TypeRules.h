@@ -371,24 +371,24 @@ struct TypeRules
 
     static BinaryOperatorTypes getTypesForBitwiseOp (const Type& a, const Type& b)
     {
-        if (a.isBoundedInt())
-            return getTypesForBitwiseOp (PrimitiveType::int32, b.removeReferenceIfPresent());
+        if (a.isReference())  return getTypesForBitwiseOp (a.removeReference(), b);
+        if (b.isReference())  return getTypesForBitwiseOp (a, b.removeReference());
 
-        if (b.isBoundedInt())
-            return getTypesForBitwiseOp (a.removeReferenceIfPresent(), PrimitiveType::int32);
+        if (a.isBoundedInt())  return getTypesForBitwiseOp (PrimitiveType::int32, b.removeReferenceIfPresent());
+        if (b.isBoundedInt())  return getTypesForBitwiseOp (a.removeReferenceIfPresent(), PrimitiveType::int32);
 
-        if (isTypeSuitableForBitwiseOp (a) && isTypeSuitableForBitwiseOp (b))
+        if (isTypeSuitableForBitwiseOp (a)
+             && isTypeSuitableForBitwiseOp (b)
+             && a.getVectorSize() == b.getVectorSize()
+             && a.isVector() == b.isVector())
         {
             auto intType = (a.isInteger64() || b.isInteger64()) ? PrimitiveType::int64 : PrimitiveType::int32;
 
-            if (a.getVectorSize() == b.getVectorSize() && a.isVector() == b.isVector())
-            {
-                if (! a.isVector())
-                    return { intType, intType };
+            if (! a.isVector())
+                return { intType, intType };
 
-                auto vecType = Type::createVector (intType, a.getVectorSize());
-                return { vecType, vecType };
-            }
+            auto vecType = Type::createVector (intType, a.getVectorSize());
+            return { vecType, vecType };
         }
 
         return {};

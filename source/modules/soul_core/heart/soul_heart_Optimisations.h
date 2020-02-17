@@ -625,8 +625,7 @@ private:
                 return module.allocate<heart::BinaryOperator> (b->location,
                                                                getRemappedExpressionRef (b->lhs),
                                                                getRemappedExpressionRef (b->rhs),
-                                                               b->operation,
-                                                               b->destType);
+                                                               b->operation);
 
             if (auto u = cast<heart::UnaryOperator> (old))
                 return module.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (u->source), u->operation);

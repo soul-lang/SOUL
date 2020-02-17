@@ -1115,7 +1115,7 @@ private:
                                                                    lhs.getType().getDescription(),
                                                                    rhs.getType().getDescription()));
 
-        return module->allocate<heart::BinaryOperator> (pos, lhs, rhs, opType, binOpTypes.resultType);
+        return module->allocate<heart::BinaryOperator> (pos, lhs, rhs, opType);
     }
 
     heart::TypeCast& parseCast (const FunctionParseState& state)

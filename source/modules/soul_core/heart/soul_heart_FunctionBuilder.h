@@ -151,15 +151,14 @@ struct BlockBuilder
         return module.allocate<heart::UnaryOperator> (std::move (l), source, op);
     }
 
-    heart::Expression& createBinaryOp (CodeLocation l, heart::Expression& lhs, heart::Expression& rhs,
-                                       BinaryOp::Op op, const Type& resultType)
+    heart::Expression& createBinaryOp (CodeLocation l, heart::Expression& lhs, heart::Expression& rhs, BinaryOp::Op op)
     {
-        return module.allocate<heart::BinaryOperator> (std::move (l), lhs, rhs, op, resultType);
+        return module.allocate<heart::BinaryOperator> (std::move (l), lhs, rhs, op);
     }
 
     heart::Expression& createComparisonOp (heart::Expression& lhs, heart::Expression& rhs, BinaryOp::Op op)
     {
-        return createBinaryOp ({}, lhs, rhs, op, PrimitiveType::bool_);
+        return createBinaryOp ({}, lhs, rhs, op);
     }
 
     heart::Expression& createEqualsOp (heart::Expression& lhs, heart::Expression& rhs)
@@ -210,7 +209,7 @@ struct BlockBuilder
         auto type = dest.getType();
 
         while (i != values.end())
-            total = createBinaryOp (CodeLocation(), total, *i++, BinaryOp::Op::add, type);
+            total = createBinaryOp (CodeLocation(), total, *i++, BinaryOp::Op::add);
 
         addAssignment (dest, total);
     }
@@ -220,7 +219,7 @@ struct BlockBuilder
         const auto& type = v.getType();
         SOUL_ASSERT (type.isInteger());
         auto& one = createConstant (Value::createInt32 (1).castToTypeExpectingSuccess (type));
-        return createBinaryOp (v.location, v, one, op, type);
+        return createBinaryOp (v.location, v, one, op);
     }
 
     void changeIntegerByOne (heart::Expression& dest, BinaryOp::Op op)
@@ -576,7 +575,7 @@ struct FunctionBuilder  : public BlockBuilder
         {
             addAssignment (dest, createBinaryOp (source.location,
                                                  plusOne, createConstantInt32 (limit - 1),
-                                                 BinaryOp::Op::bitwiseAnd, source.getType()));
+                                                 BinaryOp::Op::bitwiseAnd));
         }
         else
         {

@@ -33,7 +33,7 @@ struct heart::Utilities
                 visit (f->returnType);
 
                 for (auto& p : f->parameters)
-                    visit (p->getType());
+                    visit (p->type);
 
                 f->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType)
                 {

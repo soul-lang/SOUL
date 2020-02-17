@@ -565,7 +565,8 @@ private:
                 auto& lhs = builder.createCastIfNeeded (evaluateAsExpression (op->lhs), operandType);
                 auto& rhs = builder.createCastIfNeeded (evaluateAsExpression (op->rhs), operandType);
 
-                return builder.createBinaryOp (op->context.location, lhs, rhs, op->operation, op->getResultType());
+                return builder.createCastIfNeeded (builder.createBinaryOp (op->context.location, lhs, rhs, op->operation),
+                                                   op->getResultType());
             }
 
             if (auto op = cast<AST::UnaryOperator> (e))
@@ -728,8 +729,7 @@ private:
                 builder.beginBlock (startBlock);
                 auto& isCounterInRange = builder.createBinaryOp (l.context.location, counterVar,
                                                                  builder.createZeroInitialiser (indexType),
-                                                                 BinaryOp::Op::greaterThan,
-                                                                 PrimitiveType::bool_);
+                                                                 BinaryOp::Op::greaterThan);
                 builder.addBranchIf (isCounterInRange, bodyBlock, breakBlock, bodyBlock);
                 visitAsStatement (l.body);
                 builder.beginBlock (continueBlock);
@@ -991,7 +991,7 @@ private:
         auto& oldValue = builder.createRegisterVariable (type);
         builder.addAssignment (oldValue, dest);
         auto& one = module.allocator.allocate<heart::Constant> (p.context.location, Value::createInt32 (1).castToTypeExpectingSuccess (type));
-        auto& incrementedValue = builder.createBinaryOp (p.context.location, oldValue, one, op, type);
+        auto& incrementedValue = builder.createBinaryOp (p.context.location, oldValue, one, op);
 
         if (resultDestVar == nullptr)
         {

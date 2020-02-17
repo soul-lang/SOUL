@@ -607,18 +607,23 @@ struct heart
     //==============================================================================
     struct BinaryOperator  : public Expression
     {
-        BinaryOperator (CodeLocation l, Expression& a, Expression& b, BinaryOp::Op op, const Type& resultType)
-            : Expression (std::move (l)), lhs (a), rhs (b), operation (op), destType (resultType)
+        BinaryOperator (CodeLocation l, Expression& a, Expression& b, BinaryOp::Op op)
+            : Expression (std::move (l)), lhs (a), rhs (b), operation (op)
         {
-            SOUL_ASSERT (destType.isValid());
         }
 
-        const Type& getType() const override                 { return destType; }
         pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
         bool readsVariable (Variable& v) const override      { return lhs->readsVariable (v) || rhs->readsVariable (v); }
         bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
         bool isAssignable() const override                   { return false; }
+
+        const Type& getType() const override
+        {
+            temporaryType = BinaryOp::getTypes (operation, lhs->getType(), rhs->getType()).resultType;
+            SOUL_ASSERT (temporaryType.isValid());
+            return temporaryType;
+        }
 
         void visitExpressions (ExpressionVisitorFn fn, AccessType) override
         {
@@ -647,7 +652,9 @@ struct heart
 
         pool_ref<Expression> lhs, rhs;
         BinaryOp::Op operation;
-        Type destType;
+
+    private:
+        mutable Type temporaryType;
     };
 
     //==============================================================================
