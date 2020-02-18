@@ -12,11 +12,11 @@ Audio coding has a steep learning curve for beginners. Even for experts, it's la
 
 - **CPUs are a bad place to run audio code** - To get good latency, a processor needs to wake up hundreds of times per second to render small chunks of audio data. These wake-ups require extremely precise timing, and mustn't be interrupted by other tasks. Non-realtime operating systems aren't designed for this kind of scheduling, and modern power-throttling and asymmetrical-core CPU architectures make it tough to achieve the kind of long-term stability needed.
 
-- **Domain-specific Architectures (DSAs) are the future** - The Moore's-Law party is over and the semiconductor industry is turning to DSAs for future performance and power gains. This trend involves finding workloads that can be moved off CPUs and onto special-purpose processors - graphics, machine learning and other areas of computing have already been transformed in this way, and it's time for audio to follow the same path.
+- **Audio processing is lagging behind other domains** - Most other power-hungry tasks such as graphics, machine learning, network packet handling, etc are no longer done on general-purpose CPUs, but have migrated to dedicated processors which can run those workloads faster or more efficiently. Ironically, most of our devices already contain audio DSP processors, but the lack of a standard platform for safely running user code on them means that developers have no way of taking advantage of this.
 
 - **Current tools for audio coding are complex and non-portable** - The standard way to write high-performance audio code involves C/C++, which is a big barrier to the vast majority of developers. As well as being difficult, it's also a dangerous language with many pitfalls for beginners, requiring years of effort to gain the skills needed to write it safely and securely. Most audio developers are more interested in DSP mathematics and algorithms than in honing their C++ skills, so it's no surprise that the audio industry is awash with buggy software.
 
-### Surely the world doesn't need another programming language?
+### Why does the world need another programming language?
 
 SOUL isn't trying to replace any existing languages. It's a *domain-specific* embedded language for writing just the realtime code in an audio app or plugin.
 
@@ -26,7 +26,7 @@ The goals of the project require a language because:
 
 - By structuring the code in a graph-like form, it can be dynamically redeployed onto target processors with different parallelisation characteristics.
 
-- SOUL has been designed to eliminate whole categories of common coding blunders, and its API hides most boilerplate work that audio apps generally had to provide.
+- SOUL has been designed to eliminate whole categories of common coding blunders, and its API hides a lot boilerplate work that audio apps generally had to provide.
 
 - Because SOUL is an embedded language, even apps written in non-native languages like Javascript, Java, Python, etc can achieve C++-level (or better) performance, without the developer needing to learn C++ or use a compiler toolchain.
 
@@ -50,9 +50,17 @@ Some of the design goals for the language are:
 
 Sadly, no existing language fitted the bill, so we created one!
 
-### Who is the target audience?
+### Who is the target audience for the SOUL language?
 
 We expect SOUL to be valuable to audio developers at all levels - from absolute beginners (for whom the dramatically simpler syntax, API and browser-based dev tools will be helpful) to veteran audio professionals (who will appreciate its promise of lower latency, faster development and deployment to emerging accelerated hardware).
+
+### Who is the target audience for the SOUL platform architecture?
+
+At the high-end, SOUL will allow musicians to connect external accelarator devices to work on larger, more power-hungry sessions with much lower latency, while freeing up their laptop CPUs to handle the UI for their tools.
+
+At a more general consumer level, SOUL can improve power and battery life for mobile devices that support it with dedicated hardware. And by providing a flexible platform for implementing audio codecs, it could be a more future-proof replacement for silicon which is dedicated to performing decompression of specific common codec formats.
+
+If wireless speakers and headphones run SOUL internally, it will reduce their latency, making games more responsive, and will reduce the network bandwidth needed to run them, which is good for connection stability. For VR, reduced latency means better realism. And for gamers in general, shifting the audio workload off the CPU leaves more capacity for game developers to devote to other aspects of gameplay.
 
 ### What does the code look like?
 
