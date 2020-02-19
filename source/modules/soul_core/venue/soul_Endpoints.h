@@ -32,6 +32,8 @@ namespace callbacks
     */
     using PostNextEvent = const std::function<void(const soul::Value& eventData)>&;
 
+    using PostFrames = const std::function<void(uint64_t startFrame, const soul::Value& frames)>&;
+
     /** This is called to provide the next block of events for an event input endpoint.
 
         @param totalFramesElapsed  a continuously-increasing counter of the total number of
@@ -49,7 +51,7 @@ namespace callbacks
     /** Request to fill the given buffer with the number of requested frames.
         @returns the number of frames actually provided
     */
-    using FillStreamBuffer = std::function<uint32_t(void* frameData, uint32_t numFramesRequested)>;
+    using FillStreamBuffer = std::function<void(uint32_t numFramesRequested, PostFrames postFrames)>;
 
     /** Called when an output endpoint has generated an event which needs to be consumed.
         @param eventType        the type of event

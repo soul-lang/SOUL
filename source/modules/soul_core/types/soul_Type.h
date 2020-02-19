@@ -112,6 +112,7 @@ struct Type  final
     const Type& getArrayElementType() const;
 
     void resolveUnsizedArraySize (ArraySize newSize);
+    void modifyArraySize (ArraySize newSize);
     Type createCopyWithNewArraySize (ArraySize newSize) const;
     Type createCopyWithNewArrayElementType (Type) const;
 

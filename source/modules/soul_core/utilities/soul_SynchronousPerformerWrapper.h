@@ -142,46 +142,50 @@ private:
               sliceStartChannel (startChannel),
               sliceNumChannels (numChannels)
         {
+            buffer = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (properties.blockSize));
+
             if (details.getSingleSampleType().isFloat64())
             {
-                inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t requestedFrames) -> uint32_t
+                inputToAttachTo.setStreamSource ([this,numChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
                 {
                     if (isBufferAvailable)
                     {
                         auto providedFrames = std::min (requestedFrames, currentBuffer.getAvailableSamples (bufferOffset));
 
-                        InterleavedChannelSet<double> destChannels { static_cast<double*> (dest),
+                        InterleavedChannelSet<double> destChannels { static_cast<double*> (buffer.getPackedData()),
                                                                      numChannels, providedFrames, numChannels };
 
                         copyChannelSetToFit (destChannels, currentBuffer.getSlice (bufferOffset, providedFrames));
                         bufferOffset += providedFrames;
                         isBufferAvailable = (bufferOffset < currentBuffer.numFrames);
 
-                        return providedFrames;
-                    }
+                        if (providedFrames != buffer.getMutableType().getArraySize())
+                            buffer.getMutableType().modifyArraySize (providedFrames);
 
-                    return 0;
+                        postFrames (0, buffer);
+                    }
                 }, properties);
             }
             else
             {
-                inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t requestedFrames) -> uint32_t
+                inputToAttachTo.setStreamSource ([this, numChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
                 {
                     if (isBufferAvailable)
                     {
                         auto providedFrames = std::min (requestedFrames, currentBuffer.getAvailableSamples (bufferOffset));
 
-                        InterleavedChannelSet<float> destChannels { static_cast<float*> (dest),
+                        InterleavedChannelSet<float> destChannels { static_cast<float*> (buffer.getPackedData()),
                                                                     numChannels, providedFrames, numChannels };
 
                         copyChannelSetToFit (destChannels, currentBuffer.getSlice (bufferOffset, providedFrames));
                         bufferOffset += providedFrames;
                         isBufferAvailable = (bufferOffset < currentBuffer.numFrames);
 
-                        return providedFrames;
-                    }
+                        if (providedFrames != buffer.getMutableType().getArraySize())
+                            buffer.getMutableType().modifyArraySize (providedFrames);
 
-                    return 0;
+                        postFrames (0, buffer);
+                    }
                 }, properties);
             }
         }
@@ -203,6 +207,7 @@ private:
         bool isBufferAvailable = false;
         DiscreteChannelSet<const float> currentBuffer;
         uint32_t bufferOffset = 0;
+        soul::Value buffer;
     };
 
     //==============================================================================

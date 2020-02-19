@@ -337,59 +337,63 @@ public:
             {
                 auto numDestChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
+                streamValue = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (properties.blockSize));
+
                 if (details.getSingleSampleType().isFloat64())
                 {
-                    inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
+                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
                     {
                         if (inputBufferAvailable)
                         {
-                            InterleavedChannelSet<double> destChannels { static_cast<double*> (dest),
-                                                                         numDestChannels, num, numDestChannels };
-                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, num));
-                            inputBufferOffset += num;
+                            InterleavedChannelSet<double> destChannels { static_cast<double*> (streamValue.getPackedData()), numDestChannels, requestedFrames, numDestChannels };
+                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
+                            inputBufferOffset += requestedFrames;
                             inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
 
-                            return num;
-                        }
+                            if (streamValue.getType().getVectorSize() != requestedFrames)
+                                streamValue.getMutableType().modifyArraySize (requestedFrames);
 
-                        return 0;
+                            postFrames (0, streamValue);
+                        }
                     }, properties);
                 }
                 else if (details.getSingleSampleType().isFloat32())
                 {
-                    inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
+                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
                     {
                         if (inputBufferAvailable)
                         {
-                            InterleavedChannelSet<float> destChannels { static_cast<float*> (dest),
-                                                                        numDestChannels, num, numDestChannels };
+                            InterleavedChannelSet<float> destChannels { static_cast<float*> (streamValue.getPackedData()),
+                                                                        numDestChannels, requestedFrames, numDestChannels };
 
-                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, num));
-                            inputBufferOffset += num;
+                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
+                            inputBufferOffset += requestedFrames;
                             inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
 
-                            return num;
-                        }
+                            if (streamValue.getType().getVectorSize() != requestedFrames)
+                                streamValue.getMutableType().modifyArraySize (requestedFrames);
 
-                        return 0;
+                            postFrames (0, streamValue);
+                        }
                     }, properties);
                 }
                 else if (details.getSingleSampleType().isInteger32())
                 {
-                    inputToAttachTo.setStreamSource ([=] (void* dest, uint32_t num) -> uint32_t
+                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
                                                      {
                                                          if (inputBufferAvailable)
                                                          {
-                                                             InterleavedChannelSet<int> destChannels { static_cast<int*> (dest), numDestChannels, num, numDestChannels };
+                                                             InterleavedChannelSet<int> destChannels { static_cast<int*> (streamValue.getPackedData()), numDestChannels, requestedFrames, numDestChannels };
 
-                                                             copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, num));
-                                                             inputBufferOffset += num;
+                                                             copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
+                                                             inputBufferOffset += requestedFrames;
                                                              inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
 
-                                                             return num;
-                                                         }
+                                                             if (streamValue.getType().getVectorSize() != requestedFrames)
+                                                                 streamValue.getMutableType().modifyArraySize (requestedFrames);
 
-                                                         return 0;
+                                                             postFrames (0, streamValue);
+                                                         }
                                                      }, properties);
                 }
                 else
@@ -413,6 +417,7 @@ public:
             bool inputBufferAvailable = false;
             DiscreteChannelSet<const float> inputChannelData;
             uint32_t inputBufferOffset = 0;
+            soul::Value streamValue;
         };
 
         //==============================================================================

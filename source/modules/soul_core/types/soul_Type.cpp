@@ -293,6 +293,13 @@ void Type::resolveUnsizedArraySize (ArraySize newSize)
     boundingSize = (BoundedIntSize) newSize;
 }
 
+void Type::modifyArraySize (ArraySize newSize)
+{
+    SOUL_ASSERT (isArray());
+    boundingSize = (BoundedIntSize) newSize;
+}
+
+
 Type::ArraySize Type::getArraySize() const      { SOUL_ASSERT (isArray()); return (ArraySize) boundingSize; }
 const Type& Type::getArrayElementType() const   { SOUL_ASSERT (isArray()); return *arrayElementType; }
 
