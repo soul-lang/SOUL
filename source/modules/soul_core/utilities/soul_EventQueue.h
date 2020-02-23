@@ -156,9 +156,9 @@ struct OutputEventQueue
     {
         SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
 
-        outputStream->setEventSink ([this] (const soul::Type& t, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)
+        outputStream->setEventSink ([this] (uint64_t eventFrameTime, const soul::Value& value)
                                     {
-                                        return enqueueEvent (t, eventData, eventSize, eventFrameTime);
+                                        enqueueEvent (value.getType(), value.getPackedData(), static_cast<uint32_t> (value.getPackedDataSize()), eventFrameTime);
                                     },
                                     endpointProperties);
 

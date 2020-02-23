@@ -60,7 +60,7 @@ namespace callbacks
         @param eventFrameTime   the timestamp of the event, as a count of the number of frames since processing began
         @returns true if it was successfully consumed
     */
-    using ConsumeNextEvent = std::function<bool(const soul::Type& eventType, const void* eventData, uint32_t eventSize, uint64_t eventFrameTime)>;
+    using ConsumeNextEvent = std::function<void(uint64_t eventFrameTime, const soul::Value& value)>;
 
     /** Called to consume the given number of frames from the given buffer.
         @returns the number of frames consumed
