@@ -54,20 +54,19 @@ struct SynchronousPerformerWrapper
             }
 
             if (isMIDIEventEndpoint (i))
-                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (PrimitiveType::int32, *performer.getInputSource (i.endpointID), i, properties));
+                midiInputQueues.push_back (std::make_unique<MidiInEventQueueType> (PrimitiveType::int32, *performer.getInputSource (i.endpointID), i));
         }
 
         for (auto& o : performer.getOutputEndpoints())
         {
             if (auto numChans = o.getNumAudioChannels())
             {
-                sinks.push_back (std::make_unique<OutputBufferSliceSink> (*performer.getOutputSink (o.endpointID),
-                                                                          o, totalNumOutputChannels, numChans, properties));
+                sinks.push_back (std::make_unique<OutputBufferSliceSink> (*performer.getOutputSink (o.endpointID), o, totalNumOutputChannels, numChans));
                 totalNumOutputChannels += numChans;
             }
 
             if (isMIDIEventEndpoint (o) && midiOutputQueue == nullptr)
-                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (PrimitiveType::int32, *performer.getOutputSink (o.endpointID), o, properties);
+                midiOutputQueue = std::make_unique<MidiOutEventQueueType> (PrimitiveType::int32, *performer.getOutputSink (o.endpointID), o);
         }
     }
 
@@ -164,7 +163,7 @@ private:
 
                         postFrames (0, buffer);
                     }
-                }, properties);
+                });
             }
             else
             {
@@ -186,7 +185,7 @@ private:
 
                         postFrames (0, buffer);
                     }
-                }, properties);
+                });
             }
         }
 
@@ -214,8 +213,7 @@ private:
     struct OutputBufferSliceSink
     {
         OutputBufferSliceSink (OutputSink& outputToAttachTo, const EndpointDetails& details,
-                               uint32_t startChannel, uint32_t numChannels,
-                               EndpointProperties properties)
+                               uint32_t startChannel, uint32_t numChannels)
             : output (outputToAttachTo),
               sliceStartChannel (startChannel),
               sliceNumChannels (numChannels)
@@ -234,7 +232,7 @@ private:
                     }
 
                     return numFrames;
-                }, properties);
+                });
             }
             else
             {
@@ -250,7 +248,7 @@ private:
                     }
 
                     return numFrames;
-                }, properties);
+                });
             }
         }
 

@@ -238,16 +238,13 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
     void createParameters (const StringDictionary& stringDictionary)
     {
-        auto endpointProperties = getEndpointProperties();
         auto inputEndpoints = performer->getInputEndpoints();
         parameters.reserve (inputEndpoints.size());
 
         for (auto& i : inputEndpoints)
         {
             if (isParameterInput (i))
-                parameters.push_back (Parameter::Ptr (new ParameterImpl (stringDictionary,
-                                                                         *performer->getInputSource (i.endpointID),
-                                                                         i, endpointProperties)));
+                parameters.push_back (Parameter::Ptr (new ParameterImpl (stringDictionary, *performer->getInputSource (i.endpointID), i)));
         }
 
         parameterSpan = makeSpan (parameters);
@@ -313,7 +310,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
         ParameterImpl (const StringDictionary& d, InputSource& input,
-                       const EndpointDetails& details, EndpointProperties endpointProperties)
+                       const EndpointDetails& details)
             : stringDictionary (d)
         {
             annotation = details.annotation;
@@ -362,8 +359,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                     }
 
                     return 1024;
-                },
-                endpointProperties);
+                });
             }
             else if (isStream (details.kind))
             {
@@ -378,8 +374,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                     }
 
                     return 1024;
-                },
-                endpointProperties);
+                });
             }
             else if (isValue (details.kind))
             {

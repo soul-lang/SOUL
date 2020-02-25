@@ -128,6 +128,7 @@ struct ThreadedVenue  : public soul::Venue
         {
             if (state == State::loaded && performer->link (messageList, linkOptions, {}))
             {
+                blockSize = linkOptions.getBlockSize();
                 setState (State::linked);
                 return true;
             }
@@ -156,6 +157,7 @@ struct ThreadedVenue  : public soul::Venue
         CPULoadMeasurer loadMeasurer;
         StateChangeCallbackFn stateChangeCallback;
         std::atomic<State> state { State::empty };
+        uint32_t blockSize = 0;
 
         std::atomic<bool> shouldStop { false };
 
@@ -186,7 +188,7 @@ struct ThreadedVenue  : public soul::Venue
             while (! shouldStop.load())
             {
                 loadMeasurer.startMeasurement();
-                performer->prepare (512);
+                performer->prepare (blockSize);
                 performer->advance();
                 loadMeasurer.stopMeasurement();
             }

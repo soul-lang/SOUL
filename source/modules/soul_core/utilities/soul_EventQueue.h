@@ -83,7 +83,7 @@ struct EventFIFO
 template <typename FIFOType>
 struct InputEventQueue
 {
-    InputEventQueue (const Type& eventType, InputSource& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
+    InputEventQueue (const Type& eventType, InputSource& stream, const EndpointDetails& details)
         : fifo (eventType), inputStream (stream)
     {
         SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
@@ -91,13 +91,12 @@ struct InputEventQueue
         inputStream->setEventSource ([this] (uint64_t currentTime, uint32_t blockLength, callbacks::PostNextEvent postEvent)
                                      {
                                          return dispatchNextEvents (currentTime, blockLength, postEvent);
-                                     },
-                                     endpointProperties);
+                                     });
     }
 
     ~InputEventQueue()
-    {
-        inputStream->setEventSource (nullptr, {});
+    {        
+        inputStream->removeSource();
         inputStream.reset();
     }
 
@@ -151,7 +150,7 @@ struct InputEventQueue
 template <typename FIFOType>
 struct OutputEventQueue
 {
-    OutputEventQueue (Type eventType, OutputSink& stream, const EndpointDetails& details, EndpointProperties endpointProperties)
+    OutputEventQueue (Type eventType, OutputSink& stream, const EndpointDetails& details)
         : fifo (eventType), outputStream (stream)
     {
         SOUL_ASSERT (isEvent (details.kind)); ignoreUnused (details);
@@ -159,15 +158,14 @@ struct OutputEventQueue
         outputStream->setEventSink ([this] (uint64_t eventFrameTime, const soul::Value& value)
                                     {
                                         enqueueEvent (value.getType(), value.getPackedData(), static_cast<uint32_t> (value.getPackedDataSize()), eventFrameTime);
-                                    },
-                                    endpointProperties);
+                                    });
 
         eventValue = Value::zeroInitialiser (eventType);
     }
 
     ~OutputEventQueue()
     {
-        outputStream->setEventSink (nullptr, {});
+        outputStream->removeSink();
         outputStream.reset();
     }
 

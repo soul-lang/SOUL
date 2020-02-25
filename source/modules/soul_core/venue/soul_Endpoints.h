@@ -110,7 +110,7 @@ public:
         has been linked. Once linked, the callback and properties must not be changed without
         re-linking the program.
     */
-    virtual bool setStreamSource (callbacks::FillStreamBuffer&&, EndpointProperties) = 0;
+    virtual bool setStreamSource (callbacks::FillStreamBuffer&&) = 0;
 
     /** If the endpoint is a stream (i.e. EndpointKind::stream) then this method will attach
         a callback that can provide it with sparse data, and also define the properties
@@ -119,7 +119,7 @@ public:
         has been linked. Once linked, the callback and properties must not be changed without
         re-linking the program.
     */
-    virtual bool setSparseStreamSource (callbacks::FillSparseStreamBuffer&&, EndpointProperties) = 0;
+    virtual bool setSparseStreamSource (callbacks::FillSparseStreamBuffer&&) = 0;
 
     /** If the endpoint is an event stream (i.e. EndpointKind::event) then this method will attach
         a callback that can provide it with the incoming events, and also define the properties
@@ -128,7 +128,7 @@ public:
         has been linked. Once linked, the callback and properties must not be changed without
         re-linking the program.
     */
-    virtual bool setEventSource (callbacks::FillEventBuffer&&, EndpointProperties) = 0;
+    virtual bool setEventSource (callbacks::FillEventBuffer&&) = 0;
 
     /** Remove any callback that is currently attached. */
     virtual void removeSource() = 0;
@@ -162,7 +162,7 @@ public:
         has been linked. Once linked, the callback and properties must not be changed without
         re-linking the program.
     */
-    virtual bool setStreamSink (callbacks::ConsumeStreamData&&, EndpointProperties) = 0;
+    virtual bool setStreamSink (callbacks::ConsumeStreamData&&) = 0;
 
     /** If the endpoint is an event stream (i.e. EndpointKind::event) then this method will attach
         a callback that will consume the events that are being produced, and also define the properties
@@ -171,7 +171,7 @@ public:
         has been linked. Once linked, the callback and properties must not be changed without
         re-linking the program.
     */
-    virtual bool setEventSink (callbacks::ConsumeNextEvent&&, EndpointProperties) = 0;
+    virtual bool setEventSink (callbacks::ConsumeNextEvent&&) = 0;
 
     /** Remove any callback that is currently attached. */
     virtual void removeSink() = 0;

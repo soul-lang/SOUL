@@ -262,7 +262,7 @@ public:
                         if (! isMIDI)
                             return false;
 
-                        midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details, currentEndpointProperties);
+                        midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details);
                         return true;
                     }
 
@@ -288,9 +288,7 @@ public:
                         if (isMIDI)
                             return false;
 
-                        audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink,
-                                                                                             audioChannelIndex,
-                                                                                             currentEndpointProperties);
+                        audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink, audioChannelIndex);
                         return true;
                     }
 
@@ -355,7 +353,7 @@ public:
 
                             postFrames (0, streamValue);
                         }
-                    }, properties);
+                    });
                 }
                 else if (details.getSingleSampleType().isFloat32())
                 {
@@ -375,7 +373,7 @@ public:
 
                             postFrames (0, streamValue);
                         }
-                    }, properties);
+                    });
                 }
                 else if (details.getSingleSampleType().isInteger32())
                 {
@@ -394,7 +392,7 @@ public:
 
                                                              postFrames (0, streamValue);
                                                          }
-                                                     }, properties);
+                                                     });
                 }
                 else
                     SOUL_ASSERT_FALSE;
@@ -423,8 +421,7 @@ public:
         //==============================================================================
         struct AudioDeviceOutputStream
         {
-            AudioDeviceOutputStream (const EndpointDetails& details, OutputSink& outputToAttachTo,
-                                     uint32_t startChannel, EndpointProperties properties)
+            AudioDeviceOutputStream (const EndpointDetails& details, OutputSink& outputToAttachTo, uint32_t startChannel)
                 : output (outputToAttachTo), startChannelIndex (startChannel)
             {
                 auto numSrcChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
@@ -444,7 +441,7 @@ public:
 
                         return num;
 
-                    }, properties);
+                    });
                 }
                 else if (details.getSingleSampleType().isFloat32())
                 {
@@ -460,7 +457,7 @@ public:
                         }
 
                         return num;
-                    }, properties);
+                    });
                 }
                 else if (details.getSingleSampleType().isInteger32())
                 {
@@ -475,7 +472,7 @@ public:
                                                         }
 
                                                         return num;
-                                                    }, properties);
+                                                    });
                 }
                 else
                     SOUL_ASSERT_FALSE;
