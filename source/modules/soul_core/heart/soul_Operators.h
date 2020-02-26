@@ -377,8 +377,8 @@ namespace BinaryOp
 
                 lhs = Value ((float) (a / b));
                 return true;
-
             }
+
             if (op == Op::modulo)
             {
                 if (! checkModuloZero (b, handleError))

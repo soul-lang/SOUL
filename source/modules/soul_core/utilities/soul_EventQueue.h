@@ -95,7 +95,7 @@ struct InputEventQueue
     }
 
     ~InputEventQueue()
-    {        
+    {
         inputStream->removeSource();
         inputStream.reset();
     }

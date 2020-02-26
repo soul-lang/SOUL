@@ -96,4 +96,4 @@ std::string ScopedTimer::getElapsedTimeDescription() const
 }
 
 
-}
+} // namespace soul

@@ -90,4 +90,4 @@ float getBelaLoadFromString (const std::string& input)
     return 0;
 }
 
-}
+} // namespace soul
