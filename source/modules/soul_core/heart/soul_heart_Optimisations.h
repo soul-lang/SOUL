@@ -164,8 +164,8 @@ struct Optimisations
         mergeAdjacentBlocks (f);
     }
 
-    template <typename EndpointPropertyProvider>
-    static void removeUnconnectedEndpoints (Module& module, EndpointPropertyProvider& epp)
+    template <typename EndpointConnectionStatusProvider>
+    static void removeUnconnectedEndpoints (Module& module, EndpointConnectionStatusProvider& epp)
     {
         removeUnconnectedInputs (module, epp);
         removeUnconnectedOutputs (module, epp);
@@ -431,13 +431,13 @@ private:
     }
 
     //==============================================================================
-    template <typename EndpointPropertyProvider>
-    static void removeUnconnectedInputs (Module& module, EndpointPropertyProvider& epp)
+    template <typename EndpointConnectionStatusProvider>
+    static void removeUnconnectedInputs (Module& module, EndpointConnectionStatusProvider& epp)
     {
         std::vector<pool_ref<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
-            if (! epp.findInputEndpointProperties (i).initialised)
+            if (! epp.findInputEndpointProperties (i).isConnected())
                 toRemove.push_back (i);
 
         removeFromVector (module.inputs, toRemove);
@@ -465,13 +465,13 @@ private:
         }
     }
 
-    template <typename EndpointPropertyProvider>
-    static void removeUnconnectedOutputs (Module& module, EndpointPropertyProvider& epp)
+    template <typename EndpointConnectionStatusProvider>
+    static void removeUnconnectedOutputs (Module& module, EndpointConnectionStatusProvider& epp)
     {
         std::vector<pool_ref<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
-            if (! epp.findOutputEndpointProperties (o).initialised)
+            if (! epp.findOutputEndpointProperties (o).isConnected())
                 toRemove.push_back (o);
 
         removeFromVector (module.outputs, toRemove);

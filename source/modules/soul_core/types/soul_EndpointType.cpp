@@ -27,7 +27,7 @@ namespace soul
 
 //==============================================================================
 EndpointProperties::EndpointProperties (double rate, uint32_t size)
-   : sampleRate (rate), blockSize (size), initialised (true)
+   : sampleRate (rate), blockSize (size)
 {
     SOUL_ASSERT (sampleRate != 0);
     SOUL_ASSERT (blockSize != 0);

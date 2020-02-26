@@ -239,64 +239,52 @@ public:
 
         bool connectInputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID inputID)
         {
-            if (currentEndpointProperties.isValid())
+            if (auto inputSource = performer->getInputSource (inputID))
             {
-                if (auto inputSource = performer->getInputSource (inputID))
+                auto& details = findDetailsForID (performer->getInputEndpoints(), inputID);
+                auto kind = details.kind;
+
+                if (isStream (kind))
                 {
-                    auto& details = findDetailsForID (performer->getInputEndpoints(), inputID);
-                    auto kind = details.kind;
+                    if (isMIDI)
+                        return false;
 
-                    if (isStream (kind))
-                    {
-                        if (isMIDI)
-                            return false;
+                    audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (details, *inputSource,
+                                                                                       audioChannelIndex,
+                                                                                       currentEndpointProperties);
+                    return true;
+                }
 
-                        audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (details, *inputSource,
-                                                                                           audioChannelIndex,
-                                                                                           currentEndpointProperties);
-                        return true;
-                    }
+                if (isEvent (kind))
+                {
+                    if (! isMIDI)
+                        return false;
 
-                    if (isEvent (kind))
-                    {
-                        if (! isMIDI)
-                            return false;
-
-                        midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details);
-                        return true;
-                    }
-
-                    return false;
+                    midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details);
+                    return true;
                 }
             }
 
-            SOUL_ASSERT_FALSE;
             return false;
         }
 
         bool connectOutputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID outputID)
         {
-            if (currentEndpointProperties.isValid())
+            if (auto outputSink = performer->getOutputSink (outputID))
             {
-                if (auto outputSink = performer->getOutputSink (outputID))
+                auto& details = findDetailsForID (performer->getOutputEndpoints(), outputID);
+                auto kind = details.kind;
+
+                if (isStream (kind))
                 {
-                    auto& details = findDetailsForID (performer->getOutputEndpoints(), outputID);
-                    auto kind = details.kind;
+                    if (isMIDI)
+                        return false;
 
-                    if (isStream (kind))
-                    {
-                        if (isMIDI)
-                            return false;
-
-                        audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink, audioChannelIndex);
-                        return true;
-                    }
-
-                    return false;
+                    audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink, audioChannelIndex);
+                    return true;
                 }
             }
 
-            SOUL_ASSERT_FALSE;
             return false;
         }
 

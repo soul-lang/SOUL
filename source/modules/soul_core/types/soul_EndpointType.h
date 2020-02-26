@@ -100,13 +100,22 @@ struct EndpointProperties
     EndpointProperties() = default;
     EndpointProperties (double rate, uint32_t size);
 
-    bool isValid() const        { return initialised; }
-
     double sampleRate = 0.0;
     uint32_t blockSize = 0;
-
-    bool initialised = false;
 };
 
+//==============================================================================
+/**
+    Gives status of an endpoint, such as whether it is connected, and what sort
+    of connection is in use
+*/
+struct EndpointConnectionStatus
+{
+    bool isConnected() const { return connected; }
+    bool isSparse() const    { return sparse; }
+
+    bool connected = false;
+    bool sparse = false;
+};
 
 } // namespace soul
