@@ -1146,13 +1146,11 @@ private:
             if (currentStringValue[0] == '$')
             {
                 auto errorPos = location;
-
                 auto name = readQualifiedIdentifier();
 
                 if (auto v = findVariable (state, name, true))
                     return parseVariableSuffixes (state, *v);
 
-                auto v = findVariable (state, name, true);
                 errorPos.throwError (Errors::unresolvedSymbol (name));
             }
 
