@@ -267,118 +267,75 @@ private:
         return Token::literalInt32;
     }
 
-    bool SOUL_NO_SIGNED_INTEGER_OVERFLOW_WARNING parseHexLiteral()
+    bool parseDecimalLiteral()
     {
-        if (*input != '0')
-            return false;
-
-        auto t = input + 1;
-        auto secondChar = *t;
-
-        if (secondChar != 'x' && secondChar != 'X')
-            return false;
-
-        int64_t v = getHexDigitValue (*++t);
-        if (v < 0) return false;
-
-        for (;;)
-        {
-            auto previousValue = v;
-            const int digit = getHexDigitValue (*++t);
-            if (digit < 0) break;
-            v = v * 16 + digit;
-
-            if (v < previousValue)
-                throwError (Errors::integerLiteralTooLarge());
-        }
-
-        input = t;
-        literalIntValue = v;
-        literalType = parseSuffixForIntLiteral();
-        checkCharacterImmediatelyAfterLiteral();
-        return true;
+        return parseIntegerWithBase<10> (input, [] (UnicodeChar c) -> int { auto digit = (int) (c - '0'); return digit < 10 ? digit : -1; });
     }
 
-    bool SOUL_NO_SIGNED_INTEGER_OVERFLOW_WARNING parseOctalLiteral()
+    bool parseHexLiteral()
     {
         auto t = input;
-        int64_t v = *t - '0';
-        if (v != 0) return false;  // first digit of octal must be 0
 
-        int digitsProcessed = 0;
+        if (t.advanceIfStartsWith ("0x", "0X"))
+            return parseIntegerWithBase<16> (t, [] (UnicodeChar c) -> int { return getHexDigitValue (c); });
+
+        return false;
+    }
+
+    bool parseBinaryLiteral()
+    {
+        auto t = input;
+
+        if (t.advanceIfStartsWith ("0b", "0B"))
+            return parseIntegerWithBase<2> (t, [] (UnicodeChar c) -> int { return c == '0' ? 0 : (c == '1' ? 1 : -1); });
+
+        return false;
+    }
+
+    bool parseOctalLiteral()
+    {
+        auto t = input;
+
+        return *t == '0' && (t + 1).isDigit()
+                && parseIntegerWithBase<8> (t, [this] (UnicodeChar c) -> int
+                                               {
+                                                    if (c >= '0' && c <= '7')  return ((int) c) - '0';
+                                                    if (c == '8' || c == '9')  throwError (Errors::decimalDigitInOctal());
+                                                    return -1;
+                                               });
+    }
+
+    template <int base, typename GetNextDigitFn>
+    bool parseIntegerWithBase (UTF8Reader t, GetNextDigitFn&& getNextDigit)
+    {
+        uint64_t v = 0;
+        size_t numDigits = 0;
 
         for (;;)
         {
-            auto digit = (unsigned int) (*++t - '0');
-            if (digit < 8)        v = v * 8 + digit;
-            else if (digit < 10)  throwError (Errors::decimalDigitInOctal());
-            else break;
-            ++digitsProcessed;
+            auto digit = getNextDigit (*t);
+
+            if (digit < 0)
+                break;
+
+            if (v > std::numeric_limits<uint64_t>::max() / base)
+                throwError (Errors::integerLiteralTooLarge());
+
+            v = v * base;
+
+            if (v > std::numeric_limits<uint64_t>::max() - (uint64_t) digit)
+                throwError (Errors::integerLiteralTooLarge());
+
+            v += (uint64_t) digit;
+            ++numDigits;
+            ++t;
         }
 
-        if (digitsProcessed == 0)
+        if (numDigits == 0)
             return false;
 
         input = t;
-        literalIntValue = v;
-        literalType = parseSuffixForIntLiteral();
-        checkCharacterImmediatelyAfterLiteral();
-        return true;
-    }
-
-    bool SOUL_NO_SIGNED_INTEGER_OVERFLOW_WARNING parseBinaryLiteral()
-    {
-        if (*input != '0')
-            return false;
-
-        auto t = input + 1;
-        auto secondChar = *t;
-
-        if (secondChar != 'b' && secondChar != 'B')
-            return false;
-
-        auto getBinaryDigitValue = [] (UnicodeChar digit) -> int64_t
-        {
-            return digit == '0' ? 0 : (digit == '1' ? 1 : -1);
-        };
-
-        auto v = getBinaryDigitValue (*++t);
-        if (v < 0) return false;
-
-        for (;;)
-        {
-            auto previousValue = v;
-            auto digit = getBinaryDigitValue (*++t);
-            if (digit < 0) break;
-            v = (v << 1) + digit;
-
-            if (v < previousValue)
-                throwError (Errors::integerLiteralTooLarge());
-        }
-
-        input = t;
-        literalIntValue = v;
-        literalType = parseSuffixForIntLiteral();
-        checkCharacterImmediatelyAfterLiteral();
-        return true;
-    }
-
-    bool SOUL_NO_SIGNED_INTEGER_OVERFLOW_WARNING parseDecimalLiteral()
-    {
-        int64_t v = 0;
-
-        for (;; ++input)
-        {
-            auto previousValue = v;
-            auto digit = (unsigned int) (*input - '0');
-            if (digit < 10)  v = v * 10 + digit;
-            else break;
-
-            if (v < previousValue)
-                throwError (Errors::integerLiteralTooLarge());
-        }
-
-        literalIntValue = v;
+        literalIntValue = (int64_t) v;
         literalType = parseSuffixForIntLiteral();
         checkCharacterImmediatelyAfterLiteral();
         return true;
