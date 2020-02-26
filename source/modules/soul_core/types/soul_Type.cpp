@@ -382,7 +382,22 @@ bool Type::isBoundedIntWithinLimit (BoundedIntSize maxSize) const
 Type Type::createStruct (Structure& s)           { return Type (s); }
 StructurePtr Type::getStruct() const             { SOUL_ASSERT (isStruct()); return structure; }
 Structure& Type::getStructRef() const            { SOUL_ASSERT (isStruct()); return *structure; }
-bool Type::isStruct (const Structure& s) const   { return structure == s; }
+
+bool Type::usesStruct (const Structure& s) const
+{
+    if (structure == s)
+        return true;
+
+    if (isArray())
+        return arrayElementType->usesStruct (s);
+
+    if (isStruct())
+        for (auto& m : structure->members)
+            if (m.type.usesStruct (s))
+                return true;
+
+    return false;
+}
 
 Type Type::createStringLiteral()                 { return Type (Category::stringLiteral); }
 

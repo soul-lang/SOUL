@@ -100,6 +100,55 @@ struct Optimisations
             removeIf (m->structs, [] (const StructurePtr& s) { return ! s->activeUseFlag; });
     }
 
+    struct UnusedStructMembers
+    {
+        Module& module;
+        Structure& structure;
+        ArrayWithPreallocation<size_t, 4> unusedMembers;
+    };
+
+    static std::vector<UnusedStructMembers> findUnreadStructMembers (Program& program)
+    {
+        for (auto& module : program.getModules())
+            for (auto& s : module->structs)
+                for (auto& m : s->members)
+                    m.readWriteCount.reset();
+
+        for (auto& module : program.getModules())
+        {
+            for (auto& f : module->functions)
+            {
+                f->visitExpressions ([] (pool_ref<heart::Expression>& value, AccessType mode)
+                {
+                    if (auto s = cast<heart::StructElement> (value))
+                        s->getStruct().getMemberWithName (s->memberName).readWriteCount.increment (mode);
+                });
+            }
+        }
+
+        std::vector<UnusedStructMembers> results;
+
+        for (auto& module : program.getModules())
+        {
+            for (auto& s : module->structs)
+            {
+                ArrayWithPreallocation<size_t, 4> unusedMembers;
+
+                for (size_t i = 0; i < s->members.size(); ++i)
+                    if (s->members[i].readWriteCount.numReads == 0)
+                        unusedMembers.push_back (i);
+
+                if (! unusedMembers.empty())
+                {
+                    std::reverse (unusedMembers.begin(), unusedMembers.end());
+                    results.push_back ({ module, *s, unusedMembers });
+                }
+            }
+        }
+
+        return results;
+    }
+
     static void optimiseFunctionBlocks (Program& program)
     {
         for (auto& m : program.getModules())
@@ -295,10 +344,13 @@ private:
     {
         if (type.isStruct())
         {
-            type.getStructRef().activeUseFlag = true;
+            if (! type.getStructRef().activeUseFlag)
+            {
+                type.getStructRef().activeUseFlag = true;
 
-            for (auto& m : type.getStructRef().members)
-                recursivelyFlagStructUse (m.type);
+                for (auto& m : type.getStructRef().members)
+                    recursivelyFlagStructUse (m.type);
+            }
         }
         else if (type.isArray())
         {

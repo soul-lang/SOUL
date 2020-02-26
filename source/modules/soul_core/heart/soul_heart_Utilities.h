@@ -51,6 +51,40 @@ struct heart::Utilities
         }
     }
 
+    template <typename VisitorFn>
+    static void visitAllMutableTypes (Program& program, VisitorFn&& visit)
+    {
+        for (auto& m : program.getModules())
+        {
+            for (auto& s : m->structs)
+                for (auto& member : s->members)
+                    visit (member.type);
+
+            for (auto& f : m->functions)
+            {
+                visit (f->returnType);
+
+                for (auto& p : f->parameters)
+                    visit (p->type);
+
+                f->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType)
+                {
+                    if (auto v = cast<heart::Variable> (value))                 return visit (v->type);
+                    if (auto c = cast<heart::TypeCast> (value))                 return visit (c->destType);
+                    if (auto p = cast<heart::PlaceholderFunctionCall> (value))  return visit (p->returnType);
+                });
+            }
+
+            for (auto& i : m->inputs)
+                for (auto& t : i->sampleTypes)
+                    visit (t);
+
+            for (auto& o : m->outputs)
+                for (auto& t : o->sampleTypes)
+                    visit (t);
+        }
+    }
+
     static pool_ptr<WriteStream> findFirstWrite (Function& f)
     {
         for (auto& b : f.blocks)
@@ -224,6 +258,53 @@ struct heart::Utilities
                 return b;
 
         return {};
+    }
+
+    static Type replaceUsesOfStruct (Type type, Structure& oldStruct, Structure& newStruct)
+    {
+        if (type.isArray())
+            return type.createCopyWithNewArrayElementType (replaceUsesOfStruct (type.getElementType(), oldStruct, newStruct));
+
+        if (type.isStruct())
+        {
+            if (type.getStruct() == oldStruct)
+                return Type::createStruct (newStruct);
+
+            for (auto& m : type.getStructRef().members)
+                if (m.type.usesStruct (oldStruct))
+                    m.type = replaceUsesOfStruct (m.type, oldStruct, newStruct);
+        }
+
+        return type;
+    }
+
+    static Value replaceUsesOfStruct (Value value, Structure& oldStruct, Structure& newStruct)
+    {
+        if (value.getType().isStruct() || value.getType().isArray())
+        {
+            auto newValue = Value::zeroInitialiser (replaceUsesOfStruct (value.getType(), oldStruct, newStruct));
+
+            if (value.getType().isStruct())
+            {
+                auto& srcStruct = value.getType().getStructRef();
+                auto& destStruct = newValue.getType().getStructRef();
+
+                for (size_t i = 0; i < destStruct.members.size(); ++i)
+                {
+                    auto oldIndex = srcStruct.getMemberIndex (destStruct.members[i].name);
+                    newValue.modifySubElementInPlace (i, replaceUsesOfStruct (value.getSubElement (oldIndex), oldStruct, newStruct));
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < newValue.getType().getArraySize(); ++i)
+                    newValue.modifySubElementInPlace (i, replaceUsesOfStruct (value.getSubElement (i), oldStruct, newStruct));
+            }
+
+            return newValue;
+        }
+
+        return value;
     }
 };
 
