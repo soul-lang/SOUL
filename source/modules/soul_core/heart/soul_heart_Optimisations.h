@@ -165,10 +165,10 @@ struct Optimisations
     }
 
     template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedEndpoints (Module& module, EndpointConnectionStatusProvider& epp)
+    static void removeUnconnectedEndpoints (Module& module, EndpointConnectionStatusProvider& ecsp)
     {
-        removeUnconnectedInputs (module, epp);
-        removeUnconnectedOutputs (module, epp);
+        removeUnconnectedInputs (module, ecsp);
+        removeUnconnectedOutputs (module, ecsp);
     }
 
     static void makeFunctionCallInline (Program& program, heart::Function& parentFunction,
@@ -432,12 +432,12 @@ private:
 
     //==============================================================================
     template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedInputs (Module& module, EndpointConnectionStatusProvider& epp)
+    static void removeUnconnectedInputs (Module& module, EndpointConnectionStatusProvider& ecsp)
     {
         std::vector<pool_ref<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
-            if (! epp.findInputEndpointProperties (i).isConnected())
+            if (! ecsp.findInputEndpointProperties (i).isConnected())
                 toRemove.push_back (i);
 
         removeFromVector (module.inputs, toRemove);
@@ -466,12 +466,12 @@ private:
     }
 
     template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedOutputs (Module& module, EndpointConnectionStatusProvider& epp)
+    static void removeUnconnectedOutputs (Module& module, EndpointConnectionStatusProvider& ecsp)
     {
         std::vector<pool_ref<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
-            if (! epp.findOutputEndpointProperties (o).isConnected())
+            if (! ecsp.findOutputEndpointProperties (o).isConnected())
                 toRemove.push_back (o);
 
         removeFromVector (module.outputs, toRemove);
