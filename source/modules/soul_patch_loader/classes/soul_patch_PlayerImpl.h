@@ -253,15 +253,16 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     void connectEndpoints (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         wrapper = std::make_unique<SynchronousPerformerWrapper> (*performer);
-        auto properties = getSampleRateAndBlockSize();
-        wrapper->attach (properties);
+        auto rateAndBlockSize = getSampleRateAndBlockSize();
+        SOUL_ASSERT (rateAndBlockSize.isValid());
+        wrapper->attach (rateAndBlockSize);
 
         if (consoleHandler != nullptr)
             for (auto& outputEndpoint : performer->getOutputEndpoints())
                 if (isEvent (outputEndpoint.kind))
                     soul::utilities::attachConsoleOutputHandler (program,
                                                                  *performer->getOutputSink (outputEndpoint.endpointID),
-                                                                 outputEndpoint, properties,
+                                                                 outputEndpoint, rateAndBlockSize,
                                                                  [consoleHandler] (uint64_t eventTime, const char* endpointName, const char* message)
                                                                  { consoleHandler->handleConsoleMessage (eventTime, endpointName, message); });
     }

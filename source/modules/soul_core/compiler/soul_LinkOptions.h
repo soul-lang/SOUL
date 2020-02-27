@@ -64,24 +64,12 @@ struct LinkOptions  : public Annotation
     //==============================================================================
     static constexpr const char* getBlockSizeKey()          { return "blockSize"; }
     void setBlockSize (uint32_t blockSize)                  { set (getBlockSizeKey(), Value::createInt32 (blockSize)); }
-
-    uint32_t getBlockSize() const
-    {
-        auto size = getInt64 (getBlockSizeKey());
-        SOUL_ASSERT (size > 0 && size <= maxBlockSize);
-        return (uint32_t) size;
-    }
+    uint32_t getBlockSize() const                           { return (uint32_t) getInt64 (getBlockSizeKey()); }
 
     //==============================================================================
     static constexpr const char* getSampleRateKey()         { return "sample_rate"; }
     void setSampleRate (double sampleRate)                  { if (sampleRate > 0) set (getSampleRateKey(), Value (sampleRate)); }
-
-    double getSampleRate() const
-    {
-        auto rate = getDouble (getSampleRateKey());
-        SOUL_ASSERT (rate > 0 && rate <= maxSampleRate);
-        return rate;
-    }
+    double getSampleRate() const                            { return getDouble (getSampleRateKey()); }
 
     void setSampleRateAndBlockSize (SampleRateAndBlockSize rateAndBlockSize)
     {
@@ -108,8 +96,6 @@ struct LinkOptions  : public Annotation
 
     //==============================================================================
     static constexpr uint64_t  defaultMaximumStateSize = 1024 * 1024 * 20;
-    static constexpr uint32_t  maxBlockSize = 8192;
-    static constexpr double    maxSampleRate = 48000.0 * 100;
 };
 
 //==============================================================================

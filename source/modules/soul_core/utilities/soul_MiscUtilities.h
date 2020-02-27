@@ -29,6 +29,23 @@ struct SampleRateAndBlockSize
     SampleRateAndBlockSize() = default;
     SampleRateAndBlockSize (double rate, uint32_t size);
 
+    bool isRateValid() const
+    {
+        constexpr double maxSampleRate = 48000.0 * 100;
+        return sampleRate > 0 && sampleRate <= maxSampleRate;
+    }
+
+    bool isBlockSizeValid() const
+    {
+        constexpr uint32_t maxBlockSize = 8192;
+        return blockSize > 0 && blockSize <= maxBlockSize;
+    }
+
+    bool isValid() const
+    {
+        return isRateValid() && isBlockSizeValid();
+    }
+
     double sampleRate = 0.0;
     uint32_t blockSize = 0;
 };
