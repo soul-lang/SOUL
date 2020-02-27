@@ -85,6 +85,13 @@ inline void appendVector (Vector1& dest, const Vector2& source)
 }
 
 template <typename Vector1, typename Vector2>
+inline void copyVector (Vector1& dest, const Vector2& source)
+{
+    dest.clear();
+    appendVector (dest, source);
+}
+
+template <typename Vector1, typename Vector2>
 inline void mergeSortedVectors (Vector1& dest, const Vector2& source)
 {
     appendVector (dest, source);

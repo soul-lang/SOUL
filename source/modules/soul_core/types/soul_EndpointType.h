@@ -85,7 +85,7 @@ struct EndpointDetails
     EndpointID endpointID;
     std::string name;
     EndpointKind kind;
-    std::vector<Type> sampleTypes;
+    ArrayWithPreallocation<Type, 2> sampleTypes;
     uint32_t strideBytes;
     Annotation annotation;
 };

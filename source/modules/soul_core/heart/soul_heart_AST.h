@@ -138,12 +138,8 @@ struct heart
         bool supportsSampleType (const Type& t) const
         {
             for (auto& sampleType : sampleTypes)
-            {
-                auto sampleArrayType = getSampleArrayType (sampleType);
-
-                if (TypeRules::canSilentlyCastTo (sampleArrayType, t))
+                if (TypeRules::canSilentlyCastTo (getSampleArrayType (sampleType), t))
                     return true;
-            }
 
             return false;
         }
@@ -170,12 +166,8 @@ struct heart
         Type getSupportedType (const Type& t, bool isElementAccess) const
         {
             for (auto& sampleType : sampleTypes)
-            {
-                auto type = isElementAccess ? sampleType : getSampleArrayType (sampleType);
-
-                if (TypeRules::canPassAsArgumentTo (type, t, true))
+                if (TypeRules::canPassAsArgumentTo (isElementAccess ? sampleType : getSampleArrayType (sampleType), t, true))
                     return getSampleArrayType (sampleType);
-            }
 
             SOUL_ASSERT_FALSE;
             return {};
