@@ -95,7 +95,7 @@ public:
             performer = venue.performerFactory->createPerformer();
 
             if (venue.audioDevice != nullptr)
-                updateEndpointProperties (*venue.audioDevice);
+                updateDeviceProperties (*venue.audioDevice);
         }
 
         ~AudioPlayerSession() override
@@ -204,7 +204,7 @@ public:
 
         void prepareToPlay (juce::AudioIODevice& device)
         {
-            updateEndpointProperties (device);
+            updateDeviceProperties (device);
         }
 
         void deviceStopped()
@@ -288,7 +288,7 @@ public:
             return false;
         }
 
-        void updateEndpointProperties (juce::AudioIODevice& device)
+        void updateDeviceProperties (juce::AudioIODevice& device)
         {
             currentRateAndBlockSize = SampleRateAndBlockSize (device.getCurrentSampleRate(),
                                                               (uint32_t) device.getCurrentBufferSizeSamples());

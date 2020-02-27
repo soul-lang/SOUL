@@ -97,9 +97,6 @@ struct EndpointDetails
 */
 struct EndpointConnectionStatus
 {
-    bool isConnected() const { return connected; }
-    bool isSparse() const    { return sparse; }
-
     bool connected = false;
     bool sparse = false;
 };
