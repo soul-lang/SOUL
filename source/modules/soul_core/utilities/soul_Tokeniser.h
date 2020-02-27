@@ -313,20 +313,22 @@ private:
 
         for (;;)
         {
-            auto digit = getNextDigit (*t);
+            auto possibleDigit = getNextDigit (*t);
 
-            if (digit < 0)
+            if (possibleDigit < 0)
                 break;
+
+            auto digit = (uint64_t) possibleDigit;
 
             if (v > std::numeric_limits<uint64_t>::max() / base)
                 throwError (Errors::integerLiteralTooLarge());
 
             v = v * base;
 
-            if (v > std::numeric_limits<uint64_t>::max() - (uint64_t) digit)
+            if (v > std::numeric_limits<uint64_t>::max() - digit)
                 throwError (Errors::integerLiteralTooLarge());
 
-            v += (uint64_t) digit;
+            v += digit;
             ++numDigits;
             ++t;
         }
