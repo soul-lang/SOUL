@@ -70,30 +70,5 @@ Logger::LoggerHolder& Logger::getCallbackHolder()
     return l;
 }
 
-//==============================================================================
-ScopedTimer::ScopedTimer (std::string desc) noexcept  : description (std::move (desc)) {}
-
-ScopedTimer::~ScopedTimer()
-{
-    SOUL_LOG (description, [&] { return getElapsedTimeDescription(); });
-}
-
-template <typename Duration>
-static inline double toSeconds (Duration d)
-{
-    auto microsecs = std::chrono::duration_cast<std::chrono::microseconds> (d).count();
-    return static_cast<double> (microsecs) / 1000000.0;
-}
-
-double ScopedTimer::getElapsedSeconds() const
-{
-    return toSeconds (clock::now() - start);
-}
-
-std::string ScopedTimer::getElapsedTimeDescription() const
-{
-    return getDescriptionOfTimeInSeconds (getElapsedSeconds());
-}
-
 
 } // namespace soul

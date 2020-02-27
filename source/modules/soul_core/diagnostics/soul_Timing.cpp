@@ -25,6 +25,31 @@
 namespace soul
 {
 
+template <typename Duration>
+static inline double toSeconds (Duration d)
+{
+    auto microsecs = std::chrono::duration_cast<std::chrono::microseconds> (d).count();
+    return static_cast<double> (microsecs) / 1000000.0;
+}
+
+//==============================================================================
+ScopedTimer::ScopedTimer (std::string desc) noexcept  : description (std::move (desc)) {}
+
+ScopedTimer::~ScopedTimer()
+{
+    SOUL_LOG (description, [&] { return getElapsedTimeDescription(); });
+}
+
+double ScopedTimer::getElapsedSeconds() const
+{
+    return toSeconds (clock::now() - start);
+}
+
+std::string ScopedTimer::getElapsedTimeDescription() const
+{
+    return getDescriptionOfTimeInSeconds (getElapsedSeconds());
+}
+
 //==============================================================================
 CPULoadMeasurer::CPULoadMeasurer() { reset(); }
 
@@ -89,5 +114,6 @@ float getBelaLoadFromString (const std::string& input)
 
     return 0;
 }
+
 
 } // namespace soul
