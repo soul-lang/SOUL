@@ -21,6 +21,19 @@
 namespace soul
 {
 
+//==============================================================================
+/**
+*/
+struct SampleRateAndBlockSize
+{
+    SampleRateAndBlockSize() = default;
+    SampleRateAndBlockSize (double rate, uint32_t size);
+
+    double sampleRate = 0.0;
+    uint32_t blockSize = 0;
+};
+
+//==============================================================================
 struct Version
 {
     uint32_t major, minor, point;
@@ -53,6 +66,7 @@ struct Version
     }
 };
 
+//==============================================================================
 static inline constexpr double pi = 3.141592653589793238;
 static inline constexpr double twoPi = 2 * pi;
 

@@ -92,14 +92,12 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
             auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory->createPerformer());
             patch = PatchPlayer::Ptr (patchImpl);
 
-            soul::LinkOptions linkOptions;
+            soul::LinkOptions linkOptions (config.sampleRate,
+                                           config.maxFramesPerBlock);
 
            #if JUCE_BELA
             linkOptions.setPlatform ("bela");
            #endif
-
-            linkOptions.setBlockSize (config.maxFramesPerBlock);
-            linkOptions.setSampleRate (config.sampleRate);
 
             patchImpl->compile (linkOptions, cache, preprocessor, externalDataProvider, consoleHandler);
         }

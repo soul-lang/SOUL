@@ -172,8 +172,8 @@ public:
             s.state = state;
             s.cpu = venue.loadMeasurer.getCurrentLoad();
             s.xruns = performer->getXRuns();
-            s.sampleRate = currentEndpointProperties.sampleRate;
-            s.blockSize = currentEndpointProperties.blockSize;
+            s.sampleRate = currentRateAndBlockSize.sampleRate;
+            s.blockSize = currentRateAndBlockSize.blockSize;
 
             if (venue.audioDevice != nullptr)
             {
@@ -209,7 +209,7 @@ public:
 
         void deviceStopped()
         {
-            currentEndpointProperties = {};
+            currentRateAndBlockSize = {};
         }
 
         void processBlock (const float** inputChannelData, int numInputChannels,
@@ -251,7 +251,7 @@ public:
 
                     audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (details, *inputSource,
                                                                                        audioChannelIndex,
-                                                                                       currentEndpointProperties);
+                                                                                       currentRateAndBlockSize);
                     return true;
                 }
 
@@ -290,8 +290,8 @@ public:
 
         void updateEndpointProperties (juce::AudioIODevice& device)
         {
-            currentEndpointProperties = EndpointProperties (device.getCurrentSampleRate(),
-                                                            (uint32_t) device.getCurrentBufferSizeSamples());
+            currentRateAndBlockSize = SampleRateAndBlockSize (device.getCurrentSampleRate(),
+                                                              (uint32_t) device.getCurrentBufferSizeSamples());
         }
 
         static Value packMIDIMessageIntoInt (const juce::MidiMessage& message)
@@ -318,12 +318,12 @@ public:
         struct AudioDeviceInputStream
         {
             AudioDeviceInputStream (const EndpointDetails& details, InputSource& inputToAttachTo,
-                                    uint32_t startChannel, EndpointProperties properties)
+                                    uint32_t startChannel, SampleRateAndBlockSize rateAndBlockSize)
                 : input (inputToAttachTo), startChannelIndex (startChannel)
             {
                 auto numDestChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
 
-                streamValue = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (properties.blockSize));
+                streamValue = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (rateAndBlockSize.blockSize));
 
                 if (details.getSingleSampleType().isFloat64())
                 {
@@ -489,7 +489,7 @@ public:
 
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
-        EndpointProperties currentEndpointProperties;
+        SampleRateAndBlockSize currentRateAndBlockSize;
         std::unique_ptr<AudioDeviceInputStream> audioDeviceInputStream;
         std::unique_ptr<AudioDeviceOutputStream> audioDeviceOutputStream;
         std::unique_ptr<MidiEventQueueType> midiEventQueue;

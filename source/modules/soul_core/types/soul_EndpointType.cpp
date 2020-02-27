@@ -26,13 +26,6 @@ namespace soul
 {
 
 //==============================================================================
-EndpointProperties::EndpointProperties (double rate, uint32_t size)
-   : sampleRate (rate), blockSize (size)
-{
-    SOUL_ASSERT (sampleRate != 0);
-    SOUL_ASSERT (blockSize != 0);
-}
-
 EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
                                   std::vector<Type> types, uint32_t stride, Annotation a)
    : endpointID (std::move (id)),

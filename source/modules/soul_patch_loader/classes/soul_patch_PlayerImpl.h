@@ -253,7 +253,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     void connectEndpoints (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         wrapper = std::make_unique<SynchronousPerformerWrapper> (*performer);
-        auto properties = getEndpointProperties();
+        auto properties = getSampleRateAndBlockSize();
         wrapper->attach (properties);
 
         if (consoleHandler != nullptr)
@@ -473,7 +473,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         return 1000;
     }
 
-    EndpointProperties getEndpointProperties() const
+    SampleRateAndBlockSize getSampleRateAndBlockSize() const
     {
         if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
         if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size");

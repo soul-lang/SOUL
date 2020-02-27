@@ -37,7 +37,7 @@ struct SynchronousPerformerWrapper
         detach();
     }
 
-    void attach (EndpointProperties properties)
+    void attach (SampleRateAndBlockSize rateAndBlockSize)
     {
         detach();
 
@@ -48,7 +48,7 @@ struct SynchronousPerformerWrapper
                 if (! isParameterInput (i))
                 {
                     sources.push_back (std::make_unique<InputBufferSliceSource> (*performer.getInputSource (i.endpointID),
-                                                                                 i, totalNumInputChannels, numChans, properties));
+                                                                                 i, totalNumInputChannels, numChans, rateAndBlockSize));
                     totalNumInputChannels += numChans;
                 }
             }
@@ -136,12 +136,12 @@ private:
     {
         InputBufferSliceSource (InputSource& inputToAttachTo, const EndpointDetails& details,
                                 uint32_t startChannel, uint32_t numChannels,
-                                EndpointProperties properties)
+                                SampleRateAndBlockSize rateAndBlockSize)
             : input (inputToAttachTo),
               sliceStartChannel (startChannel),
               sliceNumChannels (numChannels)
         {
-            buffer = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (properties.blockSize));
+            buffer = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (rateAndBlockSize.blockSize));
 
             if (details.getSingleSampleType().isFloat64())
             {

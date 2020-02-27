@@ -25,6 +25,11 @@
 namespace soul
 {
 
+SampleRateAndBlockSize::SampleRateAndBlockSize (double rate, uint32_t size)
+   : sampleRate (rate), blockSize (size)
+{
+}
+
 bool inExceptionHandler()
 {
    #if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12

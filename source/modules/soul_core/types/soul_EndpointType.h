@@ -92,20 +92,6 @@ struct EndpointDetails
 
 //==============================================================================
 /**
-    Holds properties which are needed when setting up an input or output endpoint
-    for use.
-*/
-struct EndpointProperties
-{
-    EndpointProperties() = default;
-    EndpointProperties (double rate, uint32_t size);
-
-    double sampleRate = 0.0;
-    uint32_t blockSize = 0;
-};
-
-//==============================================================================
-/**
     Gives status of an endpoint, such as whether it is connected, and what sort
     of connection is in use
 */
