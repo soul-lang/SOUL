@@ -101,21 +101,24 @@ public:
     */
     virtual void reset() = 0;
 
-    /** Prepares to render a block of samples
-     Once a program has been loaded and linked, a caller will typically make repeated
-     calls to prepare() and advance() to actually perform the rendering work. Between prepare()
-     and advance() the caller will fill input buffers with the prepared number of samples
-     and following advance() will retieve the prepared number of samples of output.
-     samplesToAdvance must be <= the blockSize specified in the link() options.
-     Because you're likely to be calling advance() from an audio thread, be careful not to
-     allow any calls to other methods such as unload() to overlap with calls to advance()!
-     */
-    virtual void prepare (uint32_t samplesToAdvance) =  0;
+    /** Indicates that a block of frames is going to be rendered.
 
-    /** Renders the prepared block of samples.
-     Once a a caller has called prepare() a call to advance() will cause the prepared block of
-     samples to be rendered. If any inputs have not been correctly populated, over and underruns
-     may occur and the associated counters will be incremented to indicate such issues
+        Once a program has been loaded and linked, a caller will typically make repeated
+        calls to prepare() and advance() to actually perform the rendering work.
+        Between calls to prepare() and advance(), the caller must fill input buffers with the
+        content needed to render the number of frames requested here. Then advance() can be
+        called, after which the prepared number of frames of output are ready to be read.
+        The value of numFramesToBeRendered must not exceed the block size specified when linking.
+        Because you're likely to be calling advance() from an audio thread, be careful not to
+        allow any calls to other methods such as unload() to overlap with calls to advance()!
+    */
+    virtual void prepare (uint32_t numFramesToBeRendered) = 0;
+
+    /** Renders the next block of frames.
+
+        Once the caller has called prepare(), a call to advance() will synchronously render the next
+        block of frames. If any inputs have not been correctly populated, over- and under-runs
+        may occur and the associated counters will be incremented to reflect this.
     */
     virtual void advance() = 0;
 
@@ -126,8 +129,8 @@ public:
     virtual uint32_t getXRuns() = 0;
 
     /** Returns the block size which is the maximum number of frames that can be rendered in one
-        prepare call
-     */
+        prepare call.
+    */
     virtual uint32_t getBlockSize() = 0;
 };
 
