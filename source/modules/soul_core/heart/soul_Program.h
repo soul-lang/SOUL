@@ -148,10 +148,12 @@ public:
 
 private:
     //==============================================================================
+    friend class Module;
     struct ProgramImpl;
-    RefCountedPtr<ProgramImpl> pimpl;
+    ProgramImpl* pimpl;
+    RefCountedPtr<ProgramImpl> refHolder;
 
-    Program (ProgramImpl&);
+    Program (ProgramImpl&, bool holdRef);
 };
 
 } // namespace soul

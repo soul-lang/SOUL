@@ -66,7 +66,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         if (auto m = getModuleWithName (name))
             return *m;
 
-        Program p (*this);
+        Program p (*this, false);
         auto& newModule = Module::createNamespace (p);
         newModule.moduleName = name;
         modules.push_back (newModule);
@@ -237,8 +237,8 @@ struct Program::ProgramImpl  : public RefCountedObject
 };
 
 //==============================================================================
-Program::Program (ProgramImpl& p) : pimpl (p) {}
-Program::Program() : Program (*new ProgramImpl()) {}
+Program::Program (ProgramImpl& p, bool holdRef) : pimpl (&p) { if (holdRef) refHolder = p; }
+Program::Program() : Program (*new ProgramImpl(), true) {}
 Program::~Program() = default;
 
 Program::Program (const Program&) = default;

@@ -25,10 +25,13 @@
 namespace soul
 {
 
-Module::Module (Program& p, ModuleType type) : allocator (p.getAllocator()), moduleType (type) {}
+Module::Module (Program& p, ModuleType type) : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
+{
+}
 
 Module::Module (Program& p, const Module& toClone)
-    : moduleName (toClone.moduleName),
+    : program (*p.pimpl, false),
+      moduleName (toClone.moduleName),
       annotation (toClone.annotation),
       allocator (p.getAllocator()),
       moduleType (toClone.moduleType)

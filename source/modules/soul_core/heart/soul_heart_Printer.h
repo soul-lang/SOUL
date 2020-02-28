@@ -29,7 +29,7 @@ struct heart::Printer
         out << '#' << getHEARTFormatVersionPrefix() << ' ' << getHEARTFormatVersion() << blankLine;
 
         for (auto& module : p.getModules())
-            PrinterStream (p, module, out).printAll();
+            PrinterStream (module, out).printAll();
     }
 
     static std::string getDump (const Program& p)
@@ -42,10 +42,9 @@ struct heart::Printer
 private:
     struct PrinterStream
     {
-        PrinterStream (const Program& p, const Module& m, IndentedStream& o)
-           : program (p), module (m), out (o) {}
+        PrinterStream (const Module& m, IndentedStream& o)
+           : module (m), out (o) {}
 
-        const Program& program;
         const Module& module;
         IndentedStream& out;
 
@@ -114,7 +113,7 @@ private:
 
         void printDescription (const Annotation& annotation)
         {
-            out << annotation.toHEART (program.getStringDictionary());
+            out << annotation.toHEART (module.program.getStringDictionary());
         }
 
         static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
@@ -360,7 +359,7 @@ private:
             if (! (v.getType().isPrimitiveInteger() || v.getType().isPrimitiveFloat()))
             {
                 out << getTypeDescription (v.getType()) << ' ';
-                p.dictionary = std::addressof (program.getStringDictionary());
+                p.dictionary = std::addressof (module.program.getStringDictionary());
             }
 
             v.print (p);
@@ -385,7 +384,7 @@ private:
                     SOUL_ASSERT_FALSE;
                 }
 
-                return printVarWithPrefix (program.getVariableNameWithQualificationIfNeeded (module, *v));
+                return printVarWithPrefix (module.program.getVariableNameWithQualificationIfNeeded (module, *v));
             }
 
             if (auto arrayElement = cast<heart::ArrayElement> (e))
@@ -478,7 +477,7 @@ private:
 
         std::string getTypeDescription (const Type& type) const
         {
-            return program.getTypeDescriptionWithQualificationIfNeeded (module, type.removeConstIfPresent());
+            return module.program.getTypeDescriptionWithQualificationIfNeeded (module, type.removeConstIfPresent());
         }
 
         static const char* getUnaryOpName (UnaryOp::Op o)
@@ -515,7 +514,7 @@ private:
             out << " = ";
         }
 
-        std::string getFunctionName (const heart::Function& f)   { return program.getFunctionNameWithQualificationIfNeeded (module, f); }
+        std::string getFunctionName (const heart::Function& f)   { return module.program.getFunctionNameWithQualificationIfNeeded (module, f); }
         static std::string getBlockName (heart::Block& b)        { return b.name; }
 
         void printStatementDescription (const heart::Object& s)

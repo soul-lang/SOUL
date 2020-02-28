@@ -33,6 +33,8 @@ public:
     bool isGraph() const;
     bool isNamespace() const;
 
+    Program program;
+
     std::string moduleName;
     std::string getNameWithoutRootNamespace() const;
     std::string getNameWithoutRootNamespaceOrSpecialisations() const;
