@@ -449,13 +449,6 @@ private:
                 return;
             }
 
-            if (auto fc = cast<heart::PlaceholderFunctionCall> (e))
-            {
-                out << fc->name << ' ' << getTypeDescription (fc->returnType);
-                printArgList (fc->arguments);
-                return;
-            }
-
             if (auto pp = cast<heart::ProcessorProperty> (e))
             {
                 out << "processor." << pp->getPropertyName();

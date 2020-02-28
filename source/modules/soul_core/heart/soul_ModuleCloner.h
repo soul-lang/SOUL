@@ -119,9 +119,6 @@ struct ModuleCloner
         if (auto f = cast<heart::PureFunctionCall> (old))
             return clone (*f);
 
-        if (auto f = cast<heart::PlaceholderFunctionCall> (old))
-            return clone (*f);
-
         if (auto v = cast<heart::Variable> (old))
             return getRemappedVariable (*v);
 
@@ -388,16 +385,6 @@ struct ModuleCloner
     {
         auto& fc = newModule.allocate<heart::PureFunctionCall> (old.location,
                                                                 getRemappedFunction (old.function));
-
-        for (auto& arg : old.arguments)
-            fc.arguments.push_back (getRemappedExpressionRef (arg));
-
-        return fc;
-    }
-
-    heart::PlaceholderFunctionCall& clone (const heart::PlaceholderFunctionCall& old)
-    {
-        auto& fc = newModule.allocate<heart::PlaceholderFunctionCall> (old.location, old.name, cloneType (old.returnType));
 
         for (auto& arg : old.arguments)
             fc.arguments.push_back (getRemappedExpressionRef (arg));

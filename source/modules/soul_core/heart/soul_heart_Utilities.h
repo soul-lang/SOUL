@@ -71,7 +71,6 @@ struct heart::Utilities
                 {
                     if (auto v = cast<heart::Variable> (value))                 return visit (v->type);
                     if (auto c = cast<heart::TypeCast> (value))                 return visit (c->destType);
-                    if (auto p = cast<heart::PlaceholderFunctionCall> (value))  return visit (p->returnType);
                 });
             }
 

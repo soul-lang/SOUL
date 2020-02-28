@@ -262,27 +262,34 @@ struct BlockBuilder
         addStatement (call);
     }
 
-    heart::PlaceholderFunctionCall& createMinInt32 (heart::Expression& a, heart::Expression& b)
+    heart::PureFunctionCall& createMinInt32 (heart::Expression& a, heart::Expression& b)
     {
         SOUL_ASSERT (a.getType().isInteger32() && b.getType().isInteger32());
-        auto& call = module.allocate<heart::PlaceholderFunctionCall> (a.location, getFullyQualifiedIntrinsicName (IntrinsicType::min), PrimitiveType::int32);
+        auto& call = createPureIntrinsicCall (module, a.location, IntrinsicType::min);
         call.arguments.push_back (a);
         call.arguments.push_back (b);
         return call;
     }
 
-    heart::PlaceholderFunctionCall& createWrapInt32 (heart::Expression& n, heart::Expression& range)
+    heart::PureFunctionCall& createWrapInt32 (heart::Expression& n, heart::Expression& range)
     {
         return createWrapInt32 (module, n, range);
     }
 
-    static heart::PlaceholderFunctionCall& createWrapInt32 (Module& m, heart::Expression& n, heart::Expression& range)
+    static heart::PureFunctionCall& createWrapInt32 (Module& m, heart::Expression& n, heart::Expression& range)
     {
         SOUL_ASSERT (n.getType().isInteger32() && n.getType().isPrimitiveInteger() && range.getType().isInteger32());
-        auto& call = m.allocate<heart::PlaceholderFunctionCall> (n.location, getFullyQualifiedIntrinsicName (IntrinsicType::wrap), PrimitiveType::int32);
+        auto& call = createPureIntrinsicCall (m, n.location, IntrinsicType::wrap);
         call.arguments.push_back (n);
         call.arguments.push_back (range);
         return call;
+    }
+
+    static heart::PureFunctionCall& createPureIntrinsicCall (Module& m, CodeLocation l, IntrinsicType type)
+    {
+        auto fn = m.program.getFunctionWithName (getFullyQualifiedIntrinsicName (type));
+        SOUL_ASSERT (fn != nullptr);
+        return m.allocate<heart::PureFunctionCall> (std::move (l), *fn);
     }
 
     void addReadStream (CodeLocation l, heart::Expression& dest, heart::InputDeclaration& src)

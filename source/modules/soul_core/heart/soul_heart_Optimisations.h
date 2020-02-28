@@ -641,16 +641,6 @@ private:
             return fc;
         }
 
-        heart::PlaceholderFunctionCall& clone (const heart::PlaceholderFunctionCall& old)
-        {
-            auto& fc = module.allocate<heart::PlaceholderFunctionCall> (old.location, old.name, old.returnType);
-
-            for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (arg));
-
-            return fc;
-        }
-
         heart::ReadStream& clone (const heart::ReadStream& old)
         {
             return module.allocate<heart::ReadStream> (old.location, getRemappedExpressionRef (*old.target), old.source);
@@ -686,9 +676,6 @@ private:
                 return module.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (t->source), t->destType);
 
             if (auto f = cast<heart::PureFunctionCall> (old))
-                return clone (*f);
-
-            if (auto f = cast<heart::PlaceholderFunctionCall> (old))
                 return clone (*f);
 
             if (auto v = cast<heart::Variable> (old))

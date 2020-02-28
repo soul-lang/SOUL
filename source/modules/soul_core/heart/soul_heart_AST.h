@@ -43,7 +43,6 @@ struct heart
         X(UnaryOperator) \
         X(BinaryOperator) \
         X(PureFunctionCall) \
-        X(PlaceholderFunctionCall) \
         X(ProcessorProperty) \
 
     #define SOUL_HEART_STATEMENTS(X) \
@@ -682,22 +681,6 @@ struct heart
         Value getAsConstant() const override    { return {}; }
 
         Function& function;
-    };
-
-    //==============================================================================
-    struct PlaceholderFunctionCall  : public FunctionCallExpression
-    {
-        PlaceholderFunctionCall (CodeLocation l, std::string functionName, Type retType)
-            : FunctionCallExpression (std::move (l)), name (std::move (functionName)), returnType (std::move (retType))
-        {
-            SOUL_ASSERT (! name.empty());
-        }
-
-        const Type& getType() const override    { return returnType; }
-        Value getAsConstant() const override    { return {}; }
-
-        std::string name;
-        Type returnType;
     };
 
     //==============================================================================
