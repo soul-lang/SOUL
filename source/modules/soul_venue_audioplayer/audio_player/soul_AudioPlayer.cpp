@@ -336,7 +336,7 @@ public:
                             inputBufferOffset += requestedFrames;
                             inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
 
-                            if (streamValue.getType().getVectorSize() != requestedFrames)
+                            if (streamValue.getType().getArrayOrVectorSize() != requestedFrames)
                                 streamValue.getMutableType().modifyArraySize (requestedFrames);
 
                             postFrames (0, streamValue);
@@ -356,7 +356,7 @@ public:
                             inputBufferOffset += requestedFrames;
                             inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
 
-                            if (streamValue.getType().getVectorSize() != requestedFrames)
+                            if (streamValue.getType().getArrayOrVectorSize() != requestedFrames)
                                 streamValue.getMutableType().modifyArraySize (requestedFrames);
 
                             postFrames (0, streamValue);
