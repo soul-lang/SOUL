@@ -22,6 +22,7 @@ namespace soul
 {
 
 class Module;
+class Program;
 
 //==============================================================================
 struct heart

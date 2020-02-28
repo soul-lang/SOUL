@@ -151,7 +151,7 @@ private:
     struct ProgramImpl;
     RefCountedPtr<ProgramImpl> pimpl;
 
-    Program (ProgramImpl*);
+    Program (ProgramImpl&);
 };
 
 } // namespace soul

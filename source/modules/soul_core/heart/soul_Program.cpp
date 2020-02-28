@@ -66,7 +66,8 @@ struct Program::ProgramImpl  : public RefCountedObject
         if (auto m = getModuleWithName (name))
             return *m;
 
-        auto& newModule = Module::createNamespace (allocator);
+        Program p (*this);
+        auto& newModule = Module::createNamespace (p);
         newModule.moduleName = name;
         modules.push_back (newModule);
         return newModule;
@@ -134,7 +135,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
         for (auto& m : modules)
         {
-            auto& newModule = newProgram.getAllocator().allocate<Module> (newProgram.getAllocator(), m);
+            auto& newModule = newProgram.getAllocator().allocate<Module> (newProgram, m);
             newProgram.pimpl->insert (-1, newModule);
             cloners.emplace_back (m, newModule, functionMappings, structMappings, variableMappings);
         }
@@ -236,8 +237,8 @@ struct Program::ProgramImpl  : public RefCountedObject
 };
 
 //==============================================================================
-Program::Program() : pimpl (*new ProgramImpl()) {}
-Program::Program (ProgramImpl* p) : pimpl (p) {}
+Program::Program (ProgramImpl& p) : pimpl (p) {}
+Program::Program() : Program (*new ProgramImpl()) {}
 Program::~Program() = default;
 
 Program::Program (const Program&) = default;
@@ -271,9 +272,9 @@ pool_ptr<heart::Function> Program::getFunctionWithName (const std::string& name)
 pool_ptr<heart::Variable> Program::getVariableWithName (const std::string& name) const  { return pimpl->getVariableWithName (name); }
 
 heart::Allocator& Program::getAllocator()                                               { return pimpl->allocator; }
-Module& Program::addGraph (int index)                                                   { return pimpl->insert (index, Module::createGraph     (pimpl->allocator)); }
-Module& Program::addProcessor (int index)                                               { return pimpl->insert (index, Module::createProcessor (pimpl->allocator)); }
-Module& Program::addNamespace (int index)                                               { return pimpl->insert (index, Module::createNamespace (pimpl->allocator)); }
+Module& Program::addGraph (int index)                                                   { return pimpl->insert (index, Module::createGraph     (*this)); }
+Module& Program::addProcessor (int index)                                               { return pimpl->insert (index, Module::createProcessor (*this)); }
+Module& Program::addNamespace (int index)                                               { return pimpl->insert (index, Module::createNamespace (*this)); }
 pool_ptr<Module> Program::getMainProcessor() const                                      { return pimpl->getMainProcessor(); }
 StringDictionary& Program::getStringDictionary()                                        { return pimpl->stringDictionary; }
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }

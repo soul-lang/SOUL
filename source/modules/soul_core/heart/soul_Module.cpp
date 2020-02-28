@@ -25,19 +25,19 @@
 namespace soul
 {
 
-Module::Module (heart::Allocator& a, ModuleType type) : allocator (a), moduleType (type) {}
+Module::Module (Program& p, ModuleType type) : allocator (p.getAllocator()), moduleType (type) {}
 
-Module::Module (heart::Allocator& a, const Module& toClone)
+Module::Module (Program& p, const Module& toClone)
     : moduleName (toClone.moduleName),
       annotation (toClone.annotation),
-      allocator (a),
+      allocator (p.getAllocator()),
       moduleType (toClone.moduleType)
 {
 }
 
-Module& Module::createProcessor (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::processorModule); }
-Module& Module::createGraph     (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::graphModule); }
-Module& Module::createNamespace (heart::Allocator& a)    { return a.allocate<Module> (a, ModuleType::namespaceModule); }
+Module& Module::createProcessor (Program& p)    { return p.getAllocator().allocate<Module> (p, ModuleType::processorModule); }
+Module& Module::createGraph     (Program& p)    { return p.getAllocator().allocate<Module> (p, ModuleType::graphModule); }
+Module& Module::createNamespace (Program& p)    { return p.getAllocator().allocate<Module> (p, ModuleType::namespaceModule); }
 
 bool Module::isProcessor() const        { return moduleType == ModuleType::processorModule; }
 bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }

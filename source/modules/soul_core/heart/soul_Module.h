@@ -108,14 +108,14 @@ private:
     Module& operator= (Module&&) = delete;
     Module& operator= (const Module&) = delete;
 
-    Module (heart::Allocator&, ModuleType);
-    Module (heart::Allocator&, const Module& toClone);
+    Module (Program&, ModuleType);
+    Module (Program&, const Module& toClone);
 
     friend class PoolAllocator;
 
-    static Module& createProcessor (heart::Allocator&);
-    static Module& createGraph     (heart::Allocator&);
-    static Module& createNamespace (heart::Allocator&);
+    static Module& createProcessor (Program&);
+    static Module& createGraph     (Program&);
+    static Module& createNamespace (Program&);
 };
 
 
