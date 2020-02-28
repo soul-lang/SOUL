@@ -649,41 +649,6 @@ struct heart
     };
 
     //==============================================================================
-    struct FunctionCallExpression  : public Expression
-    {
-        FunctionCallExpression (CodeLocation l) : Expression (std::move (l)) {}
-
-        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
-        bool readsVariable (Variable& v) const override      { return contains (arguments, v); }
-        bool writesVariable (Variable&) const override       { return false; }
-        bool isMutable() const override                      { return false; }
-        bool isAssignable() const override                   { return false; }
-
-        void visitExpressions (ExpressionVisitorFn fn, AccessType) override
-        {
-            for (size_t i = 0; i < arguments.size(); ++i)
-            {
-                arguments[i]->visitExpressions (fn, AccessType::read);
-                fn (arguments[i], AccessType::read);
-            }
-        }
-
-        std::vector<pool_ref<Expression>> arguments;
-    };
-
-    //==============================================================================
-    struct PureFunctionCall  : public FunctionCallExpression
-    {
-        PureFunctionCall (CodeLocation l, Function& fn)
-            : FunctionCallExpression (std::move (l)), function (fn) {}
-
-        const Type& getType() const override    { return function.returnType; }
-        Value getAsConstant() const override    { return {}; }
-
-        Function& function;
-    };
-
-    //==============================================================================
     struct Function  : public Object
     {
         Type returnType;
@@ -1012,7 +977,11 @@ struct heart
 
         bool readsVariable (Variable& v) const override
         {
-            return contains (arguments, v) || Assignment::readsVariable (v);
+            for (auto& a : arguments)
+                if (a->readsVariable (v))
+                    return true;
+
+            return Assignment::readsVariable (v);
         }
 
         void visitExpressions (ExpressionVisitorFn fn) override
@@ -1043,6 +1012,41 @@ struct heart
         pool_ptr<Function> function; // may be temporarily null while building the program
         using ArgListType = ArrayWithPreallocation<pool_ref<Expression>, 4>;
         ArgListType arguments;
+    };
+
+    //==============================================================================
+    struct PureFunctionCall  : public Expression
+    {
+        PureFunctionCall (CodeLocation l, Function& fn)  : Expression (std::move (l)), function (fn) {}
+
+        const Type& getType() const override               { return function.returnType; }
+        Value getAsConstant() const override               { return {}; }
+        pool_ptr<Variable> getRootVariable() override      { SOUL_ASSERT_FALSE; return {}; }
+        bool writesVariable (Variable&) const override     { return false; }
+        bool isMutable() const override                    { return false; }
+        bool isAssignable() const override                 { return false; }
+
+        bool readsVariable (Variable& v) const override
+        {
+            for (auto& a : arguments)
+                if (a->readsVariable (v))
+                    return true;
+
+            return false;
+        }
+
+        void visitExpressions (ExpressionVisitorFn fn, AccessType) override
+        {
+            // NB: avoid range-based-for as the vector can be mutated by the lambda
+            for (size_t i = 0; i < arguments.size(); ++i)
+            {
+                arguments[i]->visitExpressions (fn, AccessType::read);
+                fn (arguments[i], AccessType::read);
+            }
+        }
+
+        Function& function;
+        std::vector<pool_ref<Expression>> arguments;
     };
 
     //==============================================================================
