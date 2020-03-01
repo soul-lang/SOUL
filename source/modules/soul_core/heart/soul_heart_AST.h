@@ -75,7 +75,7 @@ struct heart
     struct Checker;
     struct Utilities;
 
-    static constexpr const char* getInitFunctionName()              { return "_init"; }
+    static constexpr const char* getInitFunctionName()              { return "_soul_init"; }
     static constexpr const char* getPrepareFunctionName()           { return "_prepare"; }
     static constexpr const char* getRenderStatsFunctionName()       { return "_get_render_stats"; }
     static constexpr const char* getRunFunctionName()               { return "run"; }
