@@ -86,6 +86,8 @@ struct CompileMessageList  final
     bool hasErrorsOrWarnings() const;
     bool hasInternalCompilerErrors() const;
 
+    void clear();
+
     /** Returns a dump of all the messages - this is probably want you want to use
         if you're printing the output of a compilation.
     */

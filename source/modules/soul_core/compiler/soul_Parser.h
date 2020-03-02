@@ -1824,7 +1824,25 @@ private:
 
     AST::Statement& parseLocalLetOrVar (bool isConst)
     {
-        parseLetOrVarDeclaration (isConst, [this] (AST::VariableDeclaration& v) { getCurrentBlock().addStatement (v); });
+        parseLetOrVarDeclaration (isConst, [this] (AST::VariableDeclaration& v)
+        {
+            AST::Scope::NameSearch search;
+            search.partiallyQualifiedPath = IdentifierPath (v.name);
+            search.stopAtFirstScopeWithResults = true;
+            search.findTypes = false;
+            search.findFunctions = false;
+            search.findProcessorsAndNamespaces = false;
+            search.findEndpoints = false;
+            search.onlyFindLocalVariables = true;
+
+            auto& currentBlock = getCurrentBlock();
+            currentBlock.performFullNameSearch (search, nullptr);
+            currentBlock.addStatement (v);
+
+            if (! search.itemsFound.empty())
+                v.context.location.emitMessage (Warnings::localVariableShadow (v.name));
+        });
+
         return getNoop();
     }
 

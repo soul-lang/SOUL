@@ -171,6 +171,11 @@ bool CompileMessageList::hasInternalCompilerErrors() const
     return false;
 }
 
+void CompileMessageList::clear()
+{
+    messages.clear();
+}
+
 std::string CompileMessageList::toString() const
 {
     std::ostringstream oss;

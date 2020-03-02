@@ -280,6 +280,8 @@ namespace soul
 #define SOUL_WARNINGS_PERFORMANCE(X) \
     X(indexHasRuntimeOverhead,              "Performance warning: the type of this array index could not be proven to be safe, so a runtime check was added") \
 
+#define SOUL_WARNINGS_SYNTAX(X) \
+    X(localVariableShadow,                  "The variable $Q0$ shadows another local variable with the same name") \
 
 //==============================================================================
 struct CompileMessageHelpers
@@ -388,7 +390,10 @@ struct Warnings
           return CompileMessageHelpers::createMessage (category, CompileMessage::Type::warning, text, std::forward<Args> (args)...); }
 
     #define SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE(name, text)    SOUL_DECLARE_WARNING_HANDLER(name, text, CompileMessage::Category::performanceProblem)
+    #define SOUL_DECLARE_WARNING_HANDLER_SYNTAX(name, text)         SOUL_DECLARE_WARNING_HANDLER(name, text, CompileMessage::Category::syntax)
+
     SOUL_WARNINGS_PERFORMANCE(SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE)
+    SOUL_WARNINGS_SYNTAX(SOUL_DECLARE_WARNING_HANDLER_SYNTAX)
 
     #undef SOUL_DECLARE_WARNING_HANDLER_PERFORMANCE
     #undef SOUL_DECLARE_WARNING_HANDLER

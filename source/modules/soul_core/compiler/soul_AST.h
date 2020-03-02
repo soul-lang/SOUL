@@ -369,7 +369,8 @@ struct AST
             bool stopAtFirstScopeWithResults = false;
             int requiredNumFunctionArgs = -1;
             bool findVariables = true, findTypes = true, findFunctions = true,
-                 findProcessorsAndNamespaces = true, findEndpoints = true;
+                 findProcessorsAndNamespaces = true, findEndpoints = true,
+                 onlyFindLocalVariables = false;
 
             void addResult (ASTObject& o)
             {
@@ -404,6 +405,9 @@ struct AST
 
             for (auto s = this; s != nullptr; s = s->getParentScope())
             {
+                if (search.onlyFindLocalVariables && const_cast<Scope*>(s)->getAsBlock() == nullptr)
+                    break;
+
                 if (auto scopeToSearch = parentPath.empty() ? s : s->findChildScope (parentPath))
                     scopeToSearch->performLocalNameSearch (search, statementToSearchUpTo);
 
@@ -1398,6 +1402,7 @@ struct AST
             if (search.findVariables)
             {
                 auto name = search.partiallyQualifiedPath.getLastPart();
+                pool_ptr<VariableDeclaration> lastMatch;
 
                 for (auto& s : statements)
                 {
@@ -1405,14 +1410,12 @@ struct AST
                         break;
 
                     if (auto v = cast<VariableDeclaration> (s))
-                    {
                         if (v->name == name)
-                        {
-                            search.addResult (*v);
-                            break;
-                        }
-                    }
+                            lastMatch = v;
                 }
+
+                if (lastMatch != nullptr)
+                    search.addResult (*lastMatch);
             }
         }
 
