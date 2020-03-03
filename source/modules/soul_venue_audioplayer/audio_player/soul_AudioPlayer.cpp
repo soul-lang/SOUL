@@ -416,51 +416,58 @@ public:
 
                 if (details.getSingleSampleType().isFloat64())
                 {
-                    outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
+                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
                     {
+                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
+
                         if (outputBufferAvailable)
                         {
-                            InterleavedChannelSet<const double> srcChannels { static_cast<const double*> (src),
-                                                                              numSrcChannels, num, numSrcChannels };
-                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, num), srcChannels);
-                            outputBufferOffset += num;
+                            InterleavedChannelSet<const double> srcChannels { static_cast<const double*> (frameArray.getPackedData()),
+                                                                              numSrcChannels, numFrames, numSrcChannels };
+                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
+                            outputBufferOffset += numFrames;
                             outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
                         }
 
-                        return num;
+                        return numFrames;
 
                     });
                 }
                 else if (details.getSingleSampleType().isFloat32())
                 {
-                    outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
+                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
                     {
+                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
+
                         if (outputBufferAvailable)
                         {
-                            InterleavedChannelSet<const float> srcChannels { static_cast<const float*> (src),
-                                                                             numSrcChannels, num, numSrcChannels };
-                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, num), srcChannels);
-                            outputBufferOffset += num;
+                            InterleavedChannelSet<const float> srcChannels { static_cast<const float*> (frameArray.getPackedData()),
+                                                                             numSrcChannels, numFrames, numSrcChannels };
+                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
+                            outputBufferOffset += numFrames;
                             outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
                         }
 
-                        return num;
+                        return numFrames;
                     });
                 }
                 else if (details.getSingleSampleType().isInteger32())
                 {
-                    outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t num) -> uint32_t
-                                                    {
-                                                        if (outputBufferAvailable)
-                                                        {
-                                                            InterleavedChannelSet<const int> srcChannels { static_cast<const int*> (src), numSrcChannels, num, numSrcChannels };
-                                                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, num), srcChannels);
-                                                            outputBufferOffset += num;
-                                                            outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
-                                                        }
+                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
+                    {
+                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
 
-                                                        return num;
-                                                    });
+                        if (outputBufferAvailable)
+                        {
+                            InterleavedChannelSet<const int> srcChannels { static_cast<const int*> (frameArray.getPackedData()),
+                                                                           numSrcChannels, numFrames, numSrcChannels };
+                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
+                            outputBufferOffset += numFrames;
+                            outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
+                        }
+
+                        return numFrames;
+                    });
                 }
                 else
                     SOUL_ASSERT_FALSE;

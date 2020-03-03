@@ -355,8 +355,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                     if (changed)
                     {
                         changed = false;
-                        auto v = Value (value);
-                        postEvent (v);
+                        postEvent (Value (value));
                     }
 
                     return 1024;
@@ -370,8 +369,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                     if (changed)
                     {
                         changed = false;
-                        auto v = value;
-                        setTargetValue (&v, rampFrames, 0.0f);
+                        setTargetValue (Value (value), rampFrames, 0.0f);
                     }
 
                     return 1024;
@@ -379,11 +377,11 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             }
             else if (isValue (details.kind))
             {
-                input.setCurrentValue (&initialValue, sizeof (initialValue));
+                input.setCurrentValue (Value (initialValue));
 
                 onValueUpdated = [this, &input]
                 {
-                    input.setCurrentValue (&value, sizeof (value));
+                    input.setCurrentValue (Value (value));
                 };
             }
 

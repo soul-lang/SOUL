@@ -220,11 +220,13 @@ private:
         {
             if (details.getSingleSampleType().isFloat64())
             {
-                outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t numFrames) -> uint32_t
+                outputToAttachTo.setStreamSink ([=] (const soul::Value& frameDataArray) -> uint32_t
                 {
+                    auto numFrames = (uint32_t) frameDataArray.getType().getArraySize();
+
                     if (isBufferAvailable)
                     {
-                        InterleavedChannelSet<const double> srcChannels { static_cast<const double*> (src),
+                        InterleavedChannelSet<const double> srcChannels { static_cast<const double*> (frameDataArray.getPackedData()),
                                                                           numChannels, numFrames, numChannels };
                         copyChannelSetToFit (currentBuffer.getSlice (bufferOffset, numFrames), srcChannels);
                         bufferOffset += numFrames;
@@ -236,11 +238,13 @@ private:
             }
             else
             {
-                outputToAttachTo.setStreamSink ([=] (const void* src, uint32_t numFrames) -> uint32_t
+                outputToAttachTo.setStreamSink ([=] (const soul::Value& frameDataArray) -> uint32_t
                 {
+                    auto numFrames = (uint32_t) frameDataArray.getType().getArraySize();
+
                     if (isBufferAvailable)
                     {
-                        InterleavedChannelSet<const float> srcChannels { static_cast<const float*> (src),
+                        InterleavedChannelSet<const float> srcChannels { static_cast<const float*> (frameDataArray.getPackedData()),
                                                                          numChannels, numFrames, numChannels };
                         copyChannelSetToFit (currentBuffer.getSlice (bufferOffset, numFrames), srcChannels);
                         bufferOffset += numFrames;

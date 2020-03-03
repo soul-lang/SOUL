@@ -65,7 +65,7 @@ namespace callbacks
     /** Called to consume the given number of frames from the given buffer.
         @returns the number of frames consumed
     */
-    using ConsumeStreamData = std::function<uint32_t(const void* frameData, uint32_t numFramesAvailable)>;
+    using ConsumeStreamData = std::function<uint32_t(const soul::Value& frameDataArray)>;
 
     /** This is called to set a target value for a sparse stream, along with the number of frames
         that should be taken to reach the given value, and the shape to use whilst moving to this value.
@@ -74,7 +74,7 @@ namespace callbacks
         @param curveShape               the type of curve to use to reach the target, where 0 is linear,
                                         and positive/negative values (up to 1) are logarithmically skewed
     */
-    using SetSparseStreamTarget = const std::function<void(const void* targetValue, uint32_t numFramesToReachValue, float curveShape)>&;
+    using SetSparseStreamTarget = const std::function<void(const soul::Value& targetValue, uint32_t numFramesToReachValue, float curveShape)>&;
 
     /** This is called to provide the next block of sparse stream data.
         @param totalFramesElapsed  a continuously-increasing counter of the total number of
@@ -101,7 +101,7 @@ public:
         linked and is running, and should be thread-safe to be called concurrently with advance().
         For any other type of endpoint, it's not permitted to call this.
     */
-    virtual bool setCurrentValue (const void* newData, uint32_t dataSize) = 0;
+    virtual bool setCurrentValue (const Value& newValue) = 0;
 
     /** If the endpoint is a stream (i.e. EndpointKind::stream) then this method will attach
         a callback that can provide it with the data it needs, and also define the properties
@@ -153,7 +153,7 @@ public:
         linked and is running, and should be thread-safe to be called concurrently with advance().
         For any other type of endpoint, it's not permitted to call this.
     */
-    virtual bool getCurrentValue (void* destBuffer, uint32_t size) = 0;
+    virtual Value getCurrentValue() = 0;
 
     /** If the endpoint is a stream (i.e. EndpointKind::stream) then this method will attach
         a callback that will consume the data being produced, and also define the properties
