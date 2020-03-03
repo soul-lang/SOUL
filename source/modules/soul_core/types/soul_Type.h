@@ -34,10 +34,10 @@ struct Type  final
     Type (PrimitiveType);
     Type (PrimitiveType::Primitive);
 
+    Type (const Type&) = default;
     Type (Type&&) = default;
+    Type& operator= (const Type&) = default;
     Type& operator= (Type&&) = default;
-    Type (const Type&);
-    Type& operator= (const Type&);
 
     //==============================================================================
     bool isValid() const;
@@ -109,12 +109,12 @@ struct Type  final
 
     static bool canBeSafelyCastToArraySize (int64_t size);
     ArraySize getArraySize() const;
-    const Type& getArrayElementType() const;
+    Type getArrayElementType() const;
 
     void resolveUnsizedArraySize (ArraySize newSize);
     void modifyArraySize (ArraySize newSize);
     Type createCopyWithNewArraySize (ArraySize newSize) const;
-    Type createCopyWithNewArrayElementType (Type) const;
+    Type createCopyWithNewArrayElementType (const Type& newElementType) const;
 
     template <typename IntType>
     bool isValidArrayOrVectorIndex (IntType value) const
@@ -215,7 +215,7 @@ struct Type  final
 
     //==============================================================================
 private:
-    enum class Category
+    enum class Category  : uint8_t
     {
         invalid,
         primitive,
@@ -227,13 +227,12 @@ private:
         stringLiteral
     };
 
-    Category type = Category::invalid;
-    PrimitiveType primitiveType;
-    BoundedIntSize boundingSize = 0;
-    StructurePtr structure;
-    std::unique_ptr<Type> arrayElementType;
+    Category category = Category::invalid, arrayElementCategory = Category::invalid;
     bool isRef = false;
     bool isConstant = false;
+    PrimitiveType primitiveType;
+    BoundedIntSize boundingSize = 0, arrayElementBoundingSize = 0;
+    StructurePtr structure;
 
     explicit Type (Category);
     explicit Type (Structure&);

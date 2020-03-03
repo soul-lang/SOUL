@@ -998,7 +998,12 @@ private:
                             auto elementType = s.lhs->resolveAsType();
 
                             if (! elementType.canBeArrayElementType())
+                            {
+                                if (elementType.isArray())
+                                    s.lhs->context.throwError (Errors::notYetImplemented ("Multi-dimensional arrays"));
+
                                 s.lhs->context.throwError (Errors::wrongTypeForArrayElement());
+                            }
 
                             return allocator.allocate<AST::ConcreteType> (s.lhs->context, elementType.createArray (size));
                         }

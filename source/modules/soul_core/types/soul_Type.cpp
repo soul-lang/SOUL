@@ -90,37 +90,10 @@ size_t PrimitiveType::getPackedSizeInBytes() const
 }
 
 //==============================================================================
-Type::Type (Category t) : type (t) {}
-Type::Type (Structure& s) : type (Category::structure), structure (s) {}
+Type::Type (Category t) : category (t) {}
+Type::Type (Structure& s) : category (Category::structure), structure (s) {}
 
-Type::Type (const Type& other)
-    : type (other.type),
-      primitiveType (other.primitiveType),
-      boundingSize (other.boundingSize),
-      structure (other.structure),
-      isRef (other.isRef),
-      isConstant (other.isConstant)
-{
-    if (auto* e = other.arrayElementType.get())
-        arrayElementType.reset (new Type (*e));
-}
-
-Type& Type::operator= (const Type& other)
-{
-    type = other.type;
-    primitiveType = other.primitiveType;
-    boundingSize = other.boundingSize;
-    structure = other.structure;
-    isRef = other.isRef;
-    isConstant = other.isConstant;
-
-    if (auto* e = other.arrayElementType.get())
-        arrayElementType.reset (new Type (*e));
-
-    return *this;
-}
-
-Type::Type (PrimitiveType t) : type (t.isValid() ? Category::primitive : Category::invalid), primitiveType (t) {}
+Type::Type (PrimitiveType t) : category (t.isValid() ? Category::primitive : Category::invalid), primitiveType (t) {}
 Type::Type (PrimitiveType::Primitive t) : Type (PrimitiveType (t)) {}
 
 Type Type::parse (std::string text)
@@ -140,7 +113,7 @@ bool Type::isEqual (const Type& other, int flags) const
     if ((flags & ignoreConst) == 0 && isConstant != other.isConstant)
         return false;
 
-    if (type != other.type)
+    if (category != other.category)
     {
         if ((flags & ignoreVectorSize1) != 0)
             if ((isVectorOfSize1() && other.isPrimitive()) || (other.isVectorOfSize1() && isPrimitive()))
@@ -204,7 +177,7 @@ bool Type::isPresentIn (ArrayView<Type> types) const
 }
 
 //==============================================================================
-bool Type::isValid() const                { return type != Category::invalid; }
+bool Type::isValid() const                { return category != Category::invalid; }
 bool Type::isVoid() const                 { return primitiveType.isVoid(); }
 bool Type::isFloat32() const              { return primitiveType.isFloat32(); }
 bool Type::isFloat64() const              { return primitiveType.isFloat64(); }
@@ -213,30 +186,30 @@ bool Type::isInteger() const              { return primitiveType.isInteger(); }
 bool Type::isInteger32() const            { return primitiveType.isInteger32(); }
 bool Type::isInteger64() const            { return primitiveType.isInteger64(); }
 bool Type::isBool() const                 { return primitiveType.isBool(); }
-bool Type::isPrimitive() const            { return type == Category::primitive; }
+bool Type::isPrimitive() const            { return category == Category::primitive; }
 bool Type::isPrimitiveOrVector() const    { return isPrimitive() || isVector(); }
 bool Type::isPrimitiveInteger() const     { return isInteger() && isPrimitive(); }
 bool Type::isPrimitiveFloat() const       { return isFloatingPoint() && isPrimitive(); }
 bool Type::isPrimitiveBool() const        { return isBool() && isPrimitive(); }
-bool Type::isVector() const               { return type == Category::vector; }
+bool Type::isVector() const               { return category == Category::vector; }
 bool Type::isVectorOfSize1() const        { return isVector() && boundingSize == 1; }
 bool Type::isArrayOrVector() const        { return isArray() || isVector(); }
-bool Type::isArray() const                { return type == Category::array; }
+bool Type::isArray() const                { return category == Category::array; }
 bool Type::isUnsizedArray() const         { return isArray() && boundingSize == 0; }
 bool Type::isFixedSizeArray() const       { return isArray() && boundingSize != 0; }
 bool Type::isFixedSizeAggregate() const   { return isFixedSizeArray() || isVector() || isStruct(); }
-bool Type::isStringLiteral() const        { return type == Category::stringLiteral; }
+bool Type::isStringLiteral() const        { return category == Category::stringLiteral; }
 bool Type::isBoundedInt() const           { return isWrapped() || isClamped(); }
-bool Type::isWrapped() const              { return type == Category::wrap; }
-bool Type::isClamped() const              { return type == Category::clamp; }
+bool Type::isWrapped() const              { return category == Category::wrap; }
+bool Type::isClamped() const              { return category == Category::clamp; }
 bool Type::isSizedType() const            { return isArrayOrVector() || isBoundedInt(); }
 bool Type::isScalar() const               { return isPrimitiveOrVector() && (isFloatingPoint() || isInteger()); }
-bool Type::isStruct() const               { return type == Category::structure; }
+bool Type::isStruct() const               { return category == Category::structure; }
 bool Type::isReference() const            { return isRef; }
 bool Type::isConst() const                { return isConstant; }
 bool Type::isNonConstReference() const    { return isReference() && ! isConst(); }
 bool Type::canBeVectorElementType() const { return isPrimitive() && primitiveType.canBeVectorElementType(); }
-bool Type::canBeArrayElementType() const  { return isValid() && ! (isReference() || isConst() || isVoid()); }
+bool Type::canBeArrayElementType() const  { return isValid() && ! (isArray() || isReference() || isConst() || isVoid()); }
 
 
 //==============================================================================
@@ -275,9 +248,17 @@ bool Type::canBeSafelyCastToArraySize (int64_t size)
 Type Type::createArray (ArraySize size) const
 {
     SOUL_ASSERT (canBeArrayElementType());
+
     Type t (Category::array);
     t.boundingSize = (BoundedIntSize) size;
-    t.arrayElementType.reset (new Type (*this));
+    t.arrayElementCategory = category;
+    t.primitiveType = primitiveType;
+
+    if (isStruct())
+        t.structure = getStructRef();
+    else if (isSizedType())
+        t.arrayElementBoundingSize = boundingSize;
+
     return t;
 }
 
@@ -288,8 +269,7 @@ Type Type::createUnsizedArray() const
 
 void Type::resolveUnsizedArraySize (ArraySize newSize)
 {
-    SOUL_ASSERT (isUnsizedArray());
-    SOUL_ASSERT (newSize > 0);
+    SOUL_ASSERT (isUnsizedArray() && newSize > 0);
     boundingSize = (BoundedIntSize) newSize;
 }
 
@@ -299,9 +279,18 @@ void Type::modifyArraySize (ArraySize newSize)
     boundingSize = (BoundedIntSize) newSize;
 }
 
-
 Type::ArraySize Type::getArraySize() const      { SOUL_ASSERT (isArray()); return (ArraySize) boundingSize; }
-const Type& Type::getArrayElementType() const   { SOUL_ASSERT (isArray()); return *arrayElementType; }
+
+Type Type::getArrayElementType() const
+{
+    SOUL_ASSERT (isArray());
+
+    Type t (arrayElementCategory);
+    t.primitiveType = primitiveType;
+    t.boundingSize = arrayElementBoundingSize;
+    t.structure = structure;
+    return t;
+}
 
 Type::ArraySize Type::getArrayOrVectorSize() const
 {
@@ -333,12 +322,12 @@ Type Type::createCopyWithNewArraySize (ArraySize newSize) const
     return t;
 }
 
-Type Type::createCopyWithNewArrayElementType (Type newType) const
+Type Type::createCopyWithNewArrayElementType (const Type& newElementType) const
 {
     SOUL_ASSERT (isArray());
-
-    Type t (*this);
-    t.arrayElementType.reset (new Type (std::move (newType)));
+    auto t = newElementType.createArray (getArraySize());
+    t.isConstant = isConstant;
+    t.isRef = isRef;
     return t;
 }
 
@@ -385,16 +374,15 @@ Structure& Type::getStructRef() const            { SOUL_ASSERT (isStruct()); ret
 
 bool Type::usesStruct (const Structure& s) const
 {
-    if (structure == s)
-        return true;
+    if (structure != nullptr)
+    {
+        if (structure == s)
+            return true;
 
-    if (isArray())
-        return arrayElementType->usesStruct (s);
-
-    if (isStruct())
         for (auto& m : structure->members)
             if (m.type.usesStruct (s))
                 return true;
+    }
 
     return false;
 }
@@ -439,8 +427,8 @@ std::string Type::getDescription (const std::function<std::string(const Structur
     if (isConst())          return "const " + removeConst().getDescription (getStructName);
     if (isReference())      return removeReference().getDescription (getStructName) + "&";
     if (isVector())         return primitiveType.getDescription() + ("<" + std::to_string (getVectorSize()) + ">");
-    if (isUnsizedArray())   return arrayElementType->getDescription (getStructName) + ("[]");
-    if (isArray())          return arrayElementType->getDescription (getStructName) + ("[" + std::to_string (getArraySize()) + "]");
+    if (isUnsizedArray())   return getArrayElementType().getDescription (getStructName) + ("[]");
+    if (isArray())          return getArrayElementType().getDescription (getStructName) + ("[" + std::to_string (getArraySize()) + "]");
     if (isWrapped())        return "wrap<" + std::to_string (getBoundedIntLimit()) + ">";
     if (isClamped())        return "clamp<" + std::to_string (getBoundedIntLimit()) + ">";
     if (isStruct())         return getStructName (getStructRef());
@@ -459,8 +447,8 @@ std::string Type::getShortIdentifierDescription() const
     if (isConst())          return "const_" + removeConst().getShortIdentifierDescription();
     if (isReference())      return "ref_" + removeReference().getShortIdentifierDescription();
     if (isVector())         return "vec_" + std::to_string (getVectorSize()) + "_" + primitiveType.getShortIdentifierDescription();
-    if (isUnsizedArray())   return "slice_" + arrayElementType->getShortIdentifierDescription();
-    if (isArray())          return "arr_" + std::to_string (getArraySize()) + "_" + arrayElementType->getShortIdentifierDescription();
+    if (isUnsizedArray())   return "slice_" + getArrayElementType().getShortIdentifierDescription();
+    if (isArray())          return "arr_" + std::to_string (getArraySize()) + "_" + getArrayElementType().getShortIdentifierDescription();
     if (isWrapped())        return "wrap_" + std::to_string (getBoundedIntLimit());
     if (isClamped())        return "clamp_" + std::to_string (getBoundedIntLimit());
     if (isStruct())         return "struct_" + getStructRef().name;
@@ -473,7 +461,7 @@ size_t Type::getPackedSizeInBytes() const
 {
     if (isVector())         return primitiveType.getPackedSizeInBytes() * static_cast<size_t> (getVectorSize());
     if (isUnsizedArray())   return sizeof (void*);
-    if (isArray())          return arrayElementType->getPackedSizeInBytes() * static_cast<size_t> (getArraySize());
+    if (isArray())          return getArrayElementType().getPackedSizeInBytes() * static_cast<size_t> (getArraySize());
     if (isStruct())         return structure->getPackedSizeInBytes();
     if (isStringLiteral())  return sizeof (StringDictionary::Handle);
 
