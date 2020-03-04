@@ -252,7 +252,7 @@ struct ArrayWithPreallocation
         if (newSize == 0)
             return clear();
 
-        SOUL_ASSERT (newSize < numActive);
+        SOUL_ASSERT (newSize <= numActive);
 
         while (newSize < numActive && numActive > 0)
             items[--numActive].~Item();
