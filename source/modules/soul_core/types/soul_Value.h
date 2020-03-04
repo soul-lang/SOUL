@@ -140,6 +140,8 @@ struct Value  final
 
     Value getSlice (size_t start, size_t end) const;
 
+    void modifyArraySizeInPlace (size_t newSize);
+
     bool canNegate() const;
     Value negated() const;
 

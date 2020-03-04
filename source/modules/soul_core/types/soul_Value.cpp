@@ -646,6 +646,14 @@ void Value::convertAllHandlesToPointers (ConstantTable& constantTable)
     getData().convertAllHandlesToPointers (constantTable);
 }
 
+void Value::modifyArraySizeInPlace (size_t newSize)
+{
+    SOUL_ASSERT (type.isArray());
+    auto newType = type.createCopyWithNewArraySize ((Type::ArraySize) newSize);
+    SOUL_ASSERT (newType.getPackedSizeInBytes() <= allocatedData.size());
+    type = std::move (newType);
+}
+
 //==============================================================================
 ValuePrinter::ValuePrinter() = default;
 ValuePrinter::~ValuePrinter() = default;
