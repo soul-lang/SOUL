@@ -709,7 +709,7 @@ private:
                 if (numInputChannels > 0)
                     addEndpoint (sourceEndpoints,
                                  EndpointKind::stream,
-                                 "defaultIn",
+                                 EndpointID::create ("defaultIn"),
                                  "defaultIn",
                                  getVectorType (numInputChannels),
                                  0, false);
@@ -717,21 +717,21 @@ private:
                 if (numOutputChannels > 0)
                     addEndpoint (sinkEndpoints,
                                  EndpointKind::stream,
-                                 "defaultOut",
+                                 EndpointID::create ("defaultOut"),
                                  "defaultOut",
                                  getVectorType (numOutputChannels),
                                  0, false);
 
                 addEndpoint (sourceEndpoints,
                              EndpointKind::event,
-                             "defaultMidiIn",
+                             EndpointID::create ("defaultMidiIn"),
                              "defaultMidiIn",
                              soul::PrimitiveType::int32,
                              0, true);
 
                 addEndpoint (sinkEndpoints,
                              EndpointKind::event,
-                             "defaultMidiOut",
+                             EndpointID::create ("defaultMidiOut"),
                              "defaultMidiOut",
                              soul::PrimitiveType::int32,
                              0, true);

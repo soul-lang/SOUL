@@ -222,7 +222,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { "in:" + name.toString(), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
+            return { EndpointID::create ("in:" + name.toString()), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
         }
     };
 
@@ -237,7 +237,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { "out:" + name.toString(), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
+            return { EndpointID::create ("out:" + name.toString()), name, kind, sampleTypes, getSampleTypesPackedSize(), annotation };
         }
     };
 

@@ -60,10 +60,45 @@ static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
 }
 
 //==============================================================================
-using EndpointID = std::string;
+/** Holds the name of an input or output endpoint. */
+struct EndpointID
+{
+    static EndpointID create (std::string s)    { EndpointID i; i.ID = std::move (s); return i; }
+    const std::string& toString() const         { return ID; }
 
-using EndpointHandle = uint32_t;
+    operator bool() const   { return ! ID.empty(); }
 
+    bool operator== (const EndpointID& other) const     { return other.ID == ID; }
+    bool operator!= (const EndpointID& other) const     { return other.ID != ID; }
+
+private:
+    std::string ID;
+
+    template <typename Type> operator Type() const = delete;
+};
+
+//==============================================================================
+/** A transient opaque reference to an input or output endpoint.
+    Handles are created by a Performer or Venue to refer to an endpoint, and are
+    only valid for the lifetime that a linked program is active.
+*/
+struct EndpointHandle
+{
+    static EndpointHandle create (uint32_t rawHandle)   { EndpointHandle h; h.handle = rawHandle; return h; }
+    uint32_t getRawHandle() const                       { return handle; }
+
+    operator bool() const   { return handle != 0; }
+
+    bool operator== (EndpointHandle other) const     { return other.handle == handle; }
+    bool operator!= (EndpointHandle other) const     { return other.handle != handle; }
+
+private:
+    uint32_t handle = 0;
+
+    template <typename Type> operator Type() const = delete;
+};
+
+//==============================================================================
 /**
     Contains properties describing the unchanging characteristics of an input
     or output endpoint.
