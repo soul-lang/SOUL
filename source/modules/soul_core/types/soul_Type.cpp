@@ -304,6 +304,12 @@ Type::ArraySize Type::getNumAggregateElements() const
     return isStruct() ? getStructRef().members.size() : getArrayOrVectorSize();
 }
 
+Type::ArraySize Type::getArrayElementVectorSize() const
+{
+    SOUL_ASSERT (isArray() && (arrayElementCategory == Category::primitive || arrayElementCategory == Category::vector));
+    return (Type::ArraySize) arrayElementBoundingSize;
+}
+
 Type Type::createSizedType (PrimitiveType prim, Category type, ArraySize size)
 {
     SOUL_ASSERT (prim.isValid());

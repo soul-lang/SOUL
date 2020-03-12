@@ -27,7 +27,7 @@ namespace soul::patch
 struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 {
     PatchPlayerImpl (FileList f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
-        : fileList (std::move (f)), config (c), performer (std::move (p))
+        : fileList (std::move (f)), config (c), performer (std::move (p)), wrapper (*performer)
     {
     }
 
@@ -129,8 +129,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             return messageList.addError ("Failed to load program", {});
 
         createBuses();
-        createParameters (program.getStringDictionary());
-        connectEndpoints (program, consoleHandler);
+        createRenderOperations (program, consoleHandler);
 
         auto options = linkOptions;
         options.externalValueProvider = [this, externalDataProvider] (ConstantTable& constantTable,
@@ -236,35 +235,38 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         outputBusesSpan = makeSpan (outputBuses);
     }
 
-    void createParameters (const StringDictionary& stringDictionary)
+    void createRenderOperations (Program& program, ConsoleMessageHandler* consoleHandler)
     {
-        auto inputEndpoints = performer->getInputEndpoints();
-        parameters.reserve (inputEndpoints.size());
-
-        for (auto& i : inputEndpoints)
-        {
-            if (isParameterInput (i))
-                parameters.push_back (Parameter::Ptr (new ParameterImpl (stringDictionary, *performer->getInputSource (i.endpointID), i)));
-        }
-
-        parameterSpan = makeSpan (parameters);
-    }
-
-    void connectEndpoints (Program& program, ConsoleMessageHandler* consoleHandler)
-    {
-        wrapper = std::make_unique<SynchronousPerformerWrapper> (*performer);
+        parameters.clear();
         auto rateAndBlockSize = getSampleRateAndBlockSize();
-        SOUL_ASSERT (rateAndBlockSize.isValid());
-        wrapper->attach (rateAndBlockSize);
+
+        decltype (wrapper)::HandleUnusedEventFn handleUnusedEvents;
 
         if (consoleHandler != nullptr)
-            for (auto& outputEndpoint : performer->getOutputEndpoints())
-                if (isEvent (outputEndpoint.kind))
-                    soul::utilities::attachConsoleOutputHandler (program,
-                                                                 *performer->getOutputSink (outputEndpoint.endpointID),
-                                                                 outputEndpoint, rateAndBlockSize,
-                                                                 [consoleHandler] (uint64_t eventTime, const char* endpointName, const char* message)
-                                                                 { consoleHandler->handleConsoleMessage (eventTime, endpointName, message); });
+        {
+            handleUnusedEvents = [consoleHandler, program, rateAndBlockSize] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
+                                 {
+                                     soul::utilities::printConsoleMessage (program, endpointName, eventTime, rateAndBlockSize.sampleRate, eventData,
+                                                                           [consoleHandler] (uint64_t time, const char* name, const char* message)
+                                                                           { consoleHandler->handleConsoleMessage (time, name, message); });
+                                     return true;
+                                 };
+        }
+
+        wrapper.buildRenderingPipeline (rateAndBlockSize,
+                                        [&] (const EndpointDetails& endpoint) -> std::function<const float*()>
+                                        {
+                                            auto param = new ParameterImpl (program.getStringDictionary(), endpoint);
+                                            parameters.push_back (Parameter::Ptr (param));
+                                            return [param] { return param->getValueIfChanged(); };
+                                        },
+                                        [] (const EndpointDetails& endpoint) -> uint32_t
+                                        {
+                                            return checkRampLength (endpoint.annotation.getValue ("rampFrames"));
+                                        },
+                                        std::move (handleUnusedEvents));
+
+        parameterSpan = makeSpan (parameters);
     }
 
     //==============================================================================
@@ -281,28 +283,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         if (anyErrors)
             return RenderResult::noProgramLoaded;
 
-        if (rc.numInputChannels != wrapper->getExpectedNumInputChannels()
-             || rc.numOutputChannels != wrapper->getExpectedNumOutputChannels())
+        if (rc.numInputChannels != wrapper.getExpectedNumInputChannels()
+             || rc.numOutputChannels != wrapper.getExpectedNumOutputChannels())
             return RenderResult::wrongNumberOfChannels;
 
-        DiscreteChannelSet<const float> input;
-        input.channels = rc.inputChannels;
-        input.numChannels = (uint32_t) rc.numInputChannels;
-        input.offset = 0;
-        input.numFrames = (uint32_t) rc.numFrames;
-
-        DiscreteChannelSet<float> output;
-        output.channels = rc.outputChannels;
-        output.numChannels = (uint32_t) rc.numOutputChannels;
-        output.offset = 0;
-        output.numFrames = (uint32_t) rc.numFrames;
-
-        auto midi = rc.incomingMIDI;
-        auto midiEnd = midi != nullptr ? midi + rc.numMIDIMessagesIn : nullptr;
-
-        wrapper->render (input, output,
-                         midi, midiEnd,
-                         rc.outgoingMIDI, rc.maximumMIDIMessagesOut, rc.numMIDIMessagesOut);
+        wrapper.render ({ rc.inputChannels,  (uint32_t) rc.numInputChannels,  0, (uint32_t) rc.numFrames },
+                        { rc.outputChannels, (uint32_t) rc.numOutputChannels, 0, (uint32_t) rc.numFrames },
+                        rc.incomingMIDI,
+                        rc.outgoingMIDI,
+                        rc.numMIDIMessagesIn,
+                        rc.maximumMIDIMessagesOut,
+                        rc.numMIDIMessagesOut);
 
         return RenderResult::ok;
     }
@@ -310,8 +301,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     //==============================================================================
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
-        ParameterImpl (const StringDictionary& d, InputSource& input,
-                       const EndpointDetails& details)
+        ParameterImpl (const StringDictionary& d, const EndpointDetails& details)
             : stringDictionary (d)
         {
             annotation = details.annotation;
@@ -344,46 +334,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             maxValue     = castValueToFloat (details.annotation.getValue ("max"), maxValue);
             step         = castValueToFloat (details.annotation.getValue ("step"), maxValue / (numIntervals == 0 ? 1000 : numIntervals));
             initialValue = castValueToFloat (details.annotation.getValue ("init"), minValue);
-            rampFrames   = checkRampLength (details.annotation.getValue ("rampFrames"));
 
             value = initialValue;
-
-            if (isEvent (details.kind))
-            {
-                input.setEventSource ([this] (size_t, uint32_t, callbacks::PostNextEvent postEvent)
-                {
-                    if (changed)
-                    {
-                        changed = false;
-                        postEvent (Value (value));
-                    }
-
-                    return 1024;
-                });
-            }
-            else if (isStream (details.kind))
-            {
-                input.setSparseStreamSource ([this] (uint64_t /*totalFramesElapsed*/,
-                                                     callbacks::SetSparseStreamTarget setTargetValue) -> uint32_t
-                {
-                    if (changed)
-                    {
-                        changed = false;
-                        setTargetValue (Value (value), rampFrames, 0.0f);
-                    }
-
-                    return 1024;
-                });
-            }
-            else if (isValue (details.kind))
-            {
-                input.setCurrentValue (Value (initialValue));
-
-                onValueUpdated = [this, &input]
-                {
-                    input.setCurrentValue (Value (value));
-                };
-            }
 
             propertyNameStrings = annotation.getNames();
             propertyNameRawStrings.reserve (propertyNameStrings.size());
@@ -407,10 +359,16 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             {
                 value = newValue;
                 changed = true;
-
-                if (onValueUpdated)
-                    onValueUpdated();
             }
+        }
+
+        const float* getValueIfChanged()
+        {
+            if (! changed)
+                return nullptr;
+
+            changed = false;
+            return std::addressof (value);
         }
 
         String::Ptr getProperty (const char* propertyName) const override
@@ -433,7 +391,6 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             return v < minValue ? minValue : (v > maxValue ? maxValue : v);
         }
 
-        uint32_t rampFrames;
         float value = 0;
         std::atomic<bool> changed { true };
         Annotation annotation;
@@ -441,8 +398,6 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         std::vector<const char*> propertyNameRawStrings;
         Span<const char*> propertyNameSpan;
         const StringDictionary& stringDictionary;
-
-        std::function<void()> onValueUpdated;
     };
 
     //==============================================================================
@@ -494,7 +449,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
     PatchPlayerConfiguration config;
     std::unique_ptr<soul::Performer> performer;
-    std::unique_ptr<SynchronousPerformerWrapper> wrapper;
+    AudioMIDIWrapper<MIDIMessage> wrapper;
 
     static constexpr int64_t maxRampLength = 0x7fffffff;
 };

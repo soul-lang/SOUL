@@ -138,4 +138,4 @@ namespace soul
 
 #include "utilities/soul_EventQueue.h"
 #include "utilities/soul_AudioDataGeneration.h"
-#include "utilities/soul_SynchronousPerformerWrapper.h"
+#include "utilities/soul_AudioMIDIWrapper.h"

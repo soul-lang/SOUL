@@ -121,8 +121,37 @@ struct ThreadedVenue  : public soul::Venue
         ArrayView<const EndpointDetails> getInputEndpoints() override   { return performer->getInputEndpoints(); }
         ArrayView<const EndpointDetails> getOutputEndpoints() override  { return performer->getOutputEndpoints(); }
 
-        InputSource::Ptr getInputSource (const EndpointID& endpointID) override   { return performer->getInputSource (endpointID); }
-        OutputSink::Ptr  getOutputSink  (const EndpointID& endpointID) override   { return performer->getOutputSink (endpointID); }
+        EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
+
+        uint32_t setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
+        {
+            return performer->setNextInputStreamFrames (handle, frameArray);
+        }
+
+        void setSparseInputStreamTarget (EndpointHandle handle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
+        {
+            performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue, curveShape);
+        }
+
+        void setInputValue (EndpointHandle handle, const Value& newValue) override
+        {
+            performer->setInputValue (handle, newValue);
+        }
+
+        void addInputEvent (EndpointHandle handle, const Value& eventData) override
+        {
+            performer->addInputEvent (handle, eventData);
+        }
+
+        const Value* getOutputStreamFrames (EndpointHandle handle) override
+        {
+            return performer->getOutputStreamFrames (handle);
+        }
+
+        void iterateOutputEvents (EndpointHandle handle, Performer::HandleNextOutputEventFn fn) override
+        {
+            performer->iterateOutputEvents (handle, std::move (fn));
+        }
 
         bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
         {
@@ -145,9 +174,24 @@ struct ThreadedVenue  : public soul::Venue
             return s;
         }
 
-        void setStateChangeCallback (StateChangeCallbackFn f) override
+        void setStateChangeCallback (StateChangeCallbackFn f) override              { stateChangeCallback = std::move (f); }
+
+        bool addInputEndpointFIFOCallback (EndpointID endpoint, InputEndpointFIFOChangedFn callback) override
         {
-            stateChangeCallback = std::move (f);
+            if (! containsEndpoint (performer->getInputEndpoints(), endpoint))
+                return false;
+
+            inputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
+            return true;
+        }
+
+        bool addOutputEndpointFIFOCallback (EndpointID endpoint, OutputEndpointFIFOChangedFn callback) override
+        {
+            if (! containsEndpoint (performer->getOutputEndpoints(), endpoint))
+                return false;
+
+            outputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
+            return true;
         }
 
     private:
@@ -157,9 +201,23 @@ struct ThreadedVenue  : public soul::Venue
         CPULoadMeasurer loadMeasurer;
         StateChangeCallbackFn stateChangeCallback;
         std::atomic<State> state { State::empty };
+        std::atomic<bool> shouldStop { false };
         uint32_t blockSize = 0;
 
-        std::atomic<bool> shouldStop { false };
+        struct InputCallback
+        {
+            EndpointHandle endpointHandle;
+            InputEndpointFIFOChangedFn callback;
+        };
+
+        struct OutputCallback
+        {
+            EndpointHandle endpointHandle;
+            OutputEndpointFIFOChangedFn callback;
+        };
+
+        std::vector<InputCallback> inputCallbacks;
+        std::vector<OutputCallback> outputCallbacks;
 
         void waitForThreadToFinish()
         {
@@ -189,7 +247,15 @@ struct ThreadedVenue  : public soul::Venue
             {
                 loadMeasurer.startMeasurement();
                 performer->prepare (blockSize);
+
+                for (auto& c : inputCallbacks)
+                    c.callback (*this, c.endpointHandle);
+
                 performer->advance();
+
+                for (auto& c : outputCallbacks)
+                    c.callback (*this, c.endpointHandle);
+
                 loadMeasurer.stopMeasurement();
             }
 

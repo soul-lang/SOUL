@@ -70,8 +70,7 @@ public:
         if (audioDevice != nullptr)
             if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
                 if (auto venueEndpoint = findEndpoint (sourceEndpoints, venueSourceID))
-                    return audioSession->connectInputEndpoint (venueEndpoint->audioChannelIndex,
-                                                               venueEndpoint->isMIDI, inputID);
+                    return audioSession->connectInputEndpoint (*venueEndpoint, inputID);
 
         return false;
     }
@@ -81,11 +80,33 @@ public:
         if (audioDevice != nullptr)
             if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
                 if (auto venueEndpoint = findEndpoint (sinkEndpoints, venueSinkID))
-                    return audioSession->connectOutputEndpoint (venueEndpoint->audioChannelIndex,
-                                                                venueEndpoint->isMIDI, outputID);
+                    return audioSession->connectOutputEndpoint (*venueEndpoint, outputID);
 
         return false;
     }
+
+    //==============================================================================
+    struct MIDIEvent
+    {
+        MIDIEvent (const MIDIEvent&) = default;
+
+        MIDIEvent (uint32_t index, uint8_t byte0, uint8_t byte1, uint8_t byte2)
+            : frameIndex (index), packedData ((int) ((byte0 << 16) + (byte1 << 8) + (byte2)))
+        {
+        }
+
+        uint32_t frameIndex;
+        int packedData;
+    };
+
+    static int getPackedMIDIEvent (const MIDIEvent& m)   { return m.packedData; }
+
+    struct EndpointInfo
+    {
+        EndpointDetails details;
+        int audioChannelIndex = 0;
+        bool isMIDI = false;
+    };
 
     //==============================================================================
     struct AudioPlayerSession   : public Venue::Session
@@ -105,8 +126,6 @@ public:
 
         soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() override             { return performer->getInputEndpoints(); }
         soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() override            { return performer->getOutputEndpoints(); }
-        soul::InputSource::Ptr getInputSource (const soul::EndpointID& endpointID) override   { return performer->getInputSource (endpointID); }
-        soul::OutputSink::Ptr  getOutputSink  (const soul::EndpointID& endpointID) override   { return performer->getOutputSink (endpointID); }
 
         bool load (CompileMessageList& messageList, const Program& p) override
         {
@@ -121,8 +140,42 @@ public:
             return false;
         }
 
+        EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
+
+        uint32_t setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
+        {
+            return performer->setNextInputStreamFrames (handle, frameArray);
+        }
+
+        void setSparseInputStreamTarget (EndpointHandle handle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
+        {
+            performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue, curveShape);
+        }
+
+        void setInputValue (EndpointHandle handle, const Value& newValue) override
+        {
+            performer->setInputValue (handle, newValue);
+        }
+
+        void addInputEvent (EndpointHandle handle, const Value& eventData) override
+        {
+            performer->addInputEvent (handle, eventData);
+        }
+
+        const Value* getOutputStreamFrames (EndpointHandle handle) override
+        {
+            return performer->getOutputStreamFrames (handle);
+        }
+
+        void iterateOutputEvents (EndpointHandle handle, Performer::HandleNextOutputEventFn fn) override
+        {
+            performer->iterateOutputEvents (handle, std::move (fn));
+        }
+
         bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
         {
+            buildOperationList();
+
             if (state == State::loaded && performer->link (messageList, linkOptions, {}))
             {
                 setState (State::linked);
@@ -163,6 +216,11 @@ public:
         {
             stop();
             performer->unload();
+            preRenderOperations.clear();
+            postRenderOperations.clear();
+            inputCallbacks.clear();
+            outputCallbacks.clear();
+            connections.clear();
             setState (State::empty);
         }
 
@@ -197,9 +255,24 @@ public:
             }
         }
 
-        void setStateChangeCallback (StateChangeCallbackFn f) override
+        void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
+
+        bool addInputEndpointFIFOCallback (EndpointID endpoint, InputEndpointFIFOChangedFn callback) override
         {
-            stateChangeCallback = std::move (f);
+            if (! containsEndpoint (performer->getInputEndpoints(), endpoint))
+                return false;
+
+            inputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
+            return true;
+        }
+
+        bool addOutputEndpointFIFOCallback (EndpointID endpoint, OutputEndpointFIFOChangedFn callback) override
+        {
+            if (! containsEndpoint (performer->getOutputEndpoints(), endpoint))
+                return false;
+
+            outputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
+            return true;
         }
 
         void prepareToPlay (juce::AudioIODevice& device)
@@ -212,80 +285,163 @@ public:
             currentRateAndBlockSize = {};
         }
 
-        void processBlock (const float** inputChannelData, int numInputChannels,
-                           float** outputChannelData, int numOutputChannels,
-                           const juce::MidiBuffer& midiEvents,
-                           uint32_t numSamples)
+        bool connectInputEndpoint (const EndpointInfo& externalEndpoint, EndpointID inputID)
         {
-            if (midiEventQueue != nullptr && ! midiEvents.isEmpty())
+            for (auto& details : performer->getInputEndpoints())
             {
-                juce::MidiBuffer::Iterator iterator (midiEvents);
-                juce::MidiMessage message;
-                int samplePosition;
-
-                while (iterator.getNextEvent (message, samplePosition))
-                    midiEventQueue->enqueueEvent ((uint32_t) samplePosition, packMIDIMessageIntoInt (message));
-            }
-
-            if (auto s = audioDeviceInputStream.get())
-                s->setInputBuffer ({ inputChannelData, (uint32_t) numInputChannels, 0, numSamples });
-
-            if (auto s = audioDeviceOutputStream.get())
-                s->setOutputBuffer ({ outputChannelData, (uint32_t) numOutputChannels, 0, numSamples });
-
-            performer->prepare (numSamples);
-            performer->advance();
-        }
-
-        bool connectInputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID inputID)
-        {
-            if (auto inputSource = performer->getInputSource (inputID))
-            {
-                auto& details = findDetailsForID (performer->getInputEndpoints(), inputID);
-                auto kind = details.kind;
-
-                if (isStream (kind))
+                if (details.endpointID == inputID)
                 {
-                    if (isMIDI)
-                        return false;
+                    if (isStream (details.kind) && ! externalEndpoint.isMIDI)
+                    {
+                        connections.push_back ({ externalEndpoint.audioChannelIndex, -1, false, details.endpointID });
+                        return true;
+                    }
 
-                    audioDeviceInputStream = std::make_unique<AudioDeviceInputStream> (details, *inputSource,
-                                                                                       audioChannelIndex,
-                                                                                       currentRateAndBlockSize);
-                    return true;
-                }
-
-                if (isEvent (kind))
-                {
-                    if (! isMIDI)
-                        return false;
-
-                    midiEventQueue = std::make_unique<MidiEventQueueType> (PrimitiveType::int32, *inputSource, details);
-                    return true;
+                    if (isEvent (details.kind) && externalEndpoint.isMIDI)
+                    {
+                        connections.push_back ({ -1, -1, true, details.endpointID });
+                        return true;
+                    }
                 }
             }
 
             return false;
         }
 
-        bool connectOutputEndpoint (uint32_t audioChannelIndex, bool isMIDI, EndpointID outputID)
+        bool connectOutputEndpoint (const EndpointInfo& externalEndpoint, EndpointID outputID)
         {
-            if (auto outputSink = performer->getOutputSink (outputID))
+            for (auto& details : performer->getOutputEndpoints())
             {
-                auto& details = findDetailsForID (performer->getOutputEndpoints(), outputID);
-                auto kind = details.kind;
-
-                if (isStream (kind))
+                if (details.endpointID == outputID)
                 {
-                    if (isMIDI)
-                        return false;
-
-                    audioDeviceOutputStream = std::make_unique<AudioDeviceOutputStream> (details, *outputSink, audioChannelIndex);
-                    return true;
+                    if (isStream (details.kind) && ! externalEndpoint.isMIDI)
+                    {
+                        connections.push_back ({ -1, externalEndpoint.audioChannelIndex, false, details.endpointID });
+                        return true;
+                    }
                 }
             }
 
             return false;
+        }
+
+        void buildOperationList()
+        {
+            preRenderOperations.clear();
+            postRenderOperations.clear();
+
+            for (auto& connection : connections)
+            {
+                auto& perf = *performer;
+                auto endpointHandle = performer->getEndpointHandle (connection.endpointID);
+
+                if (connection.isMIDI)
+                {
+                    if (isMIDIEventEndpoint (findDetailsForID (perf.getInputEndpoints(), connection.endpointID)))
+                    {
+                        preRenderOperations.push_back ([&perf, endpointHandle] (RenderContext& rc)
+                        {
+                            for (uint32_t i = 0; i < rc.midiInCount; ++i)
+                                perf.addInputEvent (endpointHandle, Value ((int32_t) rc.midiIn[i].packedData));
+                        });
+                    }
+                }
+                else if (connection.audioInputStreamIndex >= 0)
+                {
+                    auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
+                    auto& frameType = details.getSingleSampleType();
+                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
+                    auto startChannel = (uint32_t) connection.audioInputStreamIndex;
+                    auto numSourceChans = (uint32_t) frameType.getVectorSize();
+
+                    if (frameType.isFloat32())
+                    {
+                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
+                        {
+                            rc.template copyInputFrames<float> (startChannel, numSourceChans, buffer);
+                            ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
+                        });
+                    }
+                    else if (frameType.isFloat64())
+                    {
+                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
+                        {
+                            rc.template copyInputFrames<double> (startChannel, numSourceChans, buffer);
+                            ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
+                        });
+                    }
+                    else
+                    {
+                        SOUL_ASSERT_FALSE;
+                    }
+                }
+                else if (connection.audioOutputStreamIndex >= 0)
+                {
+                    auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
+                    auto& frameType = details.getSingleSampleType();
+                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
+                    auto startChannel = (uint32_t) connection.audioOutputStreamIndex;
+                    auto numDestChans = (uint32_t) frameType.getVectorSize();
+
+                    if (frameType.isFloat32())
+                    {
+                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
+                        {
+                            if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
+                                rc.template copyOutputFrames<float> (startChannel, numDestChans, *outputFrames);
+                            else
+                                SOUL_ASSERT_FALSE;
+                        });
+                    }
+                    else if (frameType.isFloat64())
+                    {
+                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
+                        {
+                            if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
+                                rc.template copyOutputFrames<double> (startChannel, numDestChans, *outputFrames);
+                            else
+                                SOUL_ASSERT_FALSE;
+                        });
+                    }
+                    else
+                    {
+                        SOUL_ASSERT_FALSE;
+                    }
+                }
+            }
+        }
+
+        void processBlock (soul::DiscreteChannelSet<const float> input,
+                           soul::DiscreteChannelSet<float> output,
+                           ArrayView<const MIDIEvent> midiIn)
+        {
+            auto maxBlockSize = std::min (512u, currentRateAndBlockSize.blockSize);
+            SOUL_ASSERT (input.numFrames == output.numFrames && maxBlockSize != 0);
+
+            RenderContext context { totalFramesRendered, input, output, midiIn.data(),
+                                    nullptr, 0, (uint32_t) midiIn.size(), 0, 0 };
+
+            context.iterateInBlocks (maxBlockSize, [&] (RenderContext& rc)
+            {
+                performer->prepare (rc.inputChannels.numFrames);
+
+                for (auto& op : preRenderOperations)
+                    op (rc);
+
+                for (auto& c : inputCallbacks)
+                    c.callback (*this, c.endpointHandle);
+
+                performer->advance();
+
+                for (auto& op : postRenderOperations)
+                    op (rc);
+
+                for (auto& c : outputCallbacks)
+                    c.callback (*this, c.endpointHandle);
+            },
+            [] (MIDIEvent midi) { return midi.frameIndex; });
+
+            totalFramesRendered += input.numFrames;
         }
 
         void updateDeviceProperties (juce::AudioIODevice& device)
@@ -294,213 +450,38 @@ public:
                                                               (uint32_t) device.getCurrentBufferSizeSamples());
         }
 
-        static Value packMIDIMessageIntoInt (const juce::MidiMessage& message)
-        {
-            uint32_t m = 0;
-            auto length = message.getRawDataSize();
-            SOUL_ASSERT (length < 4);
-            auto* rawData = message.getRawData();
-
-            m = ((uint32_t) rawData[0]) << 16;
-
-            if (length > 1)
-            {
-                m |= (((uint32_t) rawData[1]) << 8);
-
-                if (length > 2)
-                    m |= (uint32_t) rawData[2];
-            }
-
-            return Value ((int) m);
-        }
-
-        //==============================================================================
-        struct AudioDeviceInputStream
-        {
-            AudioDeviceInputStream (const EndpointDetails& details, InputSource& inputToAttachTo,
-                                    uint32_t startChannel, SampleRateAndBlockSize rateAndBlockSize)
-                : input (inputToAttachTo), startChannelIndex (startChannel)
-            {
-                auto numDestChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
-
-                streamValue = soul::Value::zeroInitialiser (details.getSingleSampleType().createArray (rateAndBlockSize.blockSize));
-
-                if (details.getSingleSampleType().isFloat64())
-                {
-                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
-                    {
-                        if (inputBufferAvailable)
-                        {
-                            InterleavedChannelSet<double> destChannels { static_cast<double*> (streamValue.getPackedData()), numDestChannels, requestedFrames, numDestChannels };
-                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
-                            inputBufferOffset += requestedFrames;
-                            inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
-
-                            if (streamValue.getType().getArrayOrVectorSize() != requestedFrames)
-                                streamValue.getMutableType().modifyArraySize (requestedFrames);
-
-                            postFrames (0, streamValue);
-                        }
-                    });
-                }
-                else if (details.getSingleSampleType().isFloat32())
-                {
-                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
-                    {
-                        if (inputBufferAvailable)
-                        {
-                            InterleavedChannelSet<float> destChannels { static_cast<float*> (streamValue.getPackedData()),
-                                                                        numDestChannels, requestedFrames, numDestChannels };
-
-                            copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
-                            inputBufferOffset += requestedFrames;
-                            inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
-
-                            if (streamValue.getType().getArrayOrVectorSize() != requestedFrames)
-                                streamValue.getMutableType().modifyArraySize (requestedFrames);
-
-                            postFrames (0, streamValue);
-                        }
-                    });
-                }
-                else if (details.getSingleSampleType().isInteger32())
-                {
-                    inputToAttachTo.setStreamSource ([this, numDestChannels] (uint32_t requestedFrames, callbacks::PostFrames postFrames)
-                                                     {
-                                                         if (inputBufferAvailable)
-                                                         {
-                                                             InterleavedChannelSet<int> destChannels { static_cast<int*> (streamValue.getPackedData()), numDestChannels, requestedFrames, numDestChannels };
-
-                                                             copyChannelSetToFit (destChannels, inputChannelData.getSlice (inputBufferOffset, requestedFrames));
-                                                             inputBufferOffset += requestedFrames;
-                                                             inputBufferAvailable = (inputBufferOffset < inputChannelData.numFrames);
-
-                                                             if (streamValue.getType().getVectorSize() != requestedFrames)
-                                                                 streamValue.getMutableType().modifyArraySize (requestedFrames);
-
-                                                             postFrames (0, streamValue);
-                                                         }
-                                                     });
-                }
-                else
-                    SOUL_ASSERT_FALSE;
-            }
-
-            ~AudioDeviceInputStream()
-            {
-                input->removeSource();
-            }
-
-            void setInputBuffer (DiscreteChannelSet<const float> newData)
-            {
-                inputChannelData = newData.getChannelSet (startChannelIndex, newData.numChannels);
-                inputBufferAvailable = true;
-                inputBufferOffset = 0;
-            }
-
-            InputSource::Ptr input;
-            uint32_t startChannelIndex;
-            bool inputBufferAvailable = false;
-            DiscreteChannelSet<const float> inputChannelData;
-            uint32_t inputBufferOffset = 0;
-            soul::Value streamValue;
-        };
-
-        //==============================================================================
-        struct AudioDeviceOutputStream
-        {
-            AudioDeviceOutputStream (const EndpointDetails& details, OutputSink& outputToAttachTo, uint32_t startChannel)
-                : output (outputToAttachTo), startChannelIndex (startChannel)
-            {
-                auto numSrcChannels = (uint32_t) details.getSingleSampleType().getVectorSize();
-
-                if (details.getSingleSampleType().isFloat64())
-                {
-                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
-                    {
-                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
-
-                        if (outputBufferAvailable)
-                        {
-                            InterleavedChannelSet<const double> srcChannels { static_cast<const double*> (frameArray.getPackedData()),
-                                                                              numSrcChannels, numFrames, numSrcChannels };
-                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
-                            outputBufferOffset += numFrames;
-                            outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
-                        }
-
-                        return numFrames;
-
-                    });
-                }
-                else if (details.getSingleSampleType().isFloat32())
-                {
-                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
-                    {
-                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
-
-                        if (outputBufferAvailable)
-                        {
-                            InterleavedChannelSet<const float> srcChannels { static_cast<const float*> (frameArray.getPackedData()),
-                                                                             numSrcChannels, numFrames, numSrcChannels };
-                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
-                            outputBufferOffset += numFrames;
-                            outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
-                        }
-
-                        return numFrames;
-                    });
-                }
-                else if (details.getSingleSampleType().isInteger32())
-                {
-                    outputToAttachTo.setStreamSink ([=] (const Value& frameArray) -> uint32_t
-                    {
-                        auto numFrames = (uint32_t) frameArray.getType().getArraySize();
-
-                        if (outputBufferAvailable)
-                        {
-                            InterleavedChannelSet<const int> srcChannels { static_cast<const int*> (frameArray.getPackedData()),
-                                                                           numSrcChannels, numFrames, numSrcChannels };
-                            copyChannelSetToFit (outputChannelData.getSlice (outputBufferOffset, numFrames), srcChannels);
-                            outputBufferOffset += numFrames;
-                            outputBufferAvailable = (outputBufferOffset < outputChannelData.numFrames);
-                        }
-
-                        return numFrames;
-                    });
-                }
-                else
-                    SOUL_ASSERT_FALSE;
-            }
-
-            ~AudioDeviceOutputStream()
-            {
-                output->removeSink();
-            }
-
-            void setOutputBuffer (DiscreteChannelSet<float> newData)
-            {
-                outputBufferOffset = 0;
-                outputChannelData = newData.getChannelSet (startChannelIndex, newData.numChannels);
-                outputBufferAvailable = true;
-            }
-
-            OutputSink::Ptr output;
-            uint32_t startChannelIndex;
-            bool outputBufferAvailable = false;
-            DiscreteChannelSet<float> outputChannelData;
-            uint32_t outputBufferOffset = 0;
-        };
-
-        using MidiEventQueueType = InputEventQueue<EventFIFO<std::atomic<uint64_t>>>;
-
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
         SampleRateAndBlockSize currentRateAndBlockSize;
-        std::unique_ptr<AudioDeviceInputStream> audioDeviceInputStream;
-        std::unique_ptr<AudioDeviceOutputStream> audioDeviceOutputStream;
-        std::unique_ptr<MidiEventQueueType> midiEventQueue;
+        uint64_t totalFramesRendered = 0;
         StateChangeCallbackFn stateChangeCallback;
+
+        struct InputCallback
+        {
+            EndpointHandle endpointHandle;
+            InputEndpointFIFOChangedFn callback;
+        };
+
+        struct OutputCallback
+        {
+            EndpointHandle endpointHandle;
+            OutputEndpointFIFOChangedFn callback;
+        };
+
+        std::vector<InputCallback> inputCallbacks;
+        std::vector<OutputCallback> outputCallbacks;
+
+        struct Connection
+        {
+            int audioInputStreamIndex = -1, audioOutputStreamIndex = -1;
+            bool isMIDI = false;
+            EndpointID endpointID;
+        };
+
+        using RenderContext = AudioMIDIWrapper<MIDIEvent>::RenderContext;
+
+        std::vector<Connection> connections;
+        std::vector<std::function<void(RenderContext&)>> preRenderOperations, postRenderOperations;
 
         State state = State::empty;
     };
@@ -523,6 +504,7 @@ public:
         return true;
     }
 
+
 private:
     //==============================================================================
     Requirements requirements;
@@ -534,22 +516,16 @@ private:
 
     std::unique_ptr<juce::MidiMessageCollector> midiCollector;
     juce::MidiBuffer incomingMIDI;
+    std::vector<MIDIEvent> incomingMIDIEvents;
 
     CPULoadMeasurer loadMeasurer;
-
-    struct EndpointInfo
-    {
-        EndpointDetails details;
-        uint32_t audioChannelIndex = 0;
-        bool isMIDI = false;
-    };
 
     std::vector<EndpointInfo> sourceEndpoints, sinkEndpoints;
 
     std::recursive_mutex activeSessionLock;
     std::vector<AudioPlayerSession*> activeSessions;
 
-    uint64_t totalSamplesProcessed = 0;
+    uint64_t totalFramesProcessed = 0;
     std::atomic<uint32_t> audioCallbackCount { 0 };
     static constexpr uint64_t numWarmUpSamples = 15000;
 
@@ -592,6 +568,7 @@ private:
             midiCollector->reset (device->getCurrentSampleRate());
 
         incomingMIDI.ensureSize (1024);
+        incomingMIDIEvents.reserve (1024);
 
         loadMeasurer.reset();
 
@@ -615,7 +592,7 @@ private:
 
     void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
                                 float** outputChannelData, int numOutputChannels,
-                                int numSamples) override
+                                int numFrames) override
     {
         juce::ScopedNoDenormals disableDenormals;
         loadMeasurer.startMeasurement();
@@ -624,25 +601,37 @@ private:
 
         for (int i = 0; i < numOutputChannels; ++i)
             if (auto* chan = outputChannelData[i])
-                juce::FloatVectorOperations::clear (chan, numSamples);
+                juce::FloatVectorOperations::clear (chan, numFrames);
 
         if (midiCollector)
-            midiCollector->removeNextBlockOfMessages (incomingMIDI, numSamples);
+        {
+            midiCollector->removeNextBlockOfMessages (incomingMIDI, numFrames);
 
-        if (totalSamplesProcessed > numWarmUpSamples)
+            incomingMIDIEvents.clear();
+
+            juce::MidiMessage message;
+            int frameOffset = 0;
+
+            for (juce::MidiBuffer::Iterator iterator (incomingMIDI); iterator.getNextEvent (message, frameOffset);)
+            {
+                auto* rawData = message.getRawData();
+                incomingMIDIEvents.push_back ({ (uint32_t) frameOffset, rawData[0], rawData[1], rawData[2] });
+            }
+        }
+
+        if (totalFramesProcessed > numWarmUpSamples)
         {
             std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
 
             for (auto& s : activeSessions)
-                s->processBlock (inputChannelData, numInputChannels,
-                                 outputChannelData, numOutputChannels,
-                                 incomingMIDI,
-                                 (uint32_t) numSamples);
+                s->processBlock ({ inputChannelData,  (uint32_t) numInputChannels,  0, (uint32_t) numFrames },
+                                 { outputChannelData, (uint32_t) numOutputChannels, 0, (uint32_t) numFrames },
+                                 incomingMIDIEvents);
         }
 
         incomingMIDI.clear();
 
-        totalSamplesProcessed += static_cast<uint64_t> (numSamples);
+        totalFramesProcessed += static_cast<uint64_t> (numFrames);
         loadMeasurer.stopMeasurement();
     }
 
@@ -763,7 +752,7 @@ private:
 
     static void addEndpoint (std::vector<EndpointInfo>& list, EndpointKind kind,
                              EndpointID id, std::string name, Type sampleType,
-                             uint32_t audioChannelIndex, bool isMIDI)
+                             int audioChannelIndex, bool isMIDI)
     {
         EndpointInfo e;
 

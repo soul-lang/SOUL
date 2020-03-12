@@ -63,18 +63,6 @@ public:
         */
         virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
 
-        /** When a program has been loaded (but not yet linked), this returns
-            an object that allows user data sources to be attached to the given input.
-            Will return a nullptr if the ID is not found.
-        */
-        virtual InputSource::Ptr getInputSource (const EndpointID&) = 0;
-
-        /** When a program has been loaded (but not yet linked), this returns
-            an object that allows user data sources to be attached to the given output.
-            Will return a nullptr if the ID is not found.
-        */
-        virtual OutputSink::Ptr getOutputSink (const EndpointID&) = 0;
-
         /** When a program has been loaded and its endpoints have had suitable data
             sources attached, call link() to finish the process of preparing the program
             to be run.
@@ -97,6 +85,34 @@ public:
 
         /** Instructs the venue to stop playback, and to unload the current program. */
         virtual void unload() = 0;
+
+        /**
+        */
+        virtual EndpointHandle getEndpointHandle (const EndpointID&) = 0;
+
+        /**
+        */
+        virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+
+        /**
+        */
+        virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) = 0;
+
+        /**
+        */
+        virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
+
+        /**
+        */
+        virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
+
+        /**
+        */
+        virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
+
+        /**
+        */
+        virtual void iterateOutputEvents (EndpointHandle, Performer::HandleNextOutputEventFn) = 0;
 
         /**
         */
@@ -128,10 +144,17 @@ public:
         */
         using StateChangeCallbackFn = std::function<void(State)>;
 
-        /** Allows the client code to attach a lambda to be called back whenever the
-            current state changes.
-        */
+        using InputEndpointFIFOChangedFn = std::function<void (Session&, EndpointHandle)>;
+        using OutputEndpointFIFOChangedFn = std::function<void (Session&, EndpointHandle)>;
+
+        /** Allows the client code to attach a lambda to be called when the current state changes. */
         virtual void setStateChangeCallback (StateChangeCallbackFn) = 0;
+
+        /** Allows client code to get a callback when the amount of data in an endpoint's FIFO changes. */
+        virtual bool addInputEndpointFIFOCallback (EndpointID, InputEndpointFIFOChangedFn) = 0;
+
+        /** Allows client code to get a callback when the amount of data in an endpoint's FIFO changes. */
+        virtual bool addOutputEndpointFIFOCallback (EndpointID, OutputEndpointFIFOChangedFn) = 0;
     };
 
     //==============================================================================

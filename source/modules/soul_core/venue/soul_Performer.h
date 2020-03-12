@@ -66,18 +66,6 @@ public:
     */
     virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
 
-    /** When a program has been loaded (but not yet linked), this returns
-        an object that allows user data sources to be attached to the given input.
-        Will return a nullptr if the ID is not found.
-    */
-    virtual InputSource::Ptr getInputSource (const EndpointID&) = 0;
-
-    /** When a program has been loaded (but not yet linked), this returns
-        an object that allows user data sources to be attached to the given output.
-        Will return a nullptr if the ID is not found.
-    */
-    virtual OutputSink::Ptr getOutputSink (const EndpointID&) = 0;
-
     /** After loading a program, and optionally connecting up to some of its endpoints,
         link() will complete any preparations needed before the code can be executed.
         If this returns true, then you can safely start calling advance(). If it
@@ -101,6 +89,13 @@ public:
     */
     virtual void reset() = 0;
 
+    /** When a program has been loaded (but not yet linked), this returns
+        a handle that can be used later by other methods which need to reference
+        an input or output endpoint.
+        Will return a null handle if the ID is not found.
+    */
+    virtual EndpointHandle getEndpointHandle (const EndpointID&) = 0;
+
     /** Indicates that a block of frames is going to be rendered.
 
         Once a program has been loaded and linked, a caller will typically make repeated
@@ -113,6 +108,37 @@ public:
         allow any calls to other methods such as unload() to overlap with calls to advance()!
     */
     virtual void prepare (uint32_t numFramesToBeRendered) = 0;
+
+    /** Callback function used by iterateOutputEvents().
+        @returns true to continue iterating, or false to stop.
+    */
+    using HandleNextOutputEventFn = std::function<bool(uint32_t frameOffset, const Value& event)>&&;
+
+
+    /** Pushes a block of samples to an input endpoint.
+        @returns the number of samples actually consumed.
+    */
+    virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+
+    /**
+    */
+    virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) = 0;
+
+    /**
+    */
+    virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
+
+    /**
+    */
+    virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
+
+    /**
+    */
+    virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
+
+    /**
+    */
+    virtual void iterateOutputEvents (EndpointHandle, HandleNextOutputEventFn) = 0;
 
     /** Renders the next block of frames.
 

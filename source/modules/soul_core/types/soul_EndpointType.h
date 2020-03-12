@@ -62,6 +62,8 @@ static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
 //==============================================================================
 using EndpointID = std::string;
 
+using EndpointHandle = uint32_t;
+
 /**
     Contains properties describing the unchanging characteristics of an input
     or output endpoint.

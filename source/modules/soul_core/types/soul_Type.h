@@ -151,6 +151,7 @@ struct Type  final
 
     ArraySize getArrayOrVectorSize() const;
     ArraySize getNumAggregateElements() const;
+    ArraySize getArrayElementVectorSize() const;
 
     //==============================================================================
     using BoundedIntSize = int32_t;
