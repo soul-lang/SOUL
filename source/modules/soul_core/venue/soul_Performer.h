@@ -148,6 +148,11 @@ public:
     */
     virtual void advance() = 0;
 
+    /** Returns true if something has got a handle to this endpoint and might be using it
+        during the current program run.
+    */
+    virtual bool isEndpointActive (const EndpointID&) = 0;
+
     /** Returns the number of over- or under-runs that have happened since the program was linked.
         Underruns can happen when an endpoint callback fails to empty or fill the amount of data
         that it is asked to handle.

@@ -382,22 +382,14 @@ public:
                     auto startChannel = (uint32_t) connection.audioOutputStreamIndex;
                     auto numDestChans = (uint32_t) frameType.getVectorSize();
 
-                    if (frameType.isFloat32())
+                    if (frameType.isFloatingPoint())
                     {
-                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
+                        auto is64Bit = frameType.isFloat64();
+
+                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans, is64Bit] (RenderContext& rc)
                         {
                             if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                                rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet32());
-                            else
-                                SOUL_ASSERT_FALSE;
-                        });
-                    }
-                    else if (frameType.isFloat64())
-                    {
-                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
-                        {
-                            if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                                rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet64());
+                                rc.copyOutputFrames (startChannel, numDestChans, *outputFrames, is64Bit);
                             else
                                 SOUL_ASSERT_FALSE;
                         });

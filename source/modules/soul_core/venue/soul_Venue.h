@@ -114,6 +114,11 @@ public:
         */
         virtual void iterateOutputEvents (EndpointHandle, Performer::HandleNextOutputEventFn) = 0;
 
+        /** Returns true if something has got a handle to this endpoint and might be using it
+            during the current program run.
+        */
+        virtual bool isEndpointActive (const EndpointID&) = 0;
+        
         /**
         */
         enum class State

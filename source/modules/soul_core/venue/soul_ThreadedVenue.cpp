@@ -153,6 +153,11 @@ struct ThreadedVenue  : public soul::Venue
             performer->iterateOutputEvents (handle, std::move (fn));
         }
 
+        bool isEndpointActive (const EndpointID& e) override
+        {
+            return performer->isEndpointActive (e);
+        }
+
         bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
         {
             if (state == State::loaded && performer->link (messageList, linkOptions, {}))

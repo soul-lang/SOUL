@@ -174,22 +174,14 @@ struct AudioMIDIWrapper
                 auto startChannel = numOutputChannelsExpected;
                 auto numDestChans = (uint32_t) frameType.getVectorSize();
 
-                if (frameType.isFloat32())
+                if (frameType.isFloatingPoint())
                 {
-                    postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
+                    auto is64Bit = frameType.isFloat64();
+
+                    postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans, is64Bit] (RenderContext& rc)
                     {
                         if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                            rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet32());
-                        else
-                            SOUL_ASSERT_FALSE;
-                    });
-                }
-                else if (frameType.isFloat64())
-                {
-                    postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
-                    {
-                        if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                            rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet64());
+                            rc.copyOutputFrames (startChannel, numDestChans, *outputFrames, is64Bit);
                         else
                             SOUL_ASSERT_FALSE;
                     });
@@ -310,11 +302,14 @@ struct AudioMIDIWrapper
                 copyChannelSetToFit (buffer.getAsChannelSet32(), inputChannels.getChannelSet (startChannel, numChans));
         }
 
-        template <typename ChannelSet>
-        void copyOutputFrames (uint32_t startChannel, uint32_t numChans, ChannelSet source)
+        void copyOutputFrames (uint32_t startChannel, uint32_t numChans, const Value& source, bool as64Bit)
         {
-            copyChannelSetToFit (outputChannels.getChannelSet (startChannel, numChans),
-                                 source.getSlice (0, outputChannels.numFrames));
+            if (as64Bit)
+                copyChannelSetToFit (outputChannels.getChannelSet (startChannel, numChans),
+                                     source.getAsChannelSet64().getSlice (0, outputChannels.numFrames));
+            else
+                copyChannelSetToFit (outputChannels.getChannelSet (startChannel, numChans),
+                                     source.getAsChannelSet32().getSlice (0, outputChannels.numFrames));
         }
     };
 
