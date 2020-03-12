@@ -124,8 +124,12 @@ Value convertAudioDataToType (const Type& requestedType, ConstantTable& constant
     {
         auto elementType = requestedType.getElementType();
 
-        if ((elementType.isPrimitive() || elementType.isVector()) && elementType.isFloat32())
-            return Value::createUnsizedArray (elementType, constantTable.getHandleForValue (Value::createInterleavedFloatArray ((uint32_t) elementType.getVectorSize(), data)));
+        if (elementType.isPrimitiveOrVector() && elementType.isFloat32())
+        {
+            auto content = Value::zeroInitialiser (elementType.createArray (data.numFrames));
+            copyChannelSetToFit (content.getAsChannelSet32(), data);
+            return Value::createUnsizedArray (elementType, constantTable.getHandleForValue (content));
+        }
     }
 
     if (requestedType.isStruct())
@@ -161,7 +165,7 @@ Value convertAudioDataToType (const Type& requestedType, ConstantTable& constant
         return Value::createStruct (s, memberValues);
     }
 
-    return Value::createInterleavedFloatArray (data.numChannels, data);
+    return Value::createFloatVectorArray (data);
 }
 
 //==============================================================================

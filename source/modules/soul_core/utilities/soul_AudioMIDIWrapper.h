@@ -130,21 +130,14 @@ struct AudioMIDIWrapper
                 auto startChannel = numInputChannelsExpected;
                 auto numSourceChans = (uint32_t) frameType.getVectorSize();
 
-                if (frameType.isFloat32())
+                if (frameType.isFloatingPoint())
                 {
-                    preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
-                    {
-                        rc.template copyInputFrames<float> (startChannel, numSourceChans, buffer);
-                        ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
-                    });
-                }
-                else if (frameType.isFloat64())
-                {
-                    preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
-                    {
-                        rc.template copyInputFrames<double> (startChannel, numSourceChans, buffer);
-                        ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
+                    auto is64Bit = frameType.isFloat64();
 
+                    preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans, is64Bit] (RenderContext& rc) mutable
+                    {
+                        rc.copyInputFrames (startChannel, numSourceChans, buffer, is64Bit);
+                        ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
                     });
                 }
                 else
@@ -186,7 +179,7 @@ struct AudioMIDIWrapper
                     postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
                     {
                         if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                            rc.template copyOutputFrames<float> (startChannel, numDestChans, *outputFrames);
+                            rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet32());
                         else
                             SOUL_ASSERT_FALSE;
                     });
@@ -196,7 +189,7 @@ struct AudioMIDIWrapper
                     postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
                     {
                         if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                            rc.template copyOutputFrames<double> (startChannel, numDestChans, *outputFrames);
+                            rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet64());
                         else
                             SOUL_ASSERT_FALSE;
                     });
@@ -307,28 +300,21 @@ struct AudioMIDIWrapper
             midiOutCount = context.midiOutCount;
         }
 
-        template <typename DestSampleType>
-        void copyInputFrames (uint32_t startChannel, uint32_t numChans, Value& buffer)
+        void copyInputFrames (uint32_t startChannel, uint32_t numChans, Value& buffer, bool as64Bit)
         {
             buffer.getMutableType().modifyArraySize (inputChannels.numFrames);
-            copyChannelSetToFit (getChannelSet<DestSampleType> (buffer),
-                                 inputChannels.getChannelSet (startChannel, numChans));
+
+            if (as64Bit)
+                copyChannelSetToFit (buffer.getAsChannelSet64(), inputChannels.getChannelSet (startChannel, numChans));
+            else
+                copyChannelSetToFit (buffer.getAsChannelSet32(), inputChannels.getChannelSet (startChannel, numChans));
         }
 
-        template <typename DestSampleType>
-        void copyOutputFrames (uint32_t startChannel, uint32_t numChans, const Value& buffer)
+        template <typename ChannelSet>
+        void copyOutputFrames (uint32_t startChannel, uint32_t numChans, ChannelSet source)
         {
             copyChannelSetToFit (outputChannels.getChannelSet (startChannel, numChans),
-                                 getChannelSet<DestSampleType> (buffer).getSlice (0, outputChannels.numFrames));
-        }
-
-        template <typename DestSampleType>
-        static InterleavedChannelSet<DestSampleType> getChannelSet (const Value& buffer)
-        {
-            auto& type = buffer.getType();
-            auto vectorSize = (uint32_t) type.getArrayElementVectorSize();
-            auto numChans = vectorSize != 0 ? vectorSize : 1;
-            return { static_cast<DestSampleType*> (buffer.getPackedData()), numChans, (uint32_t) type.getArraySize(), numChans };
+                                 source.getSlice (0, outputChannels.numFrames));
         }
     };
 

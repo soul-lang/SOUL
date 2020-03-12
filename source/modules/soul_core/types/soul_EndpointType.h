@@ -67,6 +67,7 @@ struct EndpointID
     const std::string& toString() const         { return ID; }
 
     operator bool() const   { return ! ID.empty(); }
+    bool isValid() const    { return ! ID.empty(); }
 
     bool operator== (const EndpointID& other) const     { return other.ID == ID; }
     bool operator!= (const EndpointID& other) const     { return other.ID != ID; }
@@ -88,6 +89,7 @@ struct EndpointHandle
     uint32_t getRawHandle() const                       { return handle; }
 
     operator bool() const   { return handle != 0; }
+    bool isValid() const    { return handle != 0; }
 
     bool operator== (EndpointHandle other) const     { return other.handle == handle; }
     bool operator!= (EndpointHandle other) const     { return other.handle != handle; }

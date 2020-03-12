@@ -172,6 +172,11 @@ public:
             performer->iterateOutputEvents (handle, std::move (fn));
         }
 
+        bool isEndpointActive (const EndpointID& e) override
+        {
+            return performer->isEndpointActive (e);
+        }
+
         bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
         {
             buildOperationList();
@@ -354,19 +359,13 @@ public:
                     auto startChannel = (uint32_t) connection.audioInputStreamIndex;
                     auto numSourceChans = (uint32_t) frameType.getVectorSize();
 
-                    if (frameType.isFloat32())
+                    if (frameType.isFloatingPoint())
                     {
-                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
+                        auto is64Bit = frameType.isFloat64();
+
+                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans, is64Bit] (RenderContext& rc) mutable
                         {
-                            rc.template copyInputFrames<float> (startChannel, numSourceChans, buffer);
-                            ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
-                        });
-                    }
-                    else if (frameType.isFloat64())
-                    {
-                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans] (RenderContext& rc) mutable
-                        {
-                            rc.template copyInputFrames<double> (startChannel, numSourceChans, buffer);
+                            rc.copyInputFrames (startChannel, numSourceChans, buffer, is64Bit);
                             ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
                         });
                     }
@@ -388,7 +387,7 @@ public:
                         postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
                         {
                             if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                                rc.template copyOutputFrames<float> (startChannel, numDestChans, *outputFrames);
+                                rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet32());
                             else
                                 SOUL_ASSERT_FALSE;
                         });
@@ -398,7 +397,7 @@ public:
                         postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans] (RenderContext& rc)
                         {
                             if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                                rc.template copyOutputFrames<double> (startChannel, numDestChans, *outputFrames);
+                                rc.copyOutputFrames (startChannel, numDestChans, outputFrames->getAsChannelSet64());
                             else
                                 SOUL_ASSERT_FALSE;
                         });

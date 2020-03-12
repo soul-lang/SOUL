@@ -156,6 +156,22 @@ struct Value::PackedData
         return getAs<StringDictionary::Handle>();
     }
 
+    InterleavedChannelSet<float> getAsChannelSet32() const
+    {
+        auto elementType = type.getElementType();
+        SOUL_ASSERT (elementType.isFloat32());
+        auto numChans = (uint32_t) elementType.getVectorSize();
+        return { reinterpret_cast<float*> (data), numChans, (uint32_t) type.getArraySize(), numChans };
+    }
+
+    InterleavedChannelSet<double> getAsChannelSet64() const
+    {
+        auto elementType = type.getElementType();
+        SOUL_ASSERT (elementType.isFloat64());
+        auto numChans = (uint32_t) elementType.getVectorSize();
+        return { reinterpret_cast<double*> (data), numChans, (uint32_t) type.getArraySize(), numChans };
+    }
+
     void setFrom (const PackedData& other) const
     {
         if (other.isZero())
@@ -263,18 +279,6 @@ struct Value::PackedData
         }
 
         SOUL_ASSERT_FALSE;
-    }
-
-    template <typename ChannelSetType>
-    void setFromChannelSet (ChannelSetType src)
-    {
-        InterleavedChannelSet<float> dst;
-        dst.data = reinterpret_cast<float*> (data);
-        dst.numChannels = (uint32_t) type.getElementType().getVectorSize();
-        dst.numFrames = (uint32_t) type.getArraySize();
-        dst.stride = dst.numChannels;
-
-        copyChannelSetToFit (dst, src);
     }
 
     void negate() const
@@ -449,19 +453,22 @@ Value Value::createUnsizedArray (const Type& elementType, ConstantTable::Handle 
     return v;
 }
 
-Value Value::createInterleavedFloatArray (uint32_t targetNumChannels, InterleavedChannelSet<float> data)
+Value Value::createFloatVectorArray (InterleavedChannelSet<float> data)
 {
-    Value v (Type::createVector (PrimitiveType::float32, targetNumChannels).createArray (data.numFrames));
-    v.getData().setFromChannelSet (data);
+    Value v (Type::createVector (PrimitiveType::float32, data.numChannels).createArray (data.numFrames));
+    copyChannelSet (v.getAsChannelSet32(), data);
     return v;
 }
 
-Value Value::createInterleavedFloatArray (uint32_t targetNumChannels, DiscreteChannelSet<float> data)
+Value Value::createFloatVectorArray (DiscreteChannelSet<float> data)
 {
-    Value v (Type::createVector (PrimitiveType::float32, targetNumChannels).createArray (data.numFrames));
-    v.getData().setFromChannelSet (data);
+    Value v (Type::createVector (PrimitiveType::float32, data.numChannels).createArray (data.numFrames));
+    copyChannelSet (v.getAsChannelSet32(), data);
     return v;
 }
+
+InterleavedChannelSet<float>  Value::getAsChannelSet32() const   { return getData().getAsChannelSet32(); }
+InterleavedChannelSet<double> Value::getAsChannelSet64() const   { return getData().getAsChannelSet64(); }
 
 Value Value::zeroInitialiser (Type t)
 {

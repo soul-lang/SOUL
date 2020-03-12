@@ -60,8 +60,8 @@ struct Value  final
     static Value createFromRawData (Type type, const void* data, size_t dataSize);
 
     /** Creates an array of float vectors to match the size of the data provided. */
-    static Value createInterleavedFloatArray (uint32_t targetNumChannels, InterleavedChannelSet<float> data);
-    static Value createInterleavedFloatArray (uint32_t targetNumChannels, DiscreteChannelSet<float> data);
+    static Value createFloatVectorArray (InterleavedChannelSet<float> data);
+    static Value createFloatVectorArray (DiscreteChannelSet<float> data);
 
     template <typename IntType>
     static Value createInt32 (IntType n)           { return Value (static_cast<int32_t> (n)); }
@@ -79,6 +79,16 @@ struct Value  final
     int64_t getAsInt64() const;
     StringDictionary::Handle getStringLiteral() const;
     ConstantTable::Handle getUnsizedArrayContent() const;
+
+    /** Assuming the value is an array of float32 primitives or vectors, this returns a channel set
+        which points directly into the packed data.
+    */
+    InterleavedChannelSet<float> getAsChannelSet32() const;
+
+    /** Assuming the value is an array of float64 primitives or vectors, this returns a channel set
+        which points directly into the packed data.
+    */
+    InterleavedChannelSet<double> getAsChannelSet64() const;
 
     explicit operator float() const;
     explicit operator double() const;
