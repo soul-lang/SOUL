@@ -77,6 +77,12 @@ struct pool_ptr  final
 
 private:
     Type* object = nullptr;
+
+    operator size_t() const = delete; // these are here to avoid accidentally casting a pointer
+    operator char() const = delete;   // to a numeric type via the bool cast.
+    operator int() const = delete;
+    operator long() const = delete;
+    operator void*() const = delete;
 };
 
 //==============================================================================
