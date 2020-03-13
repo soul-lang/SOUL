@@ -649,7 +649,10 @@ private:
         auto intrin = f.annotation.getValue ("intrin");
 
         if (intrin.getType().isStringLiteral())
+        {
             f.intrinsicType = getIntrinsicTypeFromName (program.getStringDictionary().getStringForHandle (intrin.getStringLiteral()));
+            f.functionType.setIntrinsic();
+        }
     }
 
     void parseFunctionBody (heart::Function& f)
