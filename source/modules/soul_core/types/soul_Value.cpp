@@ -580,7 +580,6 @@ void Value::copyValue (const Value& source)
     SOUL_ASSERT_FALSE;
 }
 
-
 bool Value::canNegate() const
 {
     return type.isFloatingPoint() || type.isInteger();
@@ -607,6 +606,11 @@ Value Value::cloneWithEquivalentType (Type newType) const
 {
     SOUL_ASSERT (newType.hasIdenticalLayout (type));
     return Value (std::move (newType), getPackedData());
+}
+
+void Value::clear()
+{
+    getData().clear();
 }
 
 Value Value::tryCastToType (const Type& destType) const

@@ -80,16 +80,6 @@ struct Value  final
     StringDictionary::Handle getStringLiteral() const;
     ConstantTable::Handle getUnsizedArrayContent() const;
 
-    /** Assuming the value is an array of float32 primitives or vectors, this returns a channel set
-        which points directly into the packed data.
-    */
-    InterleavedChannelSet<float> getAsChannelSet32() const;
-
-    /** Assuming the value is an array of float64 primitives or vectors, this returns a channel set
-        which points directly into the packed data.
-    */
-    InterleavedChannelSet<double> getAsChannelSet64() const;
-
     explicit operator float() const;
     explicit operator double() const;
     explicit operator int32_t() const;
@@ -116,11 +106,24 @@ struct Value  final
     /** The total size of the packed data which fully represents this object. */
     size_t getPackedDataSize() const               { return allocatedData.size(); }
 
+    /** Assuming the value is an array of float32 primitives or vectors, this returns a channel set
+        which points directly into the packed data.
+    */
+    InterleavedChannelSet<float> getAsChannelSet32() const;
+
+    /** Assuming the value is an array of float64 primitives or vectors, this returns a channel set
+        which points directly into the packed data.
+    */
+    InterleavedChannelSet<double> getAsChannelSet64() const;
+
     /** True if this Value is not an uninitialised (i.e. default-constructed) value. */
     bool isValid() const;
 
     /** If this value (or all its internal elements if it's an aggregate type) is zero. */
     bool isZero() const;
+
+    /** Resets this value to a zero-initialised version of its type. */
+    void clear();
 
     /** Attempts to cast to a new type, returning an invalid Value on failure. */
     Value tryCastToType (const Type& destType) const;
