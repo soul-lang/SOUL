@@ -42,7 +42,7 @@ struct heart::Checker
             if (input->arraySize != 1)
                 input->location.throwError (Errors::notYetImplemented ("top-level arrays of inputs"));
 
-            if (input->sampleTypes.size() != 1)
+            if (input->dataTypes.size() != 1)
                 input->location.throwError (Errors::onlyOneTypeInTopLevelInputs());
         }
 
@@ -98,8 +98,8 @@ struct heart::Checker
                     if (! areConnectionTypesCompatible (isEvent (sourceOutput->kind),
                                                         *sourceOutput, sourceInstanceArraySize,
                                                         *destInput, destInstanceArraySize))
-                        conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getSampleTypesDescription(),
-                                                                          destDescription, destInput->getSampleTypesDescription()));
+                        conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getTypesDescription(),
+                                                                          destDescription, destInput->getTypesDescription()));
                 }
             }
         }
@@ -120,8 +120,8 @@ struct heart::Checker
                 return false;
 
             // Now compare the underlying types, ignoring array sizes, at least 1 should match
-            for (auto& sourceType : sourceOutput.sampleTypes)
-                for (auto& destType : destInput.sampleTypes)
+            for (auto& sourceType : sourceOutput.dataTypes)
+                for (auto& destType : destInput.dataTypes)
                     if (TypeRules::canSilentlyCastTo (destType, sourceType))
                         return true;
 

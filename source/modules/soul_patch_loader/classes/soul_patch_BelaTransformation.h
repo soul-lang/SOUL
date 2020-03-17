@@ -63,7 +63,7 @@ namespace soul::patch
                 }
                 else if (isAudioStream (input))
                 {
-                    auto channels = input->sampleTypes.front().getVectorSize();
+                    auto channels = input->dataTypes.front().getVectorSize();
 
                     parameters << name << "Input = Bela::InputAudioStream (" << std::to_string (nextOutputChannel) << ", " << channels << ");" << newLine;
                     connections << "audioIn -> " << name << "Input.audioIn;" << newLine;

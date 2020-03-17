@@ -2301,7 +2301,7 @@ private:
                 if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
                 {
                     SOUL_ASSERT (outputEndpoint->output->details != nullptr);
-                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedSampleTypes(), w.value);
+                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedDataTypes(), w.value);
                     return w;
                 }
             }

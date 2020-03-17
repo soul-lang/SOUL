@@ -23,6 +23,20 @@ namespace soul
 
 struct heart::Utilities
 {
+    static std::string getDescriptionOfTypeList (ArrayView<Type> types, bool alwaysParenthesise)
+    {
+        if (! alwaysParenthesise)
+        {
+            if (types.empty())
+                return {};
+
+            if (types.size() == 1)
+                return types.front().getDescription();
+        }
+
+        return "(" + joinStrings (types, ", ", [] (auto& t) { return t.getDescription(); }) + ")";
+    }
+
     template <typename VisitorFn>
     static void visitAllTypes (Program& program, VisitorFn&& visit)
     {
@@ -42,11 +56,11 @@ struct heart::Utilities
             }
 
             for (auto& i : m->inputs)
-                for (auto& t : i->sampleTypes)
+                for (auto& t : i->dataTypes)
                     visit (t);
 
             for (auto& o : m->outputs)
-                for (auto& t : o->sampleTypes)
+                for (auto& t : o->dataTypes)
                     visit (t);
         }
     }
@@ -75,11 +89,11 @@ struct heart::Utilities
             }
 
             for (auto& i : m->inputs)
-                for (auto& t : i->sampleTypes)
+                for (auto& t : i->dataTypes)
                     visit (t);
 
             for (auto& o : m->outputs)
-                for (auto& t : o->sampleTypes)
+                for (auto& t : o->dataTypes)
                     visit (t);
         }
     }

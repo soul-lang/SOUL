@@ -719,7 +719,7 @@ private:
     {
         auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput);
         first.details = std::make_unique<AST::EndpointDetails> (kind);
-        first.details->sampleTypes = parseEndpointTypeList (kind);
+        first.details->dataTypes = parseEndpointTypeList (kind);
         parseInputOrOutputName (first);
         p.endpoints.push_back (first);
 
@@ -727,7 +727,7 @@ private:
         {
             auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
             e.details = std::make_unique<AST::EndpointDetails> (kind);
-            e.details->sampleTypes = first.details->sampleTypes;
+            e.details->dataTypes = first.details->dataTypes;
             parseInputOrOutputName (e);
             p.endpoints.push_back (e);
         }

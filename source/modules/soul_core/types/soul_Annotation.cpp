@@ -68,12 +68,7 @@ static std::string annotationToString (const StringDictionary& stringDictionary,
     if (properties == nullptr || properties->empty())
         return {};
 
-    std::vector<std::string> propertyStrings;
-
-    for (auto& p : *properties)
-        propertyStrings.push_back (propertyToString (stringDictionary, p, asJSON));
-
-    auto content = joinStrings (propertyStrings, ", ");
+    auto content = joinStrings (*properties, ", ", [&] (auto& p) { return propertyToString (stringDictionary, p, asJSON); });
 
     return asJSON ? ("{ "   + content + " }")
                   : (" [[ " + content + " ]]");

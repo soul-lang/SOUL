@@ -27,11 +27,11 @@ namespace soul
 
 //==============================================================================
 EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
-                                  std::vector<Type> types, Annotation a)
+                                  const std::vector<Type>& types, Annotation a)
    : endpointID (std::move (id)),
      name (std::move (nm)),
      kind (k),
-     sampleTypes (std::move (types)),
+     dataTypes (types),
      annotation (std::move (a))
 {
 }
@@ -40,25 +40,31 @@ uint32_t EndpointDetails::getNumAudioChannels() const
 {
     if (isStream (kind))
     {
-        auto sampleType = getSingleSampleType();
+        auto& frameType = getFrameType();
 
-        if (sampleType.isFloatingPoint())
-        {
-            if (sampleType.isPrimitive())
-                return 1;
-
-            if (sampleType.isVector())
-                return (uint32_t) sampleType.getVectorSize();
-        }
+        if (frameType.isFloatingPoint())
+            return (uint32_t) frameType.getVectorSize();
     }
 
     return 0;
 }
 
-const Type& EndpointDetails::getSingleSampleType() const
+const Type& EndpointDetails::getFrameType() const
 {
-    SOUL_ASSERT (sampleTypes.size() == 1);
-    return sampleTypes.front();
+    SOUL_ASSERT (isStream (kind) && dataTypes.size() == 1);
+    return dataTypes.front();
+}
+
+const Type& EndpointDetails::getValueType() const
+{
+    SOUL_ASSERT (isValue (kind) && dataTypes.size() == 1);
+    return dataTypes.front();
+}
+
+const Type& EndpointDetails::getSingleEventType() const
+{
+    SOUL_ASSERT (isEvent (kind) && dataTypes.size() == 1);
+    return dataTypes.front();
 }
 
 bool EndpointDetails::isConsoleOutput() const

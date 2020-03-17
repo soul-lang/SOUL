@@ -80,10 +80,11 @@ struct AudioMIDIWrapper
                     if (auto getNewValueForParamIfChanged = getNewParameterValueFn (inputEndpoint))
                     {
                         auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
-                        auto type = inputEndpoint.getSingleSampleType();
 
                         if (isEvent (inputEndpoint.kind))
                         {
+                            auto type = inputEndpoint.getSingleEventType();
+
                             preRenderOperations.push_back ([&perf, endpointHandle, getNewValueForParamIfChanged, type] (RenderContext&)
                             {
                                 if (auto newValue = getNewValueForParamIfChanged())
@@ -94,6 +95,7 @@ struct AudioMIDIWrapper
                         {
                             SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
                             auto rampFrames = getRampLengthForSparseStreamFn (inputEndpoint);
+                            auto type = inputEndpoint.getFrameType();
 
                             preRenderOperations.push_back ([&perf, endpointHandle, getNewValueForParamIfChanged, type, rampFrames] (RenderContext&)
                             {
@@ -103,6 +105,8 @@ struct AudioMIDIWrapper
                         }
                         else if (isValue (inputEndpoint.kind))
                         {
+                            auto type = inputEndpoint.getValueType();
+
                             preRenderOperations.push_back ([&perf, endpointHandle, getNewValueForParamIfChanged, type] (RenderContext&)
                             {
                                 if (auto newValue = getNewValueForParamIfChanged())
@@ -115,7 +119,7 @@ struct AudioMIDIWrapper
             else if (isMIDIEventEndpoint (inputEndpoint))
             {
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
-                auto midiMessageValue = Value::zeroInitialiser (inputEndpoint.getSingleSampleType());
+                auto midiMessageValue = Value::zeroInitialiser (inputEndpoint.getSingleEventType());
 
                 preRenderOperations.push_back ([&perf, endpointHandle, midiMessageValue] (RenderContext& rc) mutable
                 {
@@ -127,13 +131,12 @@ struct AudioMIDIWrapper
                     }
                 });
             }
-            else if (auto numChans = inputEndpoint.getNumAudioChannels())
+            else if (auto numSourceChans = inputEndpoint.getNumAudioChannels())
             {
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
-                auto& frameType = inputEndpoint.getSingleSampleType();
+                auto& frameType = inputEndpoint.getFrameType();
                 auto buffer = soul::Value::zeroInitialiser (frameType.createArray (rateAndBlockSize.blockSize));
                 auto startChannel = numInputChannelsExpected;
-                auto numSourceChans = (uint32_t) frameType.getVectorSize();
 
                 if (frameType.isFloatingPoint())
                 {
@@ -150,7 +153,7 @@ struct AudioMIDIWrapper
                     SOUL_ASSERT_FALSE;
                 }
 
-                numInputChannelsExpected += numChans;
+                numInputChannelsExpected += numSourceChans;
             }
         }
 
@@ -173,13 +176,12 @@ struct AudioMIDIWrapper
                     });
                 });
             }
-            else if (auto numChans = outputEndpoint.getNumAudioChannels())
+            else if (auto numDestChans = outputEndpoint.getNumAudioChannels())
             {
                 auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
-                auto& frameType = outputEndpoint.getSingleSampleType();
+                auto& frameType = outputEndpoint.getFrameType();
                 auto buffer = soul::Value::zeroInitialiser (frameType.createArray (rateAndBlockSize.blockSize));
                 auto startChannel = numOutputChannelsExpected;
-                auto numDestChans = (uint32_t) frameType.getVectorSize();
 
                 if (frameType.isFloatingPoint())
                 {
@@ -198,7 +200,7 @@ struct AudioMIDIWrapper
                     SOUL_ASSERT_FALSE;
                 }
 
-                numOutputChannelsExpected += numChans;
+                numOutputChannelsExpected += numDestChans;
             }
             else if (handleUnusedEventFn != nullptr && isEvent (outputEndpoint.kind))
             {

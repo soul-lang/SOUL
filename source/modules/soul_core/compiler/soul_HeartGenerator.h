@@ -184,7 +184,7 @@ private:
             i.name = convertIdentifier (e.name);
             i.index = (uint32_t) module.inputs.size();
             i.kind = e.details->kind;
-            i.sampleTypes = e.details->getResolvedSampleTypes();
+            i.dataTypes = e.details->getResolvedDataTypes();
             i.annotation = e.annotation.toPlainAnnotation();
             i.arraySize = getProcessorArraySize (e.details->arraySize);
             e.generatedInput = i;
@@ -200,7 +200,7 @@ private:
             o.name = convertIdentifier (e.name);
             o.index = (uint32_t) module.outputs.size();
             o.kind = e.details->kind;
-            o.sampleTypes = e.details->getResolvedSampleTypes();
+            o.dataTypes = e.details->getResolvedDataTypes();
             o.annotation = e.annotation.toPlainAnnotation();
             o.arraySize = getProcessorArraySize (e.details->arraySize);
             e.generatedOutput = o;
@@ -1023,11 +1023,11 @@ private:
             {
                 if (auto details = output->output->details.get())
                 {
-                    if (! details->supportsSampleType (v))
+                    if (! details->supportsDataType (v))
                         target.context.throwError (Errors::cannotWriteTypeToEndpoint (v->getResultType().getDescription(),
-                                                                                      details->getSampleTypesDescription()));
+                                                                                      details->getTypesDescription()));
 
-                    auto sampleType = details->getSampleType (v);
+                    auto sampleType = details->getDataType (v);
 
                     builder.addWriteStream (output->context.location,
                                             *output->output->generatedOutput, nullptr,
@@ -1054,7 +1054,7 @@ private:
                     for (auto v : values)
                     {
                         // Find the element type that our expression will write to
-                        auto sampleType = details->getElementSampleType (v);
+                        auto sampleType = details->getElementDataType (v);
                         auto& value = evaluateAsExpression (v, sampleType);
 
                         if (arraySubscript->isSlice)

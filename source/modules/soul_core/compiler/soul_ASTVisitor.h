@@ -302,7 +302,7 @@ struct ASTVisitor
     {
         if (e.details != nullptr)
         {
-            for (auto& type : e.details->sampleTypes)
+            for (auto& type : e.details->dataTypes)
                 visitObject (type);
 
             if (e.details->arraySize != nullptr)
@@ -741,7 +741,7 @@ struct RewritingASTVisitor
     {
         if (e.details != nullptr)
         {
-            for (auto& type : e.details->sampleTypes)
+            for (auto& type : e.details->dataTypes)
                 replaceExpression (type);
 
             replaceExpression (e.details->arraySize);

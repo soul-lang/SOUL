@@ -114,16 +114,24 @@ struct EndpointDetails
     EndpointDetails& operator= (EndpointDetails&&) = default;
 
     EndpointDetails (EndpointID, std::string name, EndpointKind,
-                     std::vector<Type> sampleTypes, Annotation);
+                     const std::vector<Type>& dataTypes, Annotation);
 
     uint32_t getNumAudioChannels() const;
-    const Type& getSingleSampleType() const;
+    const Type& getFrameType() const;
+    const Type& getValueType() const;
+    const Type& getSingleEventType() const;
     bool isConsoleOutput() const;
 
     EndpointID endpointID;
     std::string name;
     EndpointKind kind;
-    ArrayWithPreallocation<Type, 2> sampleTypes;
+
+    /** The types of the frames or events that this endpoint uses.
+        For an event endpoint, there may be multiple data types for the different
+        event types it can handle. For streams and values, there should be exactly
+        one type in this array.
+    */
+    ArrayWithPreallocation<Type, 2> dataTypes;
     Annotation annotation;
 };
 

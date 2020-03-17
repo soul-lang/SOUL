@@ -70,6 +70,23 @@ static std::string joinStrings (const StringArray& strings, const std::string& s
     return s;
 }
 
+template <typename Array, typename StringifyFn>
+static std::string joinStrings (const Array& strings, const std::string& separator, StringifyFn&& stringify)
+{
+    if (strings.empty())
+        return {};
+
+    std::string s (stringify (strings.front()));
+
+    for (size_t i = 1; i < strings.size(); ++i)
+    {
+        s += separator;
+        s += stringify (strings[i]);
+    }
+
+    return s;
+}
+
 std::vector<std::string> splitAtDelimiter (const std::string& text, char delimiter);
 std::vector<std::string> splitAtWhitespace (const std::string& text);
 std::vector<std::string> splitIntoLines (const std::string& text);

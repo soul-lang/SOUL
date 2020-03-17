@@ -333,9 +333,9 @@ private:
         inputDeclaration.kind = parseEndpointKind (*this);
 
         if (inputDeclaration.isEventEndpoint())
-            inputDeclaration.sampleTypes = readEventTypeList();
+            inputDeclaration.dataTypes = readEventTypeList();
         else
-            inputDeclaration.sampleTypes.emplace_back (readValueType());
+            inputDeclaration.dataTypes.emplace_back (readValueType());
 
         parseAnnotation (inputDeclaration.annotation);
         expectSemicolon();
@@ -354,9 +354,9 @@ private:
         output.kind = parseEndpointKind (*this);
 
         if (output.isEventEndpoint())
-            output.sampleTypes = readEventTypeList();
+            output.dataTypes = readEventTypeList();
         else
-            output.sampleTypes.emplace_back (readValueType());
+            output.dataTypes.emplace_back (readValueType());
 
         parseAnnotation (output.annotation);
         expectSemicolon();

@@ -174,11 +174,11 @@ struct SanityCheckPass  final
 
         if (matches == 0)
             context.throwError (Errors::cannotImplicitlyCastType (sourceType.getDescription(),
-                                                                  getTypesDescription (targetTypes)));
+                                                                  heart::Utilities::getDescriptionOfTypeList (targetTypes, false)));
 
         if (matches > 1)
             context.throwError (Errors::ambiguousCastBetween (sourceType.getDescription(),
-                                                              getTypesDescription (targetTypes)));
+                                                              heart::Utilities::getDescriptionOfTypeList (targetTypes, false)));
     }
 
     static void throwErrorIfMultidimensionalArray (const AST::Context& location, const Type& type)
@@ -196,19 +196,6 @@ struct SanityCheckPass  final
         if (type.isStruct())
             for (auto& m : type.getStructRef().members)
                 throwErrorIfMultidimensionalArray (location, m.type);
-    }
-
-    static std::string getTypesDescription (ArrayView<Type> types)
-    {
-        if (types.size() == 1)
-            return types.front().getDescription();
-
-        std::vector<std::string> descriptions;
-
-        for (auto& type : types)
-            descriptions.push_back (type.getDescription());
-
-        return "(" + soul::joinStrings (descriptions, ", ") + ")";
     }
 
     static void checkArraySubscript (AST::ArrayElementRef& s)
@@ -339,7 +326,7 @@ private:
                             if (e->details->arraySize == nullptr && f->parameters.size() == 1)
                             {
                                 auto eventType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
-                                auto types = e->details->getResolvedSampleTypes();
+                                auto types = e->details->getResolvedDataTypes();
 
                                 if (! eventType.isPresentIn (types))
                                     f->context.throwError (Errors::eventFunctionInvalidType (f->name, eventType.getDescription()));
@@ -348,7 +335,7 @@ private:
                             {
                                 auto indexType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
                                 auto eventType = f->parameters.back()->getType().removeConstIfPresent().removeReferenceIfPresent();
-                                auto types = e->details->getResolvedSampleTypes();
+                                auto types = e->details->getResolvedDataTypes();
 
                                 if (! indexType.isInteger())
                                     f->context.throwError (Errors::eventFunctionIndexInvalid());
@@ -487,7 +474,7 @@ private:
 
             for (auto input : p.endpoints)
                 if (input->details != nullptr)
-                    input->details->checkSampleTypesValid (input->context);
+                    input->details->checkDataTypesValid (input->context);
 
             for (auto& v : p.stateVariables)
                 if (v->initialValue != nullptr && ! v->initialValue->isCompileTimeConstant())
@@ -500,7 +487,7 @@ private:
 
             for (auto input : g.endpoints)
                 if (input->details != nullptr)
-                    input->details->checkSampleTypesValid (input->context);
+                    input->details->checkDataTypesValid (input->context);
 
             AST::Graph::RecursiveGraphDetector::check (g);
             AST::Graph::CycleDetector (g).check();

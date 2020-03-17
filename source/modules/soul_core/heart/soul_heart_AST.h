@@ -128,7 +128,7 @@ struct heart
         Identifier name;
         uint32_t index = 0;
         EndpointKind kind;
-        std::vector<Type> sampleTypes;
+        std::vector<Type> dataTypes;
         uint32_t arraySize = 1;
         Annotation annotation;
 
@@ -139,8 +139,8 @@ struct heart
 
         bool supportsSampleType (const Type& t) const
         {
-            for (auto& sampleType : sampleTypes)
-                if (TypeRules::canSilentlyCastTo (getSampleArrayType (sampleType), t))
+            for (auto& type : dataTypes)
+                if (TypeRules::canSilentlyCastTo (getSampleArrayType (type), t))
                     return true;
 
             return false;
@@ -148,8 +148,8 @@ struct heart
 
         bool supportsElementSampleType (const Type& t) const
         {
-            for (auto& sampleType : sampleTypes)
-                if (TypeRules::canSilentlyCastTo (sampleType, t))
+            for (auto& type : dataTypes)
+                if (TypeRules::canSilentlyCastTo (type, t))
                     return true;
 
             return false;
@@ -159,15 +159,15 @@ struct heart
         {
             std::vector<Type> types;
 
-            for (auto& sampleType : sampleTypes)
-                types.push_back (getSampleArrayType (sampleType));
+            for (auto& type : dataTypes)
+                types.push_back (getSampleArrayType (type));
 
             return types;
         }
 
         Type getSupportedType (const Type& t, bool isElementAccess) const
         {
-            for (auto& sampleType : sampleTypes)
+            for (auto& sampleType : dataTypes)
                 if (TypeRules::canPassAsArgumentTo (isElementAccess ? sampleType : getSampleArrayType (sampleType), t, true))
                     return getSampleArrayType (sampleType);
 
@@ -177,18 +177,13 @@ struct heart
 
         Type getSingleSampleType() const
         {
-            SOUL_ASSERT (sampleTypes.size() == 1);
-            return getSampleArrayType (sampleTypes[0]);
+            SOUL_ASSERT (dataTypes.size() == 1);
+            return getSampleArrayType (dataTypes[0]);
         }
 
-        std::string getSampleTypesDescription() const
+        std::string getTypesDescription() const
         {
-            std::vector<std::string> sampleDescriptions;
-
-            for (auto& sampleType : sampleTypes)
-                sampleDescriptions.push_back (sampleType.getDescription());
-
-            return soul::joinStrings (sampleDescriptions, ", ");
+            return joinStrings (dataTypes, ", ", [] (auto& t) { return t.getDescription(); });
         }
 
     private:
@@ -211,7 +206,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { EndpointID::create ("in:" + name.toString()), name, kind, sampleTypes, annotation };
+            return { EndpointID::create ("in:" + name.toString()), name, kind, dataTypes, annotation };
         }
     };
 
@@ -226,7 +221,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { EndpointID::create ("out:" + name.toString()), name, kind, sampleTypes, annotation };
+            return { EndpointID::create ("out:" + name.toString()), name, kind, dataTypes, annotation };
         }
     };
 

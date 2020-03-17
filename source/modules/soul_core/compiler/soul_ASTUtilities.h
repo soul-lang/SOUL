@@ -145,11 +145,11 @@ struct ASTUtilities
         if (type.isReference() || type.isConst())
             return ensureEventEndpointHasSampleType (allocator, endpoint, type.withConstAndRefFlags (false, false));
 
-        for (auto& t : endpoint.details->getResolvedSampleTypes())
+        for (auto& t : endpoint.details->getResolvedDataTypes())
             if (t.isEqual (type, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
                 return;
 
-        endpoint.details->sampleTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
+        endpoint.details->dataTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
     }
 
     static void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
@@ -369,7 +369,7 @@ private:
 
                         if (parentEndpoint != nullptr)
                         {
-                            for (auto& t : childEndpoint->details->getResolvedSampleTypes())
+                            for (auto& t : childEndpoint->details->getResolvedDataTypes())
                                 ensureEventEndpointHasSampleType (allocator, *parentEndpoint, t);
                         }
                         else

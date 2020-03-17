@@ -75,9 +75,9 @@ inline bool isMIDIEventEndpoint (const EndpointDetails& details)
     };
 
     return isEvent (details.kind)
-            && details.sampleTypes.size() == 1
-            && details.getSingleSampleType().isStruct()
-            && isMIDIMessageStruct (details.getSingleSampleType().getStructRef());
+            && details.dataTypes.size() == 1
+            && details.dataTypes.front().isStruct()
+            && isMIDIMessageStruct (details.dataTypes.front().getStructRef());
 }
 
 inline bool isParameterInput (const EndpointDetails& details)

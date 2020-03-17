@@ -132,7 +132,7 @@ private:
                     << padded (nameWithArray (io->name, io->arraySize), 20)
                     << padded (getEndpointKindName (io->kind), 8);
 
-                printDescription (io->sampleTypes);
+                printDescription (io->dataTypes);
                 printDescription (io->annotation);
                 out << ';' << newLine;
             }
@@ -146,7 +146,7 @@ private:
                     << padded (nameWithArray (io->name, io->arraySize), 20)
                     << padded (getEndpointKindName (io->kind), 8);
 
-                printDescription (io->sampleTypes);
+                printDescription (io->dataTypes);
                 printDescription (io->annotation);
                 out << ';' << newLine;
             }

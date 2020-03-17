@@ -354,7 +354,7 @@ public:
                 else if (connection.audioInputStreamIndex >= 0)
                 {
                     auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
-                    auto& frameType = details.getSingleSampleType();
+                    auto& frameType = details.getFrameType();
                     auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
                     auto startChannel = (uint32_t) connection.audioInputStreamIndex;
                     auto numSourceChans = (uint32_t) frameType.getVectorSize();
@@ -377,7 +377,7 @@ public:
                 else if (connection.audioOutputStreamIndex >= 0)
                 {
                     auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
-                    auto& frameType = details.getSingleSampleType();
+                    auto& frameType = details.getFrameType();
                     auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
                     auto startChannel = (uint32_t) connection.audioOutputStreamIndex;
                     auto numDestChans = (uint32_t) frameType.getVectorSize();
@@ -735,7 +735,7 @@ private:
     static soul::Type getVectorType (int size)    { return (soul::Type::createVector (soul::PrimitiveType::float32, static_cast<size_t> (size))); }
 
     static void addEndpoint (std::vector<EndpointInfo>& list, EndpointKind kind,
-                             EndpointID id, std::string name, Type sampleType,
+                             EndpointID id, std::string name, Type dataType,
                              int audioChannelIndex, bool isMIDI)
     {
         EndpointInfo e;
@@ -743,7 +743,7 @@ private:
         e.details.endpointID    = std::move (id);
         e.details.name          = std::move (name);
         e.details.kind          = kind;
-        e.details.sampleTypes.push_back (sampleType);
+        e.details.dataTypes.push_back (std::move (dataType));
 
         e.audioChannelIndex     = audioChannelIndex;
         e.isMIDI                = isMIDI;

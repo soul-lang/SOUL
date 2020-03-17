@@ -961,25 +961,25 @@ struct AST
         EndpointDetails (const EndpointDetails&) = default;
 
         const EndpointKind kind;
-        std::vector<pool_ref<Expression>> sampleTypes;
+        std::vector<pool_ref<Expression>> dataTypes;
         pool_ptr<Expression> arraySize;
 
-        void checkSampleTypesValid (const Context& context)
+        void checkDataTypesValid (const Context& context)
         {
             if (isStream (kind))
             {
-                SOUL_ASSERT (sampleTypes.size() == 1);
-                auto sampleType = getResolvedSampleTypes().front();
+                SOUL_ASSERT (dataTypes.size() == 1);
+                auto sampleType = getResolvedDataTypes().front();
 
                 if (! (sampleType.isPrimitive() || sampleType.isVector()))
                     context.throwError (Errors::illegalTypeForEndpoint());
             }
 
-            // Ensure all of the sampleTypes are unique
+            // Ensure all of the types are unique
             {
                 std::vector<Type> processedTypes;
 
-                for (auto& sampleType : getResolvedSampleTypes())
+                for (auto& sampleType : getResolvedDataTypes())
                 {
                     for (auto& processedType : processedTypes)
                         if (processedType.isEqual (sampleType, Type::ignoreVectorSize1))
@@ -993,19 +993,19 @@ struct AST
 
         bool isResolved() const
         {
-            for (auto& t : sampleTypes)
+            for (auto& t : dataTypes)
                 if (! isResolvedAsType (t.get()))
                     return false;
 
             return arraySize == nullptr || isResolvedAsConstant (arraySize);
         }
 
-        std::vector<Type> getResolvedSampleTypes() const
+        std::vector<Type> getResolvedDataTypes() const
         {
             std::vector<Type> types;
-            types.reserve (sampleTypes.size());
+            types.reserve (dataTypes.size());
 
-            for (auto& t : sampleTypes)
+            for (auto& t : dataTypes)
             {
                 SOUL_ASSERT (isResolvedAsType (t.get()));
                 types.push_back (t->resolveAsType());
@@ -1023,59 +1023,49 @@ struct AST
         std::vector<Type> getSampleArrayTypes() const
         {
             std::vector<Type> types;
-            types.reserve (sampleTypes.size());
+            types.reserve (dataTypes.size());
 
             auto size = static_cast<uint32_t> (arraySize != nullptr ? getArraySize() : 0);
 
-            for (auto& t : getResolvedSampleTypes())
+            for (auto& t : getResolvedDataTypes())
                 types.push_back (size == 0 ? t : t.createArray (size));
 
             return types;
         }
 
-        std::string getSampleTypesDescription() const
+        std::string getTypesDescription() const
         {
-            auto types = getResolvedSampleTypes();
-
-            if (types.size() == 1)
-                return types.front().getDescription();
-
-            std::vector<std::string> typeDescs;
-
-            for (auto& type : types)
-                typeDescs.push_back (type.getDescription());
-
-            return "(" + soul::joinStrings (typeDescs, ", ") + ")";
+            return heart::Utilities::getDescriptionOfTypeList (getResolvedDataTypes(), false);
         }
 
-        bool supportsSampleType (Expression& e) const
+        bool supportsDataType (Expression& e) const
         {
-            for (auto& sampleType : getSampleArrayTypes())
-                if (e.canSilentlyCastTo (sampleType))
+            for (auto& type : getSampleArrayTypes())
+                if (e.canSilentlyCastTo (type))
                     return true;
 
             return false;
         }
 
-        Type getSampleType (Expression& e) const
+        Type getDataType (Expression& e) const
         {
-            for (auto& sampleType : getSampleArrayTypes())
-                if (e.getResultType().isEqual (sampleType, Type::ignoreVectorSize1))
-                    return sampleType;
+            for (auto& type : getSampleArrayTypes())
+                if (e.getResultType().isEqual (type, Type::ignoreVectorSize1))
+                    return type;
 
-            for (auto& sampleType : getSampleArrayTypes())
-                if (e.canSilentlyCastTo (sampleType))
-                    return sampleType;
+            for (auto& type : getSampleArrayTypes())
+                if (e.canSilentlyCastTo (type))
+                    return type;
 
             SOUL_ASSERT_FALSE;
             return {};
         }
 
-        Type getElementSampleType (Expression& e) const
+        Type getElementDataType (Expression& e) const
         {
-            for (auto& sampleType : getResolvedSampleTypes())
-                if (e.canSilentlyCastTo (sampleType))
-                    return sampleType;
+            for (auto& type : getResolvedDataTypes())
+                if (e.canSilentlyCastTo (type))
+                    return type;
 
             SOUL_ASSERT_FALSE;
             return {};
@@ -1129,7 +1119,7 @@ struct AST
             if (isEvent (details.kind))
                 return (details.arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (details.getArraySize()));
 
-            SOUL_ASSERT (details.sampleTypes.size() == 1);
+            SOUL_ASSERT (details.dataTypes.size() == 1);
             return details.getSampleArrayTypes().front();
         }
 
@@ -1220,12 +1210,7 @@ struct AST
 
         std::string getDescription() const
         {
-            ArrayWithPreallocation<std::string, 16> types;
-
-            for (auto& p : getParameterTypes())
-                types.push_back (p.getDescription());
-
-            return name.toString() + "(" + joinStrings (types, ", ") + ")";
+            return name.toString() + heart::Utilities::getDescriptionOfTypeList (getParameterTypes(), true);
         }
 
         std::string getSignatureID() const
@@ -1948,23 +1933,16 @@ struct AST
         std::string getDescription (std::string name) const
         {
             auto argTypes = getArgumentTypes();
-            ArrayWithPreallocation<std::string, 16> types;
 
             if (isMethodCall)
             {
                 SOUL_ASSERT (! argTypes.empty());
-                name = TokenisedPathString::join (argTypes.front().getDescription(), name);
 
-                for (size_t i = 1; i < argTypes.size(); ++i)
-                    types.push_back (argTypes[i].getDescription());
-            }
-            else
-            {
-                for (auto& arg : argTypes)
-                    types.push_back (arg.getDescription());
+                return TokenisedPathString::join (argTypes.front().getDescription(), name)
+                        + heart::Utilities::getDescriptionOfTypeList (ArrayView<Type> (argTypes).tail(), true);
             }
 
-            return name + "(" + joinStrings (types, ", ") + ")";
+            return name + heart::Utilities::getDescriptionOfTypeList (argTypes, true);
         }
 
         pool_ptr<CommaSeparatedList> arguments;
