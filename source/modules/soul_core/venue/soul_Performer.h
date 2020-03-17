@@ -110,33 +110,57 @@ public:
     virtual void prepare (uint32_t numFramesToBeRendered) = 0;
 
     /** Callback function used by iterateOutputEvents().
+        The frameOffset is relative to the start of the last block that was rendered during advance().
         @returns true to continue iterating, or false to stop.
     */
     using HandleNextOutputEventFn = std::function<bool(uint32_t frameOffset, const Value& event)>&&;
 
-
     /** Pushes a block of samples to an input endpoint.
-        @returns the number of samples actually consumed.
+        After a successful call to prepare(), and before a call to advance(), this should be called
+        to provide the next block of samples for an input stream. The value provided should be an
+        array of as many frames as was specified in prepare(). If this is called more than once before
+        advance(), only the most recent value is used.
+        The EndpointHandle is obtained by calling getEndpointHandle().
+        @returns the number of samples actually consumed. If not all the samples provided are consumed,
+                 the caller will probably want to re-send the remaining ones during the next block.
     */
     virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
 
-    /**
+    /** Sets the next levels for a sparse-stream input.
+        After a successful call to prepare(), and before a call to advance(), this should be called
+        to set the trajectory for a sparse input stream over the next block. If this is called more
+        than once before advance(), only the most recent value is used.
+        The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) = 0;
+    virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue,
+                                             uint32_t numFramesToReachValue, float curveShape) = 0;
 
-    /**
+    /** Sets a new value for a value input.
+        After a successful call to prepare(), and before a call to advance(), this may be called
+        to set a new value for a value input. If this is called more than once before advance(),
+        only the most recent value is used.
+        The EndpointHandle is obtained by calling getEndpointHandle().
     */
     virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
 
-    /**
+    /** Adds an event to an input queue.
+        After a successful call to prepare(), and before a call to advance(), this may be called
+        multiple times to add events for an event input endpoint. During the next call to advance,
+        all the events that were added will be dispatched in order, and the queue will be reset.
+        The EndpointHandle is obtained by calling getEndpointHandle().
     */
     virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
 
-    /**
+    /** Retrieves the most recent block of frames from an output stream.
+        After a successful call to advance(), this may be called to get the block of frames which
+        were rendered during that call. A nullptr return value indicates an error.
     */
     virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
 
-    /**
+    /** Retrieves the last block of events which were emitted by an event output.
+        After a successful call to advance(), this may be called to iterate the list of events
+        which the program emitted on the given endpoint. The callback function provides the
+        frame offset and content of each event.
     */
     virtual void iterateOutputEvents (EndpointHandle, HandleNextOutputEventFn) = 0;
 

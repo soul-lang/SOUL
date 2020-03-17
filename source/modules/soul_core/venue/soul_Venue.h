@@ -86,31 +86,57 @@ public:
         /** Instructs the venue to stop playback, and to unload the current program. */
         virtual void unload() = 0;
 
-        /**
+        /** When a program has been loaded (but not yet linked), this returns
+            a handle that can be used later by other methods which need to reference
+            an input or output endpoint.
+            Will return a null handle if the ID is not found.
         */
         virtual EndpointHandle getEndpointHandle (const EndpointID&) = 0;
 
-        /**
+        /** Pushes a block of samples to an input endpoint.
+            This should be called to provide the next block of samples for an input stream.
+            This method may only be called during a callback attached to addInputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
+            @returns the number of samples actually consumed. If not all the samples provided
+                     are consumed, the caller will probably want to re-send the remaining ones
+                     during the next callback
         */
         virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
 
-        /**
+        /** Updates the trajectory for a sparse input stream.
+            This method may only be called during a callback attached to addInputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
         */
-        virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) = 0;
+        virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue,
+                                                 uint32_t numFramesToReachValue, float curveShape) = 0;
 
-        /**
+        /** Sets a new value for a value input.
+            This method may only be called during a callback attached to addInputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
         */
         virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
 
-        /**
+        /** Adds an event to an input queue.
+            This method may only be called during a callback attached to addInputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
+            It can be called multiple times during the same callback to add events for an event input
+            endpoint. The events will then all be dispatched in order, and the queue will be reset before
+            the next callback.
         */
         virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
 
-        /**
+        /** Retrieves the most recent block of frames from an output stream.
+            This method may only be called during a callback attached to addOutputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
+            A nullptr return value indicates that no frames are available.
         */
         virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
 
-        /**
+        /** Retrieves the last block of events which were emitted by an event output.
+            This method may only be called during a callback attached to addOutputEndpointFIFOCallback(),
+            using the endpoint handle that was provided as an argument to that callback.
+            It will call the provided handler for each event that was posted during the last block
+            to be rendered. The handler function is given the frame offset and content of each event.
         */
         virtual void iterateOutputEvents (EndpointHandle, Performer::HandleNextOutputEventFn) = 0;
 
@@ -119,8 +145,7 @@ public:
         */
         virtual bool isEndpointActive (const EndpointID&) = 0;
         
-        /**
-        */
+        /** Represents the overall status of a Venue. */
         enum class State
         {
             empty,
@@ -149,7 +174,10 @@ public:
         */
         using StateChangeCallbackFn = std::function<void(State)>;
 
+        /** A callback function which gives a client the chance to fill an input endpoint when it becomes starved. */
         using InputEndpointFIFOChangedFn = std::function<void (Session&, EndpointHandle)>;
+
+        /** A callback function which gives a client the chance to empty an output endpoint when it has data ready. */
         using OutputEndpointFIFOChangedFn = std::function<void (Session&, EndpointHandle)>;
 
         /** Allows the client code to attach a lambda to be called when the current state changes. */
