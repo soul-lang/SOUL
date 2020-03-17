@@ -27,12 +27,11 @@ namespace soul
 
 //==============================================================================
 EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
-                                  std::vector<Type> types, uint32_t stride, Annotation a)
+                                  std::vector<Type> types, Annotation a)
    : endpointID (std::move (id)),
      name (std::move (nm)),
      kind (k),
      sampleTypes (std::move (types)),
-     strideBytes (stride),
      annotation (std::move (a))
 {
 }

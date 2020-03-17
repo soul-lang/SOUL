@@ -200,7 +200,8 @@ Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
 }
 
 template <class Generator>
-static Value generateWaveform (const Type& requiredType, ConstantTable& constantTable, const Annotation& annotation, uint32_t oversamplingFactor)
+static Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
+                               const Annotation& annotation, uint32_t oversamplingFactor)
 {
     Generator g;
 

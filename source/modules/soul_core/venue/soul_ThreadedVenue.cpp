@@ -181,7 +181,7 @@ struct ThreadedVenue  : public soul::Venue
 
         void setStateChangeCallback (StateChangeCallbackFn f) override              { stateChangeCallback = std::move (f); }
 
-        bool addInputEndpointFIFOCallback (EndpointID endpoint, InputEndpointFIFOChangedFn callback) override
+        bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
             if (! containsEndpoint (performer->getInputEndpoints(), endpoint))
                 return false;
@@ -190,7 +190,7 @@ struct ThreadedVenue  : public soul::Venue
             return true;
         }
 
-        bool addOutputEndpointFIFOCallback (EndpointID endpoint, OutputEndpointFIFOChangedFn callback) override
+        bool setOutputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
             if (! containsEndpoint (performer->getOutputEndpoints(), endpoint))
                 return false;
@@ -209,20 +209,13 @@ struct ThreadedVenue  : public soul::Venue
         std::atomic<bool> shouldStop { false };
         uint32_t blockSize = 0;
 
-        struct InputCallback
+        struct EndpointCallback
         {
             EndpointHandle endpointHandle;
-            InputEndpointFIFOChangedFn callback;
+            EndpointServiceFn callback;
         };
 
-        struct OutputCallback
-        {
-            EndpointHandle endpointHandle;
-            OutputEndpointFIFOChangedFn callback;
-        };
-
-        std::vector<InputCallback> inputCallbacks;
-        std::vector<OutputCallback> outputCallbacks;
+        std::vector<EndpointCallback> inputCallbacks, outputCallbacks;
 
         void waitForThreadToFinish()
         {

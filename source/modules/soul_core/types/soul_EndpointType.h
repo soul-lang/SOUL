@@ -114,8 +114,7 @@ struct EndpointDetails
     EndpointDetails& operator= (EndpointDetails&&) = default;
 
     EndpointDetails (EndpointID, std::string name, EndpointKind,
-                     std::vector<Type> sampleTypes, uint32_t strideBytes,
-                     Annotation);
+                     std::vector<Type> sampleTypes, Annotation);
 
     uint32_t getNumAudioChannels() const;
     const Type& getSingleSampleType() const;
@@ -125,7 +124,6 @@ struct EndpointDetails
     std::string name;
     EndpointKind kind;
     ArrayWithPreallocation<Type, 2> sampleTypes;
-    uint32_t strideBytes;
     Annotation annotation;
 };
 

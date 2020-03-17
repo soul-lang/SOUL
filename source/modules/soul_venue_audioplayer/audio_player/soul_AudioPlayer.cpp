@@ -262,7 +262,7 @@ public:
 
         void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
 
-        bool addInputEndpointFIFOCallback (EndpointID endpoint, InputEndpointFIFOChangedFn callback) override
+        bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
             if (! containsEndpoint (performer->getInputEndpoints(), endpoint))
                 return false;
@@ -271,7 +271,7 @@ public:
             return true;
         }
 
-        bool addOutputEndpointFIFOCallback (EndpointID endpoint, OutputEndpointFIFOChangedFn callback) override
+        bool setOutputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
             if (! containsEndpoint (performer->getOutputEndpoints(), endpoint))
                 return false;
@@ -447,20 +447,13 @@ public:
         uint64_t totalFramesRendered = 0;
         StateChangeCallbackFn stateChangeCallback;
 
-        struct InputCallback
+        struct EndpointCallback
         {
             EndpointHandle endpointHandle;
-            InputEndpointFIFOChangedFn callback;
+            EndpointServiceFn callback;
         };
 
-        struct OutputCallback
-        {
-            EndpointHandle endpointHandle;
-            OutputEndpointFIFOChangedFn callback;
-        };
-
-        std::vector<InputCallback> inputCallbacks;
-        std::vector<OutputCallback> outputCallbacks;
+        std::vector<EndpointCallback> inputCallbacks, outputCallbacks;
 
         struct Connection
         {
@@ -751,7 +744,6 @@ private:
         e.details.name          = std::move (name);
         e.details.kind          = kind;
         e.details.sampleTypes.push_back (sampleType);
-        e.details.strideBytes   = 0;
 
         e.audioChannelIndex     = audioChannelIndex;
         e.isMIDI                = isMIDI;
