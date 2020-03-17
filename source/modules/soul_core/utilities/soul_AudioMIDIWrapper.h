@@ -115,11 +115,16 @@ struct AudioMIDIWrapper
             else if (isMIDIEventEndpoint (inputEndpoint))
             {
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
+                auto midiMessageValue = Value::zeroInitialiser (inputEndpoint.getSingleSampleType());
 
-                preRenderOperations.push_back ([&perf, endpointHandle] (RenderContext& rc)
+                preRenderOperations.push_back ([&perf, endpointHandle, midiMessageValue] (RenderContext& rc) mutable
                 {
                     for (uint32_t i = 0; i < rc.midiInCount; ++i)
-                        perf.addInputEvent (endpointHandle, Value ((int32_t) getPackedMIDIEvent (rc.midiIn[i])));
+                    {
+                        auto packedBytes = getPackedMIDIEvent (rc.midiIn[i]);
+                        midiMessageValue.modifySubElementInPlace (0, Value ((int32_t) packedBytes));
+                        perf.addInputEvent (endpointHandle, midiMessageValue);
+                    }
                 });
             }
             else if (auto numChans = inputEndpoint.getNumAudioChannels())
@@ -160,7 +165,9 @@ struct AudioMIDIWrapper
                     perf.iterateOutputEvents (endpointHandle, [&rc] (uint32_t frameOffset, const Value& event) -> bool
                     {
                         if (rc.midiOutCount < rc.midiOutCapacity)
-                            createMIDIMessage (rc.midiOut[rc.midiOutCount++], rc.frameOffset + frameOffset, (uint32_t) event.getAsInt32());
+                            createMIDIMessage (rc.midiOut[rc.midiOutCount++],
+                                               rc.frameOffset + frameOffset,
+                                               (uint32_t) event.getSubElement (0).getAsInt32());
 
                         return true;
                     });
