@@ -169,6 +169,11 @@ public:
         /** Returns the venue's current status. */
         virtual Status getStatus() = 0;
 
+        /** Returns the total number of frames which have been rendered since the venue started running
+            its current program.
+        */
+        virtual uint64_t getTotalFramesRendered() const = 0;
+
         /** A callback function to indicate that the venue's state has changed.
             @see setStateChangeCallback
         */

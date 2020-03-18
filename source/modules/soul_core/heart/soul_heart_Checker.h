@@ -95,7 +95,7 @@ struct heart::Checker
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointKindName (sourceOutput->kind),
                                                                           destDescription, getEndpointKindName (destInput->kind)));
 
-                    if (! areConnectionTypesCompatible (isEvent (sourceOutput->kind),
+                    if (! areConnectionTypesCompatible (sourceOutput->isEventEndpoint(),
                                                         *sourceOutput, sourceInstanceArraySize,
                                                         *destInput, destInstanceArraySize))
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getTypesDescription(),

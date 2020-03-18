@@ -214,6 +214,7 @@ public:
             {
                 venue.stopSession (this);
                 setState (State::linked);
+                totalFramesRendered = 0;
             }
         }
 
@@ -261,6 +262,8 @@ public:
         }
 
         void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
+
+        uint64_t getTotalFramesRendered() const override                   { return totalFramesRendered; }
 
         bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
@@ -444,7 +447,7 @@ public:
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
         SampleRateAndBlockSize currentRateAndBlockSize;
-        uint64_t totalFramesRendered = 0;
+        std::atomic<uint64_t> totalFramesRendered { 0 };
         StateChangeCallbackFn stateChangeCallback;
 
         struct EndpointCallback

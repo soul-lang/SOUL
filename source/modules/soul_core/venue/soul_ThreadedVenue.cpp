@@ -115,6 +115,8 @@ struct ThreadedVenue  : public soul::Venue
 
                 if (std::this_thread::get_id() != renderThread.get_id())
                     waitForThreadToFinish();
+
+                totalFramesRendered = 0;
             }
         }
 
@@ -179,7 +181,9 @@ struct ThreadedVenue  : public soul::Venue
             return s;
         }
 
-        void setStateChangeCallback (StateChangeCallbackFn f) override              { stateChangeCallback = std::move (f); }
+        void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
+
+        uint64_t getTotalFramesRendered() const override                   { return totalFramesRendered; }
 
         bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
@@ -207,6 +211,7 @@ struct ThreadedVenue  : public soul::Venue
         StateChangeCallbackFn stateChangeCallback;
         std::atomic<State> state { State::empty };
         std::atomic<bool> shouldStop { false };
+        std::atomic<uint64_t> totalFramesRendered { 0 };
         uint32_t blockSize = 0;
 
         struct EndpointCallback
@@ -254,6 +259,7 @@ struct ThreadedVenue  : public soul::Venue
                 for (auto& c : outputCallbacks)
                     c.callback (*this, c.endpointHandle);
 
+                totalFramesRendered += blockSize;
                 loadMeasurer.stopMeasurement();
             }
 

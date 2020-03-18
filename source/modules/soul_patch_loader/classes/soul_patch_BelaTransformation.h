@@ -143,17 +143,17 @@ namespace soul::patch
 
         bool isParameterEvent (const soul::heart::InputDeclaration& input)
         {
-            return isEvent (input.kind) && isParameterAnnotation (input.annotation);
+            return input.isEventEndpoint() && isParameterAnnotation (input.annotation);
         }
 
         bool isParameterStream (const soul::heart::InputDeclaration& input)
         {
-            return isStream (input.kind) && isParameterAnnotation (input.annotation);
+            return input.isStreamEndpoint() && isParameterAnnotation (input.annotation);
         }
 
         bool isAudioStream (const soul::heart::InputDeclaration& input)
         {
-            return isStream (input.kind);
+            return input.isStreamEndpoint();
         }
 
         std::string getSampleTypeString (const soul::heart::InputDeclaration& input)
