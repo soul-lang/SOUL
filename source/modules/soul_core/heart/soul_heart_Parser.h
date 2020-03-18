@@ -1169,13 +1169,13 @@ private:
                 return parseProcessorProperty();
         }
 
-        if (matches (Token::literalInt32))   return parseConstantAsValue (state, PrimitiveType::int32, true);
-        if (matches (Token::literalInt64))   return parseConstantAsValue (state, PrimitiveType::int64, true);
-        if (matches (Token::literalFloat32)) return parseConstantAsValue (state, PrimitiveType::float32, true);
-        if (matches (Token::literalFloat64)) return parseConstantAsValue (state, PrimitiveType::float64, true);
-        if (matches (Token::literalString))  return parseConstantAsValue (state, Type::createStringLiteral(), true);
+        if (matches (Token::literalInt32))   return parseConstantAsValue (state, PrimitiveType::int32);
+        if (matches (Token::literalInt64))   return parseConstantAsValue (state, PrimitiveType::int64);
+        if (matches (Token::literalFloat32)) return parseConstantAsValue (state, PrimitiveType::float32);
+        if (matches (Token::literalFloat64)) return parseConstantAsValue (state, PrimitiveType::float64);
+        if (matches (Token::literalString))  return parseConstantAsValue (state, Type::createStringLiteral());
 
-        return parseConstantAsValue (state, readValueType(), true);
+        return parseConstantAsValue (state, readValueType());
     }
 
     Value parseNaNandInfinityTokens()
@@ -1247,9 +1247,9 @@ private:
         return v.negated();
     }
 
-    heart::Expression& parseConstantAsValue (const FunctionParseState& state, const Type& requiredType, bool throwOnError)
+    heart::Expression& parseConstantAsValue (const FunctionParseState& state, const Type& requiredType)
     {
-        auto c = parseConstant (requiredType, throwOnError);
+        auto c = parseConstant (requiredType, true);
         return parseVariableSuffixes (state, program.getAllocator().allocateConstant (c));
     }
 
