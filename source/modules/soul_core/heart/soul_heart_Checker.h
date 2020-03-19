@@ -128,8 +128,8 @@ struct heart::Checker
             return false;
         }
 
-        auto sourceSampleType = sourceOutput.getSingleSampleType();
-        auto destSampleType = destInput.getSingleSampleType();
+        auto sourceSampleType = sourceOutput.getFrameOrValueType();
+        auto destSampleType = destInput.getFrameOrValueType();
 
         if (sourceSampleType.isEqual (destSampleType, Type::ignoreVectorSize1))
             return true;

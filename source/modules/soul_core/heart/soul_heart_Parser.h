@@ -914,7 +914,7 @@ private:
         if (src == nullptr)
             throwError (Errors::cannotFindInput (name));
 
-        builder.addReadStream (location, *target.create (state, builder, src->getSingleSampleType()), *src);
+        builder.addReadStream (location, *target.create (state, builder, src->getSingleDataType()), *src);
         expectSemicolon();
     }
 
@@ -944,7 +944,7 @@ private:
         // Check that we are using indexes for array types
         if (index == nullptr)
         {
-            if (! target->supportsSampleType (type))
+            if (! target->canHandleType (type))
                 throwError (Errors::wrongTypeForEndpoint());
         }
         else
@@ -952,8 +952,8 @@ private:
             if (target->arraySize == 0)
                 throwError (Errors::wrongTypeForEndpoint());
 
-            bool validElementType = index == nullptr ? target->supportsSampleType (type)
-                                                     : target->supportsElementSampleType (type);
+            bool validElementType = index == nullptr ? target->canHandleType (type)
+                                                     : target->canHandleElementType (type);
 
             if (! validElementType)
                 throwError (Errors::wrongTypeForEndpoint());

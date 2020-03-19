@@ -158,7 +158,7 @@ namespace soul::patch
 
         std::string getSampleTypeString (const soul::heart::InputDeclaration& input)
         {
-            auto type = input.getSingleSampleType();
+            auto type = input.getSingleDataType();
 
             if (type.isStruct())
                 return program.getStructNameWithQualificationIfNeeded (*program.getMainProcessor(), *type.getStruct());
@@ -168,7 +168,7 @@ namespace soul::patch
 
         std::string getSampleTypeString (const soul::heart::OutputDeclaration& output)
         {
-            return output.getSingleSampleType().getDescription();
+            return output.getSingleDataType().getDescription();
         }
 
         bool useBelaParameterNumbers()

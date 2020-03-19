@@ -294,7 +294,7 @@ struct BlockBuilder
 
     void addReadStream (CodeLocation l, heart::Expression& dest, heart::InputDeclaration& src)
     {
-        auto sourceType = src.getSingleSampleType();
+        auto sourceType = src.getSingleDataType();
 
         if (dest.getType().isIdentical (sourceType))
             return createStatement<heart::ReadStream> (std::move (l), dest, src);

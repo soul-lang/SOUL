@@ -2168,7 +2168,7 @@ private:
             return p;
         }
 
-        static Type getSampleTypeOfEndpoint (AST::Expression& e)
+        static Type getDataTypeOfEndpoint (AST::Expression& e)
         {
             if (auto outRef = cast<AST::OutputEndpointRef> (e))
                 if (auto* details = outRef->output->details.get())
@@ -2189,7 +2189,7 @@ private:
             Type lhsType;
 
             if (AST::isResolvedAsEndpoint (s.object))
-                lhsType = getSampleTypeOfEndpoint (*s.object);
+                lhsType = getDataTypeOfEndpoint (*s.object);
             else
                 lhsType = s.object->getResultType();
 

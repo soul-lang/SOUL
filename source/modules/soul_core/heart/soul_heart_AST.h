@@ -137,7 +137,7 @@ struct heart
         bool isValueEndpoint() const      { return isValue (kind); }
         bool isNullEndpoint() const       { return isNull (kind); }
 
-        bool supportsSampleType (const Type& t) const
+        bool canHandleType (const Type& t) const
         {
             for (auto& type : dataTypes)
                 if (TypeRules::canSilentlyCastTo (getSampleArrayType (type), t))
@@ -146,7 +146,7 @@ struct heart
             return false;
         }
 
-        bool supportsElementSampleType (const Type& t) const
+        bool canHandleElementType (const Type& t) const
         {
             for (auto& type : dataTypes)
                 if (TypeRules::canSilentlyCastTo (type, t))
@@ -175,10 +175,34 @@ struct heart
             return {};
         }
 
-        Type getSingleSampleType() const
+        Type getSingleDataType() const
         {
             SOUL_ASSERT (dataTypes.size() == 1);
             return getSampleArrayType (dataTypes[0]);
+        }
+
+        Type getSingleEventType() const
+        {
+            SOUL_ASSERT (isEventEndpoint());
+            return getSingleDataType();
+        }
+
+        Type getFrameType() const
+        {
+            SOUL_ASSERT (isStreamEndpoint());
+            return getSingleDataType();
+        }
+
+        Type getValueType() const
+        {
+            SOUL_ASSERT (isValueEndpoint());
+            return getSingleDataType();
+        }
+
+        Type getFrameOrValueType() const
+        {
+            SOUL_ASSERT (isStreamEndpoint() || isValueEndpoint());
+            return getSingleDataType();
         }
 
         std::string getTypesDescription() const
