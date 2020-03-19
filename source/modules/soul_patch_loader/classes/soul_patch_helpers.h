@@ -273,7 +273,7 @@ private:
         juce::AudioFormatManager formats;
         formats.registerBasicFormats();
 
-        if (auto* reader = formats.createReaderFor (new VirtualFileInputStream (file)))
+        if (auto* reader = formats.createReaderFor (std::make_unique<VirtualFileInputStream> (file)))
             return std::unique_ptr<juce::AudioFormatReader> (reader);
 
         return {};
