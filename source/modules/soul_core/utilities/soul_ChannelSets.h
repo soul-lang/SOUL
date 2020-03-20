@@ -34,6 +34,9 @@ struct InterleavedChannelSet
     SampleType* data = nullptr;
     uint32_t numChannels = 0, numFrames = 0, stride = 0;
 
+    uint32_t getNumFrames() const       { return numFrames; }
+    uint32_t getNumChannels() const     { return numChannels; }
+
     SampleType* getChannel (uint32_t channel) const
     {
         SOUL_ASSERT (channel < numChannels);
@@ -52,7 +55,7 @@ struct InterleavedChannelSet
         return *(data + channel + frame * stride);
     }
 
-    void getFrame (uint32_t frame, Sample* dest) const
+    void getFrame (uint32_t frame, SampleType* dest) const
     {
         SOUL_ASSERT (frame < numFrames);
         auto* src = data + frame * stride;
@@ -152,12 +155,8 @@ struct DiscreteChannelSet
     uint32_t numChannels = 0, offset = 0, numFrames = 0;
     static constexpr uint32_t stride = 1;
 
-    uint32_t getAvailableSamples (uint32_t start) const
-    {
-        auto availableSamples = numFrames - offset;
-        SOUL_ASSERT (start <= availableSamples);
-        return availableSamples - start;
-    }
+    uint32_t getNumFrames() const       { return numFrames; }
+    uint32_t getNumChannels() const     { return numChannels; }
 
     SampleType* getChannel (uint32_t channel) const
     {
@@ -177,7 +176,7 @@ struct DiscreteChannelSet
         return channels[channel][offset + frame];
     }
 
-    void getFrame (uint32_t frame, Sample* dest) const
+    void getFrame (uint32_t frame, SampleType* dest) const
     {
         SOUL_ASSERT (frame < numFrames);
 
@@ -397,6 +396,8 @@ bool channelSetContentIsIdentical (Type1 set1, Type2 set2)
 template <typename ChannelSetType>
 struct AllocatedChannelSet
 {
+    using SampleType = typename ChannelSetType::SampleType;
+
     AllocatedChannelSet() = default;
 
     AllocatedChannelSet (uint32_t numChannels, uint32_t numFrames)
@@ -428,7 +429,7 @@ struct AllocatedChannelSet
     AllocatedChannelSet& operator= (const AllocatedChannelSet& other)
     {
         channelSet.freeData();
-        channelSet = ChannelSetType::createAllocated (other.channelSet.numChannels, other.channelSet.numFrames);
+        channelSet = ChannelSetType::createAllocated (other.getNumChannels(), other.getNumFrames());
         copyChannelSet (channelSet, other.channelSet);
         return *this;
     }
@@ -439,6 +440,47 @@ struct AllocatedChannelSet
         channelSet = other.channelSet;
         other.channelSet.resetWithoutFreeingData();
         return *this;
+    }
+
+    operator ChannelSetType() const     { return channelSet; }
+    operator ChannelSetType()           { return channelSet; }
+
+    uint32_t getNumFrames() const       { return channelSet.numFrames; }
+    uint32_t getNumChannels() const     { return channelSet.numChannels; }
+
+    SampleType* getChannel (uint32_t channel) const
+    {
+        return channelSet.getChannel (channel);
+    }
+
+    SampleType& getSample (uint32_t channel, uint32_t frame)
+    {
+        return channelSet.getSample (channel, frame);
+    }
+
+    SampleType getSample (uint32_t channel, uint32_t frame) const
+    {
+        return channelSet.getSample (channel, frame);
+    }
+
+    void getFrame (uint32_t frame, SampleType* dest) const
+    {
+        channelSet.getFrame (frame, dest);
+    }
+
+    ChannelSetType getSlice (uint32_t start, uint32_t length) const
+    {
+        return channelSet.getSlice (start, length);
+    }
+
+    ChannelSetType getChannelSet (uint32_t firstChannel, uint32_t numChans) const
+    {
+        return channelSet.getChannelSet (firstChannel, numChans);
+    }
+
+    void clear() const
+    {
+        channelSet.clear();
     }
 
     ChannelSetType channelSet;

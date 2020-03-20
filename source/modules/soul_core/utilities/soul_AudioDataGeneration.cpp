@@ -177,11 +177,11 @@ Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
     if (numFrames > 0 && frequency > 0 && sampleRate > 0 && numFrames < 48000 * 60 * 60 * 2)
     {
         AllocatedChannelSet<DiscreteChannelSet<float>> data (1, (uint32_t) (numFrames * oversamplingFactor));
-        auto* samples = data.channelSet.getChannel (0);
+        auto* samples = data.getChannel (0);
 
         generator.init (frequency, sampleRate * oversamplingFactor);
 
-        for (uint32_t i = 0; i < data.channelSet.numFrames; ++i)
+        for (uint32_t i = 0; i < data.getNumFrames(); ++i)
         {
             samples[i] = (float) generator.getSample();
             generator.advance();
@@ -193,7 +193,7 @@ Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
         // Resample to the right size
         AllocatedChannelSet<DiscreteChannelSet<float>> resampledData (1, (uint32_t) (numFrames));
         resampleToFit (resampledData.channelSet, data.channelSet);
-        return convertAudioDataToType (requiredType, constantTable, resampledData.channelSet, sampleRate);
+        return convertAudioDataToType (requiredType, constantTable, resampledData, sampleRate);
     }
 
     return {};

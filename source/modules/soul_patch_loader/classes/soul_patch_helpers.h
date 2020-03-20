@@ -198,7 +198,7 @@ private:
             resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation.getValue ("resample"));
             extractChannelIfNeeded (buffer, annotation.getValue ("sourceChannel"));
 
-            auto result = convertAudioDataToType (type, constantTable, buffer.channelSet, reader.sampleRate);
+            auto result = convertAudioDataToType (type, constantTable, buffer, reader.sampleRate);
 
             if (! result.isValid())
                 throwPatchLoadError ("Could not convert audio file to type " + quoteName (type.getDescription()));
@@ -226,14 +226,14 @@ private:
                 auto ratio = newRate / currentRate;
                 SOUL_ASSERT (ratio >= 1.0 / maxResamplingRatio && ratio <= maxResamplingRatio);
 
-                auto newNumFrames = (uint64_t) (buffer.channelSet.numFrames * ratio + 0.5);
+                auto newNumFrames = (uint64_t) (buffer.getNumFrames() * ratio + 0.5);
 
-                if (newNumFrames == buffer.channelSet.numFrames)
+                if (newNumFrames == buffer.getNumFrames())
                     return;
 
                 if (newNumFrames > 0 && newNumFrames < maxNumFrames)
                 {
-                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (buffer.channelSet.numChannels, (uint32_t) newNumFrames);
+                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (buffer.getNumChannels(), (uint32_t) newNumFrames);
                     resampleToFit (newBuffer.channelSet, buffer.channelSet);
                     std::swap (newBuffer.channelSet, buffer.channelSet);
                     return;
@@ -253,10 +253,10 @@ private:
             {
                 auto sourceChannel = channelToExtract.getAsInt64();
 
-                if (sourceChannel >= 0 && sourceChannel < buffer.channelSet.numFrames)
+                if (sourceChannel >= 0 && sourceChannel < buffer.getNumFrames())
                 {
-                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (1, buffer.channelSet.numFrames);
-                    copyChannelSet (newBuffer.channelSet, buffer.channelSet.getChannelSet ((uint32_t) sourceChannel, 1));
+                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (1, buffer.getNumFrames());
+                    copyChannelSet (newBuffer.channelSet, buffer.getChannelSet ((uint32_t) sourceChannel, 1));
                     std::swap (newBuffer.channelSet, buffer.channelSet);
                     return;
                 }

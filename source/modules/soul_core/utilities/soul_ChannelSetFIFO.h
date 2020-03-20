@@ -28,7 +28,7 @@ struct ChannelSetFIFO
         : buffer (numChannels, fifoSize),
           fifo ((int) fifoSize)
     {
-        buffer.channelSet.clear();
+        buffer.clear();
     }
 
     ~ChannelSetFIFO()
@@ -51,7 +51,7 @@ struct ChannelSetFIFO
         fifo.cancel();
         std::lock_guard<std::mutex> lock1 (writeLock);
         std::lock_guard<std::mutex> lock2 (readLock);
-        buffer.channelSet.clear();
+        buffer.clear();
     }
 
     /** Attempts to write a number of samples to the FIFO.
@@ -67,11 +67,11 @@ struct ChannelSetFIFO
         if (w.failed())
             return false;
 
-        copyChannelSetToFit (buffer.channelSet.getSlice ((uint32_t) w.startIndex1, (uint32_t) w.blockSize1),
+        copyChannelSetToFit (buffer.getSlice ((uint32_t) w.startIndex1, (uint32_t) w.blockSize1),
                              sourceData.getSlice (0, (uint32_t) w.blockSize1));
 
         if (w.blockSize2 != 0)
-            copyChannelSetToFit (buffer.channelSet.getSlice (0, (uint32_t) w.blockSize2),
+            copyChannelSetToFit (buffer.getSlice (0, (uint32_t) w.blockSize2),
                                  sourceData.getSlice ((uint32_t) w.blockSize1, (uint32_t) w.blockSize2));
 
         return true;
@@ -95,11 +95,11 @@ struct ChannelSetFIFO
         }
 
         copyChannelSetToFit (dest.getSlice (0, (uint32_t) r.blockSize1),
-                             buffer.channelSet.getSlice ((uint32_t) r.startIndex1, (uint32_t) r.blockSize1));
+                             buffer.getSlice ((uint32_t) r.startIndex1, (uint32_t) r.blockSize1));
 
         if (r.blockSize2 != 0)
             copyChannelSetToFit (dest.getSlice ((uint32_t) r.blockSize1, (uint32_t) r.blockSize2),
-                                 buffer.channelSet.getSlice (0, (uint32_t) r.blockSize2));
+                                 buffer.getSlice (0, (uint32_t) r.blockSize2));
 
         return true;
     }
