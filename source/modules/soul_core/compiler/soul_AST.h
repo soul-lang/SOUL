@@ -1658,6 +1658,15 @@ struct AST
                 case Op::isBool:            return inputType.isBool();
                 case Op::isReference:       return inputType.isReference();
                 case Op::isConst:           return inputType.isConst();
+
+                case Op::none:
+                case Op::makeConst:
+                case Op::makeConstSilent:
+                case Op::makeReference:
+                case Op::removeReference:
+                case Op::elementType:
+                case Op::primitiveType:
+                case Op::size:
                 default:                    SOUL_ASSERT_FALSE; return false;
             }
         }
@@ -1701,29 +1710,24 @@ struct AST
 
             auto type = getSourceType();
 
-            switch (operation)
-            {
-                case Op::makeConst:        return type.createConst();
-                case Op::makeConstSilent:  return type.createConstIfNotPresent();
-                case Op::makeReference:    return type.isReference() ? type : type.createReference();
-                case Op::removeReference:  return type.removeReferenceIfPresent();
-                case Op::elementType:      return type.getElementType();
-                case Op::primitiveType:    return type.getPrimitiveType();
+            if (operation == Op::makeConst)        return type.createConst();
+            if (operation == Op::makeConstSilent)  return type.createConstIfNotPresent();
+            if (operation == Op::makeReference)    return type.isReference() ? type : type.createReference();
+            if (operation == Op::removeReference)  return type.removeReferenceIfPresent();
+            if (operation == Op::elementType)      return type.getElementType();
+            if (operation == Op::primitiveType)    return type.getPrimitiveType();
 
-                default: SOUL_ASSERT_FALSE; return {};
-            }
+            SOUL_ASSERT_FALSE; return {};
         }
 
         bool checkSourceType (const Type& sourceType) const
         {
-            switch (operation)
-            {
-                case Op::size:           return canTakeSizeOf (sourceType);
-                case Op::makeConst:      return ! sourceType.isConst();
-                case Op::elementType:    return sourceType.isArrayOrVector();
-                case Op::primitiveType:  return ! (sourceType.isArray() || sourceType.isStruct());
-                default:                 return true;
-            }
+            if (operation == Op::size)           return canTakeSizeOf (sourceType);
+            if (operation == Op::makeConst)      return ! sourceType.isConst();
+            if (operation == Op::elementType)    return sourceType.isArrayOrVector();
+            if (operation == Op::primitiveType)  return ! (sourceType.isArray() || sourceType.isStruct());
+
+            return true;
         }
 
         void throwErrorIfUnresolved() const
@@ -1738,14 +1742,10 @@ struct AST
         {
             if (! checkSourceType (sourceType))
             {
-                switch (operation)
-                {
-                    case Op::size:           source->context.throwError (Errors::cannotTakeSizeOfType()); break;
-                    case Op::makeConst:      context.throwError (Errors::tooManyConsts()); break;
-                    case Op::elementType:    context.throwError (Errors::badTypeForElementType()); break;
-                    case Op::primitiveType:  context.throwError (Errors::badTypeForPrimitiveType());  break;
-                    default:                 break;
-                }
+                if (operation == Op::size)           source->context.throwError (Errors::cannotTakeSizeOfType());
+                if (operation == Op::makeConst)      context.throwError (Errors::tooManyConsts());
+                if (operation == Op::elementType)    context.throwError (Errors::badTypeForElementType());
+                if (operation == Op::primitiveType)  context.throwError (Errors::badTypeForPrimitiveType());
             }
         }
 
@@ -1787,6 +1787,13 @@ struct AST
                 case Op::isConst:
                     return PrimitiveType::bool_;
 
+                case Op::none:
+                case Op::makeConst:
+                case Op::makeConstSilent:
+                case Op::makeReference:
+                case Op::removeReference:
+                case Op::elementType:
+                case Op::primitiveType:
                 default:
                     SOUL_ASSERT_FALSE;
                     return {};

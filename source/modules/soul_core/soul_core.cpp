@@ -44,6 +44,15 @@
 #define SOUL_INSIDE_CORE_CPP 1
 #define printf NO_PRINTFS_TODAY_THANKYOU
 
+#ifdef __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wswitch-enum"
+#elif WIN32
+#else
+ #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wswitch-enum"
+#endif
+
 #include "utilities/soul_Tokeniser.h"
 #include "utilities/soul_FloatToString.h"
 #include "utilities/soul_StringUtilities.cpp"
@@ -79,3 +88,11 @@
 #include "diagnostics/soul_Logging.cpp"
 #include "diagnostics/soul_CompileMessageList.cpp"
 #include "diagnostics/soul_Timing.cpp"
+
+#ifdef __clang__
+ #pragma clang diagnostic pop
+#elif WIN32
+ #pragma warning (pop)
+#else
+ #pragma GCC diagnostic pop
+#endif
