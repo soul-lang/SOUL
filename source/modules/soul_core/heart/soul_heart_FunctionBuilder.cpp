@@ -24,8 +24,8 @@
 
 namespace
 {
-    std::string minInt32Fn  = "_minInt32";
-    std::string wrapInt32Fn = "_wrapInt32";
+    constexpr auto minInt32Fn  = "_minInt32";
+    constexpr auto wrapInt32Fn = "_wrapInt32";
 
     static soul::Module& getInternalModule (soul::Program& p)
     {
@@ -44,16 +44,16 @@ heart::PureFunctionCall& BlockBuilder::createMinInt32 (heart::Expression& a, hea
 
     auto& function = soul::FunctionBuilder::getOrCreateFunction (internalModule, minInt32Fn, PrimitiveType::int32, [] (FunctionBuilder& builder)
     {
-        auto& a  = builder.addParameter ("a", PrimitiveType::int32);
-        auto& b  = builder.addParameter ("b", PrimitiveType::int32);
+        auto& paramA = builder.addParameter ("a", PrimitiveType::int32);
+        auto& paramB = builder.addParameter ("b", PrimitiveType::int32);
 
         auto& lessThan = builder.createBlock ("@lessThan");
         auto& moreThan = builder.createBlock ("@moreThan");
 
-        builder.addBranchIf (builder.createComparisonOp (a, b, BinaryOp::Op::lessThan), lessThan, moreThan, lessThan);
-        builder.addReturn (a);
+        builder.addBranchIf (builder.createComparisonOp (paramA, paramB, BinaryOp::Op::lessThan), lessThan, moreThan, lessThan);
+        builder.addReturn (paramA);
         builder.beginBlock (moreThan);
-        builder.addReturn (b);
+        builder.addReturn (paramB);
     });
 
     auto& call = module.allocate<heart::PureFunctionCall> (a.location, function);
@@ -62,16 +62,14 @@ heart::PureFunctionCall& BlockBuilder::createMinInt32 (heart::Expression& a, hea
     return call;
 }
 
-
 heart::PureFunctionCall& BlockBuilder::createWrapInt32 (heart::Expression& n, heart::Expression& range)
 {
     return createWrapInt32 (module, n, range);
 }
 
-    
-heart::PureFunctionCall& BlockBuilder::createWrapInt32 (Module& module, heart::Expression& n, heart::Expression& range)
+heart::PureFunctionCall& BlockBuilder::createWrapInt32 (Module& module, heart::Expression& value, heart::Expression& rangeLimit)
 {
-    SOUL_ASSERT (n.getType().isInteger32() && n.getType().isPrimitiveInteger() && range.getType().isInteger32());
+    SOUL_ASSERT (value.getType().isInteger32() && value.getType().isPrimitiveInteger() && rangeLimit.getType().isInteger32());
 
     auto& internalModule = getInternalModule (module.program);
 
@@ -99,9 +97,9 @@ heart::PureFunctionCall& BlockBuilder::createWrapInt32 (Module& module, heart::E
         builder.addReturn (a);
     });
 
-    auto& call = module.allocate<heart::PureFunctionCall> (n.location, function);
-    call.arguments.push_back (n);
-    call.arguments.push_back (range);
+    auto& call = module.allocate<heart::PureFunctionCall> (value.location, function);
+    call.arguments.push_back (value);
+    call.arguments.push_back (rangeLimit);
     return call;
 }
 
