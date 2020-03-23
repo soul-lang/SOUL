@@ -70,6 +70,7 @@
 #include "compiler/soul_HeartGenerator.h"
 #include "compiler/soul_Compiler.cpp"
 #include "heart/soul_Intrinsics.cpp"
+#include "heart/soul_heart_FunctionBuilder.cpp"
 #include "heart/soul_ModuleCloner.h"
 #include "heart/soul_Module.cpp"
 #include "heart/soul_Program.cpp"
