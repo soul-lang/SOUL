@@ -135,7 +135,6 @@ struct heart
         bool isEventEndpoint() const      { return isEvent (kind); }
         bool isStreamEndpoint() const     { return isStream (kind); }
         bool isValueEndpoint() const      { return isValue (kind); }
-        bool isNullEndpoint() const       { return isNull (kind); }
 
         bool canHandleType (const Type& t) const
         {

@@ -24,16 +24,13 @@ namespace soul
 //==============================================================================
 enum class EndpointKind
 {
-    null,
     value,
     stream,
     event
 };
 
 const char* getEndpointKindName (EndpointKind);
-EndpointKind getEndpointKind (const std::string& name);
 
-inline bool isNull   (EndpointKind kind)         { return kind == EndpointKind::null; }
 inline bool isValue  (EndpointKind kind)         { return kind == EndpointKind::value; }
 inline bool isStream (EndpointKind kind)         { return kind == EndpointKind::stream; }
 inline bool isEvent  (EndpointKind kind)         { return kind == EndpointKind::event; }
@@ -41,20 +38,18 @@ inline bool isEvent  (EndpointKind kind)         { return kind == EndpointKind::
 template <typename TokeniserType>
 static EndpointKind parseEndpointKind (TokeniserType& tokeniser)
 {
-    if (tokeniser.matchIfKeywordOrIdentifier ("null"))    return EndpointKind::null;
     if (tokeniser.matchIfKeywordOrIdentifier ("value"))   return EndpointKind::value;
     if (tokeniser.matchIfKeywordOrIdentifier ("stream"))  return EndpointKind::stream;
     if (tokeniser.matchIfKeywordOrIdentifier ("event"))   return EndpointKind::event;
 
     tokeniser.throwError (Errors::expectedStreamType());
-    return EndpointKind::null;
+    return EndpointKind::value;
 }
 
 template <typename TokeniserType>
 static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
 {
-    return tokeniser.matches ("null")
-            || tokeniser.matches ("value")
+    return tokeniser.matches ("value")
             || tokeniser.matches ("stream")
             || tokeniser.matches ("event");
 }

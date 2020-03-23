@@ -78,22 +78,11 @@ const char* getEndpointKindName (EndpointKind kind)
     {
         case EndpointKind::value:   return "value";
         case EndpointKind::stream:  return "stream";
-        case EndpointKind::null:    return "null";
         case EndpointKind::event:   return "event";
     }
 
     SOUL_ASSERT_FALSE;
     return "";
-}
-
-EndpointKind getEndpointKind (const std::string& name)
-{
-    if (name == "value")   return soul::EndpointKind::value;
-    if (name == "stream")  return soul::EndpointKind::stream;
-    if (name == "null")    return soul::EndpointKind::null;
-    if (name == "event")   return soul::EndpointKind::event;
-
-    return soul::EndpointKind::null;
 }
 
 const char* getInterpolationDescription (InterpolationType type)
