@@ -709,18 +709,20 @@ private:
                                  getVectorType (numOutputChannels),
                                  0, false);
 
+                auto midiMessageType = soul::createMIDIEventEndpointType();
+
                 addEndpoint (sourceEndpoints,
                              EndpointKind::event,
                              EndpointID::create ("defaultMidiIn"),
                              "defaultMidiIn",
-                             soul::PrimitiveType::int32,
+                             midiMessageType,
                              0, true);
 
                 addEndpoint (sinkEndpoints,
                              EndpointKind::event,
                              EndpointID::create ("defaultMidiOut"),
                              "defaultMidiOut",
-                             soul::PrimitiveType::int32,
+                             midiMessageType,
                              0, true);
 
                 log (soul::utilities::getAudioDeviceSetup (*audioDevice));

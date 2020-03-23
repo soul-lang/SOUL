@@ -80,6 +80,13 @@ inline bool isMIDIEventEndpoint (const EndpointDetails& details)
             && isMIDIMessageStruct (details.dataTypes.front().getStructRef());
 }
 
+inline Type createMIDIEventEndpointType()
+{
+    StructurePtr s (*new Structure ("Message", nullptr));
+    s->members.push_back ({ PrimitiveType::int32, "midiBytes" });
+    return Type::createStruct (*s);
+}
+
 inline bool isParameterInput (const EndpointDetails& details)
 {
     if (isEvent (details.kind) && ! isMIDIEventEndpoint (details))
