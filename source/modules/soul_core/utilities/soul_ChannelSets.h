@@ -448,40 +448,13 @@ struct AllocatedChannelSet
     uint32_t getNumFrames() const       { return channelSet.numFrames; }
     uint32_t getNumChannels() const     { return channelSet.numChannels; }
 
-    SampleType* getChannel (uint32_t channel) const
-    {
-        return channelSet.getChannel (channel);
-    }
-
-    SampleType& getSample (uint32_t channel, uint32_t frame)
-    {
-        return channelSet.getSample (channel, frame);
-    }
-
-    SampleType getSample (uint32_t channel, uint32_t frame) const
-    {
-        return channelSet.getSample (channel, frame);
-    }
-
-    void getFrame (uint32_t frame, SampleType* dest) const
-    {
-        channelSet.getFrame (frame, dest);
-    }
-
-    ChannelSetType getSlice (uint32_t start, uint32_t length) const
-    {
-        return channelSet.getSlice (start, length);
-    }
-
-    ChannelSetType getChannelSet (uint32_t firstChannel, uint32_t numChans) const
-    {
-        return channelSet.getChannelSet (firstChannel, numChans);
-    }
-
-    void clear() const
-    {
-        channelSet.clear();
-    }
+    void clear() const                                                              { channelSet.clear(); }
+    SampleType* getChannel (uint32_t channel) const                                 { return channelSet.getChannel (channel); }
+    SampleType& getSample (uint32_t channel, uint32_t frame)                        { return channelSet.getSample (channel, frame); }
+    SampleType getSample (uint32_t channel, uint32_t frame) const                   { return channelSet.getSample (channel, frame); }
+    void getFrame (uint32_t frame, SampleType* dest) const                          { channelSet.getFrame (frame, dest); }
+    ChannelSetType getSlice (uint32_t start, uint32_t length) const                 { return channelSet.getSlice (start, length); }
+    ChannelSetType getChannelSet (uint32_t firstChannel, uint32_t numChans) const   { return channelSet.getChannelSet (firstChannel, numChans); }
 
     ChannelSetType channelSet;
 };
