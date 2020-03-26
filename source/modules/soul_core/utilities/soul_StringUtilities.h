@@ -138,6 +138,59 @@ std::string quoteName (const std::string& name);
 std::string quoteName (const Identifier& name);
 
 //==============================================================================
+/** Creates a table of strings, where each column gets padded out based on the longest
+    item that it contains. Use calls to startRow/appendItem to create the table, then
+    when you've added all the rows, you can iterate over each line as a string.
+*/
+struct PaddedStringTable
+{
+    void startRow()
+    {
+        rows.push_back ({});
+    }
+
+    void appendItem (std::string item)
+    {
+        SOUL_ASSERT (! containsChar (item, '\n'));
+        auto column = rows.back().size();
+
+        if (columnWidths.size() <= column)
+            columnWidths.push_back (item.length());
+        else
+            columnWidths[column] = std::max (columnWidths[column], item.length());
+
+        rows.back().push_back (std::move (item));
+    }
+
+    size_t getNumRows() const   { return rows.size(); }
+
+    std::string getRow (size_t rowIndex) const
+    {
+        std::string s;
+        auto& row = rows[rowIndex];
+
+        for (size_t i = 0; i < row.size(); ++i)
+            s += padded (row[i], (int) columnWidths[i] + numExtraSpaces);
+
+        return s;
+    }
+
+    template <typename RowHandlerFn>
+    void iterateRows (RowHandlerFn&& handleRow)
+    {
+        for (size_t i = 0; i < rows.size(); ++i)
+            handleRow (getRow (i));
+    }
+
+    int numExtraSpaces = 1;
+
+private:
+    using Row = ArrayWithPreallocation<std::string, 8>;
+    ArrayWithPreallocation<Row, 16> rows;
+    ArrayWithPreallocation<size_t, 16> columnWidths;
+};
+
+//==============================================================================
 /** A medium speed & strength string hasher.
     This isn't cryptographically strong, but very unlikely to have collisions in
     most practical circumstances, so useful for situations where a collision

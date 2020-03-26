@@ -144,7 +144,7 @@ public:
             during the current program run.
         */
         virtual bool isEndpointActive (const EndpointID&) = 0;
-        
+
         /** Represents the overall status of a Venue. */
         enum class State
         {

@@ -50,11 +50,13 @@ std::string IndentedStream::toString() const                                    
 ArrayView<char> IndentedStream::getContent() const                              { return content; }
 void IndentedStream::setTotalIndent (int numChars)                              { indentSize = numChars; }
 int IndentedStream::getTotalIndent() const noexcept                             { return currentIndent; }
+size_t IndentedStream::getMaxLineLength() const                                 { return maxLineLength; }
+void IndentedStream::setMaxLineLength (size_t newMaxLength)                     { maxLineLength = newMaxLength; }
+
 IndentedStream::ScopedIndent IndentedStream::createIndent()                     { return createIndent (indentSize); }
 IndentedStream::ScopedIndent IndentedStream::createIndent (int numChars)        { return ScopedIndent (*this, numChars, false); }
 IndentedStream::ScopedIndent IndentedStream::createBracedIndent()               { return ScopedIndent (*this, indentSize, true); }
 IndentedStream::ScopedIndent IndentedStream::createBracedIndent (int numChars)  { return ScopedIndent (*this, numChars, true); }
-static constexpr size_t maxLineLength = 150;
 
 void IndentedStream::writeRaw (const std::string& text)
 {

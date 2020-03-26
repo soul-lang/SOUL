@@ -80,9 +80,13 @@ struct IndentedStream
 
     void insertSectionBreak();
 
+    size_t getMaxLineLength() const;
+    void setMaxLineLength (size_t newMaxLength);
+
 private:
     //==============================================================================
     int currentIndent = 0, indentSize = 4;
+    size_t maxLineLength = 150;
     bool indentNeeded = false, currentLineIsEmpty = false,
          lastLineWasBlank = false, sectionBreakNeeded = false;
     std::vector<char> content;
