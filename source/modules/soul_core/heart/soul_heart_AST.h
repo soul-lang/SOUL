@@ -543,7 +543,7 @@ struct heart
         {}
 
         const Type& getType() const override                 { return destType; }
-        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        pool_ptr<Variable> getRootVariable() override        { return {}; }
         bool readsVariable (Variable& v) const override      { return source->readsVariable (v); }
         bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
@@ -577,7 +577,7 @@ struct heart
         {}
 
         const Type& getType() const override                 { return source->getType(); }
-        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        pool_ptr<Variable> getRootVariable() override        { return {}; }
         bool readsVariable (Variable& v) const override      { return source->readsVariable (v); }
         bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
@@ -612,7 +612,7 @@ struct heart
         {
         }
 
-        pool_ptr<Variable> getRootVariable() override        { SOUL_ASSERT_FALSE; return {}; }
+        pool_ptr<Variable> getRootVariable() override        { return {}; }
         bool readsVariable (Variable& v) const override      { return lhs->readsVariable (v) || rhs->readsVariable (v); }
         bool writesVariable (Variable&) const override       { return false; }
         bool isMutable() const override                      { return false; }
@@ -1030,7 +1030,7 @@ struct heart
 
         const Type& getType() const override               { return function.returnType; }
         Value getAsConstant() const override               { return {}; }
-        pool_ptr<Variable> getRootVariable() override      { SOUL_ASSERT_FALSE; return {}; }
+        pool_ptr<Variable> getRootVariable() override      { return {}; }
         bool writesVariable (Variable&) const override     { return false; }
         bool isMutable() const override                    { return false; }
         bool isAssignable() const override                 { return false; }
