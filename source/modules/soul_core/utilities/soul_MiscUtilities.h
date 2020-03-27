@@ -145,6 +145,34 @@ void writeUnaligned (void* dstPtr, Type value) noexcept
     memcpy (dstPtr, &value, sizeof (Type));
 }
 
+template <typename DataType, int granularity>
+struct AlignedBuffer
+{
+    void resize (size_t size, DataType initialValue = {})
+    {
+        buffer.resize (size + granularity, initialValue);
+        ptr = getAlignedPointer<granularity> (buffer.data());
+    }
+
+    DataType* data() const      { return ptr; }
+    bool empty() const          { return buffer.size() < granularity; }
+
+    AlignedBuffer& operator= (const AlignedBuffer& other)
+    {
+        if (this != &other)
+        {
+            buffer = other.buffer;
+            ptr = getAlignedPointer<granularity> (buffer.data());
+        }
+
+        return *this;
+    }
+
+private:
+    std::vector<char> buffer;
+    DataType* ptr = nullptr;
+};
+
 //==============================================================================
 struct ScopedDisableDenormals
 {
