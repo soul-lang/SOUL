@@ -230,6 +230,16 @@ std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targe
     }
 }
 
+size_t getMaxLineLength (const std::string& text)
+{
+    size_t len = 0;
+
+    for (auto& l : splitIntoLines (text))
+        len = std::max (len, l.length());
+
+    return len;
+}
+
 std::string replaceLine (const std::string& text, size_t line, const std::string& replacementLine)
 {
     auto lines = splitIntoLines (text);
@@ -403,6 +413,42 @@ size_t levenshteinDistance (const std::string& s1, const std::string& s2)
     }
 
     return costs[n];
+}
+
+void PaddedStringTable::startRow()
+{
+    rows.push_back ({});
+}
+
+void PaddedStringTable::appendItem (std::string item)
+{
+    auto len = containsChar (item, '\n') ? getMaxLineLength (item) : item.length();
+    auto column = rows.back().size();
+
+    if (columnWidths.size() <= column)
+        columnWidths.push_back (len);
+    else
+        columnWidths[column] = std::max (columnWidths[column], len);
+
+    rows.back().push_back (std::move (item));
+}
+
+size_t PaddedStringTable::getNumRows() const   { return rows.size(); }
+
+std::string PaddedStringTable::getRow (size_t rowIndex) const
+{
+    std::string s;
+    auto& row = rows[rowIndex];
+
+    for (size_t i = 0; i < row.size(); ++i)
+    {
+        if (i < row.size() - 1)
+            s += padded (row[i], (int) columnWidths[i] + numExtraSpaces);
+        else
+            s += row[i];
+    }
+
+    return s;
 }
 
 HashBuilder& HashBuilder::operator<< (char c) noexcept

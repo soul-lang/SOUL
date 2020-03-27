@@ -91,6 +91,7 @@ std::vector<std::string> splitAtDelimiter (const std::string& text, char delimit
 std::vector<std::string> splitAtWhitespace (const std::string& text);
 std::vector<std::string> splitIntoLines (const std::string& text);
 std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targetLineLength);
+size_t getMaxLineLength (const std::string& textWithLines);
 
 std::string loadFileAsString (const char* filename);
 
@@ -144,36 +145,10 @@ std::string quoteName (const Identifier& name);
 */
 struct PaddedStringTable
 {
-    void startRow()
-    {
-        rows.push_back ({});
-    }
-
-    void appendItem (std::string item)
-    {
-        SOUL_ASSERT (! containsChar (item, '\n'));
-        auto column = rows.back().size();
-
-        if (columnWidths.size() <= column)
-            columnWidths.push_back (item.length());
-        else
-            columnWidths[column] = std::max (columnWidths[column], item.length());
-
-        rows.back().push_back (std::move (item));
-    }
-
-    size_t getNumRows() const   { return rows.size(); }
-
-    std::string getRow (size_t rowIndex) const
-    {
-        std::string s;
-        auto& row = rows[rowIndex];
-
-        for (size_t i = 0; i < row.size(); ++i)
-            s += padded (row[i], (int) columnWidths[i] + numExtraSpaces);
-
-        return s;
-    }
+    void startRow();
+    void appendItem (std::string item);
+    size_t getNumRows() const;
+    std::string getRow (size_t rowIndex) const;
 
     template <typename RowHandlerFn>
     void iterateRows (RowHandlerFn&& handleRow)
