@@ -191,6 +191,7 @@ struct Type  final
     Type removeConst() const;
     Type removeConstIfPresent() const;
 
+    Type createConstReference() const;
     Type withConstAndRefFlags (bool isConst, bool isRef) const;
 
     Type getElementType() const;

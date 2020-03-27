@@ -405,6 +405,8 @@ Type Type::createConstIfNotPresent() const   { auto t = *this; t.isConstant = tr
 Type Type::removeConst() const               { SOUL_ASSERT (isConst()); return removeConstIfPresent(); }
 Type Type::removeConstIfPresent() const      { auto t = *this; t.isConstant = false; return t; }
 
+Type Type::createConstReference() const      { return withConstAndRefFlags (true, true); }
+
 Type Type::withConstAndRefFlags (bool shouldBeConst, bool shouldBeRef) const
 {
     auto t = *this;
