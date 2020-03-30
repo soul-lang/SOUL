@@ -60,7 +60,7 @@ processor DynamicsCompressor (int numChannels)
 
     float maxAbsElement (float<numChannels> v)
     {
-        var largest = v[0];
+        var largest = abs (v[0]);
 
         for (int i = 1; i < numChannels; ++i)
             largest = max (largest, abs (v.at(i)));
