@@ -222,7 +222,6 @@ struct heart
         InputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
         std::string getEventFunctionName (const Type& t) const  { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
-        std::string getFramesTillNextEventFunctionName() const  { SOUL_ASSERT (isEventEndpoint());  return "_setFramesTillNextEvent_" + name.toString(); }
         std::string getAddFramesFunctionName() const            { SOUL_ASSERT (isStreamEndpoint()); return "_addFramesToInput_" + name.toString(); }
         std::string getAddSparseFramesFunctionName() const      { SOUL_ASSERT (isStreamEndpoint()); return "_addSparseFramesToInput_" + name.toString(); }
         std::string getSetValueFunctionName() const             { SOUL_ASSERT (isValueEndpoint());  return "_setValue_" + name.toString(); }
