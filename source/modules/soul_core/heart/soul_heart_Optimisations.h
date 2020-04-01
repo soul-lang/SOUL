@@ -437,7 +437,7 @@ private:
         std::vector<pool_ref<heart::InputDeclaration>> toRemove;
 
         for (auto& i : module.inputs)
-            if (! ecsp.getInputConnectionStatus (i).connected)
+            if (! ecsp.isInputConnected (i))
                 toRemove.push_back (i);
 
         removeFromVector (module.inputs, toRemove);
@@ -471,7 +471,7 @@ private:
         std::vector<pool_ref<heart::OutputDeclaration>> toRemove;
 
         for (auto& o : module.outputs)
-            if (! ecsp.getOutputConnectionStatus (o).connected)
+            if (! ecsp.isOutputConnected (o))
                 toRemove.push_back (o);
 
         removeFromVector (module.outputs, toRemove);

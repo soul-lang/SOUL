@@ -56,10 +56,10 @@ struct LinkOptions  : public Annotation
     std::string getPlatform() const                         { return getPropertyAsString (getPlatformKey()); }
 
     //==============================================================================
-    static constexpr const char* getSessionIdKey()          { return "sessionId"; }
-    void setSessionId (int32_t sessionId)                   { set (getSessionIdKey(), Value::createInt32 (sessionId)); }
-    int32_t getSessionId() const                            { return int32_t (getInt64 (getSessionIdKey())); }
-    bool hasSessionId() const                               { return hasValue (getSessionIdKey()); }
+    static constexpr const char* getSessionIDKey()          { return "sessionID"; }
+    void setSessionID (int32_t sessionID)                   { set (getSessionIDKey(), Value::createInt32 (sessionID)); }
+    int32_t getSessionID() const                            { return int32_t (getInt64 (getSessionIDKey())); }
+    bool hasSessionID() const                               { return hasValue (getSessionIDKey()); }
 
     //==============================================================================
     static constexpr const char* getBlockSizeKey()          { return "blockSize"; }

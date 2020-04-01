@@ -130,15 +130,5 @@ struct EndpointDetails
     Annotation annotation;
 };
 
-//==============================================================================
-/**
-    Gives status of an endpoint, such as whether it is connected, and what sort
-    of connection is in use
-*/
-struct EndpointConnectionStatus
-{
-    bool connected = false;
-    bool sparse = false;
-};
 
 } // namespace soul
