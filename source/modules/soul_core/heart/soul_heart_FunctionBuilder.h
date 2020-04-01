@@ -156,6 +156,16 @@ struct BlockBuilder
         return module.allocate<heart::BinaryOperator> (std::move (l), lhs, rhs, op);
     }
 
+    heart::Expression& createAdd (heart::Expression& lhs, heart::Expression& rhs)
+    {
+        return createBinaryOp ({}, lhs, rhs, BinaryOp::Op::add);
+    }
+
+    heart::Expression& createSubtract (heart::Expression& lhs, heart::Expression& rhs)
+    {
+        return createBinaryOp ({}, lhs, rhs, BinaryOp::Op::subtract);
+    }
+
     heart::Expression& createComparisonOp (heart::Expression& lhs, heart::Expression& rhs, BinaryOp::Op op)
     {
         return createBinaryOp ({}, lhs, rhs, op);
