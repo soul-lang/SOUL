@@ -453,26 +453,25 @@ struct FunctionBuilder  : public BlockBuilder
     {
         auto& param = addParameter (name, type);
         currentFunction->stateParameter = param;
-
         return param;
     }
 
-    heart::Block& createBlock (Identifier name)
+    [[nodiscard]] heart::Block& createBlock (Identifier name)
     {
         return module.allocate<heart::Block> (name);
     }
 
-    heart::Block& createBlock (const char* prefix, uint32_t index)
+    [[nodiscard]] heart::Block& createBlock (const char* prefix, uint32_t index)
     {
         return createBlock (createIdentifier (prefix, index));
     }
 
-    heart::Block& createBlock (const char* name)
+    [[nodiscard]] heart::Block& createBlock (const char* name)
     {
         return createBlock (module.allocator.get (name));
     }
 
-    heart::Block& createNewBlock()
+    [[nodiscard]] heart::Block& createNewBlock()
     {
         return createBlock ("@block_", blockIndex++);
     }

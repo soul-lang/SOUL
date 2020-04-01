@@ -224,7 +224,6 @@ struct heart
         std::string getEventFunctionName (const Type& t) const    { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
         std::string getAddFramesFunctionName() const              { SOUL_ASSERT (isStreamEndpoint()); return "_addFramesToInput_" + name.toString(); }
         std::string getSetSparseStreamTargetFunctionName() const  { SOUL_ASSERT (isStreamEndpoint()); return "_setSparseInputTarget_" + name.toString(); }
-        std::string getApplySparseStreamDataFunctionName() const  { SOUL_ASSERT (isStreamEndpoint()); return "_applySparseInputData_" + name.toString(); }
         std::string getSetValueFunctionName() const               { SOUL_ASSERT (isValueEndpoint());  return "_setValue_" + name.toString(); }
 
         EndpointDetails getDetails() const
