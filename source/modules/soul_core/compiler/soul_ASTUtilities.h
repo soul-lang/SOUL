@@ -140,10 +140,10 @@ struct ASTUtilities
         return e.needsToBeExposedInParent && e.name == ASTUtilities::getConsoleEndpointInternalName();
     }
 
-    static void ensureEventEndpointHasSampleType (AST::Allocator& allocator, AST::EndpointDeclaration& endpoint, const Type& type)
+    static void ensureEventEndpointSupportsType (AST::Allocator& allocator, AST::EndpointDeclaration& endpoint, const Type& type)
     {
         if (type.isReference() || type.isConst())
-            return ensureEventEndpointHasSampleType (allocator, endpoint, type.withConstAndRefFlags (false, false));
+            return ensureEventEndpointSupportsType (allocator, endpoint, type.withConstAndRefFlags (false, false));
 
         for (auto& t : endpoint.details->getResolvedDataTypes())
             if (t.isEqual (type, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
@@ -370,7 +370,7 @@ private:
                         if (parentEndpoint != nullptr)
                         {
                             for (auto& t : childEndpoint->details->getResolvedDataTypes())
-                                ensureEventEndpointHasSampleType (allocator, *parentEndpoint, t);
+                                ensureEventEndpointSupportsType (allocator, *parentEndpoint, t);
                         }
                         else
                         {

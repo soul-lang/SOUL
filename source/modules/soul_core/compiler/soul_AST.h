@@ -969,9 +969,9 @@ struct AST
             if (isStream (kind))
             {
                 SOUL_ASSERT (dataTypes.size() == 1);
-                auto sampleType = getResolvedDataTypes().front();
+                auto dataType = getResolvedDataTypes().front();
 
-                if (! (sampleType.isPrimitive() || sampleType.isVector()))
+                if (! (dataType.isPrimitive() || dataType.isVector()))
                     context.throwError (Errors::illegalTypeForEndpoint());
             }
 
@@ -979,14 +979,14 @@ struct AST
             {
                 std::vector<Type> processedTypes;
 
-                for (auto& sampleType : getResolvedDataTypes())
+                for (auto& dataType : getResolvedDataTypes())
                 {
                     for (auto& processedType : processedTypes)
-                        if (processedType.isEqual (sampleType, Type::ignoreVectorSize1))
+                        if (processedType.isEqual (dataType, Type::ignoreVectorSize1))
                             context.throwError (Errors::duplicateTypesInList (processedType.getDescription(),
-                                                                              sampleType.getDescription()));
+                                                                              dataType.getDescription()));
 
-                    processedTypes.push_back (sampleType);
+                    processedTypes.push_back (dataType);
                 }
             }
         }
