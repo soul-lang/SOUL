@@ -552,6 +552,13 @@ void Value::modifySubElementInPlace (const SubElementPath& path, const Value& ne
     memcpy (allocatedData.data() + typeAndOffset.offset, newValue.getPackedData(), newValue.getPackedDataSize());
 }
 
+void Value::setFromSubElementData (const Value& sourceValue, const SubElementPath& sourceValueSubElementPath)
+{
+    auto typeAndOffset = sourceValueSubElementPath.getElement (sourceValue.type);
+    SOUL_ASSERT (typeAndOffset.type.isEqual (type, Type::ignoreVectorSize1 | Type::duckTypeStructures | Type::treatStringAsInt32));
+    memcpy (getPackedData(), sourceValue.allocatedData.data() + typeAndOffset.offset, getPackedDataSize());
+}
+
 Value Value::getSlice (size_t start, size_t end) const
 {
     if (type.isArrayOrVector())

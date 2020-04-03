@@ -105,7 +105,16 @@ Type Type::parse (std::string text)
 bool Type::isEqual (const Type& other, int flags) const
 {
     if (primitiveType != other.primitiveType)
+    {
+        if ((flags & treatStringAsInt32) != 0)
+        {
+            if ((isStringLiteral() && other.isInteger32() && other.isPrimitive())
+                 || (other.isStringLiteral() && isInteger32() && isPrimitive()))
+                return true;
+        }
+
         return false;
+    }
 
     if ((flags & ignoreReferences) == 0 && isRef != other.isRef)
         return false;

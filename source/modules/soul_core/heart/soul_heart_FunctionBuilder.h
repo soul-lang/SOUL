@@ -73,6 +73,13 @@ struct BlockBuilder
         return v;
     }
 
+    heart::Variable& createRegisterVariable (heart::Expression& value, std::string name)
+    {
+        auto& v = createRegisterVariable (value.getType(), name);
+        addAssignment (v, value);
+        return v;
+    }
+
     heart::Variable& createMutableLocalVariable (Type type, std::string name)
     {
         return createVariable (std::move (type), createIdentifier (std::move (name)), heart::Variable::Role::mutableLocal);
@@ -81,13 +88,6 @@ struct BlockBuilder
     heart::Variable& createMutableLocalVariable (Type type)
     {
         return createVariable (std::move (type), Identifier(), heart::Variable::Role::mutableLocal);
-    }
-
-    heart::Variable& createRegisterVariable (heart::Expression& value, std::string name)
-    {
-        auto& v = createRegisterVariable (value.getType(), name);
-        addAssignment (v, value);
-        return v;
     }
 
     heart::StructElement& createStructElement (heart::Expression& parent, std::string memberName)
@@ -219,7 +219,7 @@ struct BlockBuilder
         auto type = dest.getType();
 
         while (i != values.end())
-            total = createBinaryOp (CodeLocation(), total, *i++, BinaryOp::Op::add);
+            total = createAdd (total, *i++);
 
         addAssignment (dest, total);
     }
