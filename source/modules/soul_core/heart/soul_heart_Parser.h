@@ -552,12 +552,9 @@ private:
 
         fn.name = parseIdentifier();
 
-        if (isEventFunction)
-            fn.functionType.setEvent();
-        else if (fn.name == heart::getRunFunctionName())
-            fn.functionType.setRun();
-        else if (fn.name == heart::getUserInitFunctionName())
-            fn.functionType.setUserInit();
+        if (isEventFunction)                              fn.functionType = FunctionType::event();
+        else if (fn.name == getRunFunctionName())         fn.functionType = FunctionType::run();
+        else if (fn.name == getUserInitFunctionName())    fn.functionType = FunctionType::userInit();
 
         if (module->findFunction (fn.name) != nullptr)
             throwError (Errors::nameInUse (fn.name));
@@ -651,7 +648,7 @@ private:
         if (intrin.getType().isStringLiteral())
         {
             f.intrinsicType = getIntrinsicTypeFromName (program.getStringDictionary().getStringForHandle (intrin.getStringLiteral()));
-            f.functionType.setIntrinsic();
+            f.functionType = heart::FunctionType::intrinsic();
         }
     }
 

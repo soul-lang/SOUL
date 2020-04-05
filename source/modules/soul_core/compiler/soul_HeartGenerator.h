@@ -317,20 +317,13 @@ private:
         {
             auto& af = f.getGeneratedFunction();
 
-            if (f.isIntrinsic())
-            {
-                af.functionType.setIntrinsic();
-                af.intrinsicType = f.intrinsic;
-            }
-            else if (f.isRunFunction())
-                af.functionType.setRun();
-            else if (f.isEventFunction())
-                af.functionType.setEvent();
-            else if (f.isUserInitFunction())
-                af.functionType.setUserInit();
-            else if (f.isSystemInitFunction())
-                af.functionType.setSystemInit();
+            if (f.isIntrinsic())                af.functionType = heart::FunctionType::intrinsic();
+            else if (f.isRunFunction())         af.functionType = heart::FunctionType::run();
+            else if (f.isEventFunction())       af.functionType = heart::FunctionType::event();
+            else if (f.isUserInitFunction())    af.functionType = heart::FunctionType::userInit();
+            else if (f.isSystemInitFunction())  af.functionType = heart::FunctionType::systemInit();
 
+            af.intrinsicType = f.intrinsic;
             af.annotation = f.annotation.toPlainAnnotation();
             af.location = f.context.location;
         }
@@ -364,8 +357,8 @@ private:
     {
         auto& af = module.allocate<heart::Function>();
 
-        af.name = module.allocator.get (heart::getInitFunctionName());
-        af.functionType.setSystemInit();
+        af.name = module.allocator.get (heart::getSystemInitFunctionName());
+        af.functionType = heart::FunctionType::systemInit();
         af.returnType = soul::Type (soul::PrimitiveType::void_);
 
         module.functions.push_back (af);
@@ -373,8 +366,8 @@ private:
         builder.beginFunction (af);
         addStateVariableInitialisationCode();
 
-        if (auto initFunction = module.findFunction (heart::getUserInitFunctionName()))
-            builder.addFunctionCall (*initFunction, {});
+        if (auto userInitFn = module.findFunction (heart::getUserInitFunctionName()))
+            builder.addFunctionCall (*userInitFn, {});
 
         builder.endFunction();
         builder.checkFunctionBlocksForTermination();

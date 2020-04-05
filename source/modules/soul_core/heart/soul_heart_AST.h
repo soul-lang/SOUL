@@ -75,17 +75,15 @@ struct heart
     struct Checker;
     struct Utilities;
 
-    static constexpr const char* getInitFunctionName()              { return "_soul_init"; }
-    static constexpr const char* getPrepareFunctionName()           { return "_prepare"; }
-    static constexpr const char* getRenderStatsFunctionName()       { return "_get_render_stats"; }
     static constexpr const char* getRunFunctionName()               { return "run"; }
     static constexpr const char* getUserInitFunctionName()          { return "init"; }
+    static constexpr const char* getSystemInitFunctionName()        { return "_soul_init"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
 
-    static std::string getExternalEventFunctionName (const std::string& endpointName, const Type& t)    { return "_external_event_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
-    static std::string getEventFunctionName (const std::string& endpointName, const Type& t)            { return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription(); }
-    static std::string getEventFunctionName (const heart::InputDeclaration&  i, const Type& t)          { return getEventFunctionName (i.name.toString(), t); }
-    static std::string getEventFunctionName (const heart::OutputDeclaration& o, const Type& t)          { return getEventFunctionName (o.name.toString(), t); }
+    static std::string getEventFunctionName (const std::string& endpointName, const Type& t)
+    {
+        return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
+    }
 
     //==============================================================================
     struct Allocator
@@ -221,11 +219,6 @@ struct heart
     {
         InputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
 
-        std::string getEventFunctionName (const Type& t) const    { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
-        std::string getAddFramesFunctionName() const              { SOUL_ASSERT (isStreamEndpoint()); return "_addFramesToInput_" + name.toString(); }
-        std::string getSetSparseStreamTargetFunctionName() const  { SOUL_ASSERT (isStreamEndpoint()); return "_setSparseInputTarget_" + name.toString(); }
-        std::string getSetValueFunctionName() const               { SOUL_ASSERT (isValueEndpoint());  return "_setValue_" + name.toString(); }
-
         EndpointDetails getDetails() const
         {
             return { EndpointID::create ("in:" + name.toString()), name, kind, dataTypes, annotation };
@@ -236,10 +229,6 @@ struct heart
     struct OutputDeclaration  : public IODeclaration
     {
         OutputDeclaration (CodeLocation l) : IODeclaration (std::move (l)) {}
-
-        std::string getEventFunctionName (const Type& t) const  { SOUL_ASSERT (isEventEndpoint());  return getExternalEventFunctionName (name.toString(), t); }
-        std::string getReadFramesFunctionName() const           { SOUL_ASSERT (isStreamEndpoint()); return "_readFramesFromOutput_" + name.toString(); }
-        std::string getGetEventsFunctionName() const            { SOUL_ASSERT (isEventEndpoint());  return "_getEventsFromOutput_" + name.toString(); }
 
         EndpointDetails getDetails() const
         {
@@ -657,6 +646,46 @@ struct heart
     };
 
     //==============================================================================
+    struct FunctionType
+    {
+        enum class Type
+        {
+            normal,
+            event,
+            run,
+            systemInit,
+            userInit,
+            intrinsic
+        };
+
+        bool isNormal() const              { return type == Type::normal; }
+        bool isEvent() const               { return type == Type::event; }
+        bool isRun() const                 { return type == Type::run; }
+        bool isSystemInit() const          { return type == Type::systemInit; }
+        bool isUserInit() const            { return type == Type::userInit; }
+        bool isIntrinsic() const           { return type == Type::intrinsic; }
+
+        static constexpr FunctionType normal()       { return { FunctionType::Type::normal }; }
+        static constexpr FunctionType event()        { return { FunctionType::Type::event }; }
+        static constexpr FunctionType run()          { return { FunctionType::Type::run }; }
+        static constexpr FunctionType systemInit()   { return { FunctionType::Type::systemInit }; }
+        static constexpr FunctionType userInit()     { return { FunctionType::Type::userInit }; }
+        static constexpr FunctionType intrinsic()    { return { FunctionType::Type::intrinsic }; }
+
+        FunctionType& operator= (FunctionType newType)
+        {
+            SOUL_ASSERT (isNormal() || newType.isNormal());
+            type = newType.type;
+            return *this;
+        }
+
+        bool operator== (const FunctionType& other) const   { return type == other.type; }
+        bool operator!= (const FunctionType& other) const   { return type != other.type; }
+
+        Type type = Type::normal;
+    };
+
+    //==============================================================================
     struct Function  : public Object
     {
         Type returnType;
@@ -666,37 +695,6 @@ struct heart
         Annotation annotation;
         IntrinsicType intrinsicType = IntrinsicType::none;
         pool_ptr<Variable> stateParameter;
-
-        struct FunctionType
-        {
-            enum Type
-            {
-                normal,
-                event,
-                run,
-                systemInit,
-                userInit,
-                intrinsic
-            };
-
-            void setNormal()        { functionType = Type::normal; }
-            void setEvent()         { SOUL_ASSERT (functionType == Type::normal); functionType = Type::event; }
-            void setRun()           { SOUL_ASSERT (functionType == Type::normal); functionType = Type::run; }
-            void setSystemInit()    { SOUL_ASSERT (functionType == Type::normal); functionType = Type::systemInit; }
-            void setUserInit()      { SOUL_ASSERT (functionType == Type::normal); functionType = Type::userInit; }
-            void setIntrinsic()     { SOUL_ASSERT (functionType == Type::normal); functionType = Type::intrinsic; }
-
-            bool isNormal() const       { return functionType == Type::normal; }
-            bool isEvent() const        { return functionType == Type::event; }
-            bool isRun() const          { return functionType == Type::run; }
-            bool isSystemInit() const   { return functionType == Type::systemInit; }
-            bool isUserInit() const     { return functionType == Type::userInit; }
-            bool isIntrinsic() const    { return functionType == Type::intrinsic; }
-
-        private:
-            Type functionType = Type::normal;
-        };
-
         FunctionType functionType;
 
         bool isExported = false;
