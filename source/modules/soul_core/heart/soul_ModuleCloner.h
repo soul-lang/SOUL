@@ -99,22 +99,22 @@ struct ModuleCloner
         return v.cloneWithEquivalentType (cloneType (v.getType()));
     }
 
-    heart::Expression& getRemappedExpressionRef (heart::Expression& old)
+    heart::Expression& cloneExpression (heart::Expression& old)
     {
         if (auto c = cast<heart::Constant> (old))
             return newModule.allocate<heart::Constant> (c->location, getRemappedValue (c->value));
 
         if (auto b = cast<heart::BinaryOperator> (old))
             return newModule.allocate<heart::BinaryOperator> (b->location,
-                                                              getRemappedExpressionRef (b->lhs),
-                                                              getRemappedExpressionRef (b->rhs),
+                                                              cloneExpression (b->lhs),
+                                                              cloneExpression (b->rhs),
                                                               b->operation);
 
         if (auto u = cast<heart::UnaryOperator> (old))
-            return newModule.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (u->source), u->operation);
+            return newModule.allocate<heart::UnaryOperator> (u->location, cloneExpression (u->source), u->operation);
 
         if (auto t = cast<heart::TypeCast> (old))
-            return newModule.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (t->source), cloneType (t->destType));
+            return newModule.allocate<heart::TypeCast> (t->location, cloneExpression (t->source), cloneType (t->destType));
 
         if (auto f = cast<heart::PureFunctionCall> (old))
             return clone (*f);
@@ -133,10 +133,10 @@ struct ModuleCloner
         return newModule.allocate<heart::ProcessorProperty> (pp->location, pp->property);
     }
 
-    pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
+    pool_ptr<heart::Expression> cloneExpressionPtr (pool_ptr<heart::Expression> old)
     {
         if (old != nullptr)
-            return getRemappedExpressionRef (*old);
+            return cloneExpression (*old);
 
         return {};
     }
@@ -278,11 +278,11 @@ struct ModuleCloner
     heart::ArrayElement& cloneArrayElement (const heart::ArrayElement& old)
     {
         auto& s = newModule.allocate<heart::ArrayElement> (old.location,
-                                                           getRemappedExpressionRef (old.parent),
+                                                           cloneExpression (old.parent),
                                                            old.fixedStartIndex,
                                                            old.fixedEndIndex);
 
-        s.dynamicIndex = getRemappedExpression (old.dynamicIndex);
+        s.dynamicIndex = cloneExpressionPtr (old.dynamicIndex);
         s.suppressWrapWarning = old.suppressWrapWarning;
         s.isRangeTrusted = old.isRangeTrusted;
         return s;
@@ -291,7 +291,7 @@ struct ModuleCloner
     heart::StructElement& cloneStructElement (const heart::StructElement& old)
     {
         return newModule.allocate<heart::StructElement> (old.location,
-                                                         getRemappedExpressionRef (old.parent),
+                                                         cloneExpression (old.parent),
                                                          old.memberName);
     }
 
@@ -347,7 +347,7 @@ struct ModuleCloner
 
     heart::BranchIf& clone (const heart::BranchIf& old)
     {
-        return newModule.allocate<heart::BranchIf> (getRemappedExpressionRef (old.condition),
+        return newModule.allocate<heart::BranchIf> (cloneExpression (old.condition),
                                                     getRemappedBlock (old.targets[0]),
                                                     getRemappedBlock (old.targets[1]));
     }
@@ -359,24 +359,24 @@ struct ModuleCloner
 
     heart::ReturnValue& clone (const heart::ReturnValue& old)
     {
-        return newModule.allocate<heart::ReturnValue> (getRemappedExpressionRef (old.returnValue));
+        return newModule.allocate<heart::ReturnValue> (cloneExpression (old.returnValue));
     }
 
     heart::AssignFromValue& clone (const heart::AssignFromValue& old)
     {
         return newModule.allocate<heart::AssignFromValue> (old.location,
-                                                           getRemappedExpressionRef (*old.target),
-                                                           getRemappedExpressionRef (old.source));
+                                                           cloneExpression (*old.target),
+                                                           cloneExpression (old.source));
     }
 
     heart::FunctionCall& clone (const heart::FunctionCall& old)
     {
         auto& fc = newModule.allocate<heart::FunctionCall> (old.location,
-                                                            getRemappedExpression (old.target),
+                                                            cloneExpressionPtr (old.target),
                                                             getRemappedFunction (old.getFunction()));
 
         for (auto& arg : old.arguments)
-            fc.arguments.push_back (getRemappedExpressionRef (arg));
+            fc.arguments.push_back (cloneExpression (arg));
 
         return fc;
     }
@@ -387,7 +387,7 @@ struct ModuleCloner
                                                                 getRemappedFunction (old.function));
 
         for (auto& arg : old.arguments)
-            fc.arguments.push_back (getRemappedExpressionRef (arg));
+            fc.arguments.push_back (cloneExpression (arg));
 
         return fc;
     }
@@ -395,7 +395,7 @@ struct ModuleCloner
     heart::ReadStream& clone (const heart::ReadStream& old)
     {
         return newModule.allocate<heart::ReadStream> (old.location,
-                                                      getRemappedExpressionRef (*old.target),
+                                                      cloneExpression (*old.target),
                                                       getRemappedInput (old.source));
     }
 
@@ -403,8 +403,8 @@ struct ModuleCloner
     {
         return newModule.allocate<heart::WriteStream> (old.location,
                                                        getRemappedOutput (old.target),
-                                                       getRemappedExpression (old.element),
-                                                       getRemappedExpressionRef (old.value));
+                                                       cloneExpressionPtr (old.element),
+                                                       cloneExpression (old.value));
     }
 
     heart::AdvanceClock& clone (const heart::AdvanceClock& a)

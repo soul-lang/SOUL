@@ -576,7 +576,7 @@ private:
 
             if (auto returnValue = cast<heart::ReturnValue> (source.terminator))
                 target.statements.insertAfter (last, module.allocate<heart::AssignFromValue> (source.location, *returnValueVar,
-                                                                                              getRemappedExpressionRef (returnValue->returnValue)));
+                                                                                              cloneExpression (returnValue->returnValue)));
 
             target.terminator = cloneTerminator (*source.terminator);
         }
@@ -606,7 +606,7 @@ private:
 
         heart::BranchIf& clone (const heart::BranchIf& old)
         {
-            return module.allocate<heart::BranchIf> (getRemappedExpressionRef (old.condition),
+            return module.allocate<heart::BranchIf> (cloneExpression (old.condition),
                                                      *remappedBlocks[old.targets[0]],
                                                      *remappedBlocks[old.targets[1]]);
         }
@@ -617,16 +617,16 @@ private:
         heart::AssignFromValue& clone (const heart::AssignFromValue& old)
         {
             return module.allocate<heart::AssignFromValue> (old.location,
-                                                            getRemappedExpressionRef (*old.target),
-                                                            getRemappedExpressionRef (old.source));
+                                                            cloneExpression (*old.target),
+                                                            cloneExpression (old.source));
         }
 
         heart::FunctionCall& clone (const heart::FunctionCall& old)
         {
-            auto& fc = module.allocate<heart::FunctionCall> (old.location, getRemappedExpression (old.target), old.getFunction());
+            auto& fc = module.allocate<heart::FunctionCall> (old.location, cloneExpressionPtr (old.target), old.getFunction());
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (arg));
+                fc.arguments.push_back (cloneExpression (arg));
 
             return fc;
         }
@@ -636,21 +636,21 @@ private:
             auto& fc = module.allocate<heart::PureFunctionCall> (old.location, old.function);
 
             for (auto& arg : old.arguments)
-                fc.arguments.push_back (getRemappedExpressionRef (arg));
+                fc.arguments.push_back (cloneExpression (arg));
 
             return fc;
         }
 
         heart::ReadStream& clone (const heart::ReadStream& old)
         {
-            return module.allocate<heart::ReadStream> (old.location, getRemappedExpressionRef (*old.target), old.source);
+            return module.allocate<heart::ReadStream> (old.location, cloneExpression (*old.target), old.source);
         }
 
         heart::WriteStream& clone (const heart::WriteStream& old)
         {
             return module.allocate<heart::WriteStream> (old.location, old.target,
-                                                        getRemappedExpression (old.element),
-                                                        getRemappedExpressionRef (old.value));
+                                                        cloneExpressionPtr (old.element),
+                                                        cloneExpression (old.value));
         }
 
         heart::AdvanceClock& clone (const heart::AdvanceClock& a)
@@ -658,22 +658,22 @@ private:
             return module.allocate<heart::AdvanceClock> (a.location);
         }
 
-        heart::Expression& getRemappedExpressionRef (heart::Expression& old)
+        heart::Expression& cloneExpression (heart::Expression& old)
         {
             if (auto c = cast<heart::Constant> (old))
                 return module.allocate<heart::Constant> (c->location, c->value);
 
             if (auto b = cast<heart::BinaryOperator> (old))
                 return module.allocate<heart::BinaryOperator> (b->location,
-                                                               getRemappedExpressionRef (b->lhs),
-                                                               getRemappedExpressionRef (b->rhs),
+                                                               cloneExpression (b->lhs),
+                                                               cloneExpression (b->rhs),
                                                                b->operation);
 
             if (auto u = cast<heart::UnaryOperator> (old))
-                return module.allocate<heart::UnaryOperator> (u->location, getRemappedExpressionRef (u->source), u->operation);
+                return module.allocate<heart::UnaryOperator> (u->location, cloneExpression (u->source), u->operation);
 
             if (auto t = cast<heart::TypeCast> (old))
-                return module.allocate<heart::TypeCast> (t->location, getRemappedExpressionRef (t->source), t->destType);
+                return module.allocate<heart::TypeCast> (t->location, cloneExpression (t->source), t->destType);
 
             if (auto f = cast<heart::PureFunctionCall> (old))
                 return clone (*f);
@@ -692,10 +692,10 @@ private:
             return module.allocate<heart::ProcessorProperty> (pp->location, pp->property);
         }
 
-        pool_ptr<heart::Expression> getRemappedExpression (pool_ptr<heart::Expression> old)
+        pool_ptr<heart::Expression> cloneExpressionPtr (pool_ptr<heart::Expression> old)
         {
             if (old != nullptr)
-                return getRemappedExpressionRef (*old);
+                return cloneExpression (*old);
 
             return {};
         }
@@ -724,11 +724,11 @@ private:
         heart::ArrayElement& cloneArrayElement (const heart::ArrayElement& old)
         {
             auto& s = module.allocate<heart::ArrayElement> (old.location,
-                                                            getRemappedExpressionRef (old.parent),
+                                                            cloneExpression (old.parent),
                                                             old.fixedStartIndex,
                                                             old.fixedEndIndex);
 
-            s.dynamicIndex = getRemappedExpression (old.dynamicIndex);
+            s.dynamicIndex = cloneExpressionPtr (old.dynamicIndex);
             s.suppressWrapWarning = old.suppressWrapWarning;
             s.isRangeTrusted = old.isRangeTrusted;
             return s;
@@ -737,7 +737,7 @@ private:
         heart::StructElement& cloneStructElement (const heart::StructElement& old)
         {
             return module.allocate<heart::StructElement> (old.location,
-                                                          getRemappedExpressionRef (old.parent),
+                                                          cloneExpression (old.parent),
                                                           old.memberName);
         }
 

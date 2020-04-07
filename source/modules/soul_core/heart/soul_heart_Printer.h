@@ -199,7 +199,7 @@ private:
 
         void printStateVariables()
         {
-            heart::VariableListByType list (module.stateVariables);
+            heart::Utilities::VariableListByType list (module.stateVariables);
 
             for (auto& type : list.types)
             {

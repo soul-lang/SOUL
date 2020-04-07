@@ -1165,35 +1165,6 @@ struct heart
         AdvanceClock (CodeLocation l) : Statement (std::move (l)) {}
         bool mayHaveSideEffects() const override    { return true; }
     };
-
-    //==============================================================================
-    struct VariableListByType
-    {
-        VariableListByType (ArrayView<pool_ref<Variable>> variables)
-        {
-            for (auto& v : variables)
-                getType (v->type).variables.push_back (v);
-        }
-
-        struct VariablesWithType
-        {
-            Type type;
-            std::vector<pool_ref<Variable>> variables;
-        };
-
-        std::vector<VariablesWithType> types;
-
-    private:
-        VariablesWithType& getType (Type typeNeeded)
-        {
-            for (auto& type : types)
-                if (type.type.isIdentical (typeNeeded))
-                    return type;
-
-            types.push_back ({ std::move (typeNeeded), {} });
-            return types.back();
-        }
-    };
 };
 
 } // namespace soul
