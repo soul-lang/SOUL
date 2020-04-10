@@ -374,7 +374,7 @@ private:
                 auto name  = matchIf (Token::literalString) ? currentStringValue : readIdentifier();
                 auto value = matchIf (HEARTOperator::colon) ? parseAnnotationValue() : Value (true);
 
-                annotation.set (name, value);
+                annotation.set (name, value, program.getStringDictionary());
             }
             while (matchIf (HEARTOperator::comma));
 
@@ -643,11 +643,11 @@ private:
         if (! matchIf (HEARTOperator::semicolon))
             expect (HEARTOperator::openBrace);
 
-        auto intrin = f.annotation.getValue ("intrin");
+        auto intrin = f.annotation.getString ("intrin");
 
-        if (intrin.getType().isStringLiteral())
+        if (! intrin.empty())
         {
-            f.intrinsicType = getIntrinsicTypeFromName (program.getStringDictionary().getStringForHandle (intrin.getStringLiteral()));
+            f.intrinsicType = getIntrinsicTypeFromName (intrin);
             f.functionType = heart::FunctionType::intrinsic();
         }
     }

@@ -206,6 +206,33 @@ struct Optimisations
         return true;
     }
 
+    static void garbageCollectStringDictionary (Program& program)
+    {
+        std::vector<StringDictionary::Handle> handlesUsed;
+
+        for (auto& m : program.getModules())
+            for (auto f : m->functions)
+                f->visitExpressions ([&] (pool_ref<heart::Expression>& e, AccessType)
+                                     {
+                                         if (auto c = cast<heart::Constant> (e))
+                                         {
+                                             const auto& type = c->value.getType();
+
+                                             if (type.isStringLiteral())
+                                             {
+                                                 auto handle = c->value.getStringLiteral();
+
+                                                 if (! contains (handlesUsed, handle))
+                                                     handlesUsed.push_back (handle);
+                                             }
+                                         }
+                                     });
+
+        removeIf (program.getStringDictionary().strings,
+                  [&] (const StringDictionary::Item& item) { return ! contains (handlesUsed, item.handle); });
+    }
+
+
 private:
     static bool eliminateEmptyAndUnreachableBlocks (heart::Function& f, heart::Allocator& allocator)
     {

@@ -48,19 +48,31 @@ struct Annotation
     bool getBool (const std::string& name, bool defaultValue = false) const;
     double getDouble (const std::string& name, double defaultValue = 0) const;
     int64_t getInt64 (const std::string& name, int64_t defaultValue = 0) const;
+    std::string getString (const std::string& name, const std::string& defaultValue = {}) const;
 
-    void setStringLiteral (const std::string& text, StringDictionary::Handle);
-    StringDictionary::Handle getStringLiteral (const std::string& text) const;
+    void set (const std::string& name, int32_t value);
+    void set (const std::string& name, int64_t value);
+    void set (const std::string& name, float value);
+    void set (const std::string& name, double value);
+    void set (const std::string& name, bool value);
+    void set (const std::string& name, const char* value);
+    void set (const std::string& name, const std::string& value);
+    void set (const std::string& name, Value newValue, const StringDictionary&);
 
-    void set (const std::string& name, Value newValue);
     void remove (const std::string& name);
-    std::vector<std::string> getNames() const;
 
-    std::string toJSON (const StringDictionary&) const;
-    std::string toHEART (const StringDictionary&) const;
+    std::vector<std::string> getNames() const;
+    const StringDictionary& getDictionary() const;
+
+    std::string toJSON() const;
+    std::string toHEART() const;
 
 private:
     std::unique_ptr<std::vector<Property>> properties;
+    StringDictionary dictionary;
+
+    void set (const std::string& name, const void* value) = delete;
+    void setInternal (const std::string& name, Value newValue);
 };
 
 }

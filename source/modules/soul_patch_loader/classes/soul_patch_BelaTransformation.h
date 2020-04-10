@@ -66,16 +66,17 @@ namespace soul::patch
                     auto channels = input->dataTypes.front().getVectorSize();
 
                     parameters << name << "Input = Bela::InputAudioStream (" << std::to_string (nextOutputChannel) << ", " << channels << ");" << newLine;
-                    connections << "audioIn -> " << name << "Input.audioIn;" << newLine;
-                    connections << name << "Input.audioOut -> wrappedModule." << name << ";" << newLine;
-                    connections << newLine;
+
+                    connections << "audioIn -> " << name << "Input.audioIn;" << newLine
+                                << name << "Input.audioOut -> wrappedModule." << name << ";" << newLine
+                                << newLine;
 
                     nextOutputChannel += static_cast<uint32_t> (channels);
                 }
                 else
                 {
                     streams << "input " << getEndpointKindName (input->kind) << " " << getSampleTypeString (input)
-                            << " " << name << input->annotation.toHEART (program.getStringDictionary()) << ";" << newLine;
+                            << " " << name << input->annotation.toHEART() << ";" << newLine;
 
                     connections << name << " -> " << "wrappedModule." << name << ";" << newLine;
                 }
@@ -186,14 +187,19 @@ namespace soul::patch
         {
             if (parameterId >= 0)
             {
-                parameters << name << "Param = " << type << " (" << std::to_string (parameterChannelOffset + parameterId) << ", float(" << minValue << "), float (" << maxValue << "));" << newLine;
-                connections << "audioIn -> " << name << "Param.audioIn;" << newLine;
-                connections << name << "Param.out -> wrappedModule." << name << ";" << newLine;
-                connections << newLine;
+                parameters << name << "Param = " << type << " (" << std::to_string (parameterChannelOffset + parameterId)
+                           << ", float(" << minValue << "), float (" << maxValue << "));" << newLine;
+
+                connections << "audioIn -> " << name << "Param.audioIn;" << newLine
+                            << name << "Param.out -> wrappedModule." << name << ";" << newLine
+                            << newLine;
             }
             else
             {
-                streams << "input " << getEndpointKindName (input.kind) << " " << getSampleTypeString (input) << " " << name << input.annotation.toHEART(program.getStringDictionary()) << ";" << newLine;
+                streams << "input " << getEndpointKindName (input.kind) << " "
+                        << getSampleTypeString (input) << " " << name
+                        << input.annotation.toHEART() << ";" << newLine;
+
                 connections << name << " -> " << "wrappedModule." << name << ";" << newLine;
             }
         }

@@ -113,7 +113,7 @@ private:
 
         void printDescription (const Annotation& annotation)
         {
-            out << annotation.toHEART (module.program.getStringDictionary());
+            out << annotation.toHEART();
         }
 
         static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)

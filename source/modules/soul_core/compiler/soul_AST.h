@@ -271,14 +271,14 @@ struct AST
                 setProperty (p);
         }
 
-        soul::Annotation toPlainAnnotation() const
+        soul::Annotation toPlainAnnotation (const StringDictionary& dictionary) const
         {
             soul::Annotation a;
 
             for (auto& p : properties)
             {
                 if (auto constValue = p.value->getAsConstant())
-                    a.set (p.name->path.toString(), constValue->value);
+                    a.set (p.name->path.toString(), constValue->value, dictionary);
                 else
                     p.value->context.throwError (Errors::unresolvedAnnotation());
             }

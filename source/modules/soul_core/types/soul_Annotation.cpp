@@ -30,7 +30,7 @@ Annotation::~Annotation() = default;
 Annotation::Annotation (Annotation&&) = default;
 Annotation& Annotation::operator= (Annotation&&) = default;
 
-Annotation::Annotation (const Annotation& other)
+Annotation::Annotation (const Annotation& other)  : dictionary (other.dictionary)
 {
     if (other.properties != nullptr)
         properties = std::make_unique<std::vector<Property>> (*other.properties);
@@ -41,6 +41,7 @@ Annotation& Annotation::operator= (const Annotation& other)
     if (other.properties != nullptr)
         properties = std::make_unique<std::vector<Property>> (*other.properties);
 
+    dictionary = other.dictionary;
     return *this;
 }
 
@@ -125,22 +126,51 @@ int64_t Annotation::getInt64 (const std::string& name, int64_t defaultValue) con
     return v.getType().isPrimitiveFloat() || v.getType().isPrimitiveInteger() ? v.getAsInt64() : defaultValue;
 }
 
-void Annotation::setStringLiteral (const std::string& name, StringDictionary::Handle stringHandle)
+std::string Annotation::getString (const std::string& name, const std::string& defaultValue) const
 {
-    set (name, soul::Value::createStringLiteral (stringHandle));
+    auto v = getValue (name);
+
+    if (v.isValid())
+    {
+        struct UnquotedPrinter  : public ValuePrinter
+        {
+            std::ostringstream out;
+
+            void print (const std::string& s) override                      { out << s; }
+            void printStringLiteral (StringDictionary::Handle h) override   { print (dictionary->getStringForHandle (h)); }
+        };
+
+        UnquotedPrinter p;
+        p.dictionary = std::addressof (dictionary);
+        v.print (p);
+        return p.out.str();
+    }
+
+    return defaultValue;
 }
 
-StringDictionary::Handle Annotation::getStringLiteral (const std::string& name) const
+static void replaceStringLiterals (Value& v, SubElementPath path, const StringDictionary& sourceDictionary, StringDictionary& destDictionary)
 {
-    auto value = getValue (name);
+    auto value = v.getSubElement (path);
 
     if (value.getType().isStringLiteral())
-        return value.getStringLiteral();
-
-    return {};
+    {
+        auto s = sourceDictionary.getStringForHandle (value.getStringLiteral());
+        v.modifySubElementInPlace (path, Value::createStringLiteral (destDictionary.getHandleForString (s)));
+    }
+    else if (value.getType().isFixedSizeArray())
+    {
+        for (size_t i = 0; i < value.getType().getArraySize(); ++i)
+             replaceStringLiterals (v, path + i, sourceDictionary, destDictionary);
+    }
+    else if (value.getType().isStruct())
+    {
+        for (size_t i = 0; i < value.getType().getStructRef().members.size(); ++i)
+             replaceStringLiterals (v, path + i, sourceDictionary, destDictionary);
+    }
 }
 
-void Annotation::set (const std::string& name, Value newValue)
+void Annotation::setInternal (const std::string& name, Value newValue)
 {
     SOUL_ASSERT (! name.empty());
 
@@ -162,6 +192,20 @@ void Annotation::set (const std::string& name, Value newValue)
 
     properties->push_back ({ name, std::move (newValue) });
 }
+
+void Annotation::set (const std::string& name, Value newValue, const StringDictionary& sourceDictionary)
+{
+    replaceStringLiterals (newValue, {}, sourceDictionary, dictionary);
+    setInternal (name, std::move (newValue));
+}
+
+void Annotation::set (const std::string& name, int32_t value)             { setInternal (name, Value::createInt32 (value)); }
+void Annotation::set (const std::string& name, int64_t value)             { setInternal (name, Value::createInt64 (value)); }
+void Annotation::set (const std::string& name, float value)               { setInternal (name, Value (value)); }
+void Annotation::set (const std::string& name, double value)              { setInternal (name, Value (value)); }
+void Annotation::set (const std::string& name, bool value)                { setInternal (name, Value (value)); }
+void Annotation::set (const std::string& name, const char* value)         { set (name, std::string (value)); }
+void Annotation::set (const std::string& name, const std::string& value)  { setInternal (name, Value::createStringLiteral (dictionary.getHandleForString (value))); }
 
 void Annotation::remove (const std::string& name)
 {
@@ -186,7 +230,9 @@ std::vector<std::string> Annotation::getNames() const
     return result;
 }
 
-std::string Annotation::toJSON  (const StringDictionary& stringDictionary) const   { return annotationToString (stringDictionary, properties.get(), true); }
-std::string Annotation::toHEART (const StringDictionary& stringDictionary) const   { return annotationToString (stringDictionary, properties.get(), false); }
+const StringDictionary& Annotation::getDictionary() const     { return dictionary; }
+
+std::string Annotation::toJSON() const    { return annotationToString (dictionary, properties.get(), true); }
+std::string Annotation::toHEART() const   { return annotationToString (dictionary, properties.get(), false); }
 
 }

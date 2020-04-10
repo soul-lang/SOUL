@@ -256,7 +256,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         wrapper.buildRenderingPipeline (rateAndBlockSize,
                                         [&] (const EndpointDetails& endpoint) -> std::function<const float*()>
                                         {
-                                            auto param = new ParameterImpl (program.getStringDictionary(), endpoint);
+                                            auto param = new ParameterImpl (endpoint);
                                             parameters.push_back (Parameter::Ptr (param));
                                             return [param] { return param->getValueIfChanged(); };
                                         },
@@ -301,12 +301,11 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     //==============================================================================
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
-        ParameterImpl (const StringDictionary& d, const EndpointDetails& details)
-            : stringDictionary (d)
+        ParameterImpl (const EndpointDetails& details)
         {
             annotation = details.annotation;
             ID = makeString (details.name);
-            name = makeString (stringDictionary.getStringForHandle (details.annotation.getStringLiteral ("name")));
+            name = makeString (details.annotation.getString ("name"));
 
             if (name == nullptr || name.toString<juce::String>().trim().isEmpty())
                 name = ID;
@@ -329,7 +328,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                 }
             }
 
-            unit         = makeString (stringDictionary.getStringForHandle (details.annotation.getStringLiteral ("unit")));
+            unit         = makeString (details.annotation.getString ("unit"));
             minValue     = castValueToFloat (details.annotation.getValue ("min"), minValue);
             maxValue     = castValueToFloat (details.annotation.getValue ("max"), maxValue);
             step         = castValueToFloat (details.annotation.getValue ("step"), maxValue / (numIntervals == 0 ? 1000 : numIntervals));
@@ -373,10 +372,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         String::Ptr getProperty (const char* propertyName) const override
         {
-            auto v = annotation.getValue (propertyName);
-
-            if (v.isValid())
-                return makeString (v.getDescription (std::addressof (stringDictionary)));
+            if (annotation.hasValue (propertyName))
+                return makeString (annotation.getString (propertyName));
 
             return {};
         }
@@ -397,7 +394,6 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         std::vector<std::string> propertyNameStrings;
         std::vector<const char*> propertyNameRawStrings;
         Span<const char*> propertyNameSpan;
-        const StringDictionary& stringDictionary;
     };
 
     //==============================================================================

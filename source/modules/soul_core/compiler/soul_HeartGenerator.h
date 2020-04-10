@@ -96,7 +96,7 @@ private:
         auto& av = module.allocate<heart::Variable> (v.context.location, v.getType(),
                                                      convertIdentifier (v.name), role);
         v.generatedVariable = av;
-        av.annotation = v.annotation.toPlainAnnotation();
+        av.annotation = v.annotation.toPlainAnnotation (module.program.getStringDictionary());
         return av;
     }
 
@@ -143,7 +143,7 @@ private:
         sourceProcessor = p;
         generateStructs (p.structures);
 
-        module.annotation = p.annotation.toPlainAnnotation();
+        module.annotation = p.annotation.toPlainAnnotation (module.program.getStringDictionary());
 
         parsingStateVariables = true;
         super::visit (p);
@@ -155,7 +155,7 @@ private:
 
     void visit (AST::Graph& g) override
     {
-        module.annotation = g.annotation.toPlainAnnotation();
+        module.annotation = g.annotation.toPlainAnnotation (module.program.getStringDictionary());
         sourceGraph = g;
 
         parsingStateVariables = true;
@@ -185,7 +185,7 @@ private:
             i.index = (uint32_t) module.inputs.size();
             i.kind = e.details->kind;
             i.dataTypes = e.details->getResolvedDataTypes();
-            i.annotation = e.annotation.toPlainAnnotation();
+            i.annotation = e.annotation.toPlainAnnotation (module.program.getStringDictionary());
             i.arraySize = getProcessorArraySize (e.details->arraySize);
             e.generatedInput = i;
 
@@ -201,7 +201,7 @@ private:
             o.index = (uint32_t) module.outputs.size();
             o.kind = e.details->kind;
             o.dataTypes = e.details->getResolvedDataTypes();
-            o.annotation = e.annotation.toPlainAnnotation();
+            o.annotation = e.annotation.toPlainAnnotation (module.program.getStringDictionary());
             o.arraySize = getProcessorArraySize (e.details->arraySize);
             e.generatedOutput = o;
 
@@ -324,7 +324,7 @@ private:
             else if (f.isSystemInitFunction())  af.functionType = heart::FunctionType::systemInit();
 
             af.intrinsicType = f.intrinsic;
-            af.annotation = f.annotation.toPlainAnnotation();
+            af.annotation = f.annotation.toPlainAnnotation (module.program.getStringDictionary());
             af.location = f.context.location;
         }
     }

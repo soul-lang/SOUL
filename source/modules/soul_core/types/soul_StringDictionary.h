@@ -34,7 +34,6 @@ public:
     Handle getHandleForString (const std::string&);
     std::string getStringForHandle (Handle) const;
 
-private:
     struct Item
     {
         Handle handle;
@@ -42,6 +41,8 @@ private:
     };
 
     std::vector<Item> strings;
+
+private:
     Handle nextIndex = 1;
 };
 

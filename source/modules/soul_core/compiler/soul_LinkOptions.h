@@ -30,45 +30,40 @@ struct LinkOptions  : public Annotation
     LinkOptions (SampleRateAndBlockSize rateAndBlockSize)   { setSampleRateAndBlockSize (rateAndBlockSize); }
     LinkOptions (double sampleRate, uint32_t blockSize) : LinkOptions (SampleRateAndBlockSize (sampleRate, blockSize)) {}
 
-    StringDictionary stringDictionary;
-
-    std::string getPropertyAsString (const std::string& key) const              { auto v = getValue (key); if (v.getType().isStringLiteral()) return stringDictionary.getStringForHandle (v.getStringLiteral()); return {}; }
-    void setPropertyAsString (const std::string& key, const std::string& value) { set (key, Value::createStringLiteral (stringDictionary.getHandleForString (value))); }
-
     //==============================================================================
     static constexpr const char* getOptimisationLevelKey()  { return "optimisation_level"; }
-    void setOptimisationLevel (int level)                   { set (getOptimisationLevelKey(), Value::createInt32 (level)); }
+    void setOptimisationLevel (int level)                   { set (getOptimisationLevelKey(), (int32_t) level); }
     int getOptimisationLevel() const                        { return (int) getInt64 (getOptimisationLevelKey(), -1); }
 
     //==============================================================================
     static constexpr const char* getMaxStateSizeKey()       { return "max_state_size"; }
-    void setMaxStateSize (uint64_t size)                    { if (size > 0) set (getMaxStateSizeKey(), Value::createInt64 (size)); }
+    void setMaxStateSize (uint64_t size)                    { if (size > 0) set (getMaxStateSizeKey(), (int64_t) size); }
     uint64_t getMaxStateSize() const                        { return (uint64_t) getInt64 (getMaxStateSizeKey(), defaultMaximumStateSize); }
 
     //==============================================================================
     static constexpr const char* getMainProcessorKey()      { return "main_processor"; }
-    void setMainProcessor (const std::string& name)         { setPropertyAsString (getMainProcessorKey(), name); }
-    std::string getMainProcessor() const                    { return getPropertyAsString (getMainProcessorKey()); }
+    void setMainProcessor (const std::string& name)         { set (getMainProcessorKey(), name); }
+    std::string getMainProcessor() const                    { return getString (getMainProcessorKey()); }
 
     //==============================================================================
     static constexpr const char* getPlatformKey()           { return "platform"; }
-    void setPlatform (const std::string& name)              { setPropertyAsString (getPlatformKey(), name); }
-    std::string getPlatform() const                         { return getPropertyAsString (getPlatformKey()); }
+    void setPlatform (const std::string& name)              { set (getPlatformKey(), name); }
+    std::string getPlatform() const                         { return getString (getPlatformKey()); }
 
     //==============================================================================
     static constexpr const char* getSessionIDKey()          { return "sessionID"; }
-    void setSessionID (int32_t sessionID)                   { set (getSessionIDKey(), Value::createInt32 (sessionID)); }
+    void setSessionID (int32_t sessionID)                   { set (getSessionIDKey(), sessionID); }
     int32_t getSessionID() const                            { return int32_t (getInt64 (getSessionIDKey())); }
     bool hasSessionID() const                               { return hasValue (getSessionIDKey()); }
 
     //==============================================================================
     static constexpr const char* getBlockSizeKey()          { return "blockSize"; }
-    void setBlockSize (uint32_t blockSize)                  { set (getBlockSizeKey(), Value::createInt32 (blockSize)); }
+    void setBlockSize (uint32_t blockSize)                  { set (getBlockSizeKey(), (int32_t) blockSize); }
     uint32_t getBlockSize() const                           { return (uint32_t) getInt64 (getBlockSizeKey()); }
 
     //==============================================================================
     static constexpr const char* getSampleRateKey()         { return "sample_rate"; }
-    void setSampleRate (double sampleRate)                  { if (sampleRate > 0) set (getSampleRateKey(), Value (sampleRate)); }
+    void setSampleRate (double sampleRate)                  { if (sampleRate > 0) set (getSampleRateKey(), sampleRate); }
     double getSampleRate() const                            { return getDouble (getSampleRateKey()); }
 
     void setSampleRateAndBlockSize (SampleRateAndBlockSize rateAndBlockSize)
