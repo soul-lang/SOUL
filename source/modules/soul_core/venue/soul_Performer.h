@@ -121,10 +121,8 @@ public:
         array of as many frames as was specified in prepare(). If this is called more than once before
         advance(), only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
-        @returns the number of samples actually consumed. If not all the samples provided are consumed,
-                 the caller will probably want to re-send the remaining ones during the next block.
     */
-    virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+    virtual void setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
 
     /** Sets the next levels for a sparse-stream input.
         After a successful call to prepare(), and before a call to advance(), this should be called

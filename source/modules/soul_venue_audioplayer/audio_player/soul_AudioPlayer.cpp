@@ -142,9 +142,9 @@ public:
 
         EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
 
-        uint32_t setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
+        void setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
         {
-            return performer->setNextInputStreamFrames (handle, frameArray);
+            performer->setNextInputStreamFrames (handle, frameArray);
         }
 
         void setSparseInputStreamTarget (EndpointHandle handle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
@@ -369,7 +369,7 @@ public:
                         preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans, is64Bit] (RenderContext& rc) mutable
                         {
                             rc.copyInputFrames (startChannel, numSourceChans, buffer, is64Bit);
-                            ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
+                            perf.setNextInputStreamFrames (endpointHandle, buffer);
                         });
                     }
                     else

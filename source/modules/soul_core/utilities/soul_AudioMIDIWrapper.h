@@ -145,7 +145,7 @@ struct AudioMIDIWrapper
                     preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans, is64Bit] (RenderContext& rc) mutable
                     {
                         rc.copyInputFrames (startChannel, numSourceChans, buffer, is64Bit);
-                        ignoreUnused (perf.setNextInputStreamFrames (endpointHandle, buffer));
+                        perf.setNextInputStreamFrames (endpointHandle, buffer);
                     });
                 }
                 else

@@ -97,11 +97,8 @@ public:
             This should be called to provide the next block of samples for an input stream.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
             using the endpoint handle that was provided as an argument to that callback.
-            @returns the number of samples actually consumed. If not all the samples provided
-                     are consumed, the caller will probably want to re-send the remaining ones
-                     during the next callback
         */
-        virtual uint32_t setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+        virtual void setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
 
         /** Updates the trajectory for a sparse input stream.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
