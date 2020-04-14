@@ -96,8 +96,18 @@ bool endsWith (const std::string& text, const std::string& possibleEnd)
             && text.rfind (possibleEnd) == text.length() - possibleEnd.length();
 }
 
-std::string addDoubleQuotes (const std::string& text)     { return "\"" + text + "\""; }
-std::string addSingleQuotes (const std::string& text)     { return "'" + text + "'"; }
+std::string addDoubleQuotes    (const std::string& text)    { return "\"" + text + "\""; }
+std::string addSingleQuotes    (const std::string& text)    { return "'" + text + "'"; }
+
+std::string removeDoubleQuotes (const std::string& text)
+{
+    if (text.length() >= 2
+         && text[0] == '"'
+         && text.back() == '"')
+        return text.substr (1, text.length() - 2);
+
+    return text;
+}
 
 std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement)
 {

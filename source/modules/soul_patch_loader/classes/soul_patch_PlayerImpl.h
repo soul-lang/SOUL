@@ -301,38 +301,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     //==============================================================================
     struct ParameterImpl  : public RefCountHelper<Parameter>
     {
-        ParameterImpl (const EndpointDetails& details)
+        ParameterImpl (const EndpointDetails& details)  : annotation (details.annotation)
         {
-            annotation = details.annotation;
             ID = makeString (details.name);
-            name = makeString (details.annotation.getString ("name"));
 
-            if (name == nullptr || name.toString<juce::String>().trim().isEmpty())
-                name = ID;
-
-            minValue = 0;
-            maxValue = 1.0f;
-            step = 0;
-            int numIntervals = 0;
-
-            auto textValue = details.annotation.getValue ("text");
-
-            if (textValue.getType().isStringLiteral())
-            {
-                auto items = juce::StringArray::fromTokens (juce::String (textValue.getDescription()).unquoted(), "|", {});
-
-                if (items.size() > 1)
-                {
-                    numIntervals = items.size() - 1;
-                    maxValue = float (numIntervals);
-                }
-            }
-
-            unit         = makeString (details.annotation.getString ("unit"));
-            minValue     = castValueToFloat (details.annotation.getValue ("min"), minValue);
-            maxValue     = castValueToFloat (details.annotation.getValue ("max"), maxValue);
-            step         = castValueToFloat (details.annotation.getValue ("step"), maxValue / (numIntervals == 0 ? 1000 : numIntervals));
-            initialValue = castValueToFloat (details.annotation.getValue ("init"), minValue);
+            PatchPropertiesFromEndpointDetails props (details);
+            name         = makeString (props.name);
+            unit         = makeString (props.unit);
+            minValue     = props.minValue;
+            maxValue     = props.maxValue;
+            step         = props.step;
+            initialValue = props.initialValue;
 
             value = initialValue;
 

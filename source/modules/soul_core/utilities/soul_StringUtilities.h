@@ -129,6 +129,7 @@ std::string toCppStringLiteral (const std::string& text,
 //==============================================================================
 std::string addDoubleQuotes (const std::string&);
 std::string addSingleQuotes (const std::string&);
+std::string removeDoubleQuotes (const std::string&);
 
 std::string convertToString (const std::string& name);
 std::string convertToString (const Identifier& name);
