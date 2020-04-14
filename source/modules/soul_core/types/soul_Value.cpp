@@ -472,7 +472,7 @@ InterleavedChannelSet<double> Value::getAsChannelSet64() const   { return getDat
 
 Value Value::zeroInitialiser (Type t)
 {
-    SOUL_ASSERT (t.isValid() && ! (t.isVoid() || t.isReference()));
+    SOUL_ASSERT (t.isValid() && ! t.isVoid());
     return Value (std::move (t));
 }
 
