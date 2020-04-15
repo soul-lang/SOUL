@@ -152,11 +152,16 @@ PatchPropertiesFromEndpointDetails::PatchPropertiesFromEndpointDetails (const En
         }
     }
 
-    unit         = details.annotation.getString ("unit");
-    minValue     = castValueToFloat (details.annotation.getValue ("min"), minValue);
-    maxValue     = castValueToFloat (details.annotation.getValue ("max"), maxValue);
-    step         = castValueToFloat (details.annotation.getValue ("step"), maxValue / (numIntervals == 0 ? 1000 : numIntervals));
-    initialValue = castValueToFloat (details.annotation.getValue ("init"), minValue);
+    unit          = details.annotation.getString ("unit");
+    group         = details.annotation.getString ("group");
+    textValues    = details.annotation.getString ("text");
+    minValue      = castValueToFloat (details.annotation.getValue ("min"), minValue);
+    maxValue      = castValueToFloat (details.annotation.getValue ("max"), maxValue);
+    step          = castValueToFloat (details.annotation.getValue ("step"), maxValue / static_cast<float> (numIntervals == 0 ? 1000 : numIntervals));
+    initialValue  = castValueToFloat (details.annotation.getValue ("init"), minValue);
+    isAutomatable = details.annotation.getBool ("automatable", true);
+    isBoolean     = details.annotation.getBool ("boolean", false);
+    isHidden      = details.annotation.getBool ("hidden", false);
 }
 
 }
