@@ -443,7 +443,8 @@ void PaddedStringTable::appendItem (std::string item)
     rows.back().push_back (std::move (item));
 }
 
-size_t PaddedStringTable::getNumRows() const   { return rows.size(); }
+size_t PaddedStringTable::getNumColumns (size_t row) const      { return rows[row].size(); }
+size_t PaddedStringTable::getNumRows() const                    { return rows.size(); }
 
 std::string PaddedStringTable::getRow (size_t rowIndex) const
 {
@@ -459,6 +460,11 @@ std::string PaddedStringTable::getRow (size_t rowIndex) const
     }
 
     return s;
+}
+
+std::string& PaddedStringTable::getCell (size_t row, size_t column)
+{
+    return rows[row][column];
 }
 
 HashBuilder& HashBuilder::operator<< (char c) noexcept

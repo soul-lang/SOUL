@@ -149,7 +149,9 @@ struct PaddedStringTable
     void startRow();
     void appendItem (std::string item);
     size_t getNumRows() const;
+    size_t getNumColumns (size_t row) const;
     std::string getRow (size_t rowIndex) const;
+    std::string& getCell (size_t row, size_t column);
 
     template <typename RowHandlerFn>
     void iterateRows (RowHandlerFn&& handleRow)
