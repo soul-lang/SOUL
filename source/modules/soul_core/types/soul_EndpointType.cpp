@@ -159,6 +159,7 @@ PatchPropertiesFromEndpointDetails::PatchPropertiesFromEndpointDetails (const En
     maxValue      = castValueToFloat (details.annotation.getValue ("max"), maxValue);
     step          = castValueToFloat (details.annotation.getValue ("step"), maxValue / static_cast<float> (numIntervals == 0 ? 1000 : numIntervals));
     initialValue  = castValueToFloat (details.annotation.getValue ("init"), minValue);
+    rampFrames    = (uint32_t) details.annotation.getInt64 ("rampFrames");
     isAutomatable = details.annotation.getBool ("automatable", true);
     isBoolean     = details.annotation.getBool ("boolean", false);
     isHidden      = details.annotation.getBool ("hidden", false);

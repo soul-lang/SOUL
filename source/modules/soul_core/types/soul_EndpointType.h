@@ -138,6 +138,7 @@ struct PatchPropertiesFromEndpointDetails
 
     std::string name, unit, group, textValues;
     float minValue = 0, maxValue = 1.0f, step = 0, initialValue = 0;
+    uint32_t rampFrames = 0;
     bool isAutomatable = false, isBoolean = false, isHidden = false;
 };
 
