@@ -334,4 +334,58 @@ std::string Program::getFullyQualifiedTypeDescription (const Type& type) const
     return pimpl->getFullyQualifiedTypeDescription (type);
 }
 
+std::string Program::getValueDump (const Value& v, bool quoteStrings) const
+{
+    if (! quoteStrings && v.getType().isStringLiteral())
+        return getStringDictionary().getStringForHandle (v.getStringLiteral());
+
+    struct PrettyPrintValue  : public ValuePrinter
+    {
+        PrettyPrintValue (const Program& pp) : program (pp)
+        {
+            dictionary = std::addressof (program.getStringDictionary());
+        }
+
+        const Program& program;
+        std::ostringstream out;
+        void print (const std::string& s) override              { out << s; }
+
+        void printInt32 (int32_t v) override
+        {
+            if (parseNextIntAsMIDI)
+            {
+                parseNextIntAsMIDI = false;
+                const uint8_t bytes[] = { (uint8_t) (v >> 16), (uint8_t) (v >> 8), (uint8_t) v };
+                postStructDesc = " = " + getMIDIMessageDescription (bytes, 3);
+            }
+
+            print (v > 0xffff ? "0x" + toHexString (v) : std::to_string (v));
+        }
+
+        void beginStructMembers (const Type& t) override
+        {
+            auto name = program.getFullyQualifiedTypeDescription (t);
+            print (name + " { ");
+            parseNextIntAsMIDI = soul::isMIDIMessageStruct (t);
+        }
+
+        void printInt64 (int64_t v) override               { print (v > 0xffff ? "0x" + toHexString (v) : std::to_string (v)); }
+        void printStructMemberSeparator() override         { print (", "); }
+        void endStructMembers() override                   { print (" }" + postStructDesc); postStructDesc = {}; }
+        void beginArrayMembers (const Type& t) override    { print (t.getDescription() + " ("); }
+        void printArrayMemberSeparator() override          { print (", "); }
+        void endArrayMembers() override                    { print (")"); }
+        void beginVectorMembers (const Type& t) override   { print (t.getDescription() + " ("); }
+        void printVectorMemberSeparator() override         { print (", "); }
+        void endVectorMembers() override                   { print (")"); }
+
+        bool parseNextIntAsMIDI = false;
+        std::string postStructDesc;
+    };
+
+    PrettyPrintValue pp (*this);
+    v.print (pp);
+    return pp.out.str();
+}
+
 } // namespace soul

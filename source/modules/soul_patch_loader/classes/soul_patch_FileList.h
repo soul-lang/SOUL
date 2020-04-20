@@ -43,7 +43,7 @@ struct FileState
 struct FileList
 {
     VirtualFile::Ptr root;
-    juce::String manifestName;
+    std::string manifestName;
     FileState manifest;
     std::vector<FileState> sourceFiles, filesToWatch;
     juce::var manifestJSON;
@@ -65,20 +65,20 @@ struct FileList
         findViewFiles();
     }
 
-    VirtualFile::Ptr checkAndCreateVirtualFile (const juce::String& relativePath) const
+    VirtualFile::Ptr checkAndCreateVirtualFile (const std::string& relativePath) const
     {
-        if (relativePath.isEmpty())
+        if (relativePath.empty())
             throwPatchLoadError ("Empty file name");
 
-        auto f = root->getChildFile (relativePath.toRawUTF8());
+        auto f = root->getChildFile (relativePath.c_str());
 
         if (f == nullptr)
-            throwPatchLoadError ("Cannot find file " + relativePath.quoted().toStdString());
+            throwPatchLoadError ("Cannot find file " + addDoubleQuotes (relativePath));
 
         return f;
     }
 
-    FileState checkAndCreateFileState (const juce::String& relativePath) const
+    FileState checkAndCreateFileState (const std::string& relativePath) const
     {
         FileState fs { checkAndCreateVirtualFile (relativePath), relativePath, 0 };
         fs.lastModificationTime = fs.getLastModificationTime();
@@ -87,7 +87,7 @@ struct FileList
 
     void findManifestFile()
     {
-        if (root == nullptr || ! manifestName.endsWith (getManifestSuffix()))
+        if (root == nullptr || ! endsWith (manifestName, getManifestSuffix()))
             throwPatchLoadError ("Expected a .soulpatch file");
 
         manifest = checkAndCreateFileState (manifestName);
@@ -132,7 +132,7 @@ struct FileList
             }
 
             for (auto& p : paths)
-                result.push_back (checkAndCreateFileState (p));
+                result.push_back (checkAndCreateFileState (p.toStdString()));
         }
 
         return result;

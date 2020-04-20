@@ -199,7 +199,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                         JSONtoValue jsonConverter (constantTable,
                                                    [this, &annotation, &constantTable] (const Type& targetType, const juce::String& stringValue) -> Value
                                                    {
-                                                       if (auto file = fileList.checkAndCreateVirtualFile (stringValue))
+                                                       if (auto file = fileList.checkAndCreateVirtualFile (stringValue.toStdString()))
                                                            return AudioFileToValue::load (std::move (file), targetType, annotation, constantTable);
 
                                                        return {};
@@ -235,6 +235,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         outputBusesSpan = makeSpan (outputBuses);
     }
 
+    template <typename DebugHandler>
+    static void printConsoleMessage (const Program& program, const std::string& endpointName, uint64_t eventTime, double sampleRate,
+                                     const soul::Value& eventData, DebugHandler&& handler)
+    {
+        if (isConsoleEndpoint (endpointName))
+            handler (eventTime, endpointName.c_str(), program.getValueDump (eventData, false).c_str());
+        else
+            handler (eventTime, endpointName.c_str(), (endpointName + "  " + toStringWithDecPlaces (eventTime / sampleRate, 3)
+                                                         + ": " + program.getValueDump (eventData) + "\n").c_str());
+    }
+
     void createRenderOperations (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         parameters.clear();
@@ -246,9 +257,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         {
             handleUnusedEvents = [consoleHandler, program, rateAndBlockSize] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
                                  {
-                                     soul::utilities::printConsoleMessage (program, endpointName, eventTime, rateAndBlockSize.sampleRate, eventData,
-                                                                           [consoleHandler] (uint64_t time, const char* name, const char* message)
-                                                                           { consoleHandler->handleConsoleMessage (time, name, message); });
+                                     printConsoleMessage (program, endpointName, eventTime, rateAndBlockSize.sampleRate, eventData,
+                                                          [consoleHandler] (uint64_t time, const char* name, const char* message)
+                                                          { consoleHandler->handleConsoleMessage (time, name, message); });
                                      return true;
                                  };
         }

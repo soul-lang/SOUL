@@ -31,9 +31,9 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
     {
         if (auto name = root->getName())
         {
-            fileList.manifestName = name;
+            fileList.manifestName = name.toString<std::string>();
 
-            if (fileList.manifestName.endsWith (getManifestSuffix()))
+            if (endsWith (fileList.manifestName, getManifestSuffix()))
                 fileList.root = root->getParent();
         }
     }

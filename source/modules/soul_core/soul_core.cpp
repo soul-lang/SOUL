@@ -88,6 +88,7 @@
 #include "diagnostics/soul_Logging.cpp"
 #include "diagnostics/soul_CompileMessageList.cpp"
 #include "diagnostics/soul_Timing.cpp"
+#include "venue/soul_Endpoints.cpp"
 
 #ifdef __clang__
  #pragma clang diagnostic pop

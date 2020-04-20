@@ -63,42 +63,10 @@ EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointKind kind)
     return {};
 }
 
-inline bool isMIDIEventEndpoint (const EndpointDetails& details)
-{
-    auto isMIDIMessageStruct = [] (const Structure& s)
-    {
-        return s.name == "Message"
-            && s.members.size() == 1
-            && s.members.front().name == "midiBytes"
-            && s.members.front().type.isPrimitive()
-            && s.members.front().type.isInteger32();
-    };
-
-    return isEvent (details.kind)
-            && details.dataTypes.size() == 1
-            && details.dataTypes.front().isStruct()
-            && isMIDIMessageStruct (details.dataTypes.front().getStructRef());
-}
-
-inline Type createMIDIEventEndpointType()
-{
-    StructurePtr s (*new Structure ("Message", nullptr));
-    s->members.push_back ({ PrimitiveType::int32, "midiBytes" });
-    return Type::createStruct (*s);
-}
-
-inline bool isParameterInput (const EndpointDetails& details)
-{
-    if (isEvent (details.kind) && ! isMIDIEventEndpoint (details))
-        return true;
-
-    if (isStream (details.kind) && details.annotation.hasValue ("name"))
-        return true;
-
-    if (isValue (details.kind) && details.annotation.hasValue ("name"))
-        return true;
-
-    return false;
-}
+bool isMIDIMessageStruct (const Type&);
+bool isMIDIEventEndpoint (const EndpointDetails&);
+Type createMIDIEventEndpointType();
+bool isParameterInput (const EndpointDetails&);
+bool isConsoleEndpoint (const std::string& endpointName);
 
 } // namespace soul
