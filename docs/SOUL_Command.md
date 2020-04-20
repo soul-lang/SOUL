@@ -11,9 +11,9 @@ This folder contains builds of the command (find it in the `soul_command` folder
   |__   |  |  |  |  |  |__   (C)2019 ROLI Ltd.
   |_____|_____|_____|_____|
 
-  SOUL toolkit version 1.0.687
+  SOUL toolkit version 0.0.1
   Library version 0.8.0
-  Build date: Nov 11 2019 12:19:45
+  Build date: Apr 20 2020 18:36:21
 
 Usage:
 
@@ -25,8 +25,8 @@ Usage:
                                         Runs a SOUL program, reading and rendering its input and output to audio files
  soul errors <soul file> [--testToRun=N] [--runDisabled]
                                         Does a dry-run of compiling a SOUL file and outputs any errors encountered
- soul generate [--cpp] [--wasm] [--heart] [--graph] [--output=<output file>] <source file>
-                                        Compiles a SOUL file and generates equivalent code in another target format such as C++ or WASM
+ soul generate [--cpp] [--wasm] [--heart] [--juce] [--juce-header] [--juce-cpp] [--graph] [--output=<output file/folder>] <soul file>
+                                        Compiles a SOUL file and generates equivalent code in another target format such as C++ or WASM. The --juce option will create a folder containing a complete JUCE project which implements a patch as pure C++. The --juce-header and --juce-cpp options let you selectively create the C++ declarations and definitions for a juce plugin class.
  soul create new_patch_name [--synth] [--effect] [--output=<output folder>]
                                         Creates a patch manifest file and the boilerplate for a processor.
 ```
@@ -43,6 +43,18 @@ or leave it watching the entire folder for changes like this:
 `soul play ~/mystuff/SOUL/examples`
 
 ..which means that as soon as you save a change to one of the files in there, it'll re-compile and play it, so you can tinker around with changes to the code. This is how we've been using it for things like our public demos.
+
+### `soul generate`
+
+The `generate` function can take a `.soul` or `.soulpatch` file and translate to C++ or show the HEART intermediate code that is used internally.
+
+The `--cpp` options generates a dependency-free C++ class which implements the given SOUL patch. It has methods that can be used to read and write to its input and output endpoints at a low-level, and also a higher-level audio/MIDI rendering function that can process audio in a more familiar "process" style function.
+
+The `--juce` option will create a folder (set its location with `--output=<path>`) containing a ready-to-go JUCE C++ project which can be used to build native VST/AU/AAX plugins. You should be able to simply open the generated `.jucer` file using the Projucer, and build/customise it as you would a normal JUCE plugin project.
+
+The `--wasm` option will emit a chunk of WASM that implements the given patch.
+
+The `--graph` option will also create a chunk of HTML which displays a visual representation of the soul processor's topology.
 
 ### `soul errors`
 
@@ -100,11 +112,6 @@ errorMatch: (?<file>[\\/0-9a-zA-Z-\\._]+):(?<line>\d+):(?<col>\d+):\s*error:\s*(
 ```
 
 We'll find a neater way of delivering support for IDEs soon, as well as some SOUL syntax highlighting support.
-
-### `soul generate`
-
-The `generate` function can take a .soul file and translate to C++ or show the HEART intermediate code that is used internally. WASM generation is also possible but currently relies on a suitable external clang executable (this will all become self-contained in a future release!) 
-The `--graph` option will also create a chunk of HTML which displays a visual representation of the soul processor's topology.
 
 ### `soul create`
 
