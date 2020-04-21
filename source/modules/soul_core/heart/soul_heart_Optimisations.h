@@ -74,7 +74,7 @@ struct Optimisations
         auto modules = program.getModules();
 
         for (auto& m : modules)
-            if (m->isProcessor() && m->functions.empty())
+            if (m->isProcessor() && m->functions.empty() && m->structs.empty())
                 program.removeModule (m);
     }
 
