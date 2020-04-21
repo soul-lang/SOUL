@@ -585,7 +585,7 @@ private:
                 remappedBlocks[b] = newBlock;
             }
 
-            parentFunction.blocks.insert (parentFunction.blocks.begin() + (ssize_t) (blockIndex + 1),
+            parentFunction.blocks.insert (getIteratorForIndex (parentFunction.blocks, blockIndex + 1),
                                           newBlocks.begin(), newBlocks.end());
 
             preBlock.terminator = module.allocate<heart::Branch> (newBlocks.front());

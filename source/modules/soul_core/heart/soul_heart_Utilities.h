@@ -233,7 +233,7 @@ struct heart::Utilities
     {
         SOUL_ASSERT (blockIndex <= f.blocks.size());
         auto& newBlock = module.allocate<Block> (module.allocator.get (name));
-        f.blocks.insert (f.blocks.begin() + (ssize_t) blockIndex, newBlock);
+        f.blocks.insert (getIteratorForIndex (f.blocks, blockIndex), newBlock);
         return newBlock;
     }
 
