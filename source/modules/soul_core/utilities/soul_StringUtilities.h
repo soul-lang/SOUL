@@ -41,12 +41,9 @@ static inline bool contains (const std::string& text, const StringType& substrin
     return text.find (substring) != std::string::npos;
 }
 
-template <typename StringType>
-static inline bool startsWith (const std::string& text, const StringType& possibleStart)
-{
-    return text.find (possibleStart) == 0;
-}
-
+bool startsWith (const std::string& text, char possibleStart);
+bool startsWith (const std::string& text, const char* possibleStart);
+bool startsWith (const std::string& text, const std::string& possibleStart);
 bool endsWith (const std::string& text, const std::string& possibleEnd);
 
 std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement);
