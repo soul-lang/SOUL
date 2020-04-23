@@ -25,57 +25,42 @@ namespace soul
 /**
     A set of named properties that are passed into the linker and performers.
 */
-struct LinkOptions  : public Annotation
+struct LinkOptions
 {
-    LinkOptions (SampleRateAndBlockSize rateAndBlockSize)   { setSampleRateAndBlockSize (rateAndBlockSize); }
-    LinkOptions (double sampleRate, uint32_t blockSize) : LinkOptions (SampleRateAndBlockSize (sampleRate, blockSize)) {}
+    LinkOptions (SampleRateAndBlockSize sampleRateAndMaxBlockSize)  : rateAndMaxBlockSize (sampleRateAndMaxBlockSize) {}
+    LinkOptions (double sampleRate, uint32_t maxBlockSize) : LinkOptions (SampleRateAndBlockSize (sampleRate, maxBlockSize)) {}
 
     //==============================================================================
-    static constexpr const char* getOptimisationLevelKey()  { return "optimisation_level"; }
-    void setOptimisationLevel (int level)                   { set (getOptimisationLevelKey(), (int32_t) level); }
-    int getOptimisationLevel() const                        { return (int) getInt64 (getOptimisationLevelKey(), -1); }
+    void setOptimisationLevel (int level)                   { SOUL_ASSERT (level >= -1 && level <= 3); optimisationLevel = level; }
+    int getOptimisationLevel() const                        { return optimisationLevel; }
 
     //==============================================================================
-    static constexpr const char* getMaxStateSizeKey()       { return "max_state_size"; }
-    void setMaxStateSize (uint64_t size)                    { if (size > 0) set (getMaxStateSizeKey(), (int64_t) size); }
-    uint64_t getMaxStateSize() const                        { return (uint64_t) getInt64 (getMaxStateSizeKey(), defaultMaximumStateSize); }
+    void setMaxStateSize (size_t size)                      { maxStateSize = size > 0 ? size : defaultMaximumStateSize; }
+    size_t getMaxStateSize() const                          { return maxStateSize; }
 
     //==============================================================================
-    static constexpr const char* getMainProcessorKey()      { return "main_processor"; }
-    void setMainProcessor (const std::string& name)         { set (getMainProcessorKey(), name); }
-    std::string getMainProcessor() const                    { return getString (getMainProcessorKey()); }
+    void setMainProcessor (const std::string& name)         { mainProcessor = name; }
+    std::string getMainProcessor() const                    { return mainProcessor; }
 
     //==============================================================================
-    static constexpr const char* getPlatformKey()           { return "platform"; }
-    void setPlatform (const std::string& name)              { set (getPlatformKey(), name); }
-    std::string getPlatform() const                         { return getString (getPlatformKey()); }
+    void setPlatform (const std::string& name)              { platform = name; }
+    std::string getPlatform() const                         { return platform; }
 
     //==============================================================================
-    static constexpr const char* getSessionIDKey()          { return "sessionID"; }
-    void setSessionID (int32_t sessionID)                   { set (getSessionIDKey(), sessionID); }
-    int32_t getSessionID() const                            { return int32_t (getInt64 (getSessionIDKey())); }
-    bool hasSessionID() const                               { return hasValue (getSessionIDKey()); }
+    void setSessionID (int32_t newSessionID)                { sessionID = newSessionID; }
+    int32_t getSessionID() const                            { return sessionID; }
+    bool hasSessionID() const                               { return sessionID != 0; }
 
     //==============================================================================
-    static constexpr const char* getBlockSizeKey()          { return "blockSize"; }
-    void setBlockSize (uint32_t blockSize)                  { set (getBlockSizeKey(), (int32_t) blockSize); }
-    uint32_t getBlockSize() const                           { return (uint32_t) getInt64 (getBlockSizeKey()); }
+    void setMaxBlockSize (uint32_t newMaxBlockSize)         { rateAndMaxBlockSize.blockSize = newMaxBlockSize; }
+    uint32_t getMaxBlockSize() const                        { return rateAndMaxBlockSize.blockSize; }
 
     //==============================================================================
-    static constexpr const char* getSampleRateKey()         { return "sample_rate"; }
-    void setSampleRate (double sampleRate)                  { if (sampleRate > 0) set (getSampleRateKey(), sampleRate); }
-    double getSampleRate() const                            { return getDouble (getSampleRateKey()); }
+    void setSampleRate (double newRate)                     { rateAndMaxBlockSize.sampleRate = newRate; }
+    double getSampleRate() const                            { return rateAndMaxBlockSize.sampleRate; }
 
-    void setSampleRateAndBlockSize (SampleRateAndBlockSize rateAndBlockSize)
-    {
-        setSampleRate (rateAndBlockSize.sampleRate);
-        setBlockSize (rateAndBlockSize.blockSize);
-    }
-
-    SampleRateAndBlockSize getSampleRateAndBlockSize() const
-    {
-        return { getSampleRate(), getBlockSize() };
-    }
+    void setSampleRateAndMaxBlockSize (SampleRateAndBlockSize newRateAndSize)   { rateAndMaxBlockSize = newRateAndSize; }
+    SampleRateAndBlockSize getSampleRateAndBlockSize() const                    { return rateAndMaxBlockSize; }
 
     //==============================================================================
     using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
@@ -89,8 +74,15 @@ struct LinkOptions  : public Annotation
     */
     ExternalValueProviderFn externalValueProvider;
 
+
+private:
     //==============================================================================
-    static constexpr uint64_t  defaultMaximumStateSize = 1024 * 1024 * 20;
+    static constexpr size_t defaultMaximumStateSize = 1024 * 1024 * 20;
+    SampleRateAndBlockSize rateAndMaxBlockSize;
+    size_t maxStateSize = defaultMaximumStateSize;
+    int optimisationLevel = -1;
+    int32_t sessionID = 0;
+    std::string mainProcessor, platform;
 };
 
 //==============================================================================

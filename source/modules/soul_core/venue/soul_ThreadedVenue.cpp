@@ -164,7 +164,7 @@ struct ThreadedVenue  : public soul::Venue
         {
             if (state == State::loaded && performer->link (messageList, linkOptions, {}))
             {
-                blockSize = linkOptions.getBlockSize();
+                blockSize = linkOptions.getMaxBlockSize();
                 setState (State::linked);
                 return true;
             }
