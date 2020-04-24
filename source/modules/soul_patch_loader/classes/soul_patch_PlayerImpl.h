@@ -90,16 +90,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         auto program = compiler.link (messageList, linkOptions);
 
-        if (linkOptions.getPlatform() == "bela")
+       #if JUCE_BELA
         {
             soul::Compiler wrappedCompiler;
             addSource (messageList, preprocessor, wrappedCompiler);
-            wrappedCompiler.addCode (messageList,  CodeLocation::createFromString ("BelaWrapper", soul::patch::BelaWrapper::build (program)));
+            wrappedCompiler.addCode (messageList, CodeLocation::createFromString ("BelaWrapper", soul::patch::BelaWrapper::build (program)));
 
             auto wrappedLinkOptions = linkOptions;
             wrappedLinkOptions.setMainProcessor ("BelaWrapper");
             program = wrappedCompiler.link (messageList, wrappedLinkOptions);
         }
+       #endif
 
         return program;
     }
@@ -249,22 +250,23 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     void createRenderOperations (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         parameters.clear();
-        auto rateAndBlockSize = getSampleRateAndBlockSize();
+        checkSampleRateAndBlockSize();
 
         decltype (wrapper)::HandleUnusedEventFn handleUnusedEvents;
+        auto sampleRate = config.sampleRate;
 
         if (consoleHandler != nullptr)
         {
-            handleUnusedEvents = [consoleHandler, program, rateAndBlockSize] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
+            handleUnusedEvents = [consoleHandler, program, sampleRate] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
                                  {
-                                     printConsoleMessage (program, endpointName, eventTime, rateAndBlockSize.sampleRate, eventData,
+                                     printConsoleMessage (program, endpointName, eventTime, sampleRate, eventData,
                                                           [consoleHandler] (uint64_t time, const char* name, const char* message)
                                                           { consoleHandler->handleConsoleMessage (time, name, message); });
                                      return true;
                                  };
         }
 
-        wrapper.buildRenderingPipeline (rateAndBlockSize,
+        wrapper.buildRenderingPipeline ((uint32_t) config.maxFramesPerBlock,
                                         [&] (const EndpointDetails& endpoint) -> std::function<const float*()>
                                         {
                                             auto param = new ParameterImpl (endpoint);
@@ -413,12 +415,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         return 1000;
     }
 
-    SampleRateAndBlockSize getSampleRateAndBlockSize() const
+    void checkSampleRateAndBlockSize() const
     {
         if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
         if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size");
-
-        return { config.sampleRate, (uint32_t) config.maxFramesPerBlock };
     }
 
     std::vector<CompilationMessage> compileMessages;

@@ -27,62 +27,74 @@ namespace soul
 */
 struct LinkOptions
 {
-    LinkOptions (SampleRateAndBlockSize sampleRateAndMaxBlockSize)  : rateAndMaxBlockSize (sampleRateAndMaxBlockSize) {}
-    LinkOptions (double sampleRate, uint32_t maxBlockSize) : LinkOptions (SampleRateAndBlockSize (sampleRate, maxBlockSize)) {}
+    /** Create a new LinkOptions object. The only non-optional property is sample rate, so it must be supplied here. */
+    LinkOptions (double sampleRateToUse)                    { setSampleRate (sampleRateToUse); }
 
     //==============================================================================
+    /** Sets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
     void setOptimisationLevel (int level)                   { SOUL_ASSERT (level >= -1 && level <= 3); optimisationLevel = level; }
+    /** Gets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
     int getOptimisationLevel() const                        { return optimisationLevel; }
 
     //==============================================================================
-    void setMaxStateSize (size_t size)                      { maxStateSize = size > 0 ? size : defaultMaximumStateSize; }
+    /** Sets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
+    void setMaxStateSize (size_t size)                      { SOUL_ASSERT (size == 0 || size > 4096); maxStateSize = size; }
+    /** Gets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
     size_t getMaxStateSize() const                          { return maxStateSize; }
 
     //==============================================================================
+    /** Optionally sets the name of the main processor to run when the program is linked.
+        If specified, this will override any [[main]] annotations in the program itself.
+    */
     void setMainProcessor (const std::string& name)         { mainProcessor = name; }
+
+    /** Gets the name of the main processor to run when the program is linked.
+        This will be empty if a default is to be used.
+    */
     std::string getMainProcessor() const                    { return mainProcessor; }
 
     //==============================================================================
-    void setPlatform (const std::string& name)              { platform = name; }
-    std::string getPlatform() const                         { return platform; }
-
-    //==============================================================================
+    /** Sets a session ID to use when instantiating the program. Use zero to indicate that a random number should be used. */
     void setSessionID (int32_t newSessionID)                { sessionID = newSessionID; }
+    /** Gets the session ID to use when instantiating the program. Zero indicates that a random number should be used. */
     int32_t getSessionID() const                            { return sessionID; }
-    bool hasSessionID() const                               { return sessionID != 0; }
 
     //==============================================================================
-    void setMaxBlockSize (uint32_t newMaxBlockSize)         { rateAndMaxBlockSize.blockSize = newMaxBlockSize; }
-    uint32_t getMaxBlockSize() const                        { return rateAndMaxBlockSize.blockSize; }
+    /** Sets a maximum number of frames that the compiled processor should be able to handle in a single chunk. Use zero for a default. */
+    void setMaxBlockSize (uint32_t newMaxBlockSize)         { maxBlockSize = newMaxBlockSize; }
+    /** Gets the maximum number of frames that the compiled processor should be able to handle in a single chunk. Returns zero for a default. */
+    uint32_t getMaxBlockSize() const                        { return maxBlockSize; }
 
     //==============================================================================
-    void setSampleRate (double newRate)                     { rateAndMaxBlockSize.sampleRate = newRate; }
-    double getSampleRate() const                            { return rateAndMaxBlockSize.sampleRate; }
-
-    void setSampleRateAndMaxBlockSize (SampleRateAndBlockSize newRateAndSize)   { rateAndMaxBlockSize = newRateAndSize; }
-    SampleRateAndBlockSize getSampleRateAndBlockSize() const                    { return rateAndMaxBlockSize; }
+    /** Sets the sample rate at which the compiled processor is going to run. This must be a valid value. */
+    void setSampleRate (double newRate)                     { SOUL_ASSERT (newRate > 0); sampleRate = newRate; }
+    /** Returns the sample rate at which the compiled processor is going to run. */
+    double getSampleRate() const                            { return sampleRate; }
 
     //==============================================================================
+    /** A function of this type must return a Value that should be bound to a given external variable.
+        The name provided will be fully-qualified, and the Value returned must match the given type,
+        or an error will be thrown.
+    */
     using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
-                                                                         const char* name,
+                                                                         const char* variableName,
                                                                          const Type& requiredType,
                                                                          const Annotation& annotation)>;
 
-    /** If this lamdba is set, it must return the Value that should be bound to a
-        given external variable. The name provided will be fully-qualified, and the Value
-        returned must match the given type, or an error will be thrown.
+    /** Provides a user-supplied lambda to generate the content of any external variables that
+        the program uses.
     */
     ExternalValueProviderFn externalValueProvider;
 
 
 private:
     //==============================================================================
-    static constexpr size_t defaultMaximumStateSize = 1024 * 1024 * 20;
-    SampleRateAndBlockSize rateAndMaxBlockSize;
-    size_t maxStateSize = defaultMaximumStateSize;
-    int optimisationLevel = -1;
-    int32_t sessionID = 0;
-    std::string mainProcessor, platform;
+    double       sampleRate         = 0;
+    uint32_t     maxBlockSize       = 0;
+    size_t       maxStateSize       = 0;
+    int          optimisationLevel  = -1;
+    int32_t      sessionID          = 0;
+    std::string  mainProcessor;
 };
 
 //==============================================================================
