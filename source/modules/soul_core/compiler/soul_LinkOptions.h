@@ -71,22 +71,6 @@ struct LinkOptions
     /** Returns the sample rate at which the compiled processor is going to run. */
     double getSampleRate() const                            { return sampleRate; }
 
-    //==============================================================================
-    /** A function of this type must return a Value that should be bound to a given external variable.
-        The name provided will be fully-qualified, and the Value returned must match the given type,
-        or an error will be thrown.
-    */
-    using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
-                                                                         const char* variableName,
-                                                                         const Type& requiredType,
-                                                                         const Annotation& annotation)>;
-
-    /** Provides a user-supplied lambda to generate the content of any external variables that
-        the program uses.
-    */
-    ExternalValueProviderFn externalValueProvider;
-
-
 private:
     //==============================================================================
     double       sampleRate         = 0;

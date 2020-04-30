@@ -131,20 +131,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         createBuses();
         createRenderOperations (program, consoleHandler);
+        resolveExternalVariables (externalDataProvider);
 
-        auto options = linkOptions;
-        options.externalValueProvider = [this, externalDataProvider] (ConstantTable& constantTable,
-                                                                      const char* name, const Type& type,
-                                                                      const Annotation& annotation) -> ConstantTable::Handle
-        {
-            if (externalDataProvider != nullptr)
-                if (auto file = externalDataProvider->getExternalFile (name))
-                    return constantTable.getHandleForValue (AudioFileToValue::load (std::move (file), type, annotation, constantTable));
-
-            return findExternalDefinitionInManifest (constantTable, name, type, annotation);
-        };
-
-        if (! performer->link (messageList, options, CacheConverter::create (cache).get()))
+        if (! performer->link (messageList, linkOptions, CacheConverter::create (cache).get()))
             return messageList.addError ("Failed to link", {});
     }
 
@@ -185,32 +174,50 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             anyErrors = anyErrors || m.isError;
     }
 
-    ConstantTable::Handle findExternalDefinitionInManifest (ConstantTable& constantTable,
-                                                            const char* name, const Type& type,
-                                                            const Annotation& annotation) const
+    void resolveExternalVariables (ExternalDataProvider* externalDataProvider)
     {
+        for (auto& ev : performer->getExternalVariables())
+        {
+            auto value = resolveExternalVariable (externalDataProvider, ev);
+
+            if (value.isValid())
+                performer->setExternalVariable (ev.name.c_str(), std::move (value));
+        }
+    }
+
+    soul::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const soul::Performer::ExternalVariable& ev)
+    {
+        auto convertFixedToUnsizedArray = [this] (soul::Value v)
+        {
+            auto elementType = v.getType().getElementType();
+            return Value::createUnsizedArray (elementType, performer->addConstant (std::move (v)));
+        };
+
+        if (externalDataProvider != nullptr)
+            if (auto file = externalDataProvider->getExternalFile (ev.name.c_str()))
+                return AudioFileToValue::load (std::move (file), ev.type, ev.annotation, convertFixedToUnsizedArray);
+
         if (auto externals = fileList.getExternalsList())
         {
             for (auto& e : externals->getProperties())
             {
-                if (e.name.toString().trim() == name)
+                if (e.name.toString().trim() == ev.name.c_str())
                 {
                     try
                     {
-                        JSONtoValue jsonConverter (constantTable,
-                                                   [this, &annotation, &constantTable] (const Type& targetType, const juce::String& stringValue) -> Value
+                        return convertJSONToValue (e.value, ev.type,
+                                                   [this, &ev, &convertFixedToUnsizedArray] (const Type& targetType, const juce::String& stringValue) -> Value
                                                    {
                                                        if (auto file = fileList.checkAndCreateVirtualFile (stringValue.toStdString()))
-                                                           return AudioFileToValue::load (std::move (file), targetType, annotation, constantTable);
+                                                           return AudioFileToValue::load (std::move (file), targetType, ev.annotation, convertFixedToUnsizedArray);
 
                                                        return {};
-                                                   });
-
-                        return constantTable.getHandleForValue (jsonConverter.createValue (type, e.value));
+                                                   },
+                                                   convertFixedToUnsizedArray);
                     }
                     catch (const PatchLoadError& error)
                     {
-                        throwPatchLoadError ("Error resolving external " + quoteName (name) + ": " + error.message);
+                        throwPatchLoadError ("Error resolving external " + quoteName (ev.name) + ": " + error.message);
                     }
 
                     return {};

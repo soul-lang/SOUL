@@ -66,6 +66,24 @@ public:
     */
     virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
 
+    struct ExternalVariable
+    {
+        std::string name;
+        Type type;
+        Annotation annotation;
+    };
+
+    /** Returns the list of external variables that need to be resolved before a loaded
+        program can be linked.
+    */
+    virtual ArrayView<const ExternalVariable> getExternalVariables() = 0;
+
+    /** Add a global constant to the loaded program. */
+    virtual ConstantTable::Handle addConstant (Value value) = 0;
+
+    /** Set the value of an external in the loaded program. */
+    virtual bool setExternalVariable (const char* name, Value value) = 0;
+
     /** After loading a program, and optionally connecting up to some of its endpoints,
         link() will complete any preparations needed before the code can be executed.
         If this returns true, then you can safely start calling advance(). If it

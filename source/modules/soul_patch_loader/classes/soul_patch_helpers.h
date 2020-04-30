@@ -60,94 +60,93 @@ inline void createMIDIMessage (MIDIMessage& m, uint32_t frameIndex, uint32_t pac
 
 //==============================================================================
 /** Converts a JSON value from a manifest file into a Value. */
-struct JSONtoValue
+inline Value convertJSONToValue (const juce::var& json,
+                                 const Type& targetType,
+                                 const std::function<Value(const Type&, const juce::String&)>& convertStringToValue,
+                                 const ConvertFixedToUnsizedArray& convertToUnsizedArray)
+
 {
-    using StringConvertFn = std::function<Value(const Type&, const juce::String&)>;
-
-    JSONtoValue (ConstantTable& ct, StringConvertFn&& scf)
-        : constantTable (ct), convertStringToValue (std::move (scf))
-    {}
-
-    /** Attempts to conver this value, throwing a PatchLoadError if anything goes wrong */
-    Value createValue (const Type& targetType, const juce::var& value)
+    struct JSONtoValue
     {
-        if (value.isString() && convertStringToValue != nullptr)
-            return convertStringToValue (targetType, value.toString());
+        const std::function<Value(const Type&, const juce::String&)>& convertStringToValue;
+        const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray;
 
-        if (value.isInt())        return castValue (targetType, Value::createInt32 (static_cast<int> (value)));
-        if (value.isInt64())      return castValue (targetType, Value::createInt64 (static_cast<juce::int64> (value)));
-        if (value.isDouble())     return castValue (targetType, Value (static_cast<double> (value)));
-        if (value.isBool())       return castValue (targetType, Value (static_cast<bool> (value)));
-
-        if (targetType.isArrayOrVector())
-            if (auto a = value.getArray())
-                return createArrayOrVector (targetType, *a);
-
-        if (targetType.isStruct())
-            if (auto o = value.getDynamicObject())
-                return createObjectValue (targetType.getStructRef(), o->getProperties());
-
-        throwPatchLoadError ("Cannot parse JSON value " + quoteName (value.toString().toStdString()));
-        return {};
-    }
-
-private:
-    ConstantTable& constantTable;
-    StringConvertFn convertStringToValue;
-
-    Value castValue (const Type& targetType, Value value)
-    {
-        if (! targetType.hasIdenticalLayout (value.getType()))
-            return value.castToTypeWithError (targetType, CodeLocation());
-
-        return value;
-    }
-
-    Value createArrayOrVector (const Type& arrayType, const juce::Array<juce::var>& elements)
-    {
-        auto numElementsProvided = (size_t) elements.size();
-        auto numElementsExpected = (size_t) arrayType.getArraySize();
-
-        if (numElementsProvided != numElementsExpected && ! arrayType.isUnsizedArray())
-            throwPatchLoadError ("Wrong number of elements for array: expected " + std::to_string (numElementsExpected)
-                                   + ", but found " + std::to_string (numElementsProvided));
-
-        ArrayWithPreallocation<Value, 16> elementValues;
-        elementValues.reserve (numElementsProvided);
-        auto elementType = arrayType.getElementType();
-
-        for (auto& e : elements)
-            elementValues.push_back (createValue (elementType, e));
-
-        if (arrayType.isUnsizedArray())
+        Value createValue (const Type& targetType, const juce::var& value)
         {
-            auto handle = constantTable.getHandleForValue (Value::createArrayOrVector (elementType.createArray ((Type::ArraySize) numElementsProvided), elementValues));
-            return Value::createUnsizedArray (arrayType.getElementType(), handle);
+            if (value.isString() && convertStringToValue != nullptr)
+                return convertStringToValue (targetType, value.toString());
+
+            if (value.isInt())        return castValue (targetType, Value::createInt32 (static_cast<int> (value)));
+            if (value.isInt64())      return castValue (targetType, Value::createInt64 (static_cast<juce::int64> (value)));
+            if (value.isDouble())     return castValue (targetType, Value (static_cast<double> (value)));
+            if (value.isBool())       return castValue (targetType, Value (static_cast<bool> (value)));
+
+            if (targetType.isArrayOrVector())
+                if (auto a = value.getArray())
+                    return createArrayOrVector (targetType, *a);
+
+            if (targetType.isStruct())
+                if (auto o = value.getDynamicObject())
+                    return createObjectValue (targetType.getStructRef(), o->getProperties());
+
+            throwPatchLoadError ("Cannot parse JSON value " + quoteName (value.toString().toStdString()));
+            return {};
         }
 
-        return Value::createArrayOrVector (arrayType, elementValues);
-    }
-
-    Value createObjectValue (Structure& structure, const juce::NamedValueSet& values)
-    {
-        for (auto& v : values)
-            if (! structure.hasMemberWithName (v.name.toString().toStdString()))
-                throwPatchLoadError ("The structure " + quoteName (structure.name)
-                                       + " does not contain a member called " + quoteName (v.name.toString().toStdString()));
-
-        ArrayWithPreallocation<Value, 16> members;
-
-        for (auto& m : structure.members)
+        Value castValue (const Type& targetType, Value value)
         {
-            if (auto value = values.getVarPointer (juce::Identifier (m.name.c_str())))
-                members.push_back (createValue (m.type, *value));
-            else
-                members.push_back (Value::zeroInitialiser (m.type));
+            if (! targetType.hasIdenticalLayout (value.getType()))
+                return value.castToTypeWithError (targetType, CodeLocation());
+
+            return value;
         }
 
-        return Value::createStruct (structure, members);
-    }
-};
+        Value createArrayOrVector (const Type& arrayType, const juce::Array<juce::var>& elements)
+        {
+            auto numElementsProvided = (size_t) elements.size();
+            auto numElementsExpected = (size_t) arrayType.getArraySize();
+
+            if (numElementsProvided != numElementsExpected && ! arrayType.isUnsizedArray())
+                throwPatchLoadError ("Wrong number of elements for array: expected " + std::to_string (numElementsExpected)
+                                       + ", but found " + std::to_string (numElementsProvided));
+
+            ArrayWithPreallocation<Value, 16> elementValues;
+            elementValues.reserve (numElementsProvided);
+            auto elementType = arrayType.getElementType();
+
+            for (auto& e : elements)
+                elementValues.push_back (createValue (elementType, e));
+
+            if (arrayType.isUnsizedArray())
+                return convertFixedToUnsizedArray (Value::createArrayOrVector (elementType.createArray ((Type::ArraySize) numElementsProvided), elementValues));
+
+            return Value::createArrayOrVector (arrayType, elementValues);
+        }
+
+        Value createObjectValue (Structure& structure, const juce::NamedValueSet& values)
+        {
+            for (auto& v : values)
+                if (! structure.hasMemberWithName (v.name.toString().toStdString()))
+                    throwPatchLoadError ("The structure " + quoteName (structure.name)
+                                           + " does not contain a member called " + quoteName (v.name.toString().toStdString()));
+
+            ArrayWithPreallocation<Value, 16> members;
+
+            for (auto& m : structure.members)
+            {
+                if (auto value = values.getVarPointer (juce::Identifier (m.name.c_str())))
+                    members.push_back (createValue (m.type, *value));
+                else
+                    members.push_back (Value::zeroInitialiser (m.type));
+            }
+
+            return Value::createStruct (structure, members);
+        }
+    };
+
+    return JSONtoValue { convertStringToValue, convertToUnsizedArray }
+            .createValue (targetType, json);
+}
 
 //==============================================================================
 /** Attempts to read some sort of audio file and convert it into a suitable Value
@@ -158,14 +157,14 @@ private:
 */
 struct AudioFileToValue
 {
-    static Value load (VirtualFile::Ptr file, const Type& type,
-                       const Annotation& annotation, ConstantTable& constantTable)
+    static Value load (VirtualFile::Ptr file, const Type& type, const Annotation& annotation,
+                       const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray)
     {
         SOUL_ASSERT (file != nullptr);
         std::string fileName (file->getAbsolutePath()->getCharPointer());
 
         if (auto reader = createAudioFileReader (file))
-            return loadAudioFileAsValue (*reader, fileName, type, annotation, constantTable);
+            return loadAudioFileAsValue (*reader, fileName, type, annotation, convertFixedToUnsizedArray);
 
         throwPatchLoadError ("Failed to read file " + quoteName (fileName));
         return {};
@@ -176,7 +175,8 @@ private:
     static constexpr uint64_t maxNumFrames = 48000 * 60;
 
     static Value loadAudioFileAsValue (juce::AudioFormatReader& reader, const std::string& fileName,
-                                       const Type& type, const Annotation& annotation, ConstantTable& constantTable)
+                                       const Type& type, const Annotation& annotation,
+                                       const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray)
     {
         if (reader.sampleRate > 0)
         {
@@ -198,7 +198,7 @@ private:
             resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation.getValue ("resample"));
             extractChannelIfNeeded (buffer, annotation.getValue ("sourceChannel"));
 
-            auto result = convertAudioDataToType (type, constantTable, buffer, reader.sampleRate);
+            auto result = convertAudioDataToType (type, convertFixedToUnsizedArray, buffer, reader.sampleRate);
 
             if (! result.isValid())
                 throwPatchLoadError ("Could not convert audio file to type " + quoteName (type.getDescription()));

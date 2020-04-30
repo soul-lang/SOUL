@@ -270,6 +270,7 @@ struct ModuleCloner
         auto& v = newModule.allocate<heart::Variable> (old.location, cloneType (old.type),
                                                        newModule.allocator.get (old.name),
                                                        old.role);
+        v.externalHandle = old.externalHandle;
         v.annotation = old.annotation;
         mapping = v;
         return v;

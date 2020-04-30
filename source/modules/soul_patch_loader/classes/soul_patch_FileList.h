@@ -70,12 +70,11 @@ struct FileList
         if (relativePath.empty())
             throwPatchLoadError ("Empty file name");
 
-        auto f = root->getChildFile (relativePath.c_str());
+        if (root != nullptr)
+            if (auto f = root->getChildFile (relativePath.c_str()))
+                return f;
 
-        if (f == nullptr)
-            throwPatchLoadError ("Cannot find file " + addDoubleQuotes (relativePath));
-
-        return f;
+        throwPatchLoadError ("Cannot find file " + addDoubleQuotes (relativePath));
     }
 
     FileState checkAndCreateFileState (const std::string& relativePath) const
