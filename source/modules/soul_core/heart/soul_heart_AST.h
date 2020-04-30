@@ -133,6 +133,7 @@ struct heart
         bool isEventEndpoint() const      { return isEvent (kind); }
         bool isStreamEndpoint() const     { return isStream (kind); }
         bool isValueEndpoint() const      { return isValue (kind); }
+        bool isConsoleEndpoint() const    { return isEventEndpoint() && name.toString() == "_console"; }
 
         bool canHandleType (const Type& t) const
         {
