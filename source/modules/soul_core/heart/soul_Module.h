@@ -35,9 +35,9 @@ public:
 
     Program program;
 
-    std::string moduleName;
-    std::string getNameWithoutRootNamespace() const;
-    std::string getNameWithoutRootNamespaceOrSpecialisations() const;
+    std::string shortName;          ///< The unqualified module name without a namespace
+    std::string fullName;           ///< The fully-qualified name, with all namespace levels, including the root
+    std::string originalFullName;   ///< The fully-qualified name as a user would expect to see it, without a root or other manglings
 
     std::vector<pool_ref<heart::InputDeclaration>> inputs;
     std::vector<pool_ref<heart::OutputDeclaration>> outputs;
@@ -94,7 +94,7 @@ public:
 private:
     friend class Program;
 
-    int moduleId = 0;
+    uint32_t moduleID = 0;
 
     enum class ModuleType
     {

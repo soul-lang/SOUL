@@ -49,7 +49,10 @@ private:
     HEARTGenerator (AST::ModuleBase& source, Module& targetModule, uint32_t maxDepth)
         : module (targetModule), builder (targetModule), maxExpressionDepth (maxDepth)
     {
-        module.moduleName = source.getFullyQualifiedPath().toString();
+        auto path = source.getFullyQualifiedPath();
+        module.shortName = path.getLastPart().toString();
+        module.fullName = path.toString();
+        module.originalFullName = getOriginalModulePath (path);
 
         if (auto fns = source.getFunctionList())
         {
@@ -88,6 +91,14 @@ private:
     Identifier convertIdentifier (Identifier i)
     {
         return module.allocator.get (i);
+    }
+
+    static std::string getOriginalModulePath (IdentifierPath path)
+    {
+        SOUL_ASSERT (path.getFirstPart().toString() == Program::getRootNamespaceName());
+        path = path.fromSecondPart();
+        removeIf (path.pathSections, [] (const Identifier& section) { return startsWith (section.toString(), "_for"); });
+        return path.toString();
     }
 
     heart::Variable& createVariableDeclaration (AST::VariableDeclaration& v,

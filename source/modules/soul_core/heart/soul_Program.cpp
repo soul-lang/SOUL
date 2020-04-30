@@ -36,12 +36,12 @@ struct Program::ProgramImpl  : public RefCountedObject
     ConstantTable constantTable;
     StringDictionary stringDictionary;
 
-    int nextModuleId = 1;
+    uint32_t nextModuleID = 1;
 
     pool_ptr<Module> getModuleWithName (const std::string& name) const
     {
         for (auto& m : modules)
-            if (m->moduleName == name || m->getNameWithoutRootNamespace() == name)
+            if (m->fullName == name)
                 return m;
 
         return {};
@@ -68,7 +68,9 @@ struct Program::ProgramImpl  : public RefCountedObject
 
         Program p (*this, false);
         auto& newModule = Module::createNamespace (p);
-        newModule.moduleName = name;
+        newModule.shortName = name;
+        newModule.fullName = name;
+        newModule.originalFullName = name;
         modules.push_back (newModule);
         return newModule;
     }
@@ -112,15 +114,27 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    int getModuleID (Module& m, uint32_t arraySize)
+    uint32_t getModuleID (Module& m, uint32_t arraySize)
     {
-        if (m.moduleId == 0)
+        if (m.moduleID == 0)
         {
-            m.moduleId = nextModuleId;
-            nextModuleId += static_cast<int> (arraySize);
+            m.moduleID = nextModuleID;
+            nextModuleID += arraySize;
         }
 
-        return m.moduleId;
+        return m.moduleID;
+    }
+
+    std::vector<pool_ref<heart::Variable>> getExternalVariables() const
+    {
+        std::vector<pool_ref<heart::Variable>> result;
+
+        for (auto& m : modules)
+            for (auto& v : m->stateVariables)
+                if (v->isExternal())
+                    result.push_back (v);
+
+        return result;
     }
 
     Program clone() const
@@ -166,10 +180,21 @@ struct Program::ProgramImpl  : public RefCountedObject
                     if (m == context)
                         return v.name.toString();
 
-                    return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, v.name));
+                    return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, v.name));
                 }
             }
         }
+
+        return v.name;
+    }
+
+    std::string getExternalVariableName (const heart::Variable& v) const
+    {
+        SOUL_ASSERT (v.isState()); // This can only work for state variables
+
+        for (auto& m : modules)
+            if (contains (m->stateVariables, v))
+                return TokenisedPathString::join (m->originalFullName, v.name);
 
         return v.name;
     }
@@ -181,7 +206,7 @@ struct Program::ProgramImpl  : public RefCountedObject
             if (m == std::addressof (context))
                 return f.name.toString();
 
-            return TokenisedPathString::join (m->moduleName, f.name);
+            return TokenisedPathString::join (m->fullName, f.name);
         }
 
         SOUL_ASSERT_FALSE;
@@ -197,7 +222,7 @@ struct Program::ProgramImpl  : public RefCountedObject
                 if (context != nullptr && m == context)
                     return s.name;
 
-                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, s.name));
+                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, s.name));
             }
         }
 
@@ -280,7 +305,8 @@ StringDictionary& Program::getStringDictionary()                                
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }
 ConstantTable& Program::getConstantTable()                                              { return pimpl->constantTable; }
 const ConstantTable& Program::getConstantTable() const                                  { return pimpl->constantTable; }
-int Program::getModuleID (Module& m, uint32_t arraySize)                                { return pimpl->getModuleID (m, arraySize); }
+std::vector<pool_ref<heart::Variable>> Program::getExternalVariables() const            { return pimpl->getExternalVariables(); }
+uint32_t Program::getModuleID (Module& m, uint32_t arraySize)                           { return pimpl->getModuleID (m, arraySize); }
 const char* Program::getRootNamespaceName()                                             { return "_root"; }
 std::string Program::stripRootNamespaceFromQualifiedPath (std::string path)             { return TokenisedPathString::removeTopLevelNameIfPresent (path, getRootNamespaceName()); }
 
@@ -307,6 +333,11 @@ Module& Program::getMainProcessorOrThrowError() const
 std::string Program::getVariableNameWithQualificationIfNeeded (const Module& context, const heart::Variable& v) const
 {
     return pimpl->getVariableNameWithQualificationIfNeeded (context, v);
+}
+
+std::string Program::getExternalVariableName (const heart::Variable& v) const
+{
+    return pimpl->getExternalVariableName (v);
 }
 
 std::string Program::getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function& f) const

@@ -146,7 +146,9 @@ private:
     {
         ScannedTopLevelItem newItem (newModule);
         module = newModule;
-        newModule.moduleName = readQualifiedIdentifier();
+        newModule.fullName = readQualifiedIdentifier();
+        newModule.originalFullName = newModule.fullName;
+        newModule.shortName = TokenisedPathString (newModule.fullName).getLastPart();
         parseAnnotation (newModule.annotation);
         newItem.moduleStartPos = getCurrentTokeniserPosition();
         scanTopLevelItems (newItem);
@@ -854,7 +856,7 @@ private:
         {
             for (auto& m : program.getModules())
                 for (auto& fn : m->functions)
-                    if (TokenisedPathString::join (m->moduleName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
+                    if (TokenisedPathString::join (m->fullName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
                         return fn;
         }
 

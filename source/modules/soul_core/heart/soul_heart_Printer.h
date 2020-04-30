@@ -60,7 +60,7 @@ private:
             if (module.isGraph())       out << "graph ";
             if (module.isNamespace())   out << "namespace ";
 
-            out << module.moduleName;
+            out << module.fullName;
             printDescription (module.annotation);
             out << newLine;
 

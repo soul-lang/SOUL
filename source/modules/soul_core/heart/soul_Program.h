@@ -106,11 +106,14 @@ public:
     /** Provides access to the program's constant table */
     const ConstantTable& getConstantTable() const;
 
+    /** Finds a list of all the externals in the program. */
+    std::vector<pool_ref<heart::Variable>> getExternalVariables() const;
+
     /** Returns an ID for one of the modules in the program (which will be unique
         within the program but not globally). The arraySize indicates how many unique ids
         are required for the module, as a range from the returned value
     */
-    int getModuleID (Module&, uint32_t arraySize);
+    uint32_t getModuleID (Module&, uint32_t arraySize);
 
     //==============================================================================
     /** Returns the allocator used to hold all items in the program and its modules. */
@@ -127,6 +130,9 @@ public:
 
     /** Returns the name of a variable using a fully-qualified name if the variable lies outside the given module. */
     std::string getVariableNameWithQualificationIfNeeded (const Module& context, const heart::Variable&) const;
+
+    /** Returns the fully-qualified path for a variable in a non-mangled format as a user would expect to see it. */
+    std::string getExternalVariableName (const heart::Variable&) const;
 
     /** Returns the name of a function using a fully-qualified name if the function lies outside the given module. */
     std::string getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function&) const;

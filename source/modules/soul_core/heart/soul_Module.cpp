@@ -31,7 +31,9 @@ Module::Module (Program& p, ModuleType type) : program (*p.pimpl, false), alloca
 
 Module::Module (Program& p, const Module& toClone)
     : program (*p.pimpl, false),
-      moduleName (toClone.moduleName),
+      shortName (toClone.shortName),
+      fullName (toClone.fullName),
+      originalFullName (toClone.originalFullName),
       annotation (toClone.annotation),
       allocator (p.getAllocator()),
       moduleType (toClone.moduleType)
@@ -45,15 +47,6 @@ Module& Module::createNamespace (Program& p)    { return p.getAllocator().alloca
 bool Module::isProcessor() const        { return moduleType == ModuleType::processorModule; }
 bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
 bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
-
-std::string Module::getNameWithoutRootNamespace() const         { return Program::stripRootNamespaceFromQualifiedPath (moduleName); }
-
-std::string Module::getNameWithoutRootNamespaceOrSpecialisations() const
-{
-    return TokenisedPathString (getNameWithoutRootNamespace())
-            .withRemovedSections ([] (const std::string& section) { return startsWith (section, "_for"); })
-            .fullPath;
-}
 
 std::vector<pool_ref<heart::Function>> Module::getExportedFunctions() const
 {
