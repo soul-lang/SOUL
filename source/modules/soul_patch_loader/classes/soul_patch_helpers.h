@@ -127,12 +127,12 @@ inline Value convertJSONToValue (const juce::var& json,
         {
             for (auto& v : values)
                 if (! structure.hasMemberWithName (v.name.toString().toStdString()))
-                    throwPatchLoadError ("The structure " + quoteName (structure.name)
+                    throwPatchLoadError ("The structure " + quoteName (structure.getName())
                                            + " does not contain a member called " + quoteName (v.name.toString().toStdString()));
 
             ArrayWithPreallocation<Value, 16> members;
 
-            for (auto& m : structure.members)
+            for (auto& m : structure.getMembers())
             {
                 if (auto value = values.getVarPointer (juce::Identifier (m.name.c_str())))
                     members.push_back (createValue (m.type, *value));
