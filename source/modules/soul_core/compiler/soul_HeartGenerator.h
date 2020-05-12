@@ -912,7 +912,7 @@ private:
                 if (constElement->value.isZero()) // no need to assign to elements which are zero
                     continue;
 
-            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, target.getType().getStructRef().members[i].name)
+            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, target.getType().getStructRef().getMemberName (i))
                                        : (heart::Expression&) builder.createFixedArrayElement (target, i),
                               sourceValue);
         }

@@ -70,7 +70,7 @@ struct Value::PackedData
                 return p.endArrayMembers();
             }
 
-            if (type.isStruct() && ! type.getStructRef().members.empty())
+            if (type.isStruct() && ! type.getStructRef().empty())
             {
                 p.beginStructMembers (type);
                 bool isFirst = true;
@@ -266,7 +266,7 @@ struct Value::PackedData
 
         if (type.isStruct())
         {
-            SOUL_ASSERT (values.size() == type.getStructRef().members.size());
+            SOUL_ASSERT (values.size() == type.getStructRef().getNumMembers());
             auto src = values.begin();
 
             for (StructIterator dst (*this); dst.next();)
@@ -362,7 +362,7 @@ struct Value::PackedData
     {
         StructIterator (const PackedData& p)
             : structure (p.type.getStructRef()), member (p.data),
-              numMembers (structure.members.size())
+              numMembers (structure.getNumMembers())
         {}
 
         bool next()
@@ -371,11 +371,11 @@ struct Value::PackedData
                 return false;
 
             member += memberSize;
-            memberSize = structure.members[index++].type.getPackedSizeInBytes();
+            memberSize = structure.getMemberType (index++).getPackedSizeInBytes();
             return true;
         }
 
-        PackedData get() const      { return PackedData (structure.members[index - 1].type, member, memberSize); }
+        PackedData get() const      { return PackedData (structure.getMemberType (index - 1), member, memberSize); }
 
         const Structure& structure;
         uint8_t* member;

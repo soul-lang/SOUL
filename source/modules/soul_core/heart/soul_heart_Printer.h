@@ -324,17 +324,17 @@ private:
 
         void printStruct (const Structure& s) const
         {
-            out << "struct " << s.name << newLine;
+            out << "struct " << s.getName() << newLine;
 
             int maxTypeLen = 0;
 
-            for (auto& m : s.members)
+            for (auto& m : s.getMembers())
                 maxTypeLen = std::max (maxTypeLen, (int) getTypeDescription (m.type).length());
 
             {
                 auto indent = out.createBracedIndent (2);
 
-                for (auto& m : s.members)
+                for (auto& m : s.getMembers())
                     out << padded (getTypeDescription (m.type), maxTypeLen + 2) << m.name << ';' << newLine;
             }
 

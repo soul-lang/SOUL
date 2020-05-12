@@ -1030,7 +1030,7 @@ private:
             if (structure.hasMemberWithName (member))
                 return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, member));
 
-            throwError (Errors::unknownMemberInStruct (member, structure.name));
+            throwError (Errors::unknownMemberInStruct (member, structure.getName()));
         }
 
         if (matchIf (HEARTOperator::openBracket))
@@ -1278,13 +1278,13 @@ private:
             {
                 auto& s = requiredType.getStructRef();
                 ArrayWithPreallocation<Value, 8> memberValues;
-                memberValues.reserve (s.members.size());
+                memberValues.reserve (s.getNumMembers());
 
-                for (size_t i = 0; i < s.members.size(); ++i)
+                for (size_t i = 0; i < s.getNumMembers(); ++i)
                 {
-                    memberValues.push_back (parseConstant (s.members[i].type, true));
+                    memberValues.push_back (parseConstant (s.getMemberType (i), true));
 
-                    if (i == s.members.size() - 1)
+                    if (i == s.getNumMembers() - 1)
                         expect (HEARTOperator::closeBrace);
                     else
                         expect (HEARTOperator::comma);

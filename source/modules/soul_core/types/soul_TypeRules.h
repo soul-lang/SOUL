@@ -272,10 +272,10 @@ struct TypeRules
             auto& destStruct = dest.getStructRef();
             auto& sourceStruct = source.getStructRef();
 
-            if (destStruct.members.size() == sourceStruct.members.size())
+            if (destStruct.getNumMembers() == sourceStruct.getNumMembers())
             {
-                for (size_t i = 0; i < sourceStruct.members.size(); ++i)
-                    if (! canBeConvertedAllowingFixedToUnsizedArrays (destStruct.members[i].type, sourceStruct.members[i].type))
+                for (size_t i = 0; i < sourceStruct.getNumMembers(); ++i)
+                    if (! canBeConvertedAllowingFixedToUnsizedArrays (destStruct.getMemberType (i), sourceStruct.getMemberType (i)))
                         return false;
 
                 return true;

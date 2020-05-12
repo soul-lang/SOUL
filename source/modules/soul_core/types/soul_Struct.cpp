@@ -27,49 +27,49 @@ namespace soul
 
 //==============================================================================
 Structure::Structure (std::string nm, void* backlink)
-  : name (std::move (nm)), backlinkToASTObject (backlink)
+  : backlinkToASTObject (backlink), name (std::move (nm))
 {
     SOUL_ASSERT (! containsChar (name, '#'));
 }
 
 Structure::Member& Structure::getMemberWithName (std::string_view memberName)
 {
-    for (auto& m : members)
-        if (m.name == memberName)
-            return m;
-
-    SOUL_ASSERT_FALSE;
-    return members.front();
+    return members[getMemberIndex (memberName)];
 }
 
 void Structure::addMember (Type type, std::string memberName)
 {
+    memberIndexMap[memberName] = members.size();
     members.push_back ({ std::move (type), std::move (memberName) });
 }
 
+void Structure::removeMember (std::string_view memberName)
+{
+    auto i = getMemberIndex (memberName);
+
+    for (auto& m : memberIndexMap)
+        if (m.second >= i)
+            m.second--;
+
+    memberIndexMap.erase (std::string (memberName));
+    members.erase (members.begin() + i);
+}
+
+
 bool Structure::hasMemberWithName (std::string_view memberName) const
 {
-    for (auto& m : members)
-        if (m.name == memberName)
-            return true;
-
-    return false;
+    return (memberIndexMap.find (std::string (memberName)) != memberIndexMap.end());
 }
 
 size_t Structure::getMemberIndex (std::string_view memberName) const
 {
-    size_t index = 0;
+    auto i = memberIndexMap.find (std::string (memberName));
 
-    for (auto& member : members)
-    {
-        if (member.name == memberName)
-            return index;
-
-        ++index;
-    }
+    if (i != memberIndexMap.end())
+        return i->second;
 
     SOUL_ASSERT_FALSE;
-    return index;
+    return 0;
 }
 
 std::string Structure::addMemberWithUniqueName (Type type, const std::string& memberName)
@@ -101,7 +101,7 @@ static void checkStructRecursion (Structure* structToCheck, const CodeLocation& 
     SOUL_ASSERT (structToCheck != nullptr);
     parentStructs.push_back (structToCheck);
 
-    for (auto& m : structToCheck->members)
+    for (auto& m : structToCheck->getMembers())
     {
         if (m.type.isStruct())
         {
@@ -113,9 +113,9 @@ static void checkStructRecursion (Structure* structToCheck, const CodeLocation& 
                 m.type = {};
 
                 if (s == structToCheck)
-                    location.throwError (Errors::typeContainsItself (structToCheck->name));
+                    location.throwError (Errors::typeContainsItself (structToCheck->getName()));
 
-                location.throwError (Errors::typesReferToEachOther (structToCheck->name, s->name));
+                location.throwError (Errors::typesReferToEachOther (structToCheck->getName(), s->getName()));
             }
 
             checkStructRecursion (s.get(), location, parentStructs);

@@ -220,20 +220,20 @@ struct Program::ProgramImpl  : public RefCountedObject
             if (contains (m->structs, s))
             {
                 if (context != nullptr && m == context)
-                    return s.name;
+                    return s.getName();
 
-                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, s.name));
+                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, s.getName()));
             }
         }
 
         SOUL_ASSERT_FALSE;
-        return s.name;
+        return s.getName();
     }
 
     std::string getTypeDescriptionWithQualificationIfNeeded (pool_ptr<const Module> context, const Type& type) const
     {
         if (context == nullptr)
-            type.getDescription ([] (const Structure& s) { return s.name; });
+            type.getDescription ([] (const Structure& s) { return s.getName(); });
 
         return type.getDescription ([this, context] (const Structure& s) { return getStructNameWithQualificationIfNeeded (context, s); });
     }

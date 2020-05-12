@@ -42,8 +42,18 @@ public:
         ReadWriteCount readWriteCount;
     };
 
-    std::string name;
-    ArrayWithPreallocation<Member, 8> members;
+    bool empty() const                                              { return members.empty(); }
+    const std::string& getName() const                              { return name; }
+    size_t getNumMembers() const                                    { return members.size(); }
+
+    ArrayWithPreallocation<Member, 8>& getMembers()                 { return members; }
+    const ArrayWithPreallocation<Member, 8>& getMembers() const     { return members; }
+
+    const Type&           getMemberType (size_t i) const            { return members[i].type; }
+    const std::string&    getMemberName (size_t i) const            { return members[i].name; }
+    const ReadWriteCount& getMemberReadWriteCount (size_t i) const  { return members[i].readWriteCount; }
+
+    void removeMember (std::string_view memberName);
 
     // Because the Structure class has no dependency on any AST classes,
     // this opaque pointer is a necessary evil for us to provide a way to
@@ -63,6 +73,12 @@ public:
     size_t getPackedSizeInBytes() const;
 
     void checkForRecursiveNestedStructs (const CodeLocation&);
+
+private:
+    ArrayWithPreallocation<Member, 8> members;
+
+    std::string name;
+    std::unordered_map<std::string, size_t> memberIndexMap;
 };
 
 

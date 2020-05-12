@@ -81,7 +81,7 @@ public:
     StructurePtr findStruct (const StringOrIdentifier& name) const noexcept
     {
         for (auto& s : structs)
-            if (name == s->name)
+            if (name == s->getName())
                 return s;
 
         return {};

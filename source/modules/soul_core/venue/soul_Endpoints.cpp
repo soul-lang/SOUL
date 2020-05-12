@@ -34,11 +34,11 @@ bool isMIDIMessageStruct (const Type& type)
 
     auto& s = type.getStructRef();
 
-    return s.name == "Message"
-            && s.members.size() == 1
-            && s.members.front().name == "midiBytes"
-            && s.members.front().type.isPrimitive()
-            && s.members.front().type.isInteger32();
+    return s.getName() == "Message"
+            && s.getNumMembers() == 1
+            && s.getMemberName (0) == "midiBytes"
+            && s.getMemberType (0).isPrimitive()
+            && s.getMemberType (0).isInteger32();
 }
 
 bool isMIDIEventEndpoint (const EndpointDetails& details)
@@ -52,7 +52,7 @@ bool isMIDIEventEndpoint (const EndpointDetails& details)
 Type createMIDIEventEndpointType()
 {
     StructurePtr s (*new Structure ("Message", nullptr));
-    s->members.push_back ({ PrimitiveType::int32, "midiBytes" });
+    s->getMembers().push_back ({ PrimitiveType::int32, "midiBytes" });
     return Type::createStruct (*s);
 }
 

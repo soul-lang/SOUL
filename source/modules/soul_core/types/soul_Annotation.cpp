@@ -165,7 +165,7 @@ static void replaceStringLiterals (Value& v, SubElementPath path, const StringDi
     }
     else if (value.getType().isStruct())
     {
-        for (size_t i = 0; i < value.getType().getStructRef().members.size(); ++i)
+        for (size_t i = 0; i < value.getType().getStructRef().getNumMembers(); ++i)
              replaceStringLiterals (v, path + i, sourceDictionary, destDictionary);
     }
 }

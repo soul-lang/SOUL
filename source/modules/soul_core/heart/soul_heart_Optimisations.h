@@ -111,7 +111,7 @@ struct Optimisations
     {
         for (auto& module : program.getModules())
             for (auto& s : module->structs)
-                for (auto& m : s->members)
+                for (auto& m : s->getMembers())
                     m.readWriteCount.reset();
 
         for (auto& module : program.getModules())
@@ -134,8 +134,8 @@ struct Optimisations
             {
                 ArrayWithPreallocation<size_t, 4> unusedMembers;
 
-                for (size_t i = 0; i < s->members.size(); ++i)
-                    if (s->members[i].readWriteCount.numReads == 0)
+                for (size_t i = 0; i < s->getNumMembers(); ++i)
+                    if (s->getMemberReadWriteCount (i).numReads == 0)
                         unusedMembers.push_back (i);
 
                 if (! unusedMembers.empty())
@@ -375,7 +375,7 @@ private:
             {
                 type.getStructRef().activeUseFlag = true;
 
-                for (auto& m : type.getStructRef().members)
+                for (auto& m : type.getStructRef().getMembers())
                     recursivelyFlagStructUse (m.type);
             }
         }

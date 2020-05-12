@@ -153,11 +153,11 @@ bool Type::isEqual (const Type& other, int flags) const
         auto& s1 = *structure;
         auto& s2 = *other.structure;
 
-        if (s1.members.size() != s2.members.size())
+        if (s1.getNumMembers() != s2.getNumMembers())
             return false;
 
-        for (size_t i = 0; i < s1.members.size(); ++i)
-            if (! s1.members[i].type.isEqual (s2.members[i].type, flags))
+        for (size_t i = 0; i < s1.getNumMembers(); ++i)
+            if (! s1.getMemberType (i).isEqual (s2.getMemberType (i), flags))
                 return false;
 
         return true;
@@ -310,7 +310,7 @@ Type::ArraySize Type::getArrayOrVectorSize() const
 Type::ArraySize Type::getNumAggregateElements() const
 {
     SOUL_ASSERT (isFixedSizeAggregate());
-    return isStruct() ? getStructRef().members.size() : getArrayOrVectorSize();
+    return isStruct() ? getStructRef().getNumMembers() : getArrayOrVectorSize();
 }
 
 Type::ArraySize Type::getArrayElementVectorSize() const
@@ -394,7 +394,7 @@ bool Type::usesStruct (const Structure& s) const
         if (structure == s)
             return true;
 
-        for (auto& m : structure->members)
+        for (auto& m : structure->getMembers())
             if (m.type.usesStruct (s))
                 return true;
     }
@@ -456,7 +456,7 @@ std::string Type::getDescription (const std::function<std::string(const Structur
 
 std::string Type::getDescription() const
 {
-    return getDescription ([] (const Structure& s) { return s.name; });
+    return getDescription ([] (const Structure& s) { return s.getName(); });
 }
 
 std::string Type::getShortIdentifierDescription() const
@@ -468,7 +468,7 @@ std::string Type::getShortIdentifierDescription() const
     if (isArray())          return "arr_" + std::to_string (getArraySize()) + "_" + getArrayElementType().getShortIdentifierDescription();
     if (isWrapped())        return "wrap_" + std::to_string (getBoundedIntLimit());
     if (isClamped())        return "clamp_" + std::to_string (getBoundedIntLimit());
-    if (isStruct())         return "struct_" + getStructRef().name;
+    if (isStruct())         return "struct_" + getStructRef().getName();
     if (isStringLiteral())  return "string";
 
     return primitiveType.getShortIdentifierDescription();
@@ -519,7 +519,7 @@ SubElementPath::TypeAndOffset SubElementPath::getElement (const Type& parentType
 
         if (e.type.isStruct())
         {
-            auto& members = e.type.getStructRef().members;
+            auto& members = e.type.getStructRef().getMembers();
             SOUL_ASSERT (index < members.size());
             e.type = members[index].type;
 

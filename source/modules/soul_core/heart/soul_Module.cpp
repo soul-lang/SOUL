@@ -123,7 +123,7 @@ Structure& Module::addStruct (std::string name)
 
 Structure& Module::addStructCopy (Structure& s)
 {
-    SOUL_ASSERT (findStruct (s.name) == nullptr); // name clash!
+    SOUL_ASSERT (findStruct (s.getName()) == nullptr); // name clash!
     structs.push_back (*new Structure (s));
     return *structs.back();
 }

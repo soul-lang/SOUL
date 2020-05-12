@@ -143,9 +143,9 @@ Value convertAudioDataToType (const Type& requestedType, const ConvertFixedToUns
 
         auto& s = requestedType.getStructRef();
         std::vector<Value> memberValues;
-        memberValues.reserve (s.members.size());
+        memberValues.reserve (s.getNumMembers());
 
-        for (auto& m : s.members)
+        for (auto& m : s.getMembers())
         {
             if (isSampleRateField (m))
             {

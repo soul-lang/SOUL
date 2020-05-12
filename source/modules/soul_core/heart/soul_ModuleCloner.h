@@ -301,7 +301,7 @@ struct ModuleCloner
         auto s = structMappings[&old];
         SOUL_ASSERT (s != nullptr);
 
-        for (auto& m : s->members)
+        for (auto& m : s->getMembers())
             m.type = cloneType (m.type);
     }
 
