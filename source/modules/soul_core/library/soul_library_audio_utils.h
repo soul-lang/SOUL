@@ -45,7 +45,7 @@ namespace soul
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
     /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-EDO tuning. */
     float32 noteNumberToFrequency (float32 note)        { return 440.0f * pow (2.0f, (note - 69.0f) * (1.0f / 12.0f)); }
-    /** Converts a frequency in Hz to an equivalent MIDI note number. */
+    /** Converts a frequency in Hz to an equivalent MIDI note number using A440 12-EDO tuning. */
     float32 frequencyToNoteNumber (float32 frequency)   { return 69.0f + (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)); }
 
     /** Returns the ratio by which a sample's playback must be sped-up in order to map
