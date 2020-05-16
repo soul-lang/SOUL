@@ -35,9 +35,15 @@ namespace soul
     float32 gainTodB (float32 gain)       { return gain > 0 ? log10 (gain) * 20.0f : -100.0f; }
     float64 gainTodB (float64 gain)       { return gain > 0 ? log10 (gain) * 20.0  : -100.0; }
 
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using a custom tuning. */
+    float32 noteNumberToFrequency (int note, int rootNote, float32 rootFrequency, float32[] scale)
+    {
+        note -= rootNote + 1;
+        return scale[note] * rootFrequency * pow(scale[-1], float32((note-wrap(note, scale.size)) / scale.size));
+    }
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-EDO tuning. */
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-EDO tuning. */
     float32 noteNumberToFrequency (float32 note)        { return 440.0f * pow (2.0f, (note - 69.0f) * (1.0f / 12.0f)); }
     /** Converts a frequency in Hz to an equivalent MIDI note number. */
     float32 frequencyToNoteNumber (float32 frequency)   { return 69.0f + (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)); }
