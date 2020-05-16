@@ -41,11 +41,11 @@ namespace soul
         note -= rootNote + 1;
         return scale[note] * rootFrequency * pow(scale[-1], float32((note-wrap(note, scale.size)) / scale.size));
     }
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-EDO tuning. */
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-TET tuning. */
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-EDO tuning. */
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-TET tuning. */
     float32 noteNumberToFrequency (float32 note)        { return 440.0f * pow (2.0f, (note - 69.0f) * (1.0f / 12.0f)); }
-    /** Converts a frequency in Hz to an equivalent MIDI note number using A440 12-EDO tuning. */
+    /** Converts a frequency in Hz to an equivalent MIDI note number using A440 12-TET tuning. */
     float32 frequencyToNoteNumber (float32 frequency)   { return 69.0f + (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)); }
 
     /** Returns the ratio by which a sample's playback must be sped-up in order to map
