@@ -445,6 +445,7 @@ private:
         auto src = readProcessorAndChannel();
         c.sourceProcessor = src.processor;
         c.sourceEndpoint = src.endpoint;
+        c.sourceEndpointIndex = src.endpointIndex;
         expect (HEARTOperator::rightArrow);
 
         if (matchIf (HEARTOperator::openBracket))
@@ -464,6 +465,8 @@ private:
         auto dst = readProcessorAndChannel();
         c.destProcessor = dst.processor;
         c.destEndpoint = dst.endpoint;
+        c.destEndpointIndex = dst.endpointIndex;
+
         expectSemicolon();
     }
 
@@ -471,19 +474,33 @@ private:
     {
         pool_ptr<heart::ProcessorInstance> processor;
         std::string endpoint;
+        int64_t endpointIndex = -1;
     };
 
     ProcessorAndChannel readProcessorAndChannel()
     {
+        ProcessorAndChannel processorAndChannel;
+
         auto name = readQualifiedIdentifier();
 
         if (matchIf (HEARTOperator::dot))
         {
-            auto channel = readIdentifier();
-            return { findProcessorInstance (name), channel };
+            processorAndChannel.processor = findProcessorInstance (name);
+            processorAndChannel.endpoint   = readIdentifier();
+        }
+        else
+        {
+            processorAndChannel.endpoint = name;
         }
 
-        return { nullptr, name };
+        if (matchIf (HEARTOperator::openBracket))
+        {
+            processorAndChannel.endpointIndex = parseInt32();
+
+            expect (HEARTOperator::closeBracket);
+        }
+
+        return processorAndChannel;
     }
 
     pool_ptr<heart::ProcessorInstance> findProcessorInstance (const std::string& instanceName)

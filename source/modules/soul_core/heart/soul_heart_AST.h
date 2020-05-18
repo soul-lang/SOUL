@@ -257,6 +257,7 @@ struct heart
         InterpolationType interpolationType = InterpolationType::none;
         pool_ptr<ProcessorInstance> sourceProcessor, destProcessor;
         std::string sourceEndpoint, destEndpoint;
+        int64_t sourceEndpointIndex = -1, destEndpointIndex = -1;
         int64_t delayLength = 0;
     };
 

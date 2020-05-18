@@ -84,6 +84,8 @@ namespace soul
     X(unresolvedType,                       "Cannot find type $Q0$") \
     X(cannotFindInput,                      "Cannot find input $Q0$") \
     X(cannotFindOutput,                     "Cannot find output $Q0$") \
+    X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
+    X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \
     X(unknownMemberInStruct,                "No member called $Q0$ found in struct $Q1$") \
     X(notAProcessorOrGraph,                 "$Q0$ is not a processor or graph") \
@@ -129,6 +131,7 @@ namespace soul
     X(delayLineMustHaveIntLength,           "A delay line length must be an integer") \
     X(delayLineTooShort,                    "A delay line length must be greater than zero") \
     X(delayLineTooLong,                     "Illegal delay line length") \
+    X(endpointIndexMustBeConstant,          "Endpoint index must be a constant") \
     X(duplicateFunction,                    "A function with matching parameters has already been defined") \
     X(duplicateProcessor,                   "A processor with the name $Q0$ has already been declared") \
     X(processorNeedsAnOutput,               "A processor must declare at least one output") \

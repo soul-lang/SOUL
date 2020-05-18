@@ -69,7 +69,7 @@ struct heart::Checker
                     if (conn->sourceProcessor != nullptr)
                     {
                         sourceOutput = program.getModuleWithName (conn->sourceProcessor->sourceName)->findOutput (conn->sourceEndpoint);
-                        sourceInstanceArraySize = conn->sourceProcessor->arraySize;
+                        sourceInstanceArraySize = conn->sourceEndpointIndex == -1 ? 1 : conn->sourceProcessor->arraySize;
                         sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
                     }
                     else
@@ -80,7 +80,7 @@ struct heart::Checker
                     if (conn->destProcessor != nullptr)
                     {
                         destInput = program.getModuleWithName (conn->destProcessor->sourceName)->findInput (conn->destEndpoint);
-                        destInstanceArraySize = conn->destProcessor->arraySize;
+                        destInstanceArraySize = conn->destEndpointIndex == -1 ? 1 : conn->destProcessor->arraySize;
                         destDescription = conn->destProcessor->instanceName + "." + destDescription;
                     }
                     else
@@ -91,13 +91,21 @@ struct heart::Checker
                     if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindOutput (sourceDescription));
                     if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindInput (destDescription));
 
+                    if (conn->sourceEndpointIndex != -1 && sourceOutput->arraySize <= conn->sourceEndpointIndex)
+                        conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());
+
+                    if (conn->destEndpointIndex != -1 && destInput->arraySize <= conn->destEndpointIndex)
+                        conn->location.throwError (Errors::destinationEndpointIndexOutOfRange());
+
                     if (sourceOutput->kind != destInput->kind)
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointKindName (sourceOutput->kind),
                                                                           destDescription, getEndpointKindName (destInput->kind)));
 
                     if (! areConnectionTypesCompatible (sourceOutput->isEventEndpoint(),
-                                                        *sourceOutput, sourceInstanceArraySize,
-                                                        *destInput, destInstanceArraySize))
+                                                        *sourceOutput,
+                                                        sourceInstanceArraySize,
+                                                        *destInput,
+                                                        destInstanceArraySize))
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getTypesDescription(),
                                                                           destDescription, destInput->getTypesDescription()));
                 }
@@ -134,8 +142,10 @@ struct heart::Checker
         if (sourceSampleType.isEqual (destSampleType, Type::ignoreVectorSize1))
             return true;
 
-        if (sourceSampleType.isArray()
-             && sourceSampleType.getElementType().isEqual (destSampleType, Type::ignoreVectorSize1))
+        if (sourceSampleType.isArray() && sourceSampleType.getElementType().isEqual (destSampleType, Type::ignoreVectorSize1))
+            return true;
+
+        if (destSampleType.isArray() && destSampleType.getElementType().isEqual (sourceSampleType, Type::ignoreVectorSize1))
             return true;
 
         return false;

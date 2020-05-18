@@ -228,25 +228,36 @@ private:
         auto& c = module.allocate<heart::Connection> (conn.context.location);
         module.connections.push_back (c);
 
-        c.sourceProcessor   = getOrAddProcessorInstance (*conn.source.processorName);
-        c.destProcessor     = getOrAddProcessorInstance (*conn.dest.processorName);
-        c.sourceEndpoint    = conn.source.endpoint;
-        c.destEndpoint      = conn.dest.endpoint;
-        c.interpolationType = conn.interpolationType;
-        c.delayLength       = getDelayLength (conn.delayLength);
+        c.sourceProcessor     = getOrAddProcessorInstance (*conn.source.processorName);
+        c.destProcessor       = getOrAddProcessorInstance (*conn.dest.processorName);
+        c.sourceEndpoint      = conn.source.endpoint;
+        c.sourceEndpointIndex = getEndpointIndex (conn.source.endpointIndex);
+        c.destEndpoint        = conn.dest.endpoint;
+        c.destEndpointIndex   = getEndpointIndex (conn.dest.endpointIndex);
+        c.interpolationType   = conn.interpolationType;
+        c.delayLength         = getDelayLength (conn.delayLength);
+    }
+
+    static int64_t getEndpointIndex (pool_ptr<AST::Expression> index)
+    {
+        if (index == nullptr)
+            return -1;
+
+        if (auto c = index->getAsConstant())
+            return c->value.getAsInt64();
+
+        index->context.throwError (Errors::endpointIndexMustBeConstant());
     }
 
     static int64_t getDelayLength (pool_ptr<AST::Expression> delay)
     {
-        if (delay != nullptr)
-        {
-            if (auto c = delay->getAsConstant())
-                return SanityCheckPass::checkDelayLineLength (c->context, c->value);
+        if (delay == nullptr)
+            return 0;
 
-            delay->context.throwError (Errors::delayLineMustBeConstant());
-        }
+        if (auto c = delay->getAsConstant())
+            return SanityCheckPass::checkDelayLineLength (c->context, c->value);
 
-        return 0;
+        delay->context.throwError (Errors::delayLineMustBeConstant());
     }
 
     static uint32_t getProcessorArraySize (pool_ptr<AST::Expression> size)

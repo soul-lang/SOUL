@@ -178,23 +178,26 @@ private:
                     << getInterpolationDescription (c->interpolationType)
                     << ' ';
 
-                printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
+                printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint, c->sourceEndpointIndex);
 
                 if (c->delayLength > 0)
                     out << " -> [" << c->delayLength << ']';
 
                 out << " -> ";
-                printProcessorAndChannel (c->destProcessor, c->destEndpoint);
+                printProcessorAndChannel (c->destProcessor, c->destEndpoint, c->destEndpointIndex);
                 out << ';' << newLine;
             }
         }
 
-        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel)
+        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel, int64_t index)
         {
             if (m != nullptr)
                 out << m->instanceName << ".";
 
             out << channel;
+
+            if (index != -1)
+                out << "[" << index << "]";
         }
 
         void printStateVariables()
