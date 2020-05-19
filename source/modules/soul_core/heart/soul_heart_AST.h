@@ -127,7 +127,7 @@ struct heart
         uint32_t index = 0;
         EndpointKind kind;
         std::vector<Type> dataTypes;
-        uint32_t arraySize = 1;
+        std::optional<uint32_t> arraySize;
         Annotation annotation;
 
         bool isEventEndpoint() const      { return isEvent (kind); }
@@ -211,7 +211,7 @@ struct heart
     private:
         Type getSampleArrayType (Type t) const
         {
-            return arraySize == 1 ? t : t.createArray (arraySize);
+            return arraySize.has_value() ? t.createArray (*arraySize) : t;
         }
     };
 

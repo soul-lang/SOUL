@@ -260,7 +260,7 @@ private:
         delay->context.throwError (Errors::delayLineMustBeConstant());
     }
 
-    static uint32_t getProcessorArraySize (pool_ptr<AST::Expression> size)
+    static std::optional<uint32_t> getProcessorArraySize (pool_ptr<AST::Expression> size)
     {
         if (size != nullptr)
         {
@@ -282,7 +282,7 @@ private:
             size->context.throwError (Errors::expectedConstant());
         }
 
-        return 1;
+        return {};
     }
 
     pool_ptr<heart::ProcessorInstance> getOrAddProcessorInstance (const AST::QualifiedIdentifier& processorName)
@@ -305,7 +305,7 @@ private:
                 auto& p = module.allocate<heart::ProcessorInstance>();
                 p.instanceName = processorName.path.toString();
                 p.sourceName = targetProcessor.getFullyQualifiedPath().toString();
-                p.arraySize = getProcessorArraySize (i->arraySize);
+                p.arraySize = getProcessorArraySize (i->arraySize).value_or (1);
 
                 if (i->clockMultiplierRatio != nullptr)
                 {
@@ -1086,7 +1086,7 @@ private:
                             auto& index = evaluateAsExpression (*arraySubscript->startIndex);
                             auto& context = arraySubscript->startIndex->context;
                             auto constIndex = index.getAsConstant();
-                            auto arraySize = outputRef->output->generatedOutput->arraySize;
+                            auto arraySize = outputRef->output->generatedOutput->arraySize.value_or (1);
 
                             if (constIndex.isValid())
                             {

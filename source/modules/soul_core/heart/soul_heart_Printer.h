@@ -116,10 +116,10 @@ private:
             out << annotation.toHEART();
         }
 
-        static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
+        static std::string nameWithArray (const soul::Identifier& name, const std::optional<uint32_t>& arraySize)
         {
-            if (arraySize > 1)
-                return name.toString() + '[' + std::to_string (arraySize) + ']';
+            if (arraySize.has_value())
+                return name.toString() + '[' + std::to_string (*arraySize) + ']';
 
             return name.toString();
         }

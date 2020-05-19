@@ -39,7 +39,7 @@ struct heart::Checker
 
         for (auto& input : mainProcessor.inputs)
         {
-            if (input->arraySize != 1)
+            if (input->arraySize.has_value())
                 input->location.throwError (Errors::notYetImplemented ("top-level arrays of inputs"));
 
             if (input->dataTypes.size() != 1)
@@ -48,7 +48,7 @@ struct heart::Checker
 
         for (auto& output : mainProcessor.outputs)
         {
-            if (output->arraySize != 1)
+            if (output->arraySize.has_value())
                 output->location.throwError (Errors::notYetImplemented ("top-level arrays of outputs"));
         }
     }
@@ -120,8 +120,8 @@ struct heart::Checker
         // Different rules for different connection types
         if (isEvent)
         {
-            auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize;
-            auto destSize = destInstanceArraySize * destInput.arraySize;
+            auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize.value_or (1);
+            auto destSize = destInstanceArraySize * destInput.arraySize.value_or (1);
 
             // Sizes do not match - 1->1, 1->N, N->1 and N->N are only supported sizes
             if (sourceSize != 1 && destSize != 1 && sourceSize != destSize)
