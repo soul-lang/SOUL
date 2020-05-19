@@ -189,15 +189,15 @@ private:
             }
         }
 
-        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel, int64_t index)
+        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel, const std::optional<size_t>& index)
         {
             if (m != nullptr)
                 out << m->instanceName << ".";
 
             out << channel;
 
-            if (index != -1)
-                out << "[" << index << "]";
+            if (index)
+                out << "[" << index.value() << "]";
         }
 
         void printStateVariables()

@@ -474,7 +474,7 @@ private:
     {
         pool_ptr<heart::ProcessorInstance> processor;
         std::string endpoint;
-        int64_t endpointIndex = -1;
+        std::optional<size_t> endpointIndex;
     };
 
     ProcessorAndChannel readProcessorAndChannel()

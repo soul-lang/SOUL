@@ -238,10 +238,10 @@ private:
         c.delayLength         = getDelayLength (conn.delayLength);
     }
 
-    static int64_t getEndpointIndex (pool_ptr<AST::Expression> index)
+    static std::optional<size_t> getEndpointIndex (pool_ptr<AST::Expression> index)
     {
         if (index == nullptr)
-            return -1;
+            return {};
 
         if (auto c = index->getAsConstant())
             return c->value.getAsInt64();

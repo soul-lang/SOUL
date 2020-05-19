@@ -69,7 +69,7 @@ struct heart::Checker
                     if (conn->sourceProcessor != nullptr)
                     {
                         sourceOutput = program.getModuleWithName (conn->sourceProcessor->sourceName)->findOutput (conn->sourceEndpoint);
-                        sourceInstanceArraySize = conn->sourceEndpointIndex == -1 ? 1 : conn->sourceProcessor->arraySize;
+                        sourceInstanceArraySize = conn->sourceEndpointIndex.has_value() ? conn->sourceProcessor->arraySize : 1;
                         sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
                     }
                     else
@@ -80,7 +80,7 @@ struct heart::Checker
                     if (conn->destProcessor != nullptr)
                     {
                         destInput = program.getModuleWithName (conn->destProcessor->sourceName)->findInput (conn->destEndpoint);
-                        destInstanceArraySize = conn->destEndpointIndex == -1 ? 1 : conn->destProcessor->arraySize;
+                        destInstanceArraySize = conn->destEndpointIndex.has_value() ? conn->destProcessor->arraySize : 1;
                         destDescription = conn->destProcessor->instanceName + "." + destDescription;
                     }
                     else
@@ -91,10 +91,10 @@ struct heart::Checker
                     if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindOutput (sourceDescription));
                     if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindInput (destDescription));
 
-                    if (conn->sourceEndpointIndex != -1 && sourceOutput->arraySize <= conn->sourceEndpointIndex)
+                    if (conn->sourceEndpointIndex && sourceOutput->arraySize <= conn->sourceEndpointIndex)
                         conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());
 
-                    if (conn->destEndpointIndex != -1 && destInput->arraySize <= conn->destEndpointIndex)
+                    if (conn->destEndpointIndex && destInput->arraySize <= conn->destEndpointIndex)
                         conn->location.throwError (Errors::destinationEndpointIndexOutOfRange());
 
                     if (sourceOutput->kind != destInput->kind)
