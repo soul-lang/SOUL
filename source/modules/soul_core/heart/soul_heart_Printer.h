@@ -197,7 +197,7 @@ private:
             out << channel;
 
             if (index)
-                out << "[" << index.value() << "]";
+                out << "[" << *index << "]";
         }
 
         void printStateVariables()
