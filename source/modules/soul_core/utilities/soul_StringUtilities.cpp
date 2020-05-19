@@ -643,4 +643,11 @@ std::string toCppStringLiteral (const std::string& text,
     return out.str();
 }
 
+std::string toJSONString (const std::string& text)
+{
+    UTF8Reader reader (text.c_str());
+
+    return reader.createEscapedVersion();
+}
+
 } // namespace soul
