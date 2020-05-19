@@ -109,6 +109,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
         if (replacementPlayer != nullptr)
         {
+            updateLastState();
             applyLastStateToPlayer (*replacementPlayer);
             player = std::move (replacementPlayer);
             refreshParameterList();
