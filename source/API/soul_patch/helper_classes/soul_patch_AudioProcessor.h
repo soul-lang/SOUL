@@ -342,7 +342,9 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                 midi.clear();
             }
 
-            jassert (player->render (rc) == PatchPlayer::RenderResult::ok);
+            auto result = player->render (rc);
+            juce::ignoreUnused (result);
+            jassert (result == PatchPlayer::RenderResult::ok);
 
             if (rc.numMIDIMessagesOut != 0)
             {
