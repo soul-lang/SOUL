@@ -173,6 +173,12 @@ public:
     */
     virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
 
+    /** Retrieves the current value of the value output.
+        After a successful call to advance(), this may be called to get the value of the given output.
+        A nullptr return value indicates an error.
+    */
+    virtual const Value* getOutputValue (EndpointHandle) = 0;
+
     /** Retrieves the last block of events which were emitted by an event output.
         After a successful call to advance(), this may be called to iterate the list of events
         which the program emitted on the given endpoint. The callback function provides the
