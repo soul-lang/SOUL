@@ -588,12 +588,18 @@ private:
             expect (Operator::closeBracket);
         }
 
-        if (result.processorIndex)
-            throwError (Errors::notYetImplemented ("Processor indexes"));
-
         if (matchIf (Operator::dot))
         {
+            if (result.processorIndex)
+                throwError (Errors::notYetImplemented ("Processor indexes"));
+            
             result.endpoint = parseIdentifier();
+
+            if (matchIf (Operator::openBracket))
+            {
+                result.endpointIndex = parseExpression();
+                expect (Operator::closeBracket);
+            }
         }
         else
         {
@@ -601,13 +607,10 @@ private:
                 result.processorName->context.throwError (Errors::expectedUnqualifiedName());
 
             result.endpoint = result.processorName->path.getFirstPart();
-            result.processorName->path = {};
-        }
+            result.endpointIndex = result.processorIndex;
 
-        if (matchIf (Operator::openBracket))
-        {
-            result.endpointIndex = parseExpression();
-            expect (Operator::closeBracket);
+            result.processorName->path = {};
+            result.processorIndex = {};
         }
 
         return result;
