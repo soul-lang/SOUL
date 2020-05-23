@@ -214,7 +214,7 @@ float getAnArrayElement (float[] a, int index)      { return a.at (index); }
 To avoid confusion with fixed-size array indexes needing to use the `wrap` or `clamp` types, the `array[index]` syntax is not allowed on dynamic slices. Instead, you can use the following accessor methods:
 
 `array.at (index)`  - this casts the index argument to an integer (rounding down if it's a floating point value), wraps it if it's out-of-range, and returns the element at that index.
-`array.read (index)` - (essentially a synonum for `at`)
+`array.read (index)` - (essentially a synonym for `at`)
 `array.readLinearInterpolated (index)` - returns the linearly-interpolated value at the fractional position (after wrapping it if it's out-of-bounds). This us only available for arrays of floating-point types.
 
 Other interpolators such as LaGrange, Catmull-Rom, etc, may be added in future releases.
@@ -334,7 +334,7 @@ Where the runtime is providing an audio sample, you can add the annotation:
 external float[] audioFileData [[ resample: 48000 ]];
 ```
 
-...which will tell the runtime to pre-process the audio file (or buffer) provided so that it is resampled to the given rate. The runtime will use a high-queality interpolator and there'll be no run-time overhead once the code is running.
+...which will tell the runtime to pre-process the audio file (or buffer) provided so that it is resampled to the given rate. The runtime will use a high-quality interpolator and there'll be no run-time overhead once the code is running.
 
 You can also use the annotation 'sourceChannel' to pull out a specific channel from the file:
 

@@ -56,7 +56,7 @@ We expect SOUL to be valuable to audio developers at all levels - from absolute 
 
 ### Who is the target audience for the SOUL platform architecture?
 
-At the high-end, SOUL will allow musicians to connect external accelarator devices to work on larger, more power-hungry sessions with much lower latency, while freeing up their laptop CPUs to handle the UI for their tools.
+At the high-end, SOUL will allow musicians to connect external accelerator devices to work on larger, more power-hungry sessions with much lower latency, while freeing up their laptop CPUs to handle the UI for their tools.
 
 At a more general consumer level, SOUL can improve power and battery life for mobile devices that support it with dedicated hardware. And by providing a flexible platform for implementing audio codecs, it could be a more future-proof replacement for silicon which is dedicated to performing decompression of specific common codec formats.
 
@@ -150,7 +150,7 @@ The main concepts involved in this API are **Performers** and **Venues**.
 
 - A *Performer* is an implementation of a JIT compiler which can be given a SOUL program and asked to synchronously render blocks of data.
 
-- A *Venue* is an independant device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely and asynchronously.
+- A *Venue* is an independent device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely and asynchronously.
 
 A developer can build a SOUL host which either compiles and runs SOUL synchronously inside its own process using a *performer*, or which dispatches the code to run remotely (and at low latency) in a suitable *venue*. Either way, using these APIs means that the programs are not limited to simple audio/MIDI i/o like the SOUL Patch format, and can have input and output channels containing any kind of data stream.
 

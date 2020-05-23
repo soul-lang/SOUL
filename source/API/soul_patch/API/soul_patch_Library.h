@@ -25,7 +25,7 @@ static constexpr int currentLibraryAPIVersion = 0x1005;
 /**
     Dynamically opens and connects to the shared library containing the patch loader.
     You should only create a single instance of this class. and use it in an RAII
-    style, making sure it lives longer than all the objects that orginate from it.
+    style, making sure it lives longer than all the objects that originate from it.
 */
 struct SOULPatchLibrary
 {
