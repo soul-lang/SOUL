@@ -1,0 +1,25 @@
+{
+    "name": "heart",
+    "displayName": "heart",
+    "description": "HEART language support",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.32.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "heart",
+            "aliases": ["HEART", "heart"],
+            "extensions": [".heart",".hearttest"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "heart",
+            "scopeName": "source.heart",
+            "path": "./syntaxes/heart.tmLanguage.json"
+        }]
+    }
+}
