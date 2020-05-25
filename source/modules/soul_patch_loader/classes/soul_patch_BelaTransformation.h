@@ -21,33 +21,28 @@
 
 namespace soul::patch
 {
-    class BelaWrapper
+    struct BelaWrapper
     {
-    public:
-
         static std::string build (const soul::Program& program)
         {
             BelaWrapper wrapper (program);
-
             return wrapper.buildWrapper();
         }
 
     private:
-        BelaWrapper (const soul::Program& program_) : program (program_)
-        {
-        }
+        BelaWrapper (const soul::Program& p) : program (p) {}
 
         std::string buildWrapper()
         {
-            auto mainProcessor = program.getMainProcessor();
+            auto& mainProcessor = program.getMainProcessorOrThrowError();
 
-            parameters << "wrappedModule = " << mainProcessor->getNameWithoutRootNamespace() << ";" << newLine;
+            parameters << "wrappedModule = " << Program::stripRootNamespaceFromQualifiedPath (mainProcessor.fullName) << ";" << newLine;
 
             uint32_t nextOutputChannel = 0;
 
             const bool useBelaParameters = useBelaParameterNumbers();
 
-            for (auto& input : mainProcessor->inputs)
+            for (auto& input : mainProcessor.inputs)
             {
                 auto& name = input->name.toString();
                 auto minValue = input->annotation.getDouble ("min", 0.0);
@@ -82,7 +77,7 @@ namespace soul::patch
                 }
             }
 
-            for (auto& output : mainProcessor->outputs)
+            for (auto& output : mainProcessor.outputs)
             {
                 auto& name      = output->name.toString();
                 auto typeString = getSampleTypeString (output);
@@ -162,7 +157,7 @@ namespace soul::patch
             auto type = input.getSingleDataType();
 
             if (type.isStruct())
-                return program.getStructNameWithQualificationIfNeeded (*program.getMainProcessor(), *type.getStruct());
+                return program.getStructNameWithQualificationIfNeeded (program.getMainProcessorOrThrowError(), *type.getStruct());
 
             return type.getDescription();
         }
@@ -174,9 +169,9 @@ namespace soul::patch
 
         bool useBelaParameterNumbers()
         {
-            auto mainProcessor = program.getMainProcessor();
+            auto& mainProcessor = program.getMainProcessorOrThrowError();
 
-            for (auto& input : mainProcessor->inputs)
+            for (auto& input : mainProcessor.inputs)
                 if (input->annotation.hasValue ("belaControl"))
                     return true;
 

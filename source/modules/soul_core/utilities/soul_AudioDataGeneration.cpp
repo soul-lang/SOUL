@@ -117,7 +117,7 @@ namespace WaveGenerators
     };
 }
 
-Value convertAudioDataToType (const Type& requestedType, ConstantTable& constantTable,
+Value convertAudioDataToType (const Type& requestedType, const ConvertFixedToUnsizedArray& convertToUnsizedArray,
                               DiscreteChannelSet<float> data, double sampleRate)
 {
     if (requestedType.isUnsizedArray())
@@ -128,7 +128,7 @@ Value convertAudioDataToType (const Type& requestedType, ConstantTable& constant
         {
             auto content = Value::zeroInitialiser (elementType.createArray (data.numFrames));
             copyChannelSetToFit (content.getAsChannelSet32(), data);
-            return Value::createUnsizedArray (elementType, constantTable.getHandleForValue (content));
+            return convertToUnsizedArray (content);
         }
     }
 
@@ -143,9 +143,9 @@ Value convertAudioDataToType (const Type& requestedType, ConstantTable& constant
 
         auto& s = requestedType.getStructRef();
         std::vector<Value> memberValues;
-        memberValues.reserve (s.members.size());
+        memberValues.reserve (s.getNumMembers());
 
-        for (auto& m : s.members)
+        for (auto& m : s.getMembers())
         {
             if (isSampleRateField (m))
             {
@@ -153,7 +153,7 @@ Value convertAudioDataToType (const Type& requestedType, ConstantTable& constant
             }
             else if (m.type.isUnsizedArray())
             {
-                auto dataValue = convertAudioDataToType (m.type, constantTable, data, sampleRate);
+                auto dataValue = convertAudioDataToType (m.type, convertToUnsizedArray, data, sampleRate);
                 memberValues.push_back (std::move (dataValue));
             }
             else
@@ -187,13 +187,19 @@ Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
             generator.advance();
         }
 
+        auto convertToUnsizedArray = [&] (Value v)
+        {
+            auto elementType = v.getType().getElementType();
+            return Value::createUnsizedArray (elementType, constantTable.getHandleForValue (std::move (v)));
+        };
+
         if (oversamplingFactor == 1)
-            return convertAudioDataToType (requiredType, constantTable, data.channelSet, sampleRate);
+            return convertAudioDataToType (requiredType, convertToUnsizedArray, data.channelSet, sampleRate);
 
         // Resample to the right size
         AllocatedChannelSet<DiscreteChannelSet<float>> resampledData (1, (uint32_t) (numFrames));
         resampleToFit (resampledData.channelSet, data.channelSet);
-        return convertAudioDataToType (requiredType, constantTable, resampledData, sampleRate);
+        return convertAudioDataToType (requiredType, convertToUnsizedArray, resampledData, sampleRate);
     }
 
     return {};

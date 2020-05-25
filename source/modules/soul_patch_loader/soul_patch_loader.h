@@ -29,7 +29,7 @@
   website:          https://soul.dev/
   license:          ISC
 
-  dependencies:     soul_core, soul_utilities, juce_audio_formats
+  dependencies:     soul_core, juce_audio_formats
 
  END_JUCE_MODULE_DECLARATION
 *******************************************************************************/
@@ -38,7 +38,6 @@
 #define SOUL_PATCH_LOADER_H_INCLUDED 1
 
 #include <soul_core/soul_core.h>
-#include <soul_utilities/soul_utilities.h>
 
 #include <juce_audio_formats/juce_audio_formats.h>
 

@@ -216,7 +216,7 @@ private:
                              && ns2->getSpecialisationParameters().empty())
                         {
                             mergeNamespaces (*ns1, *ns2);
-                            ns.subModules.erase (ns.subModules.begin() + (ssize_t) j);
+                            ns.subModules.erase (getIteratorForIndex (ns.subModules, j));
                             return true;
                         }
                     }

@@ -25,72 +25,60 @@ namespace soul
 /**
     A set of named properties that are passed into the linker and performers.
 */
-struct LinkOptions  : public Annotation
+struct LinkOptions
 {
-    LinkOptions (SampleRateAndBlockSize rateAndBlockSize)   { setSampleRateAndBlockSize (rateAndBlockSize); }
-    LinkOptions (double sampleRate, uint32_t blockSize) : LinkOptions (SampleRateAndBlockSize (sampleRate, blockSize)) {}
+    /** Create a new LinkOptions object. The only non-optional property is sample rate, so it must be supplied here. */
+    LinkOptions (double sampleRateToUse)                    { setSampleRate (sampleRateToUse); }
 
     //==============================================================================
-    static constexpr const char* getOptimisationLevelKey()  { return "optimisation_level"; }
-    void setOptimisationLevel (int level)                   { set (getOptimisationLevelKey(), (int32_t) level); }
-    int getOptimisationLevel() const                        { return (int) getInt64 (getOptimisationLevelKey(), -1); }
+    /** Sets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
+    void setOptimisationLevel (int level)                   { SOUL_ASSERT (level >= -1 && level <= 3); optimisationLevel = level; }
+    /** Gets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
+    int getOptimisationLevel() const                        { return optimisationLevel; }
 
     //==============================================================================
-    static constexpr const char* getMaxStateSizeKey()       { return "max_state_size"; }
-    void setMaxStateSize (uint64_t size)                    { if (size > 0) set (getMaxStateSizeKey(), (int64_t) size); }
-    uint64_t getMaxStateSize() const                        { return (uint64_t) getInt64 (getMaxStateSizeKey(), defaultMaximumStateSize); }
+    /** Sets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
+    void setMaxStateSize (size_t size)                      { SOUL_ASSERT (size == 0 || size > 4096); maxStateSize = size; }
+    /** Gets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
+    size_t getMaxStateSize() const                          { return maxStateSize; }
 
     //==============================================================================
-    static constexpr const char* getMainProcessorKey()      { return "main_processor"; }
-    void setMainProcessor (const std::string& name)         { set (getMainProcessorKey(), name); }
-    std::string getMainProcessor() const                    { return getString (getMainProcessorKey()); }
-
-    //==============================================================================
-    static constexpr const char* getPlatformKey()           { return "platform"; }
-    void setPlatform (const std::string& name)              { set (getPlatformKey(), name); }
-    std::string getPlatform() const                         { return getString (getPlatformKey()); }
-
-    //==============================================================================
-    static constexpr const char* getSessionIDKey()          { return "sessionID"; }
-    void setSessionID (int32_t sessionID)                   { set (getSessionIDKey(), sessionID); }
-    int32_t getSessionID() const                            { return int32_t (getInt64 (getSessionIDKey())); }
-    bool hasSessionID() const                               { return hasValue (getSessionIDKey()); }
-
-    //==============================================================================
-    static constexpr const char* getBlockSizeKey()          { return "blockSize"; }
-    void setBlockSize (uint32_t blockSize)                  { set (getBlockSizeKey(), (int32_t) blockSize); }
-    uint32_t getBlockSize() const                           { return (uint32_t) getInt64 (getBlockSizeKey()); }
-
-    //==============================================================================
-    static constexpr const char* getSampleRateKey()         { return "sample_rate"; }
-    void setSampleRate (double sampleRate)                  { if (sampleRate > 0) set (getSampleRateKey(), sampleRate); }
-    double getSampleRate() const                            { return getDouble (getSampleRateKey()); }
-
-    void setSampleRateAndBlockSize (SampleRateAndBlockSize rateAndBlockSize)
-    {
-        setSampleRate (rateAndBlockSize.sampleRate);
-        setBlockSize (rateAndBlockSize.blockSize);
-    }
-
-    SampleRateAndBlockSize getSampleRateAndBlockSize() const
-    {
-        return { getSampleRate(), getBlockSize() };
-    }
-
-    //==============================================================================
-    using ExternalValueProviderFn = std::function<ConstantTable::Handle (ConstantTable&,
-                                                                         const char* name,
-                                                                         const Type& requiredType,
-                                                                         const Annotation& annotation)>;
-
-    /** If this lamdba is set, it must return the Value that should be bound to a
-        given external variable. The name provided will be fully-qualified, and the Value
-        returned must match the given type, or an error will be thrown.
+    /** Optionally sets the name of the main processor to run when the program is linked.
+        If specified, this will override any [[main]] annotations in the program itself.
     */
-    ExternalValueProviderFn externalValueProvider;
+    void setMainProcessor (const std::string& name)         { mainProcessor = name; }
+
+    /** Gets the name of the main processor to run when the program is linked.
+        This will be empty if a default is to be used.
+    */
+    std::string getMainProcessor() const                    { return mainProcessor; }
 
     //==============================================================================
-    static constexpr uint64_t  defaultMaximumStateSize = 1024 * 1024 * 20;
+    /** Sets a session ID to use when instantiating the program. Use zero to indicate that a random number should be used. */
+    void setSessionID (int32_t newSessionID)                { sessionID = newSessionID; }
+    /** Gets the session ID to use when instantiating the program. Zero indicates that a random number should be used. */
+    int32_t getSessionID() const                            { return sessionID; }
+
+    //==============================================================================
+    /** Sets a maximum number of frames that the compiled processor should be able to handle in a single chunk. Use zero for a default. */
+    void setMaxBlockSize (uint32_t newMaxBlockSize)         { maxBlockSize = newMaxBlockSize; }
+    /** Gets the maximum number of frames that the compiled processor should be able to handle in a single chunk. Returns zero for a default. */
+    uint32_t getMaxBlockSize() const                        { return maxBlockSize; }
+
+    //==============================================================================
+    /** Sets the sample rate at which the compiled processor is going to run. This must be a valid value. */
+    void setSampleRate (double newRate)                     { SOUL_ASSERT (newRate > 0); sampleRate = newRate; }
+    /** Returns the sample rate at which the compiled processor is going to run. */
+    double getSampleRate() const                            { return sampleRate; }
+
+private:
+    //==============================================================================
+    double       sampleRate         = 0;
+    uint32_t     maxBlockSize       = 0;
+    size_t       maxStateSize       = 0;
+    int          optimisationLevel  = -1;
+    int32_t      sessionID          = 0;
+    std::string  mainProcessor;
 };
 
 //==============================================================================

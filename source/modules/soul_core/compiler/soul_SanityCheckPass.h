@@ -135,7 +135,7 @@ struct SanityCheckPass  final
                 auto& s = targetType.getStructRef();
 
                 for (size_t i = 0; i < list->items.size(); ++i)
-                    expectSilentCastPossible (list->items[i]->context, s.members[i].type, list->items[i]);
+                    expectSilentCastPossible (list->items[i]->context, s.getMemberType (i), list->items[i]);
 
                 return;
             }
@@ -194,7 +194,7 @@ struct SanityCheckPass  final
         }
 
         if (type.isStruct())
-            for (auto& m : type.getStructRef().members)
+            for (auto& m : type.getStructRef().getMembers())
                 throwErrorIfMultidimensionalArray (location, m.type);
     }
 

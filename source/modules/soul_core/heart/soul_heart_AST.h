@@ -127,12 +127,13 @@ struct heart
         uint32_t index = 0;
         EndpointKind kind;
         std::vector<Type> dataTypes;
-        uint32_t arraySize = 1;
+        std::optional<uint32_t> arraySize;
         Annotation annotation;
 
         bool isEventEndpoint() const      { return isEvent (kind); }
         bool isStreamEndpoint() const     { return isStream (kind); }
         bool isValueEndpoint() const      { return isValue (kind); }
+        bool isConsoleEndpoint() const    { return isEventEndpoint() && name.toString() == "_console"; }
 
         bool canHandleType (const Type& t) const
         {
@@ -210,7 +211,7 @@ struct heart
     private:
         Type getSampleArrayType (Type t) const
         {
-            return arraySize == 1 ? t : t.createArray (arraySize);
+            return arraySize.has_value() ? t.createArray (*arraySize) : t;
         }
     };
 
@@ -256,6 +257,7 @@ struct heart
         InterpolationType interpolationType = InterpolationType::none;
         pool_ptr<ProcessorInstance> sourceProcessor, destProcessor;
         std::string sourceEndpoint, destEndpoint;
+        std::optional<size_t> sourceEndpointIndex, destEndpointIndex;
         int64_t delayLength = 0;
     };
 

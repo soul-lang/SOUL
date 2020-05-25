@@ -22,35 +22,6 @@ namespace soul
 {
 
 //==============================================================================
-/**
-*/
-struct SampleRateAndBlockSize
-{
-    SampleRateAndBlockSize() = default;
-    SampleRateAndBlockSize (double rate, uint32_t size);
-
-    bool isRateValid() const
-    {
-        constexpr double maxSampleRate = 48000.0 * 100;
-        return sampleRate > 0 && sampleRate <= maxSampleRate;
-    }
-
-    bool isBlockSizeValid() const
-    {
-        constexpr uint32_t maxBlockSize = 8192;
-        return blockSize > 0 && blockSize <= maxBlockSize;
-    }
-
-    bool isValid() const
-    {
-        return isRateValid() && isBlockSizeValid();
-    }
-
-    double sampleRate = 0.0;
-    uint32_t blockSize = 0;
-};
-
-//==============================================================================
 struct Version
 {
     uint32_t major, minor, point;
@@ -93,6 +64,46 @@ void ignoreUnused (Types&&...) noexcept {}
 /** Returns whether an exception is in the process of being unwound. */
 bool inExceptionHandler();
 
+//==============================================================================
+struct ShortMIDIMessage
+{
+    uint8_t bytes[3] = {};
+
+    uint8_t getChannel0to15() const                 { return bytes[0] & 0x0f; }
+    uint8_t getChannel1to16() const                 { return static_cast<uint8_t> ((bytes[0] & 0x0f) + 1); }
+
+    bool isNoteOn() const                           { return getMessageTypeBits() == 0x90 && getVelocity() != 0; }
+    bool isNoteOff() const                          { return getMessageTypeBits() == 0x80 || (getVelocity() == 0 && getMessageTypeBits() == 0x90); }
+    uint8_t getNoteNumber() const                   { return bytes[1]; }
+    uint8_t getVelocity() const                     { return bytes[2]; }
+
+    bool isProgramChange() const                    { return getMessageTypeBits() == 0xc0; }
+    uint8_t getProgramChangeNumber() const          { return bytes[1]; }
+
+    bool isPitchWheel() const                       { return getMessageTypeBits() == 0xe0; }
+    uint32_t getPitchWheelValue() const             { return get14Bit (1); }
+    bool isAftertouch() const                       { return getMessageTypeBits() == 0xa0; }
+    uint8_t getAfterTouchValue() const              { return bytes[2]; }
+
+    bool isChannelPressure() const                  { return getMessageTypeBits() == 0xd0; }
+    uint8_t getChannelPressureValue() const         { return bytes[1]; }
+
+    bool isController() const                       { return getMessageTypeBits() == 0xb0; }
+    uint8_t getControllerNumber() const             { return bytes[1]; }
+    uint8_t getControllerValue() const              { return bytes[2]; }
+    bool isControllerNumber (uint8_t number) const  { return bytes[1] == number && isController(); }
+    bool isAllNotesOff() const                      { return isControllerNumber (123); }
+    bool isAllSoundOff() const                      { return isControllerNumber (120); }
+
+    bool isActiveSense() const                      { return bytes[0] == 0xfe; }
+
+    uint8_t getMessageTypeBits() const              { return bytes[0] & 0xf0; }
+    uint32_t get14Bit (int index) const             { return bytes[index] | (static_cast<uint32_t> (bytes[index + 1]) << 7); }
+};
+
+const char* getMIDINoteName (uint8_t midiNote, bool useSharps);
+int getMIDIOctaveNumber (uint8_t midiNote, int octaveForMiddleC = 3);
+std::string getMIDIMessageDescription (const uint8_t* data, size_t numBytes);
 
 //==============================================================================
 template <typename Type>

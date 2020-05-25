@@ -161,17 +161,6 @@ struct TokenisedPathString
         return trim (fullPath.substr (0, sections[sections.size() - 2].end));
     }
 
-    TokenisedPathString withRemovedSections (std::function<bool(const std::string&)> predicate) const
-    {
-        std::vector<std::string> retained;
-
-        for (auto s : sections)
-            if (! predicate (getSection (s)))
-                retained.push_back (getSection (s));
-
-        return joinStrings (retained, "::");
-    }
-
     static std::string join (const std::string& parent, const std::string& child)
     {
         return parent + "::" + child;

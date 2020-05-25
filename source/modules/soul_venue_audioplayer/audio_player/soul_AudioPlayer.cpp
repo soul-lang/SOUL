@@ -236,8 +236,8 @@ public:
             s.state = state;
             s.cpu = venue.loadMeasurer.getCurrentLoad();
             s.xruns = performer->getXRuns();
-            s.sampleRate = currentRateAndBlockSize.sampleRate;
-            s.blockSize = currentRateAndBlockSize.blockSize;
+            s.sampleRate = currentSampleRate;
+            s.blockSize = maxBlockSize;
 
             if (venue.audioDevice != nullptr)
             {
@@ -290,7 +290,8 @@ public:
 
         void deviceStopped()
         {
-            currentRateAndBlockSize = {};
+            currentSampleRate = 0;
+            maxBlockSize = 0;
         }
 
         bool connectInputEndpoint (const EndpointInfo& externalEndpoint, EndpointID inputID)
@@ -358,7 +359,7 @@ public:
                 {
                     auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
-                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
+                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
                     auto startChannel = (uint32_t) connection.audioInputStreamIndex;
                     auto numSourceChans = (uint32_t) frameType.getVectorSize();
 
@@ -381,7 +382,7 @@ public:
                 {
                     auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
-                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (currentRateAndBlockSize.blockSize));
+                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
                     auto startChannel = (uint32_t) connection.audioOutputStreamIndex;
                     auto numDestChans = (uint32_t) frameType.getVectorSize();
 
@@ -409,13 +410,13 @@ public:
                            soul::DiscreteChannelSet<float> output,
                            ArrayView<const MIDIEvent> midiIn)
         {
-            auto maxBlockSize = std::min (512u, currentRateAndBlockSize.blockSize);
-            SOUL_ASSERT (input.numFrames == output.numFrames && maxBlockSize != 0);
+            auto maxFramesPerBlock = std::min (512u, maxBlockSize);
+            SOUL_ASSERT (input.numFrames == output.numFrames && maxFramesPerBlock > 0);
 
             RenderContext context { totalFramesRendered, input, output, midiIn.data(),
                                     nullptr, 0, (uint32_t) midiIn.size(), 0, 0 };
 
-            context.iterateInBlocks (maxBlockSize, [&] (RenderContext& rc)
+            context.iterateInBlocks (maxFramesPerBlock, [&] (RenderContext& rc)
             {
                 performer->prepare (rc.inputChannels.numFrames);
 
@@ -440,13 +441,14 @@ public:
 
         void updateDeviceProperties (juce::AudioIODevice& device)
         {
-            currentRateAndBlockSize = SampleRateAndBlockSize (device.getCurrentSampleRate(),
-                                                              (uint32_t) device.getCurrentBufferSizeSamples());
+            currentSampleRate = device.getCurrentSampleRate();
+            maxBlockSize = (uint32_t) device.getCurrentBufferSizeSamples();
         }
 
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
-        SampleRateAndBlockSize currentRateAndBlockSize;
+        double currentSampleRate = 0;
+        uint32_t maxBlockSize = 0;
         std::atomic<uint64_t> totalFramesRendered { 0 };
         StateChangeCallbackFn stateChangeCallback;
 

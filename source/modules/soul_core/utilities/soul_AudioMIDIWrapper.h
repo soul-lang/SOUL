@@ -61,15 +61,15 @@ struct AudioMIDIWrapper
 
     /**
     */
-    void buildRenderingPipeline (SampleRateAndBlockSize rateAndBlockSize,
+    void buildRenderingPipeline (uint32_t processorMaxBlockSize,
                                  GetNewParameterValueFn&& getNewParameterValueFn,
                                  GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn,
                                  HandleUnusedEventFn&& handleUnusedEventFn)
     {
-        SOUL_ASSERT (rateAndBlockSize.isValid());
+        SOUL_ASSERT (processorMaxBlockSize > 0);
         reset();
         auto& perf = performer;
-        maxBlockSize = std::min (512u, rateAndBlockSize.blockSize);
+        maxBlockSize = std::min (512u, processorMaxBlockSize);
 
         for (auto& inputEndpoint : perf.getInputEndpoints())
         {
@@ -135,7 +135,7 @@ struct AudioMIDIWrapper
             {
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
                 auto& frameType = inputEndpoint.getFrameType();
-                auto buffer = soul::Value::zeroInitialiser (frameType.createArray (rateAndBlockSize.blockSize));
+                auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
                 auto startChannel = numInputChannelsExpected;
 
                 if (frameType.isFloatingPoint())
@@ -180,7 +180,7 @@ struct AudioMIDIWrapper
             {
                 auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
                 auto& frameType = outputEndpoint.getFrameType();
-                auto buffer = soul::Value::zeroInitialiser (frameType.createArray (rateAndBlockSize.blockSize));
+                auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
                 auto startChannel = numOutputChannelsExpected;
 
                 if (frameType.isFloatingPoint())

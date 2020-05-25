@@ -146,7 +146,9 @@ private:
     {
         ScannedTopLevelItem newItem (newModule);
         module = newModule;
-        newModule.moduleName = readQualifiedIdentifier();
+        newModule.fullName = readQualifiedIdentifier();
+        newModule.originalFullName = newModule.fullName;
+        newModule.shortName = TokenisedPathString (newModule.fullName).getLastPart();
         parseAnnotation (newModule.annotation);
         newItem.moduleStartPos = getCurrentTokeniserPosition();
         scanTopLevelItems (newItem);
@@ -443,6 +445,7 @@ private:
         auto src = readProcessorAndChannel();
         c.sourceProcessor = src.processor;
         c.sourceEndpoint = src.endpoint;
+        c.sourceEndpointIndex = src.endpointIndex;
         expect (HEARTOperator::rightArrow);
 
         if (matchIf (HEARTOperator::openBracket))
@@ -462,6 +465,8 @@ private:
         auto dst = readProcessorAndChannel();
         c.destProcessor = dst.processor;
         c.destEndpoint = dst.endpoint;
+        c.destEndpointIndex = dst.endpointIndex;
+
         expectSemicolon();
     }
 
@@ -469,19 +474,33 @@ private:
     {
         pool_ptr<heart::ProcessorInstance> processor;
         std::string endpoint;
+        std::optional<size_t> endpointIndex;
     };
 
     ProcessorAndChannel readProcessorAndChannel()
     {
+        ProcessorAndChannel processorAndChannel;
+
         auto name = readQualifiedIdentifier();
 
         if (matchIf (HEARTOperator::dot))
         {
-            auto channel = readIdentifier();
-            return { findProcessorInstance (name), channel };
+            processorAndChannel.processor = findProcessorInstance (name);
+            processorAndChannel.endpoint   = readIdentifier();
+        }
+        else
+        {
+            processorAndChannel.endpoint = name;
         }
 
-        return { nullptr, name };
+        if (matchIf (HEARTOperator::openBracket))
+        {
+            processorAndChannel.endpointIndex = parseInt32();
+
+            expect (HEARTOperator::closeBracket);
+        }
+
+        return processorAndChannel;
     }
 
     pool_ptr<heart::ProcessorInstance> findProcessorInstance (const std::string& instanceName)
@@ -854,7 +873,7 @@ private:
         {
             for (auto& m : program.getModules())
                 for (auto& fn : m->functions)
-                    if (TokenisedPathString::join (m->moduleName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
+                    if (TokenisedPathString::join (m->fullName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
                         return fn;
         }
 
@@ -1028,7 +1047,7 @@ private:
             if (structure.hasMemberWithName (member))
                 return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, member));
 
-            throwError (Errors::unknownMemberInStruct (member, structure.name));
+            throwError (Errors::unknownMemberInStruct (member, structure.getName()));
         }
 
         if (matchIf (HEARTOperator::openBracket))
@@ -1276,13 +1295,13 @@ private:
             {
                 auto& s = requiredType.getStructRef();
                 ArrayWithPreallocation<Value, 8> memberValues;
-                memberValues.reserve (s.members.size());
+                memberValues.reserve (s.getNumMembers());
 
-                for (size_t i = 0; i < s.members.size(); ++i)
+                for (size_t i = 0; i < s.getNumMembers(); ++i)
                 {
-                    memberValues.push_back (parseConstant (s.members[i].type, true));
+                    memberValues.push_back (parseConstant (s.getMemberType (i), true));
 
-                    if (i == s.members.size() - 1)
+                    if (i == s.getNumMembers() - 1)
                         expect (HEARTOperator::closeBrace);
                     else
                         expect (HEARTOperator::comma);

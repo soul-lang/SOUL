@@ -39,7 +39,7 @@ struct heart::Checker
 
         for (auto& input : mainProcessor.inputs)
         {
-            if (input->arraySize != 1)
+            if (input->arraySize.has_value())
                 input->location.throwError (Errors::notYetImplemented ("top-level arrays of inputs"));
 
             if (input->dataTypes.size() != 1)
@@ -48,7 +48,7 @@ struct heart::Checker
 
         for (auto& output : mainProcessor.outputs)
         {
-            if (output->arraySize != 1)
+            if (output->arraySize.has_value())
                 output->location.throwError (Errors::notYetImplemented ("top-level arrays of outputs"));
         }
     }
@@ -69,7 +69,7 @@ struct heart::Checker
                     if (conn->sourceProcessor != nullptr)
                     {
                         sourceOutput = program.getModuleWithName (conn->sourceProcessor->sourceName)->findOutput (conn->sourceEndpoint);
-                        sourceInstanceArraySize = conn->sourceProcessor->arraySize;
+                        sourceInstanceArraySize = conn->sourceEndpointIndex.has_value() ? conn->sourceProcessor->arraySize : 1;
                         sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
                     }
                     else
@@ -80,7 +80,7 @@ struct heart::Checker
                     if (conn->destProcessor != nullptr)
                     {
                         destInput = program.getModuleWithName (conn->destProcessor->sourceName)->findInput (conn->destEndpoint);
-                        destInstanceArraySize = conn->destProcessor->arraySize;
+                        destInstanceArraySize = conn->destEndpointIndex.has_value() ? conn->destProcessor->arraySize : 1;
                         destDescription = conn->destProcessor->instanceName + "." + destDescription;
                     }
                     else
@@ -91,13 +91,21 @@ struct heart::Checker
                     if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindOutput (sourceDescription));
                     if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindInput (destDescription));
 
+                    if (conn->sourceEndpointIndex && sourceOutput->arraySize <= conn->sourceEndpointIndex)
+                        conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());
+
+                    if (conn->destEndpointIndex && destInput->arraySize <= conn->destEndpointIndex)
+                        conn->location.throwError (Errors::destinationEndpointIndexOutOfRange());
+
                     if (sourceOutput->kind != destInput->kind)
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointKindName (sourceOutput->kind),
                                                                           destDescription, getEndpointKindName (destInput->kind)));
 
                     if (! areConnectionTypesCompatible (sourceOutput->isEventEndpoint(),
-                                                        *sourceOutput, sourceInstanceArraySize,
-                                                        *destInput, destInstanceArraySize))
+                                                        *sourceOutput,
+                                                        sourceInstanceArraySize,
+                                                        *destInput,
+                                                        destInstanceArraySize))
                         conn->location.throwError (Errors::cannotConnect (sourceDescription, sourceOutput->getTypesDescription(),
                                                                           destDescription, destInput->getTypesDescription()));
                 }
@@ -112,8 +120,8 @@ struct heart::Checker
         // Different rules for different connection types
         if (isEvent)
         {
-            auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize;
-            auto destSize = destInstanceArraySize * destInput.arraySize;
+            auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize.value_or (1);
+            auto destSize = destInstanceArraySize * destInput.arraySize.value_or (1);
 
             // Sizes do not match - 1->1, 1->N, N->1 and N->N are only supported sizes
             if (sourceSize != 1 && destSize != 1 && sourceSize != destSize)
@@ -134,8 +142,10 @@ struct heart::Checker
         if (sourceSampleType.isEqual (destSampleType, Type::ignoreVectorSize1))
             return true;
 
-        if (sourceSampleType.isArray()
-             && sourceSampleType.getElementType().isEqual (destSampleType, Type::ignoreVectorSize1))
+        if (sourceSampleType.isArray() && sourceSampleType.getElementType().isEqual (destSampleType, Type::ignoreVectorSize1))
+            return true;
+
+        if (destSampleType.isArray() && destSampleType.getElementType().isEqual (sourceSampleType, Type::ignoreVectorSize1))
             return true;
 
         return false;

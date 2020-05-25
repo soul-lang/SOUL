@@ -60,7 +60,7 @@ private:
             if (module.isGraph())       out << "graph ";
             if (module.isNamespace())   out << "namespace ";
 
-            out << module.moduleName;
+            out << module.fullName;
             printDescription (module.annotation);
             out << newLine;
 
@@ -116,10 +116,10 @@ private:
             out << annotation.toHEART();
         }
 
-        static std::string nameWithArray (const soul::Identifier& name, uint32_t arraySize)
+        static std::string nameWithArray (const soul::Identifier& name, const std::optional<uint32_t>& arraySize)
         {
-            if (arraySize > 1)
-                return name.toString() + '[' + std::to_string (arraySize) + ']';
+            if (arraySize.has_value())
+                return name.toString() + '[' + std::to_string (*arraySize) + ']';
 
             return name.toString();
         }
@@ -178,23 +178,26 @@ private:
                     << getInterpolationDescription (c->interpolationType)
                     << ' ';
 
-                printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint);
+                printProcessorAndChannel (c->sourceProcessor, c->sourceEndpoint, c->sourceEndpointIndex);
 
                 if (c->delayLength > 0)
                     out << " -> [" << c->delayLength << ']';
 
                 out << " -> ";
-                printProcessorAndChannel (c->destProcessor, c->destEndpoint);
+                printProcessorAndChannel (c->destProcessor, c->destEndpoint, c->destEndpointIndex);
                 out << ';' << newLine;
             }
         }
 
-        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel)
+        void printProcessorAndChannel (pool_ptr<heart::ProcessorInstance> m, const std::string& channel, const std::optional<size_t>& index)
         {
             if (m != nullptr)
                 out << m->instanceName << ".";
 
             out << channel;
+
+            if (index)
+                out << "[" << *index << "]";
         }
 
         void printStateVariables()
@@ -324,17 +327,17 @@ private:
 
         void printStruct (const Structure& s) const
         {
-            out << "struct " << s.name << newLine;
+            out << "struct " << s.getName() << newLine;
 
             int maxTypeLen = 0;
 
-            for (auto& m : s.members)
+            for (auto& m : s.getMembers())
                 maxTypeLen = std::max (maxTypeLen, (int) getTypeDescription (m.type).length());
 
             {
                 auto indent = out.createBracedIndent (2);
 
-                for (auto& m : s.members)
+                for (auto& m : s.getMembers())
                     out << padded (getTypeDescription (m.type), maxTypeLen + 2) << m.name << ';' << newLine;
             }
 

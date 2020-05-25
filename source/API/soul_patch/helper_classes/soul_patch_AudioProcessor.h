@@ -109,6 +109,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
         if (replacementPlayer != nullptr)
         {
+            updateLastState();
             applyLastStateToPlayer (*replacementPlayer);
             player = std::move (replacementPlayer);
             refreshParameterList();
@@ -281,21 +282,27 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     void processBlock (juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi) override
     {
         auto numFrames = audio.getNumSamples();
-        auto numOutputChannels = getTotalNumOutputChannels();
-        outputBuffer.setSize (numOutputChannels, numFrames, false, false, true);
+
+        outputBuffer.setSize (juce::jmax (numPatchOutputChannels, getTotalNumOutputChannels()), numFrames, false, false, true);
         outputBuffer.clear();
 
-        if (! (isSuspended() || player == nullptr))
-        {
-            if (preprocessInputData != nullptr)
-                preprocessInputData (audio);
+        inputBuffer.setSize (juce::jmax (numPatchInputChannels, getTotalNumInputChannels()), numFrames, false, false, true);
+        inputBuffer.clear();
 
+        if (player != nullptr && player->isPlayable() && (! isSuspended()))
+        {
             soul::patch::PatchPlayer::RenderContext rc;
 
-            rc.inputChannels = audio.getArrayOfReadPointers();
-            rc.numInputChannels = (uint32_t) juce::jmin (numPatchInputChannels, audio.getNumChannels());
+            for (int i = 0; i < getTotalNumInputChannels(); i++)
+                inputBuffer.copyFrom (i, 0, audio, i, 0, numFrames);
+
+            if (preprocessInputData != nullptr)
+                preprocessInputData (inputBuffer);
+
+            rc.inputChannels = inputBuffer.getArrayOfWritePointers();
+            rc.numInputChannels = (uint32_t) numPatchInputChannels;
             rc.outputChannels = outputBuffer.getArrayOfWritePointers();
-            rc.numOutputChannels = (uint32_t) juce::jmin (numPatchOutputChannels, outputBuffer.getNumChannels());
+            rc.numOutputChannels = (uint32_t) numPatchOutputChannels;
             rc.numFrames = (uint32_t) numFrames;
             rc.incomingMIDI = std::addressof (messageSpaceIn[0]);
             rc.numMIDIMessagesIn = 0;
@@ -337,6 +344,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
             auto result = player->render (rc);
             juce::ignoreUnused (result);
+            jassert (result == PatchPlayer::RenderResult::ok);
 
             if (rc.numMIDIMessagesOut != 0)
             {
@@ -354,11 +362,11 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             }
         }
 
-        for (int i = 0; i < outputBuffer.getNumChannels(); ++i)
-            audio.copyFrom (i, 0, outputBuffer, i, 0, numFrames);
-
         if (postprocessOutputData != nullptr)
-            postprocessOutputData (audio);
+            postprocessOutputData (outputBuffer);
+
+        for (int i = 0; i < getTotalNumOutputChannels(); ++i)
+            audio.copyFrom (i, 0, outputBuffer, i, 0, numFrames);
     }
 
     //==============================================================================
@@ -472,6 +480,7 @@ private:
     juce::CriticalSection configLock;
     soul::patch::PatchPlayerConfiguration currentConfig;
 
+    juce::AudioBuffer<float> inputBuffer;
     juce::AudioBuffer<float> outputBuffer;
     std::vector<soul::patch::MIDIMessage> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;

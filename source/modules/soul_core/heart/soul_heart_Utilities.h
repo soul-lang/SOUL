@@ -71,7 +71,7 @@ struct heart::Utilities
         for (auto& m : program.getModules())
         {
             for (auto& s : m->structs)
-                for (auto& member : s->members)
+                for (auto& member : s->getMembers())
                     visit (member.type);
 
             for (auto& f : m->functions)
@@ -233,7 +233,7 @@ struct heart::Utilities
     {
         SOUL_ASSERT (blockIndex <= f.blocks.size());
         auto& newBlock = module.allocate<Block> (module.allocator.get (name));
-        f.blocks.insert (f.blocks.begin() + (ssize_t) blockIndex, newBlock);
+        f.blocks.insert (getIteratorForIndex (f.blocks, blockIndex), newBlock);
         return newBlock;
     }
 
@@ -313,7 +313,7 @@ struct heart::Utilities
             if (type.getStruct() == oldStruct)
                 return Type::createStruct (newStruct);
 
-            for (auto& m : type.getStructRef().members)
+            for (auto& m : type.getStructRef().getMembers())
                 if (m.type.usesStruct (oldStruct))
                     m.type = replaceUsesOfStruct (m.type, oldStruct, newStruct);
         }
@@ -332,9 +332,9 @@ struct heart::Utilities
                 auto& srcStruct = value.getType().getStructRef();
                 auto& destStruct = newValue.getType().getStructRef();
 
-                for (size_t i = 0; i < destStruct.members.size(); ++i)
+                for (size_t i = 0; i < destStruct.getNumMembers(); ++i)
                 {
-                    auto oldIndex = srcStruct.getMemberIndex (destStruct.members[i].name);
+                    auto oldIndex = srcStruct.getMemberIndex (destStruct.getMemberName (i));
                     newValue.modifySubElementInPlace (i, replaceUsesOfStruct (value.getSubElement (oldIndex), oldStruct, newStruct));
                 }
             }

@@ -36,12 +36,12 @@ struct Program::ProgramImpl  : public RefCountedObject
     ConstantTable constantTable;
     StringDictionary stringDictionary;
 
-    int nextModuleId = 1;
+    uint32_t nextModuleID = 1;
 
     pool_ptr<Module> getModuleWithName (const std::string& name) const
     {
         for (auto& m : modules)
-            if (m->moduleName == name || m->getNameWithoutRootNamespace() == name)
+            if (m->fullName == name)
                 return m;
 
         return {};
@@ -68,7 +68,9 @@ struct Program::ProgramImpl  : public RefCountedObject
 
         Program p (*this, false);
         auto& newModule = Module::createNamespace (p);
-        newModule.moduleName = name;
+        newModule.shortName = name;
+        newModule.fullName = name;
+        newModule.originalFullName = name;
         modules.push_back (newModule);
         return newModule;
     }
@@ -112,15 +114,27 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    int getModuleID (Module& m, uint32_t arraySize)
+    uint32_t getModuleID (Module& m, uint32_t arraySize)
     {
-        if (m.moduleId == 0)
+        if (m.moduleID == 0)
         {
-            m.moduleId = nextModuleId;
-            nextModuleId += static_cast<int> (arraySize);
+            m.moduleID = nextModuleID;
+            nextModuleID += arraySize;
         }
 
-        return m.moduleId;
+        return m.moduleID;
+    }
+
+    std::vector<pool_ref<heart::Variable>> getExternalVariables() const
+    {
+        std::vector<pool_ref<heart::Variable>> result;
+
+        for (auto& m : modules)
+            for (auto& v : m->stateVariables)
+                if (v->isExternal())
+                    result.push_back (v);
+
+        return result;
     }
 
     Program clone() const
@@ -166,10 +180,21 @@ struct Program::ProgramImpl  : public RefCountedObject
                     if (m == context)
                         return v.name.toString();
 
-                    return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, v.name));
+                    return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, v.name));
                 }
             }
         }
+
+        return v.name;
+    }
+
+    std::string getExternalVariableName (const heart::Variable& v) const
+    {
+        SOUL_ASSERT (v.isState()); // This can only work for state variables
+
+        for (auto& m : modules)
+            if (contains (m->stateVariables, v))
+                return TokenisedPathString::join (m->originalFullName, v.name);
 
         return v.name;
     }
@@ -181,7 +206,7 @@ struct Program::ProgramImpl  : public RefCountedObject
             if (m == std::addressof (context))
                 return f.name.toString();
 
-            return TokenisedPathString::join (m->moduleName, f.name);
+            return TokenisedPathString::join (m->fullName, f.name);
         }
 
         SOUL_ASSERT_FALSE;
@@ -195,20 +220,20 @@ struct Program::ProgramImpl  : public RefCountedObject
             if (contains (m->structs, s))
             {
                 if (context != nullptr && m == context)
-                    return s.name;
+                    return s.getName();
 
-                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->moduleName, s.name));
+                return stripRootNamespaceFromQualifiedPath (TokenisedPathString::join (m->fullName, s.getName()));
             }
         }
 
         SOUL_ASSERT_FALSE;
-        return s.name;
+        return s.getName();
     }
 
     std::string getTypeDescriptionWithQualificationIfNeeded (pool_ptr<const Module> context, const Type& type) const
     {
         if (context == nullptr)
-            type.getDescription ([] (const Structure& s) { return s.name; });
+            type.getDescription ([] (const Structure& s) { return s.getName(); });
 
         return type.getDescription ([this, context] (const Structure& s) { return getStructNameWithQualificationIfNeeded (context, s); });
     }
@@ -280,7 +305,8 @@ StringDictionary& Program::getStringDictionary()                                
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }
 ConstantTable& Program::getConstantTable()                                              { return pimpl->constantTable; }
 const ConstantTable& Program::getConstantTable() const                                  { return pimpl->constantTable; }
-int Program::getModuleID (Module& m, uint32_t arraySize)                                { return pimpl->getModuleID (m, arraySize); }
+std::vector<pool_ref<heart::Variable>> Program::getExternalVariables() const            { return pimpl->getExternalVariables(); }
+uint32_t Program::getModuleID (Module& m, uint32_t arraySize)                           { return pimpl->getModuleID (m, arraySize); }
 const char* Program::getRootNamespaceName()                                             { return "_root"; }
 std::string Program::stripRootNamespaceFromQualifiedPath (std::string path)             { return TokenisedPathString::removeTopLevelNameIfPresent (path, getRootNamespaceName()); }
 
@@ -309,6 +335,11 @@ std::string Program::getVariableNameWithQualificationIfNeeded (const Module& con
     return pimpl->getVariableNameWithQualificationIfNeeded (context, v);
 }
 
+std::string Program::getExternalVariableName (const heart::Variable& v) const
+{
+    return pimpl->getExternalVariableName (v);
+}
+
 std::string Program::getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function& f) const
 {
     return pimpl->getFunctionNameWithQualificationIfNeeded (context, f);
@@ -332,6 +363,60 @@ std::string Program::getTypeDescriptionWithQualificationIfNeeded (pool_ptr<const
 std::string Program::getFullyQualifiedTypeDescription (const Type& type) const
 {
     return pimpl->getFullyQualifiedTypeDescription (type);
+}
+
+std::string Program::getValueDump (const Value& v, bool quoteStrings) const
+{
+    if (! quoteStrings && v.getType().isStringLiteral())
+        return getStringDictionary().getStringForHandle (v.getStringLiteral());
+
+    struct PrettyPrintValue  : public ValuePrinter
+    {
+        PrettyPrintValue (const Program& pp) : program (pp)
+        {
+            dictionary = std::addressof (program.getStringDictionary());
+        }
+
+        const Program& program;
+        std::ostringstream out;
+        void print (const std::string& s) override              { out << s; }
+
+        void printInt32 (int32_t v) override
+        {
+            if (parseNextIntAsMIDI)
+            {
+                parseNextIntAsMIDI = false;
+                const uint8_t bytes[] = { (uint8_t) (v >> 16), (uint8_t) (v >> 8), (uint8_t) v };
+                postStructDesc = " = " + getMIDIMessageDescription (bytes, 3);
+            }
+
+            print (v > 0xffff ? "0x" + toHexString (v) : std::to_string (v));
+        }
+
+        void beginStructMembers (const Type& t) override
+        {
+            auto name = program.getFullyQualifiedTypeDescription (t);
+            print (name + " { ");
+            parseNextIntAsMIDI = soul::isMIDIMessageStruct (t);
+        }
+
+        void printInt64 (int64_t v) override               { print (v > 0xffff ? "0x" + toHexString (v) : std::to_string (v)); }
+        void printStructMemberSeparator() override         { print (", "); }
+        void endStructMembers() override                   { print (" }" + postStructDesc); postStructDesc = {}; }
+        void beginArrayMembers (const Type& t) override    { print (t.getDescription() + " ("); }
+        void printArrayMemberSeparator() override          { print (", "); }
+        void endArrayMembers() override                    { print (")"); }
+        void beginVectorMembers (const Type& t) override   { print (t.getDescription() + " ("); }
+        void printVectorMemberSeparator() override         { print (", "); }
+        void endVectorMembers() override                   { print (")"); }
+
+        bool parseNextIntAsMIDI = false;
+        std::string postStructDesc;
+    };
+
+    PrettyPrintValue pp (*this);
+    v.print (pp);
+    return pp.out.str();
 }
 
 } // namespace soul

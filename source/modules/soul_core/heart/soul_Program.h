@@ -106,11 +106,14 @@ public:
     /** Provides access to the program's constant table */
     const ConstantTable& getConstantTable() const;
 
+    /** Finds a list of all the externals in the program. */
+    std::vector<pool_ref<heart::Variable>> getExternalVariables() const;
+
     /** Returns an ID for one of the modules in the program (which will be unique
         within the program but not globally). The arraySize indicates how many unique ids
         are required for the module, as a range from the returned value
     */
-    int getModuleID (Module&, uint32_t arraySize);
+    uint32_t getModuleID (Module&, uint32_t arraySize);
 
     //==============================================================================
     /** Returns the allocator used to hold all items in the program and its modules. */
@@ -128,6 +131,9 @@ public:
     /** Returns the name of a variable using a fully-qualified name if the variable lies outside the given module. */
     std::string getVariableNameWithQualificationIfNeeded (const Module& context, const heart::Variable&) const;
 
+    /** Returns the fully-qualified path for a variable in a non-mangled format as a user would expect to see it. */
+    std::string getExternalVariableName (const heart::Variable&) const;
+
     /** Returns the name of a function using a fully-qualified name if the function lies outside the given module. */
     std::string getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function&) const;
 
@@ -143,8 +149,18 @@ public:
     /** Returns the description of a Type using fully-qualified struct names for all structures. */
     std::string getFullyQualifiedTypeDescription (const Type&) const;
 
-    static const char* getRootNamespaceName();
+    /** Returns a usefully-formatted dump of a Value.
+        Unlike Value::getDescription(), this method allows better type names to be generated for a
+        Value which is part of this Program. It'll also do a better job of pretty-printing things it
+        can recognise based on the type, such as MIDI messages.
+    */
+    std::string getValueDump (const Value&, bool putStringsInQuotes = true) const;
+
+    /** Makes a fully-qualified path more readable by removing the internal top-level namespace. */
     static std::string stripRootNamespaceFromQualifiedPath (std::string path);
+
+    /** @internal */
+    static const char* getRootNamespaceName();
 
 private:
     //==============================================================================

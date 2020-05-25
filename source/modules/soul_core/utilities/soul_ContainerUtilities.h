@@ -110,6 +110,11 @@ inline bool removeFromVector (Vector1& target, const Vector2& itemsToRemove)
     return removeIf (target, [&] (auto& item) { return contains (itemsToRemove, item); });
 }
 
+template <typename Vector, typename Position>
+inline auto getIteratorForIndex (Vector& vector, Position index)
+{
+    return vector.begin() + static_cast<typename Vector::difference_type> (index);
+}
 
 //==============================================================================
 /** This is a bit like a lite version of std::span.

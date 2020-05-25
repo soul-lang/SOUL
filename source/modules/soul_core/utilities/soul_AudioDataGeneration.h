@@ -21,11 +21,13 @@
 namespace soul
 {
 
+using ConvertFixedToUnsizedArray = std::function<Value(Value)>;
+
 /** Tries to convert this set of channel data + metadata into a value that fits the
     requested type, which could be a plain unsized array, or a struct with extra fields
     for the metadata
 */
-Value convertAudioDataToType (const Type& requestedType, ConstantTable&,
+Value convertAudioDataToType (const Type& requestedType, const ConvertFixedToUnsizedArray&,
                               DiscreteChannelSet<float> data, double sampleRate);
 
 /** Builds a suitable type of value from a generated waveform, where the

@@ -610,9 +610,6 @@ private:
             expect (Operator::closeBracket);
         }
 
-        if (result.endpointIndex)
-            throwError (Errors::notYetImplemented ("Channel indexes"));
-
         return result;
     }
 

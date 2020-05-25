@@ -232,12 +232,14 @@ struct ModuleCloner
     heart::Connection& clone (const heart::Connection& old)
     {
         auto& c = newModule.allocate<heart::Connection> (old.location);
-        c.interpolationType = old.interpolationType;
-        c.sourceProcessor   = getRemappedProcessorInstance (old.sourceProcessor);
-        c.sourceEndpoint    = old.sourceEndpoint;
-        c.destProcessor     = getRemappedProcessorInstance (old.destProcessor);
-        c.destEndpoint      = old.destEndpoint;
-        c.delayLength       = old.delayLength;
+        c.interpolationType   = old.interpolationType;
+        c.sourceProcessor     = getRemappedProcessorInstance (old.sourceProcessor);
+        c.sourceEndpoint      = old.sourceEndpoint;
+        c.sourceEndpointIndex = old.sourceEndpointIndex;
+        c.destProcessor       = getRemappedProcessorInstance (old.destProcessor);
+        c.destEndpoint        = old.destEndpoint;
+        c.destEndpointIndex   = old.destEndpointIndex;
+        c.delayLength         = old.delayLength;
         return c;
     }
 
@@ -270,6 +272,7 @@ struct ModuleCloner
         auto& v = newModule.allocate<heart::Variable> (old.location, cloneType (old.type),
                                                        newModule.allocator.get (old.name),
                                                        old.role);
+        v.externalHandle = old.externalHandle;
         v.annotation = old.annotation;
         mapping = v;
         return v;
@@ -300,7 +303,7 @@ struct ModuleCloner
         auto s = structMappings[&old];
         SOUL_ASSERT (s != nullptr);
 
-        for (auto& m : s->members)
+        for (auto& m : s->getMembers())
             m.type = cloneType (m.type);
     }
 

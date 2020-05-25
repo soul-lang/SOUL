@@ -844,11 +844,11 @@ private:
                         SanityCheckPass::throwErrorIfWrongNumberOfElements (c.context, c.targetType, numArgs);
 
                     ArrayWithPreallocation<Value, 8> memberValues;
-                    memberValues.reserve (s.members.size());
+                    memberValues.reserve (s.getNumMembers());
 
                     for (size_t i = 0; i < constants.size(); ++i)
                     {
-                        auto memberType = s.members[i].type;
+                        auto memberType = s.getMemberType (i);
                         auto& cv = constants[i]->value;
 
                         if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))

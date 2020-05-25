@@ -49,7 +49,10 @@ private:
     HEARTGenerator (AST::ModuleBase& source, Module& targetModule, uint32_t maxDepth)
         : module (targetModule), builder (targetModule), maxExpressionDepth (maxDepth)
     {
-        module.moduleName = source.getFullyQualifiedPath().toString();
+        auto path = source.getFullyQualifiedPath();
+        module.shortName = path.getLastPart().toString();
+        module.fullName = path.toString();
+        module.originalFullName = getOriginalModulePath (path);
 
         if (auto fns = source.getFunctionList())
         {
@@ -88,6 +91,14 @@ private:
     Identifier convertIdentifier (Identifier i)
     {
         return module.allocator.get (i);
+    }
+
+    static std::string getOriginalModulePath (IdentifierPath path)
+    {
+        SOUL_ASSERT (path.getFirstPart().toString() == Program::getRootNamespaceName());
+        path = path.fromSecondPart();
+        removeIf (path.pathSections, [] (const Identifier& section) { return startsWith (section.toString(), "_for"); });
+        return path.toString();
     }
 
     heart::Variable& createVariableDeclaration (AST::VariableDeclaration& v,
@@ -217,28 +228,39 @@ private:
         auto& c = module.allocate<heart::Connection> (conn.context.location);
         module.connections.push_back (c);
 
-        c.sourceProcessor   = getOrAddProcessorInstance (*conn.source.processorName);
-        c.destProcessor     = getOrAddProcessorInstance (*conn.dest.processorName);
-        c.sourceEndpoint    = conn.source.endpoint;
-        c.destEndpoint      = conn.dest.endpoint;
-        c.interpolationType = conn.interpolationType;
-        c.delayLength       = getDelayLength (conn.delayLength);
+        c.sourceProcessor     = getOrAddProcessorInstance (*conn.source.processorName);
+        c.destProcessor       = getOrAddProcessorInstance (*conn.dest.processorName);
+        c.sourceEndpoint      = conn.source.endpoint;
+        c.sourceEndpointIndex = getEndpointIndex (conn.source.endpointIndex);
+        c.destEndpoint        = conn.dest.endpoint;
+        c.destEndpointIndex   = getEndpointIndex (conn.dest.endpointIndex);
+        c.interpolationType   = conn.interpolationType;
+        c.delayLength         = getDelayLength (conn.delayLength);
+    }
+
+    static std::optional<size_t> getEndpointIndex (pool_ptr<AST::Expression> index)
+    {
+        if (index == nullptr)
+            return {};
+
+        if (auto c = index->getAsConstant())
+            return c->value.getAsInt64();
+
+        index->context.throwError (Errors::endpointIndexMustBeConstant());
     }
 
     static int64_t getDelayLength (pool_ptr<AST::Expression> delay)
     {
-        if (delay != nullptr)
-        {
-            if (auto c = delay->getAsConstant())
-                return SanityCheckPass::checkDelayLineLength (c->context, c->value);
+        if (delay == nullptr)
+            return 0;
 
-            delay->context.throwError (Errors::delayLineMustBeConstant());
-        }
+        if (auto c = delay->getAsConstant())
+            return SanityCheckPass::checkDelayLineLength (c->context, c->value);
 
-        return 0;
+        delay->context.throwError (Errors::delayLineMustBeConstant());
     }
 
-    static uint32_t getProcessorArraySize (pool_ptr<AST::Expression> size)
+    static std::optional<uint32_t> getProcessorArraySize (pool_ptr<AST::Expression> size)
     {
         if (size != nullptr)
         {
@@ -260,7 +282,7 @@ private:
             size->context.throwError (Errors::expectedConstant());
         }
 
-        return 1;
+        return {};
     }
 
     pool_ptr<heart::ProcessorInstance> getOrAddProcessorInstance (const AST::QualifiedIdentifier& processorName)
@@ -283,7 +305,7 @@ private:
                 auto& p = module.allocate<heart::ProcessorInstance>();
                 p.instanceName = processorName.path.toString();
                 p.sourceName = targetProcessor.getFullyQualifiedPath().toString();
-                p.arraySize = getProcessorArraySize (i->arraySize);
+                p.arraySize = getProcessorArraySize (i->arraySize).value_or (1);
 
                 if (i->clockMultiplierRatio != nullptr)
                 {
@@ -901,7 +923,7 @@ private:
                 if (constElement->value.isZero()) // no need to assign to elements which are zero
                     continue;
 
-            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, target.getType().getStructRef().members[i].name)
+            createAssignment (isStruct ? (heart::Expression&) builder.createStructElement (target, target.getType().getStructRef().getMemberName (i))
                                        : (heart::Expression&) builder.createFixedArrayElement (target, i),
                               sourceValue);
         }
@@ -1064,7 +1086,7 @@ private:
                             auto& index = evaluateAsExpression (*arraySubscript->startIndex);
                             auto& context = arraySubscript->startIndex->context;
                             auto constIndex = index.getAsConstant();
-                            auto arraySize = outputRef->output->generatedOutput->arraySize;
+                            auto arraySize = outputRef->output->generatedOutput->arraySize.value_or (1);
 
                             if (constIndex.isValid())
                             {

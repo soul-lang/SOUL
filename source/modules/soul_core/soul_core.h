@@ -61,13 +61,10 @@
 #include <condition_variable>
 #include <cassert>
 #include <random>
+#include <optional>
 
 #include "utilities/soul_MiscUtilities.h"
 #include "utilities/soul_DebugUtilities.h"
-
-#ifdef _WIN32
- using ssize_t = int64_t;
-#endif
 
 //==============================================================================
 namespace soul

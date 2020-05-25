@@ -90,14 +90,38 @@ std::string trim (std::string s)
     return trimStart (trimEnd (s));
 }
 
-bool endsWith (const std::string& text, const std::string& possibleEnd)
+bool startsWith (const std::string& text, char possibleStart)
 {
-    return text.length() >= possibleEnd.length()
-            && text.rfind (possibleEnd) == text.length() - possibleEnd.length();
+    return ! text.empty() && text[0] == possibleStart;
 }
 
-std::string addDoubleQuotes    (const std::string& text)    { return "\"" + text + "\""; }
-std::string addSingleQuotes    (const std::string& text)    { return "'" + text + "'"; }
+bool startsWith (const std::string& text, const char* possibleStart)
+{
+    SOUL_ASSERT (possibleStart != nullptr);
+
+    for (size_t i = 0; possibleStart[i] != 0; ++i)
+        if  (text[i] != possibleStart[i])
+            return false;
+
+    return true;
+}
+
+bool startsWith (const std::string& text, const std::string& possibleStart)
+{
+    return text.length() >= possibleStart.length()
+            && startsWith (text, possibleStart.c_str());
+}
+
+bool endsWith (const std::string& text, const std::string& possibleEnd)
+{
+    auto textLen = text.length();
+    auto endLen = possibleEnd.length();
+
+    return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
+}
+
+std::string addDoubleQuotes (const std::string& text)    { return "\"" + text + "\""; }
+std::string addSingleQuotes (const std::string& text)    { return "'" + text + "'"; }
 
 std::string removeDoubleQuotes (const std::string& text)
 {
@@ -617,6 +641,13 @@ std::string toCppStringLiteral (const std::string& text,
 
     out << '"';
     return out.str();
+}
+
+std::string toJSONString (const std::string& text)
+{
+    UTF8Reader reader (text.c_str());
+
+    return reader.createEscapedVersion();
 }
 
 } // namespace soul

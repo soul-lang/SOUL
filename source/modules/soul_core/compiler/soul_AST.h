@@ -1320,7 +1320,7 @@ struct AST
                 structure.reset (new Structure (name.toString(), const_cast<StructDeclaration*> (this)));
 
                 for (auto& m : members)
-                    structure->members.push_back ({ m.type->resolveAsType(), m.name.toString() });
+                    structure->addMember(m.type->resolveAsType(), m.name.toString());
             }
 
             return *structure;

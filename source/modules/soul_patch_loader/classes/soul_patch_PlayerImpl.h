@@ -90,16 +90,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         auto program = compiler.link (messageList, linkOptions);
 
-        if (linkOptions.getPlatform() == "bela")
+       #if JUCE_BELA
         {
             soul::Compiler wrappedCompiler;
             addSource (messageList, preprocessor, wrappedCompiler);
-            wrappedCompiler.addCode (messageList,  CodeLocation::createFromString ("BelaWrapper", soul::patch::BelaWrapper::build (program)));
+            wrappedCompiler.addCode (messageList, CodeLocation::createFromString ("BelaWrapper", soul::patch::BelaWrapper::build (program)));
 
             auto wrappedLinkOptions = linkOptions;
             wrappedLinkOptions.setMainProcessor ("BelaWrapper");
             program = wrappedCompiler.link (messageList, wrappedLinkOptions);
         }
+       #endif
 
         return program;
     }
@@ -130,20 +131,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         createBuses();
         createRenderOperations (program, consoleHandler);
+        resolveExternalVariables (externalDataProvider);
 
-        auto options = linkOptions;
-        options.externalValueProvider = [this, externalDataProvider] (ConstantTable& constantTable,
-                                                                      const char* name, const Type& type,
-                                                                      const Annotation& annotation) -> ConstantTable::Handle
-        {
-            if (externalDataProvider != nullptr)
-                if (auto file = externalDataProvider->getExternalFile (name))
-                    return constantTable.getHandleForValue (AudioFileToValue::load (std::move (file), type, annotation, constantTable));
-
-            return findExternalDefinitionInManifest (constantTable, name, type, annotation);
-        };
-
-        if (! performer->link (messageList, options, CacheConverter::create (cache).get()))
+        if (! performer->link (messageList, linkOptions, CacheConverter::create (cache).get()))
             return messageList.addError ("Failed to link", {});
     }
 
@@ -184,32 +174,50 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             anyErrors = anyErrors || m.isError;
     }
 
-    ConstantTable::Handle findExternalDefinitionInManifest (ConstantTable& constantTable,
-                                                            const char* name, const Type& type,
-                                                            const Annotation& annotation) const
+    void resolveExternalVariables (ExternalDataProvider* externalDataProvider)
     {
+        for (auto& ev : performer->getExternalVariables())
+        {
+            auto value = resolveExternalVariable (externalDataProvider, ev);
+
+            if (value.isValid())
+                performer->setExternalVariable (ev.name.c_str(), std::move (value));
+        }
+    }
+
+    soul::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const soul::Performer::ExternalVariable& ev)
+    {
+        auto convertFixedToUnsizedArray = [this] (soul::Value v)
+        {
+            auto elementType = v.getType().getElementType();
+            return Value::createUnsizedArray (elementType, performer->addConstant (std::move (v)));
+        };
+
+        if (externalDataProvider != nullptr)
+            if (auto file = externalDataProvider->getExternalFile (ev.name.c_str()))
+                return AudioFileToValue::load (std::move (file), ev.type, ev.annotation, convertFixedToUnsizedArray);
+
         if (auto externals = fileList.getExternalsList())
         {
             for (auto& e : externals->getProperties())
             {
-                if (e.name.toString().trim() == name)
+                if (e.name.toString().trim() == ev.name.c_str())
                 {
                     try
                     {
-                        JSONtoValue jsonConverter (constantTable,
-                                                   [this, &annotation, &constantTable] (const Type& targetType, const juce::String& stringValue) -> Value
+                        return convertJSONToValue (e.value, ev.type,
+                                                   [this, &ev, &convertFixedToUnsizedArray] (const Type& targetType, const juce::String& stringValue) -> Value
                                                    {
-                                                       if (auto file = fileList.checkAndCreateVirtualFile (stringValue))
-                                                           return AudioFileToValue::load (std::move (file), targetType, annotation, constantTable);
+                                                       if (auto file = fileList.checkAndCreateVirtualFile (stringValue.toStdString()))
+                                                           return AudioFileToValue::load (std::move (file), targetType, ev.annotation, convertFixedToUnsizedArray);
 
                                                        return {};
-                                                   });
-
-                        return constantTable.getHandleForValue (jsonConverter.createValue (type, e.value));
+                                                   },
+                                                   convertFixedToUnsizedArray);
                     }
                     catch (const PatchLoadError& error)
                     {
-                        throwPatchLoadError ("Error resolving external " + quoteName (name) + ": " + error.message);
+                        throwPatchLoadError ("Error resolving external " + quoteName (ev.name) + ": " + error.message);
                     }
 
                     return {};
@@ -235,25 +243,37 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         outputBusesSpan = makeSpan (outputBuses);
     }
 
+    template <typename DebugHandler>
+    static void printConsoleMessage (const Program& program, const std::string& endpointName, uint64_t eventTime, double sampleRate,
+                                     const soul::Value& eventData, DebugHandler&& handler)
+    {
+        if (isConsoleEndpoint (endpointName))
+            handler (eventTime, endpointName.c_str(), program.getValueDump (eventData, false).c_str());
+        else
+            handler (eventTime, endpointName.c_str(), (endpointName + "  " + toStringWithDecPlaces (eventTime / sampleRate, 3)
+                                                         + ": " + program.getValueDump (eventData) + "\n").c_str());
+    }
+
     void createRenderOperations (Program& program, ConsoleMessageHandler* consoleHandler)
     {
         parameters.clear();
-        auto rateAndBlockSize = getSampleRateAndBlockSize();
+        checkSampleRateAndBlockSize();
 
         decltype (wrapper)::HandleUnusedEventFn handleUnusedEvents;
+        auto sampleRate = config.sampleRate;
 
         if (consoleHandler != nullptr)
         {
-            handleUnusedEvents = [consoleHandler, program, rateAndBlockSize] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
+            handleUnusedEvents = [consoleHandler, program, sampleRate] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
                                  {
-                                     soul::utilities::printConsoleMessage (program, endpointName, eventTime, rateAndBlockSize.sampleRate, eventData,
-                                                                           [consoleHandler] (uint64_t time, const char* name, const char* message)
-                                                                           { consoleHandler->handleConsoleMessage (time, name, message); });
+                                     printConsoleMessage (program, endpointName, eventTime, sampleRate, eventData,
+                                                          [consoleHandler] (uint64_t time, const char* name, const char* message)
+                                                          { consoleHandler->handleConsoleMessage (time, name, message); });
                                      return true;
                                  };
         }
 
-        wrapper.buildRenderingPipeline (rateAndBlockSize,
+        wrapper.buildRenderingPipeline ((uint32_t) config.maxFramesPerBlock,
                                         [&] (const EndpointDetails& endpoint) -> std::function<const float*()>
                                         {
                                             auto param = new ParameterImpl (endpoint);
@@ -402,12 +422,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         return 1000;
     }
 
-    SampleRateAndBlockSize getSampleRateAndBlockSize() const
+    void checkSampleRateAndBlockSize() const
     {
         if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
         if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size");
-
-        return { config.sampleRate, (uint32_t) config.maxFramesPerBlock };
     }
 
     std::vector<CompilationMessage> compileMessages;
