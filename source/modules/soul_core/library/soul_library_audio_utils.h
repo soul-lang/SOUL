@@ -35,7 +35,13 @@ namespace soul
     float32 gainTodB (float32 gain)       { return gain > 0 ? log10 (gain) * 20.0f : -100.0f; }
     float64 gainTodB (float64 gain)       { return gain > 0 ? log10 (gain) * 20.0  : -100.0; }
 
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using a custom tuning. */
+    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using a periodic tuning.
+    
+        @param note                 a note number
+        @param rootNote             the note number at which the scale begins
+        @param rootFrequency        the frequency at which the scale begins
+        @param scale                the frequency interval of each scale degree (`scale[-1]` is used as the period)
+    */
     float32 noteNumberToFrequency (int note, int rootNote, float32 rootFrequency, float32[] scale)
     {
         note -= rootNote + 1;
