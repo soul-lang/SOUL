@@ -9,27 +9,35 @@
 		},
 		{
 			"name": "storage.type.heart",
-			"match": "\\b(const|void|int|int32|int64|float|float32|float64|fixed|bool|string|node|event|stream|value|wrap|clamp|external)\\b"
+			"match": "\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b"
+		},
+		{
+			"name": "storage.class.heart",
+			"match": "\\b(event|stream|value|node)(?=[\\s+|\n|{])\\b"
+		},
+		{
+			"name": "storage.modifier.core.heart",
+			"match": "\\b(const|fixed|external)\\b"
 		},
 		{
 			"name": "entity.name.type.heart",
-			"match": "\\b(let|var|graph|processor|namespace|struct|function|enum|input|output|connection|import)\\b"
-		},
-		{
-			"name": "entity.name.function.heart",
-			"match": "\\b(read|write|advance|cast|call|add|multiply|subtract|divide|modulo|bitwiseOr|bitwiseAnd|bitwiseXor|logicalOr|logicalAnd|equals|notEquals|lessThan|lessThanOrEqual|greaterThan|greaterThanOrEqual|leftShift|rightShift|rightShiftUnsigned|negate|logicalNot|bitwiseNot)\\b"
+			"match": "\\b(let|var|input|output|connection|import)\\b"
 		},
 		{
 			"name": "entity.name.tag.heart",
 			"match": "\\b(none|latch|linear|sinc|fast|best)\\b"
 		},
 		{
+			"name": "entity.name.function.heart",
+			"match": "\\b(read|write|advance|cast|call)\\b"
+		},
+		{
 			"name": "entity.name.section.heart",
-			"match": "([@*])\\w+"
+			"match": "[@]\\w+\\b"
 		},
 		{
 			"name": "variable.other.heart",
-			"match": "([$*])\\w+"
+			"match": "[$]\\w+\\b"
 		},
 		{
 			"name": "invalid.illegal.heart",
@@ -79,8 +87,55 @@
 			"name": "constant.language.heart"
 		},
 		{
-			"match": "\\b((0(x|X)[0-9a-fA-F]([0-9a-fA-F']*[0-9a-fA-F])?)|(0(b|B)[01]([01']*[01])?)|(([0-9]([0-9']*[0-9])?\\.?[0-9]*([0-9']*[0-9])?)|(\\.[0-9]([0-9']*[0-9])?))((e|E)(\\+|-)?[0-9]([0-9']*[0-9])?)?)(f)?|([0-9]*([0-9']*[0-9])?(L))\\b",
-			"name": "constant.numeric.heart"
+			"match": "\\b(processor(?=[.]))\\b",
+			"name": "support.constant.core.heart"
+		},
+		{
+			"match": "\\b[0-9]+[.]([0-9]+)?[f]?([e][+-]?[0-9]+)?[f]?\\b",
+			"name": "constant.numeric.float.heart"
+		},
+		{
+			"match": "\\b[0-9]+(L)?\\b",
+			"name": "constant.numeric.integer.decimal.heart"
+		},
+		{
+			"match": "\\b0x[a-fA-F0-9]+(L)?\\b",
+			"name": "constant.numeric.integer.hexadecimal.heart"
+		},
+		{
+			"match": "\\b0o[0-7]+(L)?\\b",
+			"name": "constant.numeric.integer.octal.heart"
+		},
+		{
+			"match": "\\b0b[01]+(L)?\\b",
+			"name": "constant.numeric.integer.binary.heart"
+		},
+		{
+			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"name": "entity.name.function.heart"
+		},
+		{
+			"match": "\\b(function)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "storage.type.soul"
+				},
+				"2": {
+					"name": "entity.name.function.heart"
+				}
+			}
+		},
+		{
+			"comment": "Module declaration",
+			"match": "\\b(graph|processor|namespace)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_(::)]+)\\b",
+			"captures": {
+				"1": {
+					"name": "storage.type.heart"
+				},
+				"2": {
+					"name": "entity.name.type.heart"
+				}
+			}
 		},
 		{
 			"begin": "\\(",
