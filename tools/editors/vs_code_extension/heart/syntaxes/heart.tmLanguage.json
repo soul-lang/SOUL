@@ -118,7 +118,7 @@
 			"match": "\\b(function)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
 			"captures": {
 				"1": {
-					"name": "storage.type.soul"
+					"name": "storage.type.heart"
 				},
 				"2": {
 					"name": "entity.name.function.heart"
@@ -136,6 +136,25 @@
 					"name": "entity.name.type.heart"
 				}
 			}
+		},
+		{
+			"comment": "Type declaration",
+			"begin": "\\b(enum|struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+			"end": "[\\{\\(]",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.heart"
+				},
+				"2": {
+					"name": "entity.name.type.heart"
+				}
+			},
+			"patterns": [
+				{
+					"match": "\\b(enum|struct)\\b",
+					"name": "keyword.other.type-decl.heart"
+				}
+			]
 		},
 		{
 			"begin": "\\(",
