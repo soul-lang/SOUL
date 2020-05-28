@@ -1,0 +1,224 @@
+scopeName: 'source.soul'
+name: 'SOUL'
+fileTypes: ['soul']
+patterns: [
+	{
+		match: '\\b(if|else|do|while|for|loop|break|continue|return)\\b'
+		name: 'keyword.control.soul'
+	}
+	{
+		match: '\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b'
+		name: 'storage.type.core.soul'
+	}
+	{
+		match: '\\b(event|stream|value)(?=[\\s+|{])\\b'
+		name: 'storage.class.soul'
+	}
+	{
+		match: '\\b(const|fixed|external)\\b'
+		name: 'storage.modifier.core.soul'
+	}
+	{
+		match: '\\b(let|var|input|output|connection|import)\\b'
+		name: 'entity.name.type.soul'
+	}
+	{
+		match: '\\b(try|catch|throw|class|default|operator|switch|case)\\b'
+		name: 'invalid.illegal.soul'
+	}
+	{
+		name: 'comment.block.soul'
+		begin: '/\\*'
+		beginCaptures:
+			'0':
+				name: 'punctuation.definition.comment.begin.c'
+		end: '\\*/'
+		endCaptures:
+			'0':
+				name: 'punctuation.definition.comment.end.c'
+	}
+	{
+		name: 'invalid.illegal.stray-comment-end.soul'
+		match: '\\*/.*\\n'
+	}
+	{
+		name: 'comment.line.double-slash.soul'
+		begin: '//'
+		beginCaptures:
+			'0':
+				name: 'punctuation.definition.comment.cpp'
+		end: '(?=\\n)'
+		patterns: [
+			{
+				match: '(\\\\)\\n'
+			}
+		]
+	}
+	{
+		match: '--'
+		name: 'keyword.operator.decrement.soul'
+	}
+	{
+		match: '\\+\\+'
+		name: 'keyword.operator.increment.soul'
+	}
+	{
+		match: '->|<-'
+		name: 'keyword.other.soul'
+	}
+	{
+		match: '%=|\\+=|-=|\\*='
+		name: 'keyword.operator.assignment.compound.soul'
+	}
+	{
+		match: '&=|\\^=|<<=|>>=|\\|='
+		name: 'keyword.operator.assignment.compound.bitwise.soul'
+	}
+	{
+		match: '<<|>>'
+		name: 'keyword.other.soul'
+	}
+	{
+		match: '!=|<=|>=|==|<|>'
+		name: 'keyword.operator.comparison.soul'
+	}
+	{
+		match: '&&|!|\\|\\|'
+		name: 'keyword.operator.logical.soul'
+	}
+	{
+		match: '&|\\||\\^|~'
+		name: 'keyword.operator.soul'
+	}
+	{
+		match: '\\.|::'
+		name: 'punctuation.separator.soul'
+	}
+	{
+		match: ';'
+		name: 'punctuation.terminator.soul'
+	}
+	{
+		match: '='
+		name: 'keyword.operator.assignment.soul'
+	}
+	{
+		match: '%|\\*|/|-|\\+|\\?|\\:'
+		name: 'keyword.operator.soul'
+	}
+	{
+		match: '\\b(true|false)\\b'
+		name: 'constant.language.soul'
+	}
+	{
+		match: '\\b(processor(?=[.]))\\b'
+		name: 'support.constant.core.soul'
+	}
+	{
+		match: '\\b[0-9]+[.]([0-9]+)?[_]?([f](32|64)?)?([e][+-]?[0-9]+)?[_]?([f](32|64)?)?\\b'
+		name: 'constant.numeric.float.soul'
+	}
+	{
+		match: '\\b[0-9]+(_)?(([i](32|64))|L)?\\b'
+		name: 'constant.numeric.integer.decimal.soul'
+	}
+	{
+		match: '\\b0x[a-fA-F0-9]+(_)?(([i](32|64))|L)?\\b'
+		name: 'constant.numeric.integer.hexadecimal.soul'
+	}
+	{
+		match: '\\b0o[0-7]+(_)?(([i](32|64))|L)?\\b'
+		name: 'constant.numeric.integer.octal.soul'
+	}
+	{
+		match: '\\b0b[01]+(_)?(([i](32|64))|L)?\\b'
+		name: 'constant.numeric.integer.binary.soul'
+	}
+	{
+		match: '\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\('
+		captures:
+			'1':
+				name: 'entity.name.function.soul'
+	}
+	{
+		comment: 'Module declaration'
+		match: '\\b(graph|processor|namespace)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\b'
+		captures:
+			'1':
+				name: 'storage.type.soul'
+			'2':
+				name: 'entity.name.type.soul'
+	}
+	{
+		comment: 'Type declaration'
+		begin: '\\b(enum|struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+		end: '[\\{\\(]'
+		beginCaptures:
+			'1':
+				name: 'storage.type.soul'
+			'2':
+				name: 'entity.name.type.soul'
+		patterns: [
+			{
+				match: '\\b(enum|struct)\\b'
+				name: 'keyword.other.type-decl.soul'
+			}
+		]
+	}
+	{
+		comment: 'Type alias'
+		match: '\\b(using)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b'
+		captures:
+			'1':
+				name: 'storage.type.soul'
+			'2':
+				name: 'entity.name.type.soul'
+	}
+	{
+		begin: '\\('
+		beginCaptures:
+			'0':
+				name: 'punctuation.section.parens.begin.bracket.round.soul'
+		end: '\\)|(?=//)|(?=/\\*(?!.*\\\\\\s*\\n))|(?<!\\\\)(?=\\n)'
+		endCaptures:
+			'0':
+				name: 'punctuation.section.parens.end.bracket.round.soul'
+		patterns: [
+			{
+				include: '#preprocessor-rule-conditional-line'
+			}
+		]
+	}
+	{
+		match: '(\\[)|(\\])'
+		captures:
+			'1':
+				name: 'punctuation.definition.begin.bracket.square.soul'
+			'2':
+				name: 'punctuation.definition.end.bracket.square.soul'
+	}
+	{
+		match: '(\\[\\[)|(\\]\\])'
+		captures:
+			'1':
+				name: 'punctuation.definition.block.begin.bracket.square.soul'
+			'2':
+				name: 'punctuation.definition.block.end.bracket.square.soul'
+	}
+	{
+		name: 'string.quoted.double.soul'
+		begin: '"'
+		end: '"'
+		patterns: [
+			{
+				name: 'constant.character.escape.soul'
+				match: '\\\\.'
+			}
+		]
+	}
+	{
+		name: 'keyword.control.directive.soul'
+		begin: '^##'
+		end: '(?=\\n)'
+	}
+]

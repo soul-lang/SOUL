@@ -1,0 +1,11 @@
+{
+    "name": "language-heart",
+    "version": "0.0.1",
+    "description": "Syntax highlighting for HEART",
+    "repository": "https://github.com/nicochatzi/SOUL",
+    "license": "MIT",
+    "engines": {
+      "atom": "*"
+    },
+    "dependencies": {}
+  }

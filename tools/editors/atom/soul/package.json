@@ -1,0 +1,11 @@
+{
+    "name": "language-soul",
+    "version": "0.0.1",
+    "description": "Syntax highlighting for SOUL",
+    "repository": "https://github.com/nicochatzi/SOUL",
+    "license": "MIT",
+    "engines": {
+      "atom": "*"
+    },
+    "dependencies": {}
+  }
