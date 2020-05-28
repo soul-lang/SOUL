@@ -175,21 +175,6 @@ patterns: [
 				name: 'entity.name.type.soul'
 	}
 	{
-		begin: '\\('
-		beginCaptures:
-			'0':
-				name: 'punctuation.section.parens.begin.bracket.round.soul'
-		end: '\\)|(?=//)|(?=/\\*(?!.*\\\\\\s*\\n))|(?<!\\\\)(?=\\n)'
-		endCaptures:
-			'0':
-				name: 'punctuation.section.parens.end.bracket.round.soul'
-		patterns: [
-			{
-				include: '#preprocessor-rule-conditional-line'
-			}
-		]
-	}
-	{
 		match: '(\\[)|(\\])'
 		captures:
 			'1':
