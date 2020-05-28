@@ -3,28 +3,28 @@ name: 'SOUL'
 fileTypes: ['soul']
 patterns: [
 	{
-		match: '\\b(if|else|do|while|for|loop|break|continue|return)\\b'
 		name: 'keyword.control.soul'
+		match: '\\b(if|else|do|while|for|loop|break|continue|return)\\b'
 	}
 	{
-		match: '\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b'
 		name: 'storage.type.core.soul'
+		match: '\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b'
 	}
 	{
-		match: '\\b(event|stream|value)(?=[\\s+|{])\\b'
 		name: 'storage.class.soul'
+		match: '\\b(event|stream|value)(?=[\\s+|{])\\b'
 	}
 	{
-		match: '\\b(const|fixed|external)\\b'
 		name: 'storage.modifier.core.soul'
+		match: '\\b(const|fixed|external)\\b'
 	}
 	{
-		match: '\\b(let|var|input|output|connection|import)\\b'
 		name: 'entity.name.type.soul'
+		match: '\\b(let|var|input|output|connection|import)\\b'
 	}
 	{
-		match: '\\b(try|catch|throw|class|default|operator|switch|case)\\b'
 		name: 'invalid.illegal.soul'
+		match: '\\b(try|catch|throw|class|default|operator|switch|case)\\b'
 	}
 	{
 		name: 'comment.block.soul'

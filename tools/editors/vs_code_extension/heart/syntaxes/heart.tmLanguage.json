@@ -112,7 +112,11 @@
 		},
 		{
 			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
-			"name": "entity.name.function.heart"
+			"captures": {
+				"1": {
+					"name": "entity.name.function.heart"
+				}
+			}
 		},
 		{
 			"match": "\\b(function)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
