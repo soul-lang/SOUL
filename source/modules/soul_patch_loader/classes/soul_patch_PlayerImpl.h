@@ -69,14 +69,13 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             if (source == nullptr)
                 source = fileState.file;
 
-            juce::String readError;
+            std::string readError;
             auto content = loadVirtualFileAsString (*source, readError);
 
-            if (readError.isNotEmpty())
-                throwPatchLoadError (readError.toStdString());
+            if (! readError.empty())
+                throwPatchLoadError (readError);
 
-            compiler.addCode (messageList, CodeLocation::createFromString (fileState.path.toStdString(),
-                                                                           content.toStdString()));
+            compiler.addCode (messageList, CodeLocation::createFromString (fileState.path, content));
         }
     }
 
@@ -130,7 +129,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             return messageList.addError ("Failed to load program", {});
 
         createBuses();
-        createRenderOperations (program, consoleHandler);
+        createRenderOperations (consoleHandler);
         resolveExternalVariables (externalDataProvider);
 
         if (! performer->link (messageList, linkOptions, CacheConverter::create (cache).get()))
@@ -180,48 +179,66 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         {
             auto value = resolveExternalVariable (externalDataProvider, ev);
 
-            if (value.isValid())
-                performer->setExternalVariable (ev.name.c_str(), std::move (value));
+            if (! value.isVoid())
+                performer->setExternalVariable (ev.name.c_str(), value);
         }
     }
 
-    soul::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const soul::Performer::ExternalVariable& ev)
+    inline choc::value::Value replaceStringsWithFileContent (const choc::value::ValueView& value,
+                                                             const std::function<choc::value::Value(std::string_view)>& convertStringToValue)
     {
-        auto convertFixedToUnsizedArray = [this] (soul::Value v)
-        {
-            auto elementType = v.getType().getElementType();
-            return Value::createUnsizedArray (elementType, performer->addConstant (std::move (v)));
-        };
+        if (value.isString())
+            return convertStringToValue (value.getString());
 
+        if (value.isArray())
+        {
+            auto v = choc::value::Value::createEmptyArray();
+
+            for (auto i : value)
+                v.addArrayElement (replaceStringsWithFileContent (i, convertStringToValue));
+
+            return v;
+        }
+
+        if (value.isObject())
+        {
+            auto v = choc::value::Value::createObject (value.getObjectClassName());
+
+            value.visitObjectMembers ([&] (const choc::value::MemberNameAndValue& member)
+            {
+                v.addObjectMember (member.name, replaceStringsWithFileContent (member.value, convertStringToValue));
+            });
+
+            return v;
+        }
+
+        return choc::value::Value (value);
+    }
+
+    choc::value::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const soul::Performer::ExternalVariable& ev)
+    {
         if (externalDataProvider != nullptr)
             if (auto file = externalDataProvider->getExternalFile (ev.name.c_str()))
-                return AudioFileToValue::load (std::move (file), ev.type, ev.annotation, convertFixedToUnsizedArray);
+                return AudioFileToValue::load (std::move (file), ev.annotation);
 
-        if (auto externals = fileList.getExternalsList())
+        auto externals = fileList.getExternalsList();
+
+        if (externals.isObject() && externals.hasObjectMember (ev.name))
         {
-            for (auto& e : externals->getProperties())
+            try
             {
-                if (e.name.toString().trim() == ev.name.c_str())
-                {
-                    try
-                    {
-                        return convertJSONToValue (e.value, ev.type,
-                                                   [this, &ev, &convertFixedToUnsizedArray] (const Type& targetType, const juce::String& stringValue) -> Value
-                                                   {
-                                                       if (auto file = fileList.checkAndCreateVirtualFile (stringValue.toStdString()))
-                                                           return AudioFileToValue::load (std::move (file), targetType, ev.annotation, convertFixedToUnsizedArray);
+                return replaceStringsWithFileContent (externals[ev.name],
+                                                      [&] (std::string_view s) -> choc::value::Value
+                                                      {
+                                                          if (auto file = fileList.checkAndCreateVirtualFile (std::string (s)))
+                                                              return AudioFileToValue::load (std::move (file), ev.annotation);
 
-                                                       return {};
-                                                   },
-                                                   convertFixedToUnsizedArray);
-                    }
-                    catch (const PatchLoadError& error)
-                    {
-                        throwPatchLoadError ("Error resolving external " + quoteName (ev.name) + ": " + error.message);
-                    }
-
-                    return {};
-                }
+                                                          return choc::value::Value::createString (s);
+                                                      });
+            }
+            catch (const PatchLoadError& error)
+            {
+                throwPatchLoadError ("Error resolving external " + quoteName (ev.name) + ": " + error.message);
             }
         }
 
@@ -244,17 +261,17 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     }
 
     template <typename DebugHandler>
-    static void printConsoleMessage (const Program& program, const std::string& endpointName, uint64_t eventTime, double sampleRate,
-                                     const soul::Value& eventData, DebugHandler&& handler)
+    static void printConsoleMessage (const std::string& endpointName, uint64_t eventTime, double sampleRate,
+                                     const choc::value::ValueView& eventData, DebugHandler&& handler)
     {
         if (isConsoleEndpoint (endpointName))
-            handler (eventTime, endpointName.c_str(), program.getValueDump (eventData, false).c_str());
+            handler (eventTime, endpointName.c_str(), dump (eventData).c_str());
         else
             handler (eventTime, endpointName.c_str(), (endpointName + "  " + toStringWithDecPlaces (eventTime / sampleRate, 3)
-                                                         + ": " + program.getValueDump (eventData) + "\n").c_str());
+                                                         + ": " + dump (eventData) + "\n").c_str());
     }
 
-    void createRenderOperations (Program& program, ConsoleMessageHandler* consoleHandler)
+    void createRenderOperations (ConsoleMessageHandler* consoleHandler)
     {
         parameters.clear();
         checkSampleRateAndBlockSize();
@@ -264,9 +281,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         if (consoleHandler != nullptr)
         {
-            handleUnusedEvents = [consoleHandler, program, sampleRate] (uint64_t eventTime, const std::string& endpointName, const Value& eventData) -> bool
+            handleUnusedEvents = [consoleHandler, sampleRate] (uint64_t eventTime, const std::string& endpointName, const choc::value::ValueView& eventData) -> bool
                                  {
-                                     printConsoleMessage (program, endpointName, eventTime, sampleRate, eventData,
+                                     printConsoleMessage (endpointName, eventTime, sampleRate, eventData,
                                                           [consoleHandler] (uint64_t time, const char* name, const char* message)
                                                           { consoleHandler->handleConsoleMessage (time, name, message); });
                                      return true;
@@ -325,7 +342,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         {
             ID = makeString (details.name);
 
-            PatchPropertiesFromEndpointDetails props (details);
+            PatchParameterProperties props (details.name, details.annotation.toExternalValue());
             name         = makeString (props.name);
             unit         = makeString (props.unit);
             minValue     = props.minValue;
@@ -396,14 +413,6 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     };
 
     //==============================================================================
-    static float castValueToFloat (const soul::Value& v, float defaultValue)
-    {
-        if (v.getType().isPrimitive() && (v.getType().isFloatingPoint() || v.getType().isInteger()))
-            return static_cast<float> (v.getAsDouble());
-
-        return defaultValue;
-    }
-
     static uint32_t checkRampLength (const soul::Value& v)
     {
         if (v.getType().isPrimitive() && (v.getType().isFloatingPoint() || v.getType().isInteger()))

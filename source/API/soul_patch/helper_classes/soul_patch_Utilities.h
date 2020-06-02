@@ -9,11 +9,10 @@
 
 #pragma once
 
-#ifndef JUCE_CORE_H_INCLUDED
- #error "this header is designed to be included in JUCE projects that contain the juce_core module"
-#endif
-
 #include "../API/soul_patch.h"
+#include "../3rdParty/choc/text/choc_UTF8.h"
+#include "../3rdParty/choc/text/choc_JSON.h"
+#include "../3rdParty/choc/text/choc_StringUtilities.h"
 
 /*
     This file contains some helper classes and functions that are handy for JUCE-based apps
@@ -47,9 +46,13 @@ struct StringImpl : public RefCountHelper<String>
     const char* const rawPointer;
 };
 
-inline String::Ptr makeString (std::string s)            { return String::Ptr (new StringImpl (std::move (s))); }
-inline String::Ptr makeString (const juce::String& s)    { return makeString (s.toStdString()); }
-inline String::Ptr makeString (const juce::var& s)       { return makeString (s.toString()); }
+inline String::Ptr makeString (std::string s)                    { return String::Ptr (new StringImpl (std::move (s))); }
+inline String::Ptr makeString (const choc::value::ValueView& s)  { return makeString (s.isString() ? std::string (s.getString()) : std::string()); }
+
+#ifdef JUCE_CORE_H_INCLUDED
+inline String::Ptr makeString (const juce::String& s)   { return makeString (s.toStdString()); }
+inline String::Ptr makeString (const juce::var& s)      { return makeString (s.toString()); }
+#endif
 
 //==============================================================================
 /** Creates a Span from a std::vector */
@@ -64,59 +67,184 @@ Span<Type> makeSpan (std::vector<Type>& v)
 }
 
 //==============================================================================
-inline juce::MemoryBlock loadVirtualFileAsMemoryBlock (VirtualFile& f, juce::String& error)
+inline std::string loadVirtualFileAsMemoryBlock (VirtualFile& f, std::string& error)
 {
-    juce::MemoryBlock m;
-    auto size = f.getSize();
+    auto fileSize = f.getSize();
+    size_t blockSize = 13;//fileSize > 0 ? static_cast<size_t> (fileSize) : 8192;
+    std::string buffer;
+    buffer.resize (blockSize);
+    std::ostringstream result;
+    uint64_t readPos = 0;
 
-    if (size > 0)
+    for (;;)
     {
-        m.setSize ((size_t) size);
-        auto numRead = f.read (0, m.getData(), (uint64_t) size);
+        auto numRead = f.read (readPos, std::addressof (buffer[0]), (uint64_t) blockSize);
 
-        if (numRead == size)
-            return m;
-
-        m.reset();
-        error = "Failed to read from file: " + f.getAbsolutePath().toString<juce::String>();
-    }
-    else
-    {
-        juce::MemoryOutputStream stream (m, false);
-        uint64_t readPos = 0;
-
-        for (;;)
+        if (numRead < 0)
         {
-            constexpr int blockSize = 16384;
-            juce::HeapBlock<char> buffer (blockSize);
-
-            auto numRead = f.read (readPos, buffer, (uint64_t) blockSize);
-
-            if (numRead > 0)
-            {
-                readPos += (uint64_t) numRead;
-                stream.write (buffer, (size_t) numRead);
-            }
-
-            if (numRead != blockSize)
-            {
-                if (numRead < 0)
-                    error = "Failed to read from file: " + f.getAbsolutePath().toString<juce::String>();
-
-                break;
-            }
+            error = "Failed to read from file: " + f.getAbsolutePath().toString<std::string>();
+            return {};
         }
-    }
 
-    return m;
+        if (fileSize == numRead && readPos == 0)
+        {
+            buffer.resize (static_cast<size_t> (numRead));
+            return buffer;
+        }
+
+        result.write (buffer.data(), static_cast<std::streamsize> (numRead));
+
+        if (static_cast<size_t> (numRead) < blockSize)
+            return result.str();
+
+        readPos += static_cast<size_t> (numRead);
+    }
 }
 
 //==============================================================================
-inline juce::String loadVirtualFileAsString (VirtualFile& f, juce::String& error)
+inline std::string loadVirtualFileAsString (VirtualFile& f, std::string& error)
 {
     auto data = loadVirtualFileAsMemoryBlock (f, error);
-    return juce::String::createStringFromData (data.getData(), (int) data.getSize());
+
+    if (error.empty())
+    {
+        auto invalidUTF8 = choc::text::findInvalidUTF8Data (data.data(), data.size());
+
+        if (invalidUTF8 == nullptr)
+            return data;
+
+        error = "Invalid UTF8 data";
+    }
+
+    return {};
 }
+
+/** When parsing relative paths from entries in the manifest JSON, this provides a
+    handy way to convert those paths into VirtualFile objects.
+*/
+inline VirtualFile::Ptr getFileRelativeToManifest (VirtualFile& manifest, std::string_view relativePath)
+{
+    if (auto parent = manifest.getParent())
+        return parent->getChildFile (std::string (relativePath).c_str());
+
+    return {};
+}
+
+//==============================================================================
+inline const char* getManifestSuffix()                  { return ".soulpatch"; }
+inline const char* getManifestWildcard()                { return "*.soulpatch"; }
+inline const char* getManifestTopLevelPropertyName()    { return "soulPatchV1"; }
+
+//==============================================================================
+inline choc::value::ValueView getManifestContentObject (const choc::value::ValueView& topLevelObject)
+{
+    return topLevelObject[getManifestTopLevelPropertyName()];
+}
+
+/** Attempts to parse the JSON object from a manifest file, returning an error if
+    something fails.
+*/
+inline choc::value::Value parseManifestFile (VirtualFile& manifestFile, std::string& errorMessage)
+{
+    try
+    {
+        auto content = loadVirtualFileAsString (manifestFile, errorMessage);
+
+        if (errorMessage.empty())
+        {
+            auto topLevelObject = choc::json::parse (content);
+            auto contentObject = getManifestContentObject (topLevelObject);
+
+            if (contentObject.isObject())
+                return choc::value::Value (contentObject);
+
+            errorMessage = "Expected an object called '" + std::string (getManifestTopLevelPropertyName()) + "'";
+        }
+    }
+    catch (choc::json::ParseError error)
+    {
+        errorMessage = manifestFile.getAbsolutePath().toString<std::string>()
+                        + ":" + std::to_string (error.line) + ":" + std::to_string (error.column) + ": " + error.message;
+    }
+
+    return {};
+}
+
+/** Parses a manifest file and returns a list of the "view" files that it contains. */
+inline std::vector<VirtualFile::Ptr> findViewFiles (VirtualFile& manifestFile)
+{
+    std::vector<VirtualFile::Ptr> views;
+    std::string error;
+    auto manifestContent = parseManifestFile (manifestFile, error);
+
+    if (error.empty())
+    {
+        auto viewList = manifestContent["view"];
+
+        if (viewList.isArray())
+        {
+            for (auto s : viewList)
+                if (auto f = getFileRelativeToManifest (manifestFile, s.getString()))
+                    views.push_back (f);
+        }
+        else if (viewList.isString())
+        {
+            if (auto f = getFileRelativeToManifest (manifestFile, viewList.getString()))
+                views.push_back (f);
+        }
+    }
+
+    return views;
+}
+
+//==============================================================================
+/** This looks at the annotation on an endpoint and parses out some common patch properties. */
+struct PatchParameterProperties
+{
+    PatchParameterProperties (const std::string& endpointName,
+                              const choc::value::ValueView& endpointAnnotation)
+    {
+        auto getString = [&] (const char* propName)  { return endpointAnnotation[propName].getWithDefault<std::string_view> ({}); };
+
+        name = getString ("name");
+
+        if (name.empty())
+            name = endpointName;
+
+        int defaultNumIntervals = 1000;
+        auto textValue = getString ("text");
+
+        if (! textValue.empty())
+        {
+            auto items = choc::text::splitString (choc::text::removeDoubleQuotes (std::string (textValue)), '|', false);
+
+            if (items.size() > 1)
+            {
+                defaultNumIntervals = (int) items.size() - 1;
+                maxValue = float (defaultNumIntervals);
+            }
+        }
+
+        unit          = getString ("unit");
+        group         = getString ("group");
+        textValues    = getString ("text");
+        minValue      = endpointAnnotation["min"].getWithDefault<float> (minValue);
+        maxValue      = endpointAnnotation["max"].getWithDefault<float> (maxValue);
+        step          = endpointAnnotation["step"].getWithDefault<float> (maxValue / static_cast<float> (defaultNumIntervals));
+        initialValue  = endpointAnnotation["init"].getWithDefault<float> (minValue);
+        rampFrames    = endpointAnnotation["rampFrames"].getWithDefault<uint32_t> (0);
+        isAutomatable = endpointAnnotation["automatable"].getWithDefault<bool> (true);
+        isBoolean     = endpointAnnotation["boolean"].getWithDefault<bool> (false);
+        isHidden      = endpointAnnotation["hidden"].getWithDefault<bool> (false);
+    }
+
+    std::string name, unit, group, textValues;
+    float minValue = 0, maxValue = 1.0f, step = 0, initialValue = 0;
+    uint32_t rampFrames = 0;
+    bool isAutomatable = false, isBoolean = false, isHidden = false;
+};
+
+#ifdef JUCE_CORE_H_INCLUDED
 
 //==============================================================================
 struct VirtualFileInputStream   : public juce::InputStream
@@ -163,79 +291,7 @@ struct VirtualFileInputStream   : public juce::InputStream
     juce::int64 position = 0, totalLength = 0;
 };
 
-//==============================================================================
-inline const char* getManifestSuffix()                  { return ".soulpatch"; }
-inline const char* getManifestWildcard()                { return "*.soulpatch"; }
-inline const char* getManifestTopLevelPropertyName()    { return "soulPatchV1"; }
-
-inline juce::var getManifestContentObject (const juce::var& topLevelObject)
-{
-    return topLevelObject[getManifestTopLevelPropertyName()];
-}
-
-/** Attempts to parse the JSON object from a manifest file, returning an error if
-    something fails.
-*/
-inline juce::Result parseManifestFile (VirtualFile& manifestFile, juce::var& resultJSON)
-{
-    juce::String readError;
-    auto content = loadVirtualFileAsString (manifestFile, readError);
-
-    if (readError.isNotEmpty())
-        return juce::Result::fail (readError);
-
-    juce::var topLevelObject;
-    auto result = juce::JSON::parse (content, topLevelObject);
-
-    if (result.failed())
-        return result;
-
-    resultJSON = getManifestContentObject (topLevelObject);
-
-    if (! resultJSON.isObject())
-        return juce::Result::fail ("Expected an object called '" + juce::String (getManifestTopLevelPropertyName()) + "'");
-
-    return juce::Result::ok();
-}
-
-/** When parsing relative paths from entries in the manifest JSON, this provides a
-    handy way to convert those paths into VirtualFile objects.
-*/
-inline VirtualFile::Ptr getFileRelativeToManifest (VirtualFile& manifest, const juce::String& relativePath)
-{
-    if (auto parent = manifest.getParent())
-        return parent->getChildFile (relativePath.toRawUTF8());
-
-    return {};
-}
-
-/** Parses a manifest file and returns a list of the "view" files that it contains. */
-inline std::vector<VirtualFile::Ptr> findViewFiles (VirtualFile& manifestFile)
-{
-    std::vector<VirtualFile::Ptr> views;
-    juce::var manifestContent;
-    auto result = parseManifestFile (manifestFile, manifestContent);
-
-    if (result.wasOk())
-    {
-        auto viewList = manifestContent["view"];
-
-        if (viewList.isArray())
-        {
-            for (auto& s : *viewList.getArray())
-                if (auto f = getFileRelativeToManifest (manifestFile, s))
-                    views.push_back (f);
-        }
-        else
-        {
-            if (auto f = getFileRelativeToManifest (manifestFile, viewList))
-                views.push_back (f);
-        }
-    }
-
-    return views;
-}
-
+#endif
 
 } // namespace patch
 } // namespace soul

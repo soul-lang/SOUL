@@ -103,8 +103,8 @@ struct CompilerCacheFolder   : public CompilerCache
         return ! anyFailed;
     }
 
-    static juce::String getFilePrefix()                      { return "soul_patch_cache_"; }
-    static juce::String getFileName (const char* cacheKey)   { return getFilePrefix() + cacheKey; }
+    static std::string getFilePrefix()                       { return "soul_patch_cache_"; }
+    static std::string getFileName (const char* cacheKey)    { return getFilePrefix() + cacheKey; }
     juce::File getFileForKey (const char* cacheKey) const    { return folder.getChildFile (getFileName (cacheKey)); }
 
     void addRef() noexcept override         { ++refCount; }

@@ -122,47 +122,5 @@ static InterpolationType parseInterpolationType (TokeniserType& tokeniser)
     return InterpolationType::none;
 }
 
-//==============================================================================
-PatchPropertiesFromEndpointDetails::PatchPropertiesFromEndpointDetails (const EndpointDetails& details)
-{
-    auto castValueToFloat = [] (const soul::Value& v, float defaultValue) -> float
-    {
-        if (v.getType().isPrimitive() && (v.getType().isFloatingPoint() || v.getType().isInteger()))
-            return static_cast<float> (v.getAsDouble());
-
-        return defaultValue;
-    };
-
-    name = details.annotation.getString ("name");
-
-    if (name.empty())
-        name = details.name;
-
-    int numIntervals = 0;
-    auto textValue = details.annotation.getValue ("text");
-
-    if (textValue.getType().isStringLiteral())
-    {
-        auto items = splitAtDelimiter (removeDoubleQuotes (textValue.getDescription()), '|');
-
-        if (items.size() > 1)
-        {
-            numIntervals = (int) items.size() - 1;
-            maxValue = float (numIntervals);
-        }
-    }
-
-    unit          = details.annotation.getString ("unit");
-    group         = details.annotation.getString ("group");
-    textValues    = details.annotation.getString ("text");
-    minValue      = castValueToFloat (details.annotation.getValue ("min"), minValue);
-    maxValue      = castValueToFloat (details.annotation.getValue ("max"), maxValue);
-    step          = castValueToFloat (details.annotation.getValue ("step"), maxValue / static_cast<float> (numIntervals == 0 ? 1000 : numIntervals));
-    initialValue  = castValueToFloat (details.annotation.getValue ("init"), minValue);
-    rampFrames    = (uint32_t) details.annotation.getInt64 ("rampFrames");
-    isAutomatable = details.annotation.getBool ("automatable", true);
-    isBoolean     = details.annotation.getBool ("boolean", false);
-    isHidden      = details.annotation.getBool ("hidden", false);
-}
 
 }

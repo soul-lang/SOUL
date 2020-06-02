@@ -167,6 +167,9 @@ struct Value  final
     /** Copies the value from the source value - this is only valid if the type are identical. */
     void copyValue (const Value& source);
 
+    static Value fromExternalValue (const Type& targetType, const choc::value::ValueView&, ConstantTable&, StringDictionary&);
+    choc::value::Value toExternalValue (const ConstantTable&, const StringDictionary&) const;
+
 private:
     Type type;
     ArrayWithPreallocation<uint8_t, 8> allocatedData;
@@ -207,7 +210,7 @@ struct ValuePrinter
     virtual void printStringLiteral (StringDictionary::Handle);
     virtual void printUnsizedArrayContent (const Type& arrayType, const void*);
 
-    virtual void print (const std::string&) = 0;
+    virtual void print (std::string_view) = 0;
 
     const StringDictionary* dictionary = nullptr;
 };

@@ -149,13 +149,6 @@ public:
     /** Returns the description of a Type using fully-qualified struct names for all structures. */
     std::string getFullyQualifiedTypeDescription (const Type&) const;
 
-    /** Returns a usefully-formatted dump of a Value.
-        Unlike Value::getDescription(), this method allows better type names to be generated for a
-        Value which is part of this Program. It'll also do a better job of pretty-printing things it
-        can recognise based on the type, such as MIDI messages.
-    */
-    std::string getValueDump (const Value&, bool putStringsInQuotes = true) const;
-
     /** Makes a fully-qualified path more readable by removing the internal top-level namespace. */
     static std::string stripRootNamespaceFromQualifiedPath (std::string path);
 

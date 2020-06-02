@@ -98,20 +98,20 @@ public:
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
             using the endpoint handle that was provided as an argument to that callback.
         */
-        virtual void setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+        virtual void setNextInputStreamFrames (EndpointHandle, const choc::value::ValueView& frameArray) = 0;
 
         /** Updates the trajectory for a sparse input stream.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
             using the endpoint handle that was provided as an argument to that callback.
         */
-        virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue,
+        virtual void setSparseInputStreamTarget (EndpointHandle, const choc::value::ValueView& targetFrameValue,
                                                  uint32_t numFramesToReachValue, float curveShape) = 0;
 
         /** Sets a new value for a value input.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
             using the endpoint handle that was provided as an argument to that callback.
         */
-        virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
+        virtual void setInputValue (EndpointHandle, const choc::value::ValueView& newValue) = 0;
 
         /** Adds an event to an input queue.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
@@ -120,14 +120,14 @@ public:
             endpoint. The events will then all be dispatched in order, and the queue will be reset before
             the next callback.
         */
-        virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
+        virtual void addInputEvent (EndpointHandle, const choc::value::ValueView& eventData) = 0;
 
         /** Retrieves the most recent block of frames from an output stream.
             This method may only be called during a callback attached to setOutputEndpointServiceCallback(),
             using the endpoint handle that was provided as an argument to that callback.
             A nullptr return value indicates that no frames are available.
         */
-        virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
+        virtual choc::value::ValueView getOutputStreamFrames (EndpointHandle) = 0;
 
         /** Retrieves the last block of events which were emitted by an event output.
             This method may only be called during a callback attached to setOutputEndpointServiceCallback(),

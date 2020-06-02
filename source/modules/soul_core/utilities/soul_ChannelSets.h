@@ -34,6 +34,8 @@ struct InterleavedChannelSet
     SampleType* data = nullptr;
     uint32_t numChannels = 0, numFrames = 0, stride = 0;
 
+    operator InterleavedChannelSet<const Sample>() const  { return { data, numChannels, numFrames, stride }; }
+
     uint32_t getNumFrames() const       { return numFrames; }
     uint32_t getNumChannels() const     { return numChannels; }
 
@@ -43,16 +45,24 @@ struct InterleavedChannelSet
         return data + channel;
     }
 
+    SampleType& getSample (uint32_t channel, uint32_t frame)
+    {
+        SOUL_ASSERT (channel < numChannels && frame < numFrames);
+        return *(data + channel + frame * stride);
+    }
+
     SampleType getSample (uint32_t channel, uint32_t frame) const
     {
         SOUL_ASSERT (channel < numChannels && frame < numFrames);
         return *(data + channel + frame * stride);
     }
 
-    SampleType& getSample (uint32_t channel, uint32_t frame)
+    SampleType getSampleOrZero (uint32_t channel, uint32_t frame) const
     {
-        SOUL_ASSERT (channel < numChannels && frame < numFrames);
-        return *(data + channel + frame * stride);
+        if (channel < numChannels && frame < numFrames)
+            return *(data + channel + frame * stride);
+
+        return {};
     }
 
     void getFrame (uint32_t frame, SampleType* dest) const
@@ -155,6 +165,8 @@ struct DiscreteChannelSet
     uint32_t numChannels = 0, offset = 0, numFrames = 0;
     static constexpr uint32_t stride = 1;
 
+    operator DiscreteChannelSet<const Sample>() const  { return { channels, numChannels, offset, numFrames }; }
+
     uint32_t getNumFrames() const       { return numFrames; }
     uint32_t getNumChannels() const     { return numChannels; }
 
@@ -176,6 +188,14 @@ struct DiscreteChannelSet
         return channels[channel][offset + frame];
     }
 
+    SampleType getSampleOrZero (uint32_t channel, uint32_t frame) const
+    {
+        if (channel < numChannels && frame < numFrames)
+            return channels[channel][offset + frame];
+
+        return {};
+    }
+
     void getFrame (uint32_t frame, SampleType* dest) const
     {
         SOUL_ASSERT (frame < numFrames);
@@ -194,6 +214,12 @@ struct DiscreteChannelSet
     {
         SOUL_ASSERT (firstChannel <= numChannels && firstChannel + numChans <= numChannels);
         return { channels + firstChannel, numChans, offset, numFrames };
+    }
+
+    InterleavedChannelSet<SampleType> getSingleChannelAsInterleaved (uint32_t channel) const
+    {
+        SOUL_ASSERT (channel <= numChannels);
+        return { channels[channel] + offset, 1, numFrames, 1 };
     }
 
     void clear() const
@@ -295,13 +321,15 @@ template <typename DestType, typename SourceType>
 void copyChannelSet (DestType dest, SourceType src)
 {
     SOUL_ASSERT (channelSetsAreSameSize (src, dest));
+    auto numChans = src.getNumChannels();
+    auto numFrames = src.getNumFrames();
 
-    for (uint32_t chan = 0; chan < src.numChannels; ++chan)
+    for (uint32_t chan = 0; chan < numChans; ++chan)
     {
         auto srcChan = src.getChannel (chan);
         auto dstChan = dest.getChannel (chan);
 
-        for (uint32_t i = 0; i < src.numFrames; ++i)
+        for (uint32_t i = 0; i < numFrames; ++i)
         {
             *dstChan = castSampleType<typename DestType::SampleType, const typename SourceType::SampleType> (*srcChan);
             dstChan += dest.stride;
@@ -334,6 +362,25 @@ void copyChannelSetToFit (DestType dest, SourceType src)
         copyChannelSet (dest.getChannelSet (0, src.numChannels), src);
         dest.getChannelSet (src.numChannels, dest.numChannels - src.numChannels).clear();
     }
+}
+
+/** Copies one channel set to another - if the destination has more frames, the
+    remaining ones will be cleared, or if the destination has fewer frames, then
+    only those that fit will be copied.
+*/
+template <typename DestType, typename SourceType>
+void copyChannelSetHandlingLengthDifference (DestType dest, SourceType src)
+{
+    SOUL_ASSERT (dest.getNumChannels() == src.getNumChannels());
+
+    if (dest.getNumFrames() == src.getNumFrames())
+        return copyChannelSet (dest, src);
+
+    if (dest.getNumFrames() < src.getNumFrames())
+        return copyChannelSet (dest, src.getSlice (0, dest.getNumFrames()));
+
+    copyChannelSet (dest.getSlice (0, src.getNumFrames()), src);
+    dest.getSlice (src.getNumFrames(), dest.getNumFrames() - src.getNumFrames()).clear();
 }
 
 template <typename ChannelSetType>
@@ -452,6 +499,7 @@ struct AllocatedChannelSet
     SampleType* getChannel (uint32_t channel) const                                 { return channelSet.getChannel (channel); }
     SampleType& getSample (uint32_t channel, uint32_t frame)                        { return channelSet.getSample (channel, frame); }
     SampleType getSample (uint32_t channel, uint32_t frame) const                   { return channelSet.getSample (channel, frame); }
+    SampleType getSampleOrZero (uint32_t channel, uint32_t frame) const             { return channelSet.getSampleOrZero (channel, frame); }
     void getFrame (uint32_t frame, SampleType* dest) const                          { channelSet.getFrame (frame, dest); }
     ChannelSetType getSlice (uint32_t start, uint32_t length) const                 { return channelSet.getSlice (start, length); }
     ChannelSetType getChannelSet (uint32_t firstChannel, uint32_t numChans) const   { return channelSet.getChannelSet (firstChannel, numChans); }

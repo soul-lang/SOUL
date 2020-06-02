@@ -44,6 +44,8 @@
  #define SOUL_INTEL 1
 #endif
 
+#include "../../3rdParty/choc/containers/choc_Value.h"
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -136,3 +138,4 @@ namespace soul
 #include "utilities/soul_EventQueue.h"
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"
+#include "utilities/soul_DumpConstant.h"

@@ -196,7 +196,7 @@ Value performIntrinsic (IntrinsicType i, ArrayView<Value> args)
     X(read) \
     X(readLinearInterpolated) \
 
-IntrinsicType getIntrinsicTypeFromName (const std::string& s)
+IntrinsicType getIntrinsicTypeFromName (std::string_view s)
 {
     #define SOUL_MATCH_INTRINSIC(i)  if (s == #i) return IntrinsicType::i;
     SOUL_INTRINSICS (SOUL_MATCH_INTRINSIC)

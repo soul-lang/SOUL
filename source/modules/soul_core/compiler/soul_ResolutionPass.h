@@ -1647,7 +1647,7 @@ private:
             return allocator.allocate<AST::StaticAssertion> (c.context, c.arguments->items.front(), error);
         }
 
-        std::string getErrorMessageArgument (AST::Expression& e)
+        std::string_view getErrorMessageArgument (AST::Expression& e)
         {
             if (AST::isResolvedAsConstant (e))
                 if (auto c = e.getAsConstant())

@@ -523,7 +523,7 @@ std::string Value::getDescription (const StringDictionary* dictionary) const
 {
     struct DefaultPrinter  : public ValuePrinter
     {
-        void print (const std::string& s) override  { out << s; }
+        void print (std::string_view s) override  { out << s; }
         std::ostringstream out;
     };
 
@@ -673,6 +673,203 @@ void Value::modifyArraySizeInPlace (size_t newSize)
 }
 
 //==============================================================================
+Value Value::fromExternalValue (const Type& targetType, const choc::value::ValueView& sourceValue,
+                                ConstantTable& constantTable, StringDictionary& stringDictionary)
+{
+    // put all conversion state into a single object to avoid lambdas needing to capture more than a single pointer to the state
+    struct ConversionState
+    {
+        ConstantTable& constants;
+        StringDictionary& dictionary;
+
+        static Value castOrThrow (const Type& type, Value&& v)
+        {
+            if (v.getType().isIdentical (type))
+                return std::move (v);
+
+            CompileMessage errorMessage;
+            auto result = v.tryCastToType (type, errorMessage);
+
+            if (! result.isValid())
+                throwError (errorMessage);
+
+            return result;
+        }
+
+        Value convert (const Type& targetType, const choc::value::ValueView& source)
+        {
+            if (source.isInt32())    return castOrThrow (targetType, Value::createInt32 (source.getInt32()));
+            if (source.isInt64())    return castOrThrow (targetType, Value::createInt64 (source.getInt64()));
+            if (source.isFloat32())  return castOrThrow (targetType, Value (source.getFloat32()));
+            if (source.isFloat64())  return castOrThrow (targetType, Value (source.getFloat64()));
+            if (source.isBool())     return castOrThrow (targetType, Value (source.getBool()));
+            if (source.isString())   return castOrThrow (targetType, Value::createStringLiteral (dictionary.getHandleForString (std::string (source.getString()))));
+
+            if (source.isVector())
+            {
+                auto size = source.size();
+
+                if (size == 1 && targetType.isPrimitive())
+                    return convert (targetType, source[0]);
+
+                if (! targetType.isVector())
+                    throwError (Errors::cannotCastBetween ("vector", targetType.getDescription()));
+
+                auto elementType = targetType.getVectorElementType();
+                auto result = Value::zeroInitialiser (Type::createVector (elementType, size));
+
+                for (uint32_t i = 0; i < size; ++i)
+                    result.modifySubElementInPlace (i, convert (elementType, source[i]));
+
+                return castOrThrow (targetType, std::move (result));
+            }
+
+            if (source.isArray())
+            {
+                auto size = source.size();
+
+                if (targetType.isUnsizedArray())
+                {
+                    auto elementType = targetType.getElementType();
+                    auto fixedArray = convert (elementType.createArray (size), source);
+                    return Value::createUnsizedArray (elementType, constants.getHandleForValue (std::move (fixedArray)));
+                }
+
+                if (! (targetType.isArray() && size == targetType.getArraySize()))
+                    throwError (Errors::cannotCastBetween ("array[" + std::to_string (size) + "]", targetType.getDescription()));
+
+                auto elementType = targetType.getArrayElementType();
+                auto result = Value::zeroInitialiser (elementType.createArray (size));
+
+                for (uint32_t i = 0; i < size; ++i)
+                    result.modifySubElementInPlace (i, convert (elementType, source[i]));
+
+                return castOrThrow (targetType, std::move (result));
+            }
+
+            if (source.isObject())
+            {
+                if (targetType.isStruct())
+                {
+                    auto& targetStruct = targetType.getStructRef();
+                    auto numMembers = source.size();
+
+                    if (targetStruct.getMembers().size() == numMembers)
+                    {
+                        auto result = Value::zeroInitialiser (targetType);
+
+                        for (uint32_t j = 0; j < targetStruct.getMembers().size(); ++j)
+                        {
+                            auto& m = targetStruct.getMembers()[j];
+                            bool found = false;
+
+                            for (uint32_t i = 0; i < numMembers; ++i)
+                            {
+                                auto sourceMember = source.getObjectMemberAt (i);
+
+                                if (m.name == sourceMember.name)
+                                {
+                                    result.modifySubElementInPlace (j, convert (m.type, sourceMember.value));
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if (! found)
+                                throwError (Errors::unknownMemberInStruct (m.name, targetStruct.getName()));
+                        }
+
+                        return result;
+                    }
+                }
+
+                throwError (Errors::cannotCastBetween ("struct " + std::string (source.getObjectClassName()),
+                                                       targetType.getDescription()));
+            }
+
+            return {};
+        }
+    };
+
+    ConversionState c { constantTable, stringDictionary };
+    return c.convert (targetType, sourceValue);
+}
+
+choc::value::Value Value::toExternalValue (const ConstantTable& constantTable, const StringDictionary& stringDictionary) const
+{
+    // put all conversion state into a single object to avoid lambdas needing to capture more than a single pointer to the state
+    struct ConversionState
+    {
+        const ConstantTable& constants;
+        const StringDictionary& dictionary;
+
+        choc::value::Value convert (const Value& source)
+        {
+            const auto& sourceType = source.getType();
+
+            if (sourceType.isPrimitive())
+            {
+                if (sourceType.isInteger32())   return choc::value::Value::createInt32 (source.getAsInt32());
+                if (sourceType.isInteger64())   return choc::value::Value::createInt64 (source.getAsInt64());
+                if (sourceType.isFloat32())     return choc::value::Value::createFloat32 (source.getAsFloat());
+                if (sourceType.isFloat64())     return choc::value::Value::createFloat64 (source.getAsDouble());
+                if (sourceType.isBool())        return choc::value::Value::createBool (source.getAsBool());
+            }
+
+            if (sourceType.isStringLiteral())
+                return choc::value::Value::createString (dictionary.getStringForHandle (source.getStringLiteral()));
+
+            if (sourceType.isVector())
+            {
+                auto size = static_cast<uint32_t> (sourceType.getVectorSize());
+                auto elementType = sourceType.getElementType();
+
+                if (elementType.isInteger32())   return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt32(); });
+                if (elementType.isInteger64())   return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt64(); });
+                if (elementType.isFloat32())     return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsFloat(); });
+                if (elementType.isFloat64())     return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsDouble(); });
+                if (elementType.isBool())        return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsBool(); });
+            }
+
+            if (sourceType.isUnsizedArray())
+            {
+                auto target = constants.getValueForHandle (source.getUnsizedArrayContent());
+                SOUL_ASSERT (target != nullptr);
+                return convert (*target);
+            }
+
+            if (sourceType.isArray())
+            {
+                auto a = choc::value::Value::createEmptyArray();
+
+                for (size_t i = 0; i < sourceType.getArraySize(); ++i)
+                    a.addArrayElement (convert (source.getSubElement (i)));
+
+                return a;
+            }
+
+            if (sourceType.isStruct())
+            {
+                auto& s = sourceType.getStructRef();
+                auto o = choc::value::Value::createObject (s.getName());
+                size_t i = 0;
+
+                for (auto& m : s.getMembers())
+                    o.addObjectMember (m.name, convert (source.getSubElement (i++)));
+
+                return o;
+            }
+
+            SOUL_ASSERT_FALSE;
+            return {};
+        }
+    };
+
+    ConversionState c { constantTable, stringDictionary };
+    return c.convert (*this);
+}
+
+//==============================================================================
 ValuePrinter::ValuePrinter() = default;
 ValuePrinter::~ValuePrinter() = default;
 
@@ -712,7 +909,7 @@ void ValuePrinter::endVectorMembers()                     { print (" }"); }
 void ValuePrinter::printStringLiteral (StringDictionary::Handle h)
 {
     print (dictionary != nullptr ? addDoubleQuotes (dictionary->getStringForHandle (h))
-                                 : std::to_string (h));
+                                 : std::to_string (h.handle));
 }
 
 void ValuePrinter::printUnsizedArrayContent (const Type&, const void* pointer)
@@ -724,5 +921,6 @@ void ValuePrinter::printUnsizedArrayContent (const Type&, const void* pointer)
     writeUnaligned (std::addressof (handle), pointer);
     print ("0x" + toHexString (handle));
 }
+
 
 } // namespace soul

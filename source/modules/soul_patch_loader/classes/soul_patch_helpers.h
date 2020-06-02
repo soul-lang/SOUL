@@ -48,105 +48,15 @@ struct PatchLoadError
     throw PatchLoadError { std::move (message) };
 }
 
-[[noreturn]] static void throwPatchLoadError (const juce::String& file, const juce::String& message)
+[[noreturn]] static void throwPatchLoadError (const std::string& file, const std::string& message)
 {
-    throwPatchLoadError ((file + ": error: " + message).toStdString());
+    throwPatchLoadError (file + ": error: " + message);
 }
 
 //==============================================================================
 inline uint32_t getFrameIndex (MIDIMessage m)        { return (uint32_t) m.frameIndex; }
 inline uint32_t getPackedMIDIEvent (MIDIMessage m)   { return (((uint32_t) m.byte0) << 16) | (((uint32_t) m.byte1) << 8) | (uint32_t) m.byte2; }
 inline void createMIDIMessage (MIDIMessage& m, uint32_t frameIndex, uint32_t packedData)    { m = { frameIndex, m.byte0 = (uint8_t) (packedData >> 16), (uint8_t) (packedData >> 8), (uint8_t) packedData }; }
-
-//==============================================================================
-/** Converts a JSON value from a manifest file into a Value. */
-inline Value convertJSONToValue (const juce::var& json,
-                                 const Type& targetType,
-                                 const std::function<Value(const Type&, const juce::String&)>& convertStringToValue,
-                                 const ConvertFixedToUnsizedArray& convertToUnsizedArray)
-
-{
-    struct JSONtoValue
-    {
-        const std::function<Value(const Type&, const juce::String&)>& convertStringToValue;
-        const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray;
-
-        Value createValue (const Type& targetType, const juce::var& value)
-        {
-            if (value.isString() && convertStringToValue != nullptr)
-                return convertStringToValue (targetType, value.toString());
-
-            if (value.isInt())        return castValue (targetType, Value::createInt32 (static_cast<int> (value)));
-            if (value.isInt64())      return castValue (targetType, Value::createInt64 (static_cast<juce::int64> (value)));
-            if (value.isDouble())     return castValue (targetType, Value (static_cast<double> (value)));
-            if (value.isBool())       return castValue (targetType, Value (static_cast<bool> (value)));
-
-            if (targetType.isArrayOrVector())
-                if (auto a = value.getArray())
-                    return createArrayOrVector (targetType, *a);
-
-            if (targetType.isStruct())
-                if (auto o = value.getDynamicObject())
-                    return createObjectValue (targetType.getStructRef(), o->getProperties());
-
-            throwPatchLoadError ("Cannot parse JSON value " + quoteName (value.toString().toStdString()));
-            return {};
-        }
-
-        Value castValue (const Type& targetType, Value value)
-        {
-            if (! targetType.hasIdenticalLayout (value.getType()))
-                return value.castToTypeWithError (targetType, CodeLocation());
-
-            return value;
-        }
-
-        Value createArrayOrVector (const Type& arrayType, const juce::Array<juce::var>& elements)
-        {
-            auto numElementsProvided = (size_t) elements.size();
-            auto numElementsExpected = (size_t) arrayType.getArraySize();
-
-            if (numElementsProvided != numElementsExpected && ! arrayType.isUnsizedArray())
-                throwPatchLoadError ("Wrong number of elements for array: expected " + std::to_string (numElementsExpected)
-                                       + ", but found " + std::to_string (numElementsProvided));
-
-            ArrayWithPreallocation<Value, 16> elementValues;
-            elementValues.reserve (numElementsProvided);
-            auto elementType = arrayType.getElementType();
-
-            for (auto& e : elements)
-                elementValues.push_back (createValue (elementType, e));
-
-            if (arrayType.isUnsizedArray())
-                return convertFixedToUnsizedArray (Value::createArrayOrVector (elementType.createArray ((Type::ArraySize) numElementsProvided), elementValues));
-
-            return Value::createArrayOrVector (arrayType, elementValues);
-        }
-
-        Value createObjectValue (Structure& structure, const juce::NamedValueSet& values)
-        {
-            for (auto& v : values)
-                if (! structure.hasMemberWithName (v.name.toString().toStdString()))
-                    throwPatchLoadError ("The structure " + quoteName (structure.getName())
-                                           + " does not contain a member called " + quoteName (v.name.toString().toStdString()));
-
-            ArrayWithPreallocation<Value, 16> members;
-
-            for (auto& m : structure.getMembers())
-            {
-                if (auto value = values.getVarPointer (juce::Identifier (m.name.c_str())))
-                    members.push_back (createValue (m.type, *value));
-                else
-                    members.push_back (Value::zeroInitialiser (m.type));
-            }
-
-            return Value::createStruct (structure, members);
-        }
-    };
-
-    return JSONtoValue { convertStringToValue, convertToUnsizedArray }
-            .createValue (targetType, json);
-}
 
 //==============================================================================
 /** Attempts to read some sort of audio file and convert it into a suitable Value
@@ -157,14 +67,13 @@ inline Value convertJSONToValue (const juce::var& json,
 */
 struct AudioFileToValue
 {
-    static Value load (VirtualFile::Ptr file, const Type& type, const Annotation& annotation,
-                       const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray)
+    static choc::value::Value load (VirtualFile::Ptr file, const choc::value::ValueView& annotation)
     {
         SOUL_ASSERT (file != nullptr);
         std::string fileName (file->getAbsolutePath()->getCharPointer());
 
         if (auto reader = createAudioFileReader (file))
-            return loadAudioFileAsValue (*reader, fileName, type, annotation, convertFixedToUnsizedArray);
+            return loadAudioFileAsValue (*reader, fileName, annotation);
 
         throwPatchLoadError ("Failed to read file " + quoteName (fileName));
         return {};
@@ -174,9 +83,7 @@ private:
     static constexpr unsigned int maxNumChannels = 8;
     static constexpr uint64_t maxNumFrames = 48000 * 60;
 
-    static Value loadAudioFileAsValue (juce::AudioFormatReader& reader, const std::string& fileName,
-                                       const Type& type, const Annotation& annotation,
-                                       const ConvertFixedToUnsizedArray& convertFixedToUnsizedArray)
+    static choc::value::Value loadAudioFileAsValue (juce::AudioFormatReader& reader, const std::string& fileName, const choc::value::ValueView& annotation)
     {
         if (reader.sampleRate > 0)
         {
@@ -195,13 +102,13 @@ private:
             AllocatedChannelSet<DiscreteChannelSet<float>> buffer (numSourceChannels, numFrames);
             reader.read (buffer.channelSet.channels, (int) numSourceChannels, 0, (int) numFrames);
 
-            resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation.getValue ("resample"));
-            extractChannelIfNeeded (buffer, annotation.getValue ("sourceChannel"));
+            resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation["resample"]);
+            extractChannelIfNeeded (buffer, annotation["sourceChannel"]);
 
-            auto result = convertAudioDataToType (type, convertFixedToUnsizedArray, buffer, reader.sampleRate);
+            auto result = convertAudioDataToObject (buffer.channelSet, reader.sampleRate);
 
-            if (! result.isValid())
-                throwPatchLoadError ("Could not convert audio file to type " + quoteName (type.getDescription()));
+            if (result.isVoid())
+                throwPatchLoadError ("Could not load audio file");
 
             return result;
         }
@@ -210,15 +117,11 @@ private:
     }
 
     static void resampleAudioDataIfNeeded (AllocatedChannelSet<DiscreteChannelSet<float>>& buffer,
-                                           double currentRate, const Value& resampleRate)
+                                           double currentRate, const choc::value::ValueView& resampleRate)
     {
-        if (resampleRate.isValid())
+        if (! resampleRate.isVoid())
         {
-            double newRate = 0;
-
-            if (resampleRate.getType().isPrimitiveFloat() || resampleRate.getType().isPrimitiveInteger())
-                newRate = resampleRate.getAsDouble();
-
+            double newRate = resampleRate.getWithDefault<double> (0);
             static constexpr double maxResamplingRatio = 32.0;
 
             if (newRate > currentRate / maxResamplingRatio && newRate < currentRate * maxResamplingRatio)
@@ -245,21 +148,18 @@ private:
     }
 
     static void extractChannelIfNeeded (AllocatedChannelSet<DiscreteChannelSet<float>>& buffer,
-                                        const Value& channelToExtract)
+                                        const choc::value::ValueView& channelToExtract)
     {
-        if (channelToExtract.isValid())
+        if (! channelToExtract.isVoid())
         {
-            if (channelToExtract.getType().isPrimitiveInteger())
-            {
-                auto sourceChannel = channelToExtract.getAsInt64();
+            auto sourceChannel = channelToExtract.getWithDefault<int64_t> (-1);
 
-                if (sourceChannel >= 0 && sourceChannel < buffer.getNumFrames())
-                {
-                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (1, buffer.getNumFrames());
-                    copyChannelSet (newBuffer.channelSet, buffer.getChannelSet ((uint32_t) sourceChannel, 1));
-                    std::swap (newBuffer.channelSet, buffer.channelSet);
-                    return;
-                }
+            if (sourceChannel >= 0 && sourceChannel < buffer.getNumFrames())
+            {
+                AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (1, buffer.getNumFrames());
+                copyChannelSet (newBuffer.channelSet, buffer.getChannelSet ((uint32_t) sourceChannel, 1));
+                std::swap (newBuffer.channelSet, buffer.channelSet);
+                return;
             }
 
             throwPatchLoadError ("The value of the 'sourceChannel' annotation was out of range");

@@ -118,6 +118,11 @@ IndentedStream& IndentedStream::operator<< (const std::string& text)
     return *this;
 }
 
+IndentedStream& IndentedStream::operator<< (std::string_view text)
+{
+    return operator<< (std::string (text));
+}
+
 IndentedStream& IndentedStream::operator<< (const char* text)
 {
     SOUL_ASSERT (text != nullptr);

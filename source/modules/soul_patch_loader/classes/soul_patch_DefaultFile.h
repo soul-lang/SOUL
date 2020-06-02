@@ -89,7 +89,7 @@ struct RemoteFile  : public RefCountHelper<VirtualFile>
 struct LocalFile  : public RefCountHelper<VirtualFile>
 {
     LocalFile (juce::File f) : file (std::move (f)) {}
-    LocalFile (const juce::String& path) : LocalFile (juce::File::getCurrentWorkingDirectory().getChildFile (path)) {}
+    LocalFile (const std::string& path) : LocalFile (juce::File::getCurrentWorkingDirectory().getChildFile (path)) {}
     ~LocalFile() override = default;
 
     String::Ptr getName() override                 { return makeString (file.getFileName()); }

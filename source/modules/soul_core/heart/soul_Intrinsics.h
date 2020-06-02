@@ -67,7 +67,7 @@ namespace soul
     /** All intrinsics have function declarations in a dedicated namespace with this name. */
     constexpr const char* getIntrinsicsNamespaceName()              { return "soul::intrinsics"; }
 
-    IntrinsicType getIntrinsicTypeFromName (const std::string&);
+    IntrinsicType getIntrinsicTypeFromName (std::string_view);
     const char* getIntrinsicName (IntrinsicType);
     std::string getFullyQualifiedIntrinsicName (IntrinsicType);
 

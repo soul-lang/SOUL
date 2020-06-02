@@ -66,6 +66,7 @@ struct IndentedStream
     int getTotalIndent() const noexcept;
 
     IndentedStream& operator<< (const std::string& text);
+    IndentedStream& operator<< (std::string_view text);
     IndentedStream& operator<< (const char* text);
     IndentedStream& operator<< (char character);
     IndentedStream& operator<< (double value);

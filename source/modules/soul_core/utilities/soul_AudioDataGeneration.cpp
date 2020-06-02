@@ -117,62 +117,141 @@ namespace WaveGenerators
     };
 }
 
-Value convertAudioDataToType (const Type& requestedType, const ConvertFixedToUnsizedArray& convertToUnsizedArray,
-                              DiscreteChannelSet<float> data, double sampleRate)
+//==============================================================================
+template <typename ChannelSet>
+choc::value::Value createArrayFromChannelSet (ChannelSet source, uint32_t targetNumChans)
 {
-    if (requestedType.isUnsizedArray())
-    {
-        auto elementType = requestedType.getElementType();
+    if (targetNumChans <= source.numChannels)
+        return choc::value::Value::createArray (source.numFrames, targetNumChans,
+                                                [&] (uint32_t frame, uint32_t chan) { return source.getSample (chan, frame); });
 
-        if (elementType.isPrimitiveOrVector() && elementType.isFloat32())
-        {
-            auto content = Value::zeroInitialiser (elementType.createArray (data.numFrames));
-            copyChannelSetToFit (content.getAsChannelSet32(), data);
-            return convertToUnsizedArray (content);
-        }
+    if (source.numChannels == 1 && targetNumChans == 2)
+        return choc::value::Value::createArray (source.numFrames, targetNumChans,
+                                                [&] (uint32_t frame, uint32_t) { return source.getSample (0, frame); });
+
+    return choc::value::Value::createArray (source.numFrames, targetNumChans,
+                                            [&] (uint32_t frame, uint32_t chan) { return source.getSampleOrZero (chan, frame); });
+}
+
+choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> source)
+{
+    return createArrayFromChannelSet (source, source.numChannels);
+}
+
+choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> source, uint32_t targetNumChannels)
+{
+    return createArrayFromChannelSet (source, targetNumChannels);
+}
+
+choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<float> source)
+{
+    return choc::value::ValueView::create2DArray (static_cast<float*> (source.data), source.numFrames, source.numChannels);
+}
+
+choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<const float> source)
+{
+    return choc::value::ValueView::create2DArray (const_cast<float*> (source.data), source.numFrames, source.numChannels);
+}
+
+InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray)
+{
+    auto frameType = sourceArray.getType().getElementType();
+    uint32_t numChannels = 1;
+
+    if (frameType.isVector())
+    {
+        SOUL_ASSERT (frameType.getElementType().isFloat32());
+        numChannels = frameType.getNumElements();
+    }
+    else
+    {
+        SOUL_ASSERT (frameType.isFloat32());
     }
 
-    if (requestedType.isStruct())
+    return { static_cast<float*> (const_cast<void*> (sourceArray.getRawData())), numChannels, sourceArray.size(), numChannels };
+}
+
+choc::value::Value createAudioDataObject (const choc::value::ValueView& frames, double sampleRate)
+{
+    auto o = choc::value::Value::createObject ("soul::AudioFile");
+    o.addObjectMember ("frames", frames);
+    o.addObjectMember ("sampleRate", choc::value::Value::createPrimitive (sampleRate));
+    return o;
+}
+
+choc::value::Value convertAudioDataToObject (InterleavedChannelSet<const float> source, double sampleRate)
+{
+    return createAudioDataObject (getChannelSetAsArrayView (source), sampleRate);
+}
+
+choc::value::Value convertAudioDataToObject (DiscreteChannelSet<const float> source, double sampleRate)
+{
+    return createAudioDataObject (convertChannelSetToArray (source), sampleRate);
+}
+
+choc::value::Value coerceAudioFileObjectToTargetType (const Type& targetType, const choc::value::ValueView& sourceValue)
+{
+    SOUL_ASSERT (sourceValue.isObject()); // this is only designed for use on objects which contain members for the frames + rate
+
+    auto isFrameArray = [] (const choc::value::ValueView& member)
     {
-        auto isSampleRateField = [] (const Structure::Member& m)
+        if (member.isArray())
         {
-            return m.type.isPrimitive()
-                    && (m.name == "sampleRate" || m.name == "rate" || m.name == "frequency")
-                    && (m.type.isFloatingPoint() || m.type.isInteger());
-        };
+            auto isAudioSample = [] (const choc::value::ValueView& c) { return c.isInt32() || c.isFloat32() || c.isFloat64(); };
 
-        auto& s = requestedType.getStructRef();
-        std::vector<Value> memberValues;
-        memberValues.reserve (s.getNumMembers());
+            auto first = member[0];
 
-        for (auto& m : s.getMembers())
-        {
-            if (isSampleRateField (m))
-            {
-                memberValues.push_back (Value (sampleRate).castToTypeExpectingSuccess (m.type));
-            }
-            else if (m.type.isUnsizedArray())
-            {
-                auto dataValue = convertAudioDataToType (m.type, convertToUnsizedArray, data, sampleRate);
-                memberValues.push_back (std::move (dataValue));
-            }
-            else
-            {
-                memberValues.push_back (Value::zeroInitialiser (m.type));
-            }
+            return (first.isPrimitive() && isAudioSample (first))
+                     || (first.isVector() && isAudioSample (first[0]));
         }
 
-        return Value::createStruct (s, memberValues);
+        return false;
+    };
+
+    auto isRateName = [] (const std::string& s)
+    {
+        return s == "rate" || s == "sampleRate" || s == "frequency";
+    };
+
+    choc::value::Value sourceFrameArray, sourceRate;
+
+    for (uint32_t i = 0; i < sourceValue.size(); ++i)
+    {
+        auto member = sourceValue.getObjectMemberAt (i);
+
+        if (isFrameArray (member.value))
+            sourceFrameArray = member.value;
+        else if (isRateName (member.name))
+            sourceRate = member.value;
     }
 
-    return Value::createFloatVectorArray (data);
+    SOUL_ASSERT (! (sourceFrameArray.getValue().isVoid() || sourceRate.getValue().isVoid()));
+
+    if (targetType.isArray())
+        return sourceFrameArray;
+
+    if (targetType.isStruct())
+    {
+        auto o = choc::value::Value::createObject ("soul::AudioSample");
+
+        for (auto& m : targetType.getStructRef().getMembers())
+        {
+            if (m.type.isArray() && m.type.getArrayElementType().isPrimitiveOrVector())
+                o.addObjectMember (m.name, sourceFrameArray);
+            else if ((m.type.isFloatingPoint() || m.type.isPrimitiveInteger()) && isRateName (m.name))
+                o.addObjectMember (m.name, sourceRate);
+        }
+
+        return o;
+    }
+
+    return choc::value::Value (sourceValue);
 }
 
 //==============================================================================
-Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
-                        double frequency, double sampleRate, int64_t numFrames,
-                        WaveGenerators::Generator& generator,
-                        uint32_t oversamplingFactor)
+choc::value::Value generateWaveform (double frequency, double sampleRate, int64_t numFrames,
+                                     WaveGenerators::Generator& generator,
+                                     uint32_t oversamplingFactor)
 {
     if (numFrames > 0 && frequency > 0 && sampleRate > 0 && numFrames < 48000 * 60 * 60 * 2)
     {
@@ -187,51 +266,43 @@ Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
             generator.advance();
         }
 
-        auto convertToUnsizedArray = [&] (Value v)
-        {
-            auto elementType = v.getType().getElementType();
-            return Value::createUnsizedArray (elementType, constantTable.getHandleForValue (std::move (v)));
-        };
-
         if (oversamplingFactor == 1)
-            return convertAudioDataToType (requiredType, convertToUnsizedArray, data.channelSet, sampleRate);
+            return convertAudioDataToObject (data.channelSet, sampleRate);
 
         // Resample to the right size
         AllocatedChannelSet<DiscreteChannelSet<float>> resampledData (1, (uint32_t) (numFrames));
         resampleToFit (resampledData.channelSet, data.channelSet);
-        return convertAudioDataToType (requiredType, convertToUnsizedArray, resampledData, sampleRate);
+        return convertAudioDataToObject (resampledData.channelSet, sampleRate);
     }
 
     return {};
 }
 
 template <class Generator>
-static Value generateWaveform (const Type& requiredType, ConstantTable& constantTable,
-                               const Annotation& annotation, uint32_t oversamplingFactor)
+static choc::value::Value generateWaveform (const Annotation& annotation, uint32_t oversamplingFactor)
 {
     Generator g;
 
-    return generateWaveform (requiredType, constantTable,
-                             annotation.getDouble ("frequency"),
+    return generateWaveform (annotation.getDouble ("frequency"),
                              annotation.getDouble ("rate"),
                              annotation.getInt64 ("numFrames"),
                              g,
                              oversamplingFactor);
 }
 
-Value generateWaveform (const Type& requiredType, ConstantTable& constantTable, const Annotation& annotation)
+choc::value::Value generateWaveform (const Annotation& annotation)
 {
     if (annotation.getBool ("sinewave") || annotation.getBool ("sine"))
-        return generateWaveform<WaveGenerators::Sine> (requiredType, constantTable, annotation, 1);
+        return generateWaveform<WaveGenerators::Sine> (annotation, 1);
 
     if (annotation.getBool ("sawtooth") || annotation.getBool ("saw"))
-        return generateWaveform<WaveGenerators::Saw> (requiredType, constantTable, annotation, 2);
+        return generateWaveform<WaveGenerators::Saw> (annotation, 2);
 
     if (annotation.getBool ("triangle"))
-        return generateWaveform<WaveGenerators::Triangle> (requiredType, constantTable, annotation, 2);
+        return generateWaveform<WaveGenerators::Triangle> (annotation, 2);
 
     if (annotation.getBool ("squarewave") || annotation.getBool ("square"))
-        return generateWaveform<WaveGenerators::Square> (requiredType, constantTable, annotation, 2);
+        return generateWaveform<WaveGenerators::Square> (annotation, 2);
 
     return {};
 }

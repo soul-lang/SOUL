@@ -26,7 +26,7 @@ namespace soul::patch
 struct FileState
 {
     VirtualFile::Ptr file;
-    juce::String path;
+    std::string path;
     int64_t lastModificationTime = 0;
 
     int64_t getSize() const                             { return file->getSize(); }
@@ -46,12 +46,12 @@ struct FileList
     std::string manifestName;
     FileState manifest;
     std::vector<FileState> sourceFiles, filesToWatch;
-    juce::var manifestJSON;
+    choc::value::Value manifestJSON;
 
     void reset()
     {
         manifest = {};
-        manifestJSON = juce::var();
+        manifestJSON = choc::value::Value();
         sourceFiles.clear();
         filesToWatch.clear();
     }
@@ -95,44 +95,42 @@ struct FileList
 
     void parseManifest()
     {
-        auto result = parseManifestFile (*manifest.file, manifestJSON);
+        std::string error;
+        manifestJSON = parseManifestFile (*manifest.file, error);
 
-        if (result.failed())
-            throwPatchLoadError ((manifest.path + ": " + result.getErrorMessage()).toStdString());
+        if (! error.empty())
+            throwPatchLoadError (error);
 
         checkExternalsList();
     }
 
-    std::vector<FileState> getFileListProperty (const juce::String& propertyName)
+    std::vector<FileState> getFileListProperty (const std::string& propertyName)
     {
         std::vector<FileState> result;
-        juce::StringArray paths;
+        std::vector<std::string> paths;
 
-        auto addFile = [&] (const juce::var& file)
+        auto addFile = [&] (const choc::value::ValueView& file)
         {
             if (! file.isString())
                 throwPatchLoadError (manifest.path, "Expected the '" + propertyName + "' variable to be a filename or array of files");
 
-            paths.add (file);
+            paths.push_back (std::string (file.getString()));
         };
 
-        auto files = manifestJSON.getProperty (propertyName, {});
+        auto files = manifestJSON[propertyName];
 
-        if (! files.isVoid())
+        if (files.isArray())
         {
-            if (files.isArray())
-            {
-                for (auto& s : *files.getArray())
-                    addFile (s);
-            }
-            else
-            {
-                addFile (files);
-            }
-
-            for (auto& p : paths)
-                result.push_back (checkAndCreateFileState (p.toStdString()));
+            for (auto s : files)
+                addFile (s);
         }
+        else if (files.isString())
+        {
+            addFile (files);
+        }
+
+        for (auto& p : paths)
+            result.push_back (checkAndCreateFileState (p));
 
         return result;
     }
@@ -158,34 +156,34 @@ struct FileList
         return false;
     }
 
-    juce::DynamicObject* getExternalsList() const
+    choc::value::ValueView getExternalsList() const
     {
-        return manifestJSON["externals"].getDynamicObject();
+        return manifestJSON["externals"];
     }
 
     void checkExternalsList()
     {
-        auto externalsVar = manifestJSON["externals"];
+        auto externals = getExternalsList();
 
-        if (! (externalsVar.isVoid() || externalsVar.isObject()))
+        if (externals.isVoid())
+            return;
+
+        if (! externals.isObject())
             throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
 
-        if (auto externals = getExternalsList())
+        externals.visitObjectMembers ([] (const choc::value::MemberNameAndValue& member)
         {
-            for (auto& e : externals->getProperties())
-            {
-                auto name = e.name.toString().trim().toStdString();
+            auto name = trim (std::string (member.name));
 
-                Identifier::Pool tempAllocator;
-                auto path = IdentifierPath::fromString (tempAllocator, name);
+            Identifier::Pool tempAllocator;
+            auto path = IdentifierPath::fromString (tempAllocator, name);
 
-                if (! path.isValid())
-                    throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (name));
+            if (! path.isValid())
+                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (name));
 
-                if (path.isUnqualified())
-                    throwPatchLoadError ("The external symbol name " + quoteName (name) + " must include the name of the processor");
-            }
-        }
+            if (path.isUnqualified())
+                throwPatchLoadError ("The external symbol name " + quoteName (name) + " must include the name of the processor");
+        });
     }
 
     bool hasChanged() const
@@ -226,7 +224,7 @@ struct FileList
         d.category       = makeString (manifestJSON["category"]);
         d.manufacturer   = makeString (manifestJSON["manufacturer"]);
         d.URL            = makeString (manifestJSON["URL"]);
-        d.isInstrument   = manifestJSON["isInstrument"];
+        d.isInstrument   = manifestJSON["isInstrument"].getWithDefault<bool> (false);
 
         return d;
     }

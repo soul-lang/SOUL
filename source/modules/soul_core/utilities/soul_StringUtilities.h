@@ -122,11 +122,10 @@ size_t levenshteinDistance (const std::string&, const std::string&);
 std::string toCppStringLiteral (const std::string& text,
                                 int maxCharsOnLine, bool breakAtNewLines,
                                 bool replaceSingleQuotes, bool allowStringBreaks);
-std::string toJSONString (const std::string& text);
 
 //==============================================================================
-std::string addDoubleQuotes (const std::string&);
-std::string addSingleQuotes (const std::string&);
+std::string addDoubleQuotes (std::string_view);
+std::string addSingleQuotes (std::string_view);
 std::string removeDoubleQuotes (const std::string&);
 
 std::string convertToString (const std::string& name);

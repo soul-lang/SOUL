@@ -23,16 +23,14 @@ namespace soul
 
 //==============================================================================
 /** Holds a map of strings to integer handles. */
-class StringDictionary
+class StringDictionary  : public choc::value::StringDictionary
 {
 public:
     StringDictionary();
-    ~StringDictionary();
+    ~StringDictionary() override;
 
-    using Handle = uint32_t;
-
-    Handle getHandleForString (const std::string&);
-    std::string getStringForHandle (Handle) const;
+    Handle getHandleForString (std::string_view) override;
+    std::string_view getStringForHandle (Handle) const override;
 
     struct Item
     {
@@ -43,7 +41,7 @@ public:
     std::vector<Item> strings;
 
 private:
-    Handle nextIndex = 1;
+    uint32_t nextIndex = 1;
 };
 
 

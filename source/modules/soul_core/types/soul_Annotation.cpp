@@ -53,7 +53,7 @@ static std::string propertyToString (const StringDictionary& stringDictionary, c
     SOUL_ASSERT (type.isPrimitive() || type.isStringLiteral());
 
     if (type.isStringLiteral())
-        return desc + addDoubleQuotes (stringDictionary.getStringForHandle (prop.value.getStringLiteral()));
+        return desc + choc::json::getEscapedQuotedString (stringDictionary.getStringForHandle (prop.value.getStringLiteral()));
 
     if (asJSON)
     {
@@ -136,7 +136,7 @@ std::string Annotation::getString (const std::string& name, const std::string& d
         {
             std::ostringstream out;
 
-            void print (const std::string& s) override                      { out << s; }
+            void print (std::string_view s) override                        { out << s; }
             void printStringLiteral (StringDictionary::Handle h) override   { print (dictionary->getStringForHandle (h)); }
         };
 
@@ -231,6 +231,17 @@ std::vector<std::string> Annotation::getNames() const
 }
 
 const StringDictionary& Annotation::getDictionary() const     { return dictionary; }
+
+choc::value::Value Annotation::toExternalValue() const
+{
+    auto o = choc::value::Value::createObject ("Annotation");
+
+    if (properties != nullptr)
+        for (auto& p : *properties)
+            o.addObjectMember (p.name, p.value.toExternalValue (ConstantTable(), dictionary));
+
+    return o;
+}
 
 std::string Annotation::toJSON() const    { return annotationToString (dictionary, properties.get(), true); }
 std::string Annotation::toHEART() const   { return annotationToString (dictionary, properties.get(), false); }

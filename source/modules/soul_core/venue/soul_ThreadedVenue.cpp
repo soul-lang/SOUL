@@ -125,27 +125,27 @@ struct ThreadedVenue  : public soul::Venue
 
         EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
 
-        void setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
+        void setNextInputStreamFrames (EndpointHandle handle, const choc::value::ValueView& frameArray) override
         {
             performer->setNextInputStreamFrames (handle, frameArray);
         }
 
-        void setSparseInputStreamTarget (EndpointHandle handle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
+        void setSparseInputStreamTarget (EndpointHandle handle, const choc::value::ValueView& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
         {
             performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue, curveShape);
         }
 
-        void setInputValue (EndpointHandle handle, const Value& newValue) override
+        void setInputValue (EndpointHandle handle, const choc::value::ValueView& newValue) override
         {
             performer->setInputValue (handle, newValue);
         }
 
-        void addInputEvent (EndpointHandle handle, const Value& eventData) override
+        void addInputEvent (EndpointHandle handle, const choc::value::ValueView& eventData) override
         {
             performer->addInputEvent (handle, eventData);
         }
 
-        const Value* getOutputStreamFrames (EndpointHandle handle) override
+        choc::value::ValueView getOutputStreamFrames (EndpointHandle handle) override
         {
             return performer->getOutputStreamFrames (handle);
         }
@@ -244,23 +244,38 @@ struct ThreadedVenue  : public soul::Venue
             }
         }
 
+        void handleError (const std::string&)
+        {
+        }
+
         void run()
         {
-            while (! shouldStop.load())
+            try
             {
-                loadMeasurer.startMeasurement();
-                performer->prepare (blockSize);
+                while (! shouldStop.load())
+                {
+                    loadMeasurer.startMeasurement();
+                    performer->prepare (blockSize);
 
-                for (auto& c : inputCallbacks)
-                    c.callback (*this, c.endpointHandle);
+                    for (auto& c : inputCallbacks)
+                        c.callback (*this, c.endpointHandle);
 
-                performer->advance();
+                    performer->advance();
 
-                for (auto& c : outputCallbacks)
-                    c.callback (*this, c.endpointHandle);
+                    for (auto& c : outputCallbacks)
+                        c.callback (*this, c.endpointHandle);
 
-                totalFramesRendered += blockSize;
-                loadMeasurer.stopMeasurement();
+                    totalFramesRendered += blockSize;
+                    loadMeasurer.stopMeasurement();
+                }
+            }
+            catch (choc::value::Error e)
+            {
+                handleError (e.description);
+            }
+            catch (...)
+            {
+                handleError ("Uncaught exception");
             }
 
             setState (State::linked);

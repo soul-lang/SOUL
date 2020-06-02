@@ -350,7 +350,7 @@ private:
             {
                 Printer (IndentedStream& s) : outStream (s) {}
 
-                void print (const std::string& s) override  { outStream << s; }
+                void print (std::string_view s) override    { outStream << s; }
                 void printFloat32 (float value) override    { if (value == 0) print ("0.0f"); else ValuePrinter::printFloat32 (value); }
                 void printFloat64 (double value) override   { if (value == 0) print ("0.0");  else ValuePrinter::printFloat64 (value); }
 

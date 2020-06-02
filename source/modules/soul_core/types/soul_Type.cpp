@@ -490,6 +490,49 @@ bool Type::isPackedSizeTooBig() const
     return getPackedSizeInBytes() > maxPackedObjectSize;
 }
 
+choc::value::Type Type::getExternalType() const
+{
+    if (isPrimitive())
+    {
+        if (isInteger32())  return choc::value::Type::createInt32();
+        if (isInteger64())  return choc::value::Type::createInt64();
+        if (isFloat32())    return choc::value::Type::createFloat32();
+        if (isFloat64())    return choc::value::Type::createFloat64();
+        if (isBool())       return choc::value::Type::createBool();
+    }
+
+    if (isVector())
+    {
+        auto size = static_cast<uint32_t> (getVectorSize());
+
+        if (isInteger32())  return choc::value::Type::createVector<int32_t> (size);
+        if (isInteger64())  return choc::value::Type::createVector<int64_t> (size);
+        if (isFloat32())    return choc::value::Type::createVector<float>   (size);
+        if (isFloat64())    return choc::value::Type::createVector<double>  (size);
+        if (isBool())       return choc::value::Type::createVector<bool>    (size);
+    }
+
+    if (isArray())
+        return choc::value::Type::createArray (static_cast<uint32_t> (getArraySize()), getArrayElementType().getExternalType());
+
+    if (isStruct())
+    {
+        auto& s = getStructRef();
+        auto o = choc::value::Type::createObject (s.getName());
+
+        for (auto& m : s.getMembers())
+            o.addObjectMember (m.name, m.type.getExternalType());
+
+        return o;
+    }
+
+    if (isStringLiteral())
+        return choc::value::Type::createString();
+
+    SOUL_ASSERT_FALSE;
+    return {};
+}
+
 //==============================================================================
 SubElementPath::SubElementPath() = default;
 SubElementPath::SubElementPath (const SubElementPath&) = default;

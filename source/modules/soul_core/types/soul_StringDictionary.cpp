@@ -27,23 +27,23 @@ namespace soul
     StringDictionary::StringDictionary() = default;
     StringDictionary::~StringDictionary() = default;
 
-    StringDictionary::Handle StringDictionary::getHandleForString (const std::string& text)
+    StringDictionary::Handle StringDictionary::getHandleForString (std::string_view text)
     {
         if (text.empty())
-            return 0;
+            return {};
 
         for (auto& s : strings)
             if (s.text == text)
                 return s.handle;
 
-        auto handle = nextIndex++;
-        strings.push_back ({ handle, text });
+        auto handle = StringDictionary::Handle { nextIndex++ };
+        strings.push_back ({ handle, std::string (text) });
         return handle;
     }
 
-    std::string StringDictionary::getStringForHandle (Handle handle) const
+    std::string_view StringDictionary::getStringForHandle (Handle handle) const
     {
-        if (handle == 0)
+        if (handle == Handle())
             return {};
 
         for (auto& s : strings)

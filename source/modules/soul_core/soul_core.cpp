@@ -31,6 +31,8 @@
 #include <iomanip>
 #include <fstream>
 
+#include "../../3rdParty/choc/text/choc_JSON.h"
+
 #include "soul_core.h"
 
 #if SOUL_INTEL

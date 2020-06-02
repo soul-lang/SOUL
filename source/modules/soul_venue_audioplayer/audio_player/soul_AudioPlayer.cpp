@@ -142,27 +142,27 @@ public:
 
         EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
 
-        void setNextInputStreamFrames (EndpointHandle handle, const Value& frameArray) override
+        void setNextInputStreamFrames (EndpointHandle handle, const choc::value::ValueView& frameArray) override
         {
             performer->setNextInputStreamFrames (handle, frameArray);
         }
 
-        void setSparseInputStreamTarget (EndpointHandle handle, const Value& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
+        void setSparseInputStreamTarget (EndpointHandle handle, const choc::value::ValueView& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
         {
             performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue, curveShape);
         }
 
-        void setInputValue (EndpointHandle handle, const Value& newValue) override
+        void setInputValue (EndpointHandle handle, const choc::value::ValueView& newValue) override
         {
             performer->setInputValue (handle, newValue);
         }
 
-        void addInputEvent (EndpointHandle handle, const Value& eventData) override
+        void addInputEvent (EndpointHandle handle, const choc::value::ValueView& eventData) override
         {
             performer->addInputEvent (handle, eventData);
         }
 
-        const Value* getOutputStreamFrames (EndpointHandle handle) override
+        choc::value::ValueView getOutputStreamFrames (EndpointHandle handle) override
         {
             return performer->getOutputStreamFrames (handle);
         }
@@ -348,10 +348,16 @@ public:
                 {
                     if (isMIDIEventEndpoint (findDetailsForID (perf.getInputEndpoints(), connection.endpointID)))
                     {
-                        preRenderOperations.push_back ([&perf, endpointHandle] (RenderContext& rc)
+                        auto midiEvent = choc::value::Value::createObject ("soul::midi::Message");
+                        midiEvent.addObjectMember ("midiBytes", choc::value::Value::createInt32 (0));
+
+                        preRenderOperations.push_back ([&perf, endpointHandle, midiEvent] (RenderContext& rc) mutable
                         {
                             for (uint32_t i = 0; i < rc.midiInCount; ++i)
-                                perf.addInputEvent (endpointHandle, Value ((int32_t) rc.midiIn[i].packedData));
+                            {
+                                midiEvent.getValue().getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
+                                perf.addInputEvent (endpointHandle, midiEvent);
+                            }
                         });
                     }
                 }
@@ -359,18 +365,20 @@ public:
                 {
                     auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
-                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
-                    auto startChannel = (uint32_t) connection.audioInputStreamIndex;
-                    auto numSourceChans = (uint32_t) frameType.getVectorSize();
+                    auto startChannel = static_cast<uint32_t> (connection.audioInputStreamIndex);
+                    auto numChans = static_cast<uint32_t> (frameType.getVectorSize());
 
                     if (frameType.isFloatingPoint())
                     {
-                        auto is64Bit = frameType.isFloat64();
+                        AllocatedChannelSet<InterleavedChannelSet<float>> interleaved (numChans, maxBlockSize);
 
-                        preRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numSourceChans, is64Bit] (RenderContext& rc) mutable
+                        preRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans, interleaved] (RenderContext& rc)
                         {
-                            rc.copyInputFrames (startChannel, numSourceChans, buffer, is64Bit);
-                            perf.setNextInputStreamFrames (endpointHandle, buffer);
+                            copyChannelSet (interleaved.channelSet, rc.inputChannels.getChannelSet (startChannel, numChans));
+
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::ValueView::create2DArray (interleaved.channelSet.data,
+                                                                                                                  interleaved.channelSet.numFrames,
+                                                                                                                  interleaved.channelSet.numChannels));
                         });
                     }
                     else
@@ -383,19 +391,15 @@ public:
                     auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
                     auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
-                    auto startChannel = (uint32_t) connection.audioOutputStreamIndex;
-                    auto numDestChans = (uint32_t) frameType.getVectorSize();
+                    auto startChannel = static_cast<uint32_t> (connection.audioOutputStreamIndex);
+                    auto numChans = static_cast<uint32_t> (frameType.getVectorSize());
 
                     if (frameType.isFloatingPoint())
                     {
-                        auto is64Bit = frameType.isFloat64();
-
-                        postRenderOperations.push_back ([&perf, endpointHandle, buffer, startChannel, numDestChans, is64Bit] (RenderContext& rc)
+                        postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
                         {
-                            if (auto outputFrames = perf.getOutputStreamFrames (endpointHandle))
-                                rc.copyOutputFrames (startChannel, numDestChans, *outputFrames, is64Bit);
-                            else
-                                SOUL_ASSERT_FALSE;
+                            copyChannelSetHandlingLengthDifference (rc.outputChannels.getChannelSet (startChannel, numChans),
+                                                                    getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
                         });
                     }
                     else
@@ -470,7 +474,8 @@ public:
         using RenderContext = AudioMIDIWrapper<MIDIEvent>::RenderContext;
 
         std::vector<Connection> connections;
-        std::vector<std::function<void(RenderContext&)>> preRenderOperations, postRenderOperations;
+        std::vector<std::function<void(RenderContext&)>> preRenderOperations;
+        std::vector<std::function<void(RenderContext&)>> postRenderOperations;
 
         State state = State::empty;
     };

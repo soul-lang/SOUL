@@ -210,6 +210,9 @@ struct Type  final
         This is handy for things like appending a type to a generated name. */
     std::string getShortIdentifierDescription() const;
 
+    /** Creates a choc::value::Type which represents this type. */
+    choc::value::Type getExternalType() const;
+
     /** Tries to parse a SOUL syntax string containing a type.
         This just returns an invalid Type if the parse fails - if you need error
         reporting then you'd need to use the parser classes directly.

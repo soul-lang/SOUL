@@ -120,8 +120,8 @@ bool endsWith (const std::string& text, const std::string& possibleEnd)
     return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
 }
 
-std::string addDoubleQuotes (const std::string& text)    { return "\"" + text + "\""; }
-std::string addSingleQuotes (const std::string& text)    { return "'" + text + "'"; }
+std::string addDoubleQuotes (std::string_view text)    { return "\"" + std::string (text) + "\""; }
+std::string addSingleQuotes (std::string_view text)    { return "'" + std::string (text) + "'"; }
 
 std::string removeDoubleQuotes (const std::string& text)
 {
@@ -643,11 +643,5 @@ std::string toCppStringLiteral (const std::string& text,
     return out.str();
 }
 
-std::string toJSONString (const std::string& text)
-{
-    UTF8Reader reader (text.c_str());
-
-    return reader.createEscapedVersion();
-}
 
 } // namespace soul

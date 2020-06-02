@@ -64,6 +64,8 @@ struct Annotation
     std::vector<std::string> getNames() const;
     const StringDictionary& getDictionary() const;
 
+    choc::value::Value toExternalValue() const;
+
     std::string toJSON() const;
     std::string toHEART() const;
 

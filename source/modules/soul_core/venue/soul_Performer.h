@@ -69,8 +69,7 @@ public:
     struct ExternalVariable
     {
         std::string name;
-        Type type;
-        Annotation annotation;
+        choc::value::Value annotation;
     };
 
     /** Returns the list of external variables that need to be resolved before a loaded
@@ -78,11 +77,8 @@ public:
     */
     virtual ArrayView<const ExternalVariable> getExternalVariables() = 0;
 
-    /** Add a global constant to the loaded program. */
-    virtual ConstantTable::Handle addConstant (Value value) = 0;
-
     /** Set the value of an external in the loaded program. */
-    virtual bool setExternalVariable (const char* name, Value value) = 0;
+    virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) = 0;
 
     /** After loading a program, and optionally connecting up to some of its endpoints,
         link() will complete any preparations needed before the code can be executed.
@@ -131,7 +127,7 @@ public:
         The frameOffset is relative to the start of the last block that was rendered during advance().
         @returns true to continue iterating, or false to stop.
     */
-    using HandleNextOutputEventFn = std::function<bool(uint32_t frameOffset, const Value& event)>&&;
+    using HandleNextOutputEventFn = std::function<bool(uint32_t frameOffset, const choc::value::ValueView& event)>&&;
 
     /** Pushes a block of samples to an input endpoint.
         After a successful call to prepare(), and before a call to advance(), this should be called
@@ -140,7 +136,7 @@ public:
         advance(), only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setNextInputStreamFrames (EndpointHandle, const Value& frameArray) = 0;
+    virtual void setNextInputStreamFrames (EndpointHandle, const choc::value::ValueView& frameArray) = 0;
 
     /** Sets the next levels for a sparse-stream input.
         After a successful call to prepare(), and before a call to advance(), this should be called
@@ -148,7 +144,7 @@ public:
         than once before advance(), only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setSparseInputStreamTarget (EndpointHandle, const Value& targetFrameValue,
+    virtual void setSparseInputStreamTarget (EndpointHandle, const choc::value::ValueView& targetFrameValue,
                                              uint32_t numFramesToReachValue, float curveShape) = 0;
 
     /** Sets a new value for a value input.
@@ -157,7 +153,7 @@ public:
         only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setInputValue (EndpointHandle, const Value& newValue) = 0;
+    virtual void setInputValue (EndpointHandle, const choc::value::ValueView& newValue) = 0;
 
     /** Adds an event to an input queue.
         After a successful call to prepare(), and before a call to advance(), this may be called
@@ -165,19 +161,19 @@ public:
         all the events that were added will be dispatched in order, and the queue will be reset.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void addInputEvent (EndpointHandle, const Value& eventData) = 0;
+    virtual void addInputEvent (EndpointHandle, const choc::value::ValueView& eventData) = 0;
 
     /** Retrieves the most recent block of frames from an output stream.
         After a successful call to advance(), this may be called to get the block of frames which
         were rendered during that call. A nullptr return value indicates an error.
     */
-    virtual const Value* getOutputStreamFrames (EndpointHandle) = 0;
+    virtual choc::value::ValueView getOutputStreamFrames (EndpointHandle) = 0;
 
     /** Retrieves the current value of the value output.
         After a successful call to advance(), this may be called to get the value of the given output.
         A nullptr return value indicates an error.
     */
-    virtual const Value* getOutputValue (EndpointHandle) = 0;
+    virtual choc::value::ValueView getOutputValue (EndpointHandle) = 0;
 
     /** Retrieves the last block of events which were emitted by an event output.
         After a successful call to advance(), this may be called to iterate the list of events
