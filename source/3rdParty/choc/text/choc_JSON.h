@@ -24,6 +24,7 @@
 #ifndef CHOC_JSON_HEADER_INCLUDED
 #define CHOC_JSON_HEADER_INCLUDED
 
+#include <limits>
 #include <sstream>
 #include <string_view>
 
@@ -153,31 +154,16 @@ void writeAsJSON (Stream& output, const value::ValueView& value)
 
         void dump (const value::ValueView& v)
         {
-            if (v.isVoid())     { out << "null"; return; }
-            if (v.isString())   { out << getEscapedQuotedString (v.getString()); return; }
-            if (v.isBool())     { out << (v.getBool() ? "true" : "false"); return; }
-            if (v.isFloat())    { out << v.get<double>(); return; }
-            if (v.isInt())      { out << v.get<int64_t>(); return; }
-            if (v.isObject())   return dumpObject (v);
-            if (v.isArray())    return dumpArray (v);
-            if (v.isVector())   return dumpVector (v);
+            if (v.isVoid())                   { out << "null"; return; }
+            if (v.isString())                 { out << getEscapedQuotedString (v.getString()); return; }
+            if (v.isBool())                   { out << (v.getBool() ? "true" : "false"); return; }
+            if (v.isFloat())                  { out << v.get<double>(); return; }
+            if (v.isInt())                    { out << v.get<int64_t>(); return; }
+            if (v.isObject())                 return dumpObject (v);
+            if (v.isArray() || v.isVector())  return dumpArrayOrVector (v);
         }
 
-        void dumpArray (const value::ValueView& v)
-        {
-            out << '[';
-            auto num = v.size();
-
-            for (uint32_t i = 0; i < num; ++i)
-            {
-                if (i != 0) out << ", ";
-                dump (v[i]);
-            }
-
-            out << ']';
-        }
-
-        void dumpVector (const value::ValueView& v)
+        void dumpArrayOrVector (const value::ValueView& v)
         {
             out << '[';
             auto num = v.size();
@@ -278,10 +264,12 @@ inline value::Value parse (text::UTF8Pointer text)
             auto result = value::Value::createEmptyArray();
             auto arrayStart = current;
 
+            skipWhitespace();
+            if (popIf (']')) return result;
+
             for (;;)
             {
                 skipWhitespace();
-                if (popIf (']')) break;
                 if (isEOF())  throwError ("Unexpected EOF in array declaration", arrayStart);
 
                 result.addArrayElement (parseValue());
@@ -300,10 +288,12 @@ inline value::Value parse (text::UTF8Pointer text)
             auto result = value::Value::createObject ("JSON");
             auto objectStart = current;
 
+            skipWhitespace();
+            if (popIf ('}')) return result;
+
             for (;;)
             {
                 skipWhitespace();
-                if (popIf ('}')) break;
                 if (isEOF())  throwError ("Unexpected EOF in object declaration", objectStart);
 
                 if (! popIf ('"')) throwError ("Expected a name");
@@ -337,7 +327,6 @@ inline value::Value parse (text::UTF8Pointer text)
                 case '[':                                 return parseArray();
                 case '{':                                 return parseObject();
                 case '"':                                 return value::Value::createString (parseString ('"'));
-                case '\'':                                return value::Value::createString (parseString ('\''));
                 case '-':                                 skipWhitespace(); return parseNumber (true);
                 case '0': case '1': case '2':
                 case '3': case '4': case '5':
@@ -375,23 +364,22 @@ inline value::Value parse (text::UTF8Pointer text)
                 if (isWhitespace (c) || c == ',' || c == '}' || c == ']' || c == 0)
                 {
                     current = lastPos;
-                    auto lengthInBytes = static_cast<size_t> (current.data() - startPos.data());
-                    char number[32];
+                    char* endOfParsedNumber = nullptr;
 
-                    if (lengthInBytes < sizeof (number) - 1)
+                    if (! isDouble)
                     {
-                        memcpy (number, startPos.data(), lengthInBytes);
-                        number[lengthInBytes] = 0;
+                        auto v = std::strtoll (startPos.data(), &endOfParsedNumber, 10);
 
-                        if (isDouble)
-                        {
-                            auto v = std::strtod (number, nullptr);
-                            return value::Value::createFloat64 (negate ? -v : v);
-                        }
-
-                        auto v = std::strtoll (number, nullptr, 10);
-                        return value::Value::createInt64 (static_cast<int64_t> (negate ? -v : v));
+                        if (endOfParsedNumber == lastPos.data()
+                             && v != std::numeric_limits<long long>::max()
+                             && v != std::numeric_limits<long long>::min())
+                            return value::Value::createInt64 (static_cast<int64_t> (negate ? -v : v));
                     }
+
+                    auto v = std::strtod (startPos.data(), &endOfParsedNumber);
+
+                    if (endOfParsedNumber == lastPos.data())
+                        return value::Value::createFloat64 (negate ? -v : v);
                 }
 
                 throwError ("Syntax error in number", lastPos);
@@ -448,8 +436,8 @@ inline value::Value parse (text::UTF8Pointer text)
                 auto digit = pop();
 
                 if (digit >= '0' && digit <= '9')         digit -= '0';
-                else if (digit >= 'a' && digit <= 'f')    digit -= 'a';
-                else if (digit >= 'A' && digit <= 'F')    digit -= 'A';
+                else if (digit >= 'a' && digit <= 'f')    digit = 10 + (digit - 'a');
+                else if (digit >= 'A' && digit <= 'F')    digit = 10 + (digit - 'A');
                 else throwError ("Syntax error in unicode character", errorPos);
 
                 result = (result << 4) + digit;

@@ -326,7 +326,10 @@ public:
 
     The ValueView and Value classes differ in that ValueView does not own the data that it
     points to, but Value does. A ValueView should be used as a temporary wrapper around some
-    data whose lifetime can be trusted to outlive the ValueView object.
+    data whose lifetime can be trusted to outlive the ValueView object. As a rule-of-thumb, you
+    should treat Value and Valueview in the same way as std::string and std::string_view, so
+    a ValueView makes a great type for a function parameter, but probably shouldn't be used
+    as a function return type unless you really know what you're doing.
 
     The purpose of these classes is to allow manipulation of complex, dynamically-typed objects
     where the data holding a value is stored in a contiguous, packed, well-specified data
@@ -618,37 +621,109 @@ struct Value   final
     void addObjectMember (std::string memberName, const ValueView& memberValue);
 
     //==============================================================================
-    /** Checks whether the value has a void type. */
-    bool isVoid() const                                                 { return value.isVoid(); }
+    bool isVoid() const                         { return value.isVoid(); }
+    bool isInt32() const                        { return value.isInt32(); }
+    bool isInt64() const                        { return value.isInt64(); }
+    bool isInt() const                          { return value.isInt(); }
+    bool isFloat32() const                      { return value.isFloat32(); }
+    bool isFloat64() const                      { return value.isFloat64(); }
+    bool isFloat() const                        { return value.isFloat(); }
+    bool isBool() const                         { return value.isBool(); }
+    bool isPrimitive() const                    { return value.isPrimitive(); }
+    bool isObject() const                       { return value.isObject(); }
+    bool isString() const                       { return value.isString(); }
+    bool isVector() const                       { return value.isVector(); }
+    bool isArray() const                        { return value.isArray(); }
 
-    /** Returns the value of a named member, or a void value if no such member exists.
-        This will throw an error if the value is not an object.
-    */
-    ValueView operator[] (std::string_view name) const                  { return value[name]; }
+    //==============================================================================
+    int32_t           getInt32() const          { return value.getInt32(); }      /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
+    int64_t           getInt64() const          { return value.getInt64(); }      /**< Retrieves the value if this is an int64, otherwise throws an Error exception. */
+    float             getFloat32() const        { return value.getFloat32(); }    /**< Retrieves the value if this is a float, otherwise throws an Error exception. */
+    double            getFloat64() const        { return value.getFloat64(); }    /**< Retrieves the value if this is a double, otherwise throws an Error exception. */
+    bool              getBool() const           { return value.getBool(); }       /**< Retrieves the value if this is a bool, otherwise throws an Error exception. */
+    std::string_view  getString() const         { return value.getString(); }     /**< Retrieves the value if this is a string, otherwise throws an Error exception. */
 
-    /** Returns the value of a named member, or a void value if no such member exists.
-        This will throw an error if the value is not an object.
+    explicit operator int32_t() const           { return value.getInt32(); }      /**< If the object is not an int32, this will throw an Error. */
+    explicit operator int64_t() const           { return value.getInt64(); }      /**< If the object is not an int64, this will throw an Error. */
+    explicit operator float() const             { return value.getFloat32(); }    /**< If the object is not a float, this will throw an Error. */
+    explicit operator double() const            { return value.getFloat64(); }    /**< If the object is not a double, this will throw an Error. */
+    explicit operator bool() const              { return value.getBool(); }       /**< If the object is not a bool, this will throw an Error. */
+    explicit operator std::string_view() const  { return value.getString(); }     /**< If the object is not a string, this will throw an Error. */
+
+    /** Attempts to cast this value to the given primitive target type. If the type is void or something that
+        can't be cast, it will throw an exception. This will do some minor casting, such as ints to doubles,
+        but won't attempt do any kind of string to number conversions.
     */
-    ValueView operator[] (const char* name) const                       { return value[name]; }
+    template <typename TargetType> TargetType get() const;
+
+    /** Attempts to get this value as the given target type, but if this isn't possible,
+        returns the default value provided instead of throwing an Error.
+    */
+    template <typename TargetType> TargetType getWithDefault (TargetType defaultValue) const;
+
+    /** If this object is a vector, array or object, this returns the number of items it contains; otherwise
+        it will throw an Error exception.
+    */
+    uint32_t size() const                                               { return value.size(); }
 
     /** If this object is an array or vector, and the index is valid, this returns one of its elements.
+        Note that this returns a view of the parent Value, which will become invalid as soon as any
+        change is made to the parent Value.
         Throws an error exception if the object is not a vector or the index is out of range.
     */
     ValueView operator[] (int index) const                              { return value[index]; }
 
     /** If this object is an array or vector, and the index is valid, this returns one of its elements.
+        Note that this returns a view of the parent Value, which will become invalid as soon as any
+        change is made to the parent Value.
         Throws an error exception if the object is not a vector or the index is out of range.
     */
     ValueView operator[] (uint32_t index) const                         { return value[index]; }
+
+    //==============================================================================
+    /** Iterating a Value is only valid for an array, vector or object. */
+    ValueView::Iterator begin() const;
+    ValueView::EndIterator end() const;
+
+    //==============================================================================
+    /** Returns the class name of this object.
+        This will throw an error if the value is not an object.
+    */
+    const std::string& getObjectClassName() const                       { return value.getObjectClassName(); }
+
+    /** Returns the name and value of a member by index.
+        This will throw an error if the value is not an object of if the index is out of range. (Use
+        size() to find out how many members there are). To get a named value from an object, you can
+        use operator[].
+        @see size
+    */
+    MemberNameAndValue getObjectMemberAt (uint32_t index) const         { return value.getObjectMemberAt (index); }
+
+    /** Returns the value of a named member, or a void value if no such member exists.
+        Note that this returns a view of the parent Value, which will become invalid as soon as any
+        change is made to the parent Value.
+        This will throw an error if the value is not an object.
+    */
+    ValueView operator[] (std::string_view name) const                  { return value[name]; }
+
+    /** Returns the value of a named member, or a void value if no such member exists.
+        Note that this returns a view of the parent Value, which will become invalid as soon as any
+        change is made to the parent Value.
+        This will throw an error if the value is not an object.
+    */
+    ValueView operator[] (const char* name) const                       { return value[name]; }
+
+    /** Returns true if this is an object and contains the given member name. */
+    bool hasObjectMember (std::string_view name) const                  { return value.hasObjectMember (name); }
 
     /** Returns a ValueView of this Value. The ValueView will become invalid as soon as any change is made to this Value. */
     operator const ValueView&() const                                   { return value; }
 
     /** Returns a ValueView of this Value. The ValueView will become invalid as soon as any change is made to this Value. */
-    const ValueView& getValue() const                                   { return value; }
+    const ValueView& getView() const                                    { return value; }
 
     /** Returns a mutable reference to the ValueView held inside this Value. This is only for use if you know what you're doing. */
-    ValueView& getValueReference()                                      { return value; }
+    ValueView& getViewReference()                                       { return value; }
 
     /** Returns the type of this value. */
     const Type& getType() const                                         { return value.getType(); }
@@ -1843,6 +1918,12 @@ inline void Value::addObjectMember (std::string memberName, const ValueView& mem
     value.type.addObjectMember (std::move (memberName), memberValue.getType());
     appendValue (memberValue);
 }
+
+template <typename TargetType> TargetType Value::get() const                           { return value.get<TargetType>(); }
+template <typename TargetType> TargetType Value::getWithDefault (TargetType d) const   { return value.getWithDefault<TargetType> (std::forward (d)); }
+
+inline ValueView::Iterator Value::begin() const    { return value.begin(); }
+inline ValueView::EndIterator Value::end() const   { return {}; }
 
 inline Value::SimpleStringDictionary::Handle Value::SimpleStringDictionary::getHandleForString (std::string_view text)
 {

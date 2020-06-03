@@ -88,7 +88,7 @@ struct AudioMIDIWrapper
                             {
                                 if (auto newValue = getNewValueForParamIfChanged())
                                 {
-                                    floatValue.getValueReference().set (*newValue);
+                                    floatValue.getViewReference().set (*newValue);
                                     perf.addInputEvent (endpointHandle, floatValue);
                                 }
                             });
@@ -102,7 +102,7 @@ struct AudioMIDIWrapper
                             {
                                 if (auto newValue = getNewValueForParamIfChanged())
                                 {
-                                    floatValue.getValueReference().set (*newValue);
+                                    floatValue.getViewReference().set (*newValue);
                                     perf.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames, 0.0f);
                                 }
                             });
@@ -113,7 +113,7 @@ struct AudioMIDIWrapper
                             {
                                 if (auto newValue = getNewValueForParamIfChanged())
                                 {
-                                    floatValue.getValueReference().set (*newValue);
+                                    floatValue.getViewReference().set (*newValue);
                                     perf.setInputValue (endpointHandle, floatValue);
                                 }
                             });
@@ -130,7 +130,7 @@ struct AudioMIDIWrapper
                 {
                     for (uint32_t i = 0; i < rc.midiInCount; ++i)
                     {
-                        midiEvent.getValue().getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
+                        midiEvent.getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
                         perf.addInputEvent (endpointHandle, midiEvent);
                     }
                 });

@@ -355,7 +355,7 @@ public:
                         {
                             for (uint32_t i = 0; i < rc.midiInCount; ++i)
                             {
-                                midiEvent.getValue().getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
+                                midiEvent.getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
                                 perf.addInputEvent (endpointHandle, midiEvent);
                             }
                         });

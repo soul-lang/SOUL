@@ -225,7 +225,7 @@ choc::value::Value coerceAudioFileObjectToTargetType (const Type& targetType, co
             sourceRate = member.value;
     }
 
-    SOUL_ASSERT (! (sourceFrameArray.getValue().isVoid() || sourceRate.getValue().isVoid()));
+    SOUL_ASSERT (! (sourceFrameArray.isVoid() || sourceRate.isVoid()));
 
     if (targetType.isArray())
         return sourceFrameArray;
