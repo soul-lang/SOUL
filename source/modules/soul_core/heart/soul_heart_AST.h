@@ -697,6 +697,7 @@ struct heart
         Annotation annotation;
         IntrinsicType intrinsicType = IntrinsicType::none;
         pool_ptr<Variable> stateParameter;
+        pool_ptr<Variable> ioParameter;
         FunctionType functionType;
 
         bool isExported = false;
@@ -724,6 +725,23 @@ struct heart
         bool hasStateParameter() const
         {
             return stateParameter != nullptr;
+        }
+
+        void addIOParameter (Variable& param)
+        {
+            SOUL_ASSERT (! hasIOParameter());
+
+            ioParameter = param;
+
+            if (hasStateParameter())
+                parameters.insert (++parameters.begin(), param);
+            else
+                parameters.insert (parameters.begin(), param);
+        }
+
+        bool hasIOParameter() const
+        {
+            return ioParameter != nullptr;
         }
 
         bool hasSameSignature (const Function& other) const
