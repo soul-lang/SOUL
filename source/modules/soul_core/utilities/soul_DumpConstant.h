@@ -23,7 +23,7 @@ namespace soul
 {
 
 //==============================================================================
-/** Prints out a one-line dump of a constant value, and looks for things like MIDI messages that
+/** Prints out a one-line dump of a value, and looks for things like MIDI messages that
     can be printed appropriately.
 */
 inline std::string dump (const choc::value::ValueView& c)
@@ -120,6 +120,44 @@ inline std::string dump (const choc::value::ValueView& c)
     }
 
     return "?";
+}
+
+/** Dumps a printout of a type. */
+inline std::string dump (const choc::value::Type& type)
+{
+    if (type.isInt32())     return "int32";
+    if (type.isInt64())     return "int64";
+    if (type.isFloat32())   return "float32";
+    if (type.isFloat64())   return "float64";
+    if (type.isBool())      return "bool";
+    if (type.isString())    return "string";
+
+    if (type.isVector())        return dump (type.getElementType()) + "<" + std::to_string (type.getNumElements()) + ">";
+    if (type.isUniformArray())  return dump (type.getElementType()) + "[" + std::to_string (type.getNumElements()) + "]";
+
+    if (type.isObject())
+    {
+        std::string s (type.getObjectClassName());
+        auto num = type.getNumElements();
+
+        if (num == 0)
+            return s + " {}";
+
+        s += " { ";
+
+        for (uint32_t i = 0; i < num; ++i)
+        {
+            if (i != 0)
+                s += ", ";
+
+            auto m = type.getObjectMember (i);
+            s += dump (m.type) + " " + m.name;
+        }
+
+        return s + " }";
+    }
+
+    SOUL_ASSERT_FALSE;
 }
 
 

@@ -592,7 +592,7 @@ private:
         {
             if (result.processorIndex)
                 throwError (Errors::notYetImplemented ("Processor indexes"));
-            
+
             result.endpoint = parseIdentifier();
 
             if (matchIf (Operator::openBracket))

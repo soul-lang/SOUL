@@ -124,7 +124,7 @@ struct AudioMIDIWrapper
             else if (isMIDIEventEndpoint (inputEndpoint))
             {
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
-                choc::value::Value midiEvent (inputEndpoint.getSingleEventType().getExternalType());
+                choc::value::Value midiEvent (inputEndpoint.getSingleEventType());
 
                 preRenderOperations.push_back ([&perf, endpointHandle, midiEvent] (RenderContext& rc) mutable
                 {
@@ -140,9 +140,9 @@ struct AudioMIDIWrapper
                 auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
                 auto& frameType = inputEndpoint.getFrameType();
                 auto startChannel = numInputChannelsExpected;
-                auto numChans = static_cast<uint32_t> (frameType.getVectorSize());
+                auto numChans = frameType.getNumElements();
 
-                if (frameType.isFloatingPoint())
+                if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
                 {
                     if (numChans == 1)
                     {
@@ -203,7 +203,7 @@ struct AudioMIDIWrapper
                 auto startChannel = numOutputChannelsExpected;
                 numOutputChannelsExpected += numChans;
 
-                if (frameType.isFloatingPoint())
+                if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
                 {
                     postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
                     {

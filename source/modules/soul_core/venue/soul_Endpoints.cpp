@@ -27,18 +27,15 @@ bool isConsoleEndpoint (const std::string& name)
     return name == ASTUtilities::getConsoleEndpointInternalName();
 }
 
-bool isMIDIMessageStruct (const Type& type)
+bool isMIDIMessageStruct (const choc::value::Type& type)
 {
-    if (! type.isStruct())
+    if (! type.isObject())
         return false;
 
-    auto& s = type.getStructRef();
-
-    return s.getName() == "Message"
-            && s.getNumMembers() == 1
-            && s.getMemberName (0) == "midiBytes"
-            && s.getMemberType (0).isPrimitive()
-            && s.getMemberType (0).isInteger32();
+    return endsWith (type.getObjectClassName(), "Message")
+            && type.getNumElements() == 1
+            && type.getObjectMember (0).name == "midiBytes"
+            && type.getObjectMember (0).type.isInt32();
 }
 
 bool isMIDIEventEndpoint (const EndpointDetails& details)

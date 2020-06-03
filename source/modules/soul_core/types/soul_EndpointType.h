@@ -112,9 +112,9 @@ struct EndpointDetails
                      const std::vector<Type>& dataTypes, Annotation);
 
     uint32_t getNumAudioChannels() const;
-    const Type& getFrameType() const;
-    const Type& getValueType() const;
-    const Type& getSingleEventType() const;
+    const choc::value::Type& getFrameType() const;
+    const choc::value::Type& getValueType() const;
+    const choc::value::Type& getSingleEventType() const;
     bool isConsoleOutput() const;
 
     EndpointID endpointID;
@@ -126,7 +126,7 @@ struct EndpointDetails
         event types it can handle. For streams and values, there should be exactly
         one type in this array.
     */
-    ArrayWithPreallocation<Type, 2> dataTypes;
+    ArrayWithPreallocation<choc::value::Type, 2> dataTypes;
     Annotation annotation;
 };
 

@@ -31,37 +31,35 @@ EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
    : endpointID (std::move (id)),
      name (std::move (nm)),
      kind (k),
-     dataTypes (types),
      annotation (std::move (a))
 {
+    dataTypes.reserve (types.size());
+
+    for (auto& t : types)
+        dataTypes.push_back (t.getExternalType());
 }
 
 uint32_t EndpointDetails::getNumAudioChannels() const
 {
     if (isStream (kind))
-    {
-        auto& frameType = getFrameType();
-
-        if (frameType.isFloatingPoint())
-            return (uint32_t) frameType.getVectorSize();
-    }
+        return getFrameType().getNumElements();
 
     return 0;
 }
 
-const Type& EndpointDetails::getFrameType() const
+const choc::value::Type& EndpointDetails::getFrameType() const
 {
     SOUL_ASSERT (isStream (kind) && dataTypes.size() == 1);
     return dataTypes.front();
 }
 
-const Type& EndpointDetails::getValueType() const
+const choc::value::Type& EndpointDetails::getValueType() const
 {
     SOUL_ASSERT (isValue (kind) && dataTypes.size() == 1);
     return dataTypes.front();
 }
 
-const Type& EndpointDetails::getSingleEventType() const
+const choc::value::Type& EndpointDetails::getSingleEventType() const
 {
     SOUL_ASSERT (isEvent (kind) && dataTypes.size() == 1);
     return dataTypes.front();

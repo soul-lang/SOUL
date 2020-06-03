@@ -366,9 +366,9 @@ public:
                     auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
                     auto startChannel = static_cast<uint32_t> (connection.audioInputStreamIndex);
-                    auto numChans = static_cast<uint32_t> (frameType.getVectorSize());
+                    auto numChans = frameType.getNumElements();
 
-                    if (frameType.isFloatingPoint())
+                    if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
                     {
                         AllocatedChannelSet<InterleavedChannelSet<float>> interleaved (numChans, maxBlockSize);
 
@@ -390,11 +390,10 @@ public:
                 {
                     auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
                     auto& frameType = details.getFrameType();
-                    auto buffer = soul::Value::zeroInitialiser (frameType.createArray (maxBlockSize));
                     auto startChannel = static_cast<uint32_t> (connection.audioOutputStreamIndex);
-                    auto numChans = static_cast<uint32_t> (frameType.getVectorSize());
+                    auto numChans = frameType.getNumElements();
 
-                    if (frameType.isFloatingPoint())
+                    if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
                     {
                         postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
                         {
@@ -755,7 +754,7 @@ private:
         e.details.endpointID    = std::move (id);
         e.details.name          = std::move (name);
         e.details.kind          = kind;
-        e.details.dataTypes.push_back (std::move (dataType));
+        e.details.dataTypes.push_back (dataType.getExternalType());
 
         e.audioChannelIndex     = audioChannelIndex;
         e.isMIDI                = isMIDI;

@@ -63,7 +63,7 @@ EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointKind kind)
     return {};
 }
 
-bool isMIDIMessageStruct (const Type&);
+bool isMIDIMessageStruct (const choc::value::Type&);
 bool isMIDIEventEndpoint (const EndpointDetails&);
 Type createMIDIEventEndpointType();
 bool isParameterInput (const EndpointDetails&);
