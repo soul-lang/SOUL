@@ -10,9 +10,9 @@
 #pragma once
 
 #include "../API/soul_patch.h"
-#include "../3rdParty/choc/text/choc_UTF8.h"
-#include "../3rdParty/choc/text/choc_JSON.h"
-#include "../3rdParty/choc/text/choc_StringUtilities.h"
+#include "../../../3rdParty/choc/text/choc_UTF8.h"
+#include "../../../3rdParty/choc/text/choc_JSON.h"
+#include "../../../3rdParty/choc/text/choc_StringUtilities.h"
 
 /*
     This file contains some helper classes and functions that are handy for JUCE-based apps
