@@ -208,6 +208,7 @@ struct Value::PackedData
             {
                 bool ok1 = dst.next();
                 bool ok2 = src.next();
+                ignoreUnused (ok2);
                 SOUL_ASSERT (ok1 == ok2);
 
                 if (! ok1)
@@ -225,6 +226,7 @@ struct Value::PackedData
             {
                 bool ok1 = dst.next();
                 bool ok2 = src.next();
+                ignoreUnused (ok2);
                 SOUL_ASSERT (ok1 == ok2);
 
                 if (! ok1)
@@ -485,6 +487,8 @@ Value Value::createStringLiteral (StringDictionary::Handle h)
 
 Value Value::createFromRawData (Type type, const void* sourceData, size_t dataSize)
 {
+    ignoreUnused (dataSize);
+    
     Value v (std::move (type));
     SOUL_ASSERT (dataSize == v.getPackedDataSize());
     memcpy (v.getPackedData(), sourceData, v.getPackedDataSize());
