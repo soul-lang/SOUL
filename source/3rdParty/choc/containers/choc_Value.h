@@ -33,7 +33,9 @@
 namespace choc::value
 {
 
-struct Value;
+class Value;
+class ValueView;
+class StringDictionary;
 struct MemberNameAndType;
 struct MemberNameAndValue;
 struct ElementTypeAndOffset;
@@ -58,6 +60,12 @@ struct Error { const char* description; };
 */
 static void check (bool condition, const char* errorMessage)       { if (! condition) throwError (errorMessage); }
 
+/** Used by some deserialisation methods in Type, Value and StringDictionary */
+struct InputData
+{
+    const uint8_t* start;
+    const uint8_t* end;
+};
 
 //==============================================================================
 /** A type class that can represent primitives, vectors, strings, arrays and objects.
@@ -78,28 +86,29 @@ static void check (bool condition, const char* errorMessage)       { if (! condi
 
     @see Value, ValueView
 */
-struct Type  final
+class Type  final
 {
+public:
     Type() = default;
     Type (Type&& other);
     Type (const Type&);
     Type& operator= (Type&&);
     Type& operator= (const Type&);
-    ~Type();
+    ~Type() noexcept;
 
-    bool isVoid() const                 { return mainType == MainType::void_; }
-    bool isInt32() const                { return isType (MainType::int32); }
-    bool isInt64() const                { return isType (MainType::int64); }
-    bool isInt() const                  { return isType (MainType::int32, MainType::int64); }
-    bool isFloat32() const              { return isType (MainType::float32); }
-    bool isFloat64() const              { return isType (MainType::float64); }
-    bool isFloat() const                { return isType (MainType::float32, MainType::float64); }
-    bool isBool() const                 { return isType (MainType::boolean); }
-    bool isPrimitive() const            { return isType (MainType::int32, MainType::int64, MainType::float32, MainType::float64, MainType::boolean); }
-    bool isObject() const               { return isType (MainType::object); }
-    bool isString() const               { return isType (MainType::string); }
-    bool isVector() const               { return isType (MainType::vector); }
-    bool isArray() const                { return isType (MainType::primitiveArray, MainType::complexArray); }
+    bool isVoid() const noexcept        { return isType (MainType::void_); }
+    bool isInt32() const noexcept       { return isType (MainType::int32); }
+    bool isInt64() const noexcept       { return isType (MainType::int64); }
+    bool isInt() const noexcept         { return isType (MainType::int32, MainType::int64); }
+    bool isFloat32() const noexcept     { return isType (MainType::float32); }
+    bool isFloat64() const noexcept     { return isType (MainType::float64); }
+    bool isFloat() const noexcept       { return isType (MainType::float32, MainType::float64); }
+    bool isBool() const noexcept        { return isType (MainType::boolean); }
+    bool isPrimitive() const noexcept   { return isType (MainType::int32, MainType::int64, MainType::float32, MainType::float64, MainType::boolean); }
+    bool isObject() const noexcept      { return isType (MainType::object); }
+    bool isString() const noexcept      { return isType (MainType::string); }
+    bool isVector() const noexcept      { return isType (MainType::vector); }
+    bool isArray() const noexcept       { return isType (MainType::primitiveArray, MainType::complexArray); }
     bool isUniformArray() const;        /**< A uniform array is one where every element has the same type. */
     bool isArrayOfVectors() const;
     bool isVectorSize1() const;
@@ -195,12 +204,8 @@ struct Type  final
 
     //==============================================================================
     /** Stores a representation of this type in a packed data format.
-        It can later be reloaded with deserialise().
-        @see deserialise
-    */
-    std::vector<uint8_t> serialise() const;
-
-    /*  Recreates a type from a serialised version that was created by the serialise() method.
+        It can later be reloaded with deserialise(). The OutputStream template can
+        be any object which has a method write (const void*, size_t)
 
         The data format is simple:
         Primitives:  type (1 byte)
@@ -211,10 +216,17 @@ struct Type  final
         Packed ints are stored as a sequence of bytes in little-endian order, where each byte contains
         7 bits of data + the top bit is set if another byte follows it.
 
+        @see deserialise
+    */
+    template <typename OutputStream>
+    void serialise (OutputStream&) const;
+
+    /*  Recreates a type from a serialised version that was created by the serialise() method.
         Any errors while reading the data will cause an Error exception to be thrown.
+        The InputData object will be left pointing to any remaining data after the type has been read.
         @see serialise
     */
-    static Type deserialise (const void* dataStart, const void* dataEnd);
+    static Type deserialise (InputData&);
 
 private:
     //==============================================================================
@@ -229,8 +241,8 @@ private:
         string          = 0x24,
         vector          = 0x30,
         primitiveArray  = 0x40,
-        complexArray    = 0x50,
-        object          = 0x60
+        complexArray    = 0x80,
+        object          = 0x90
     };
 
     static constexpr uint32_t maxNumVectorElements = 256;
@@ -238,7 +250,8 @@ private:
 
     static constexpr uint32_t getPrimitiveSize (MainType t)   { return static_cast<uint32_t> (t) & 15; }
 
-    friend struct ValueView;
+    friend class ValueView;
+    friend class Value;
     struct SerialisationHelpers;
     struct ComplexArray;
     struct Object;
@@ -277,11 +290,12 @@ private:
     MainType mainType = MainType::void_;
     Content content;
 
-    template <typename... Types> bool isType (Types... types) const   { return ((mainType == types) || ...); }
+    template <typename... Types> bool isType (Types... types) const noexcept   { return ((mainType == types) || ...); }
     template <typename Type> static constexpr MainType selectMainType();
 
     explicit Type (MainType);
     explicit Type (MainType vectorElementType, uint32_t);
+    void deleteAllocatedObjects() noexcept;
 };
 
 //==============================================================================
@@ -340,8 +354,9 @@ public:
 
     @see Type, Value, choc::json::toString()
 */
-struct ValueView  final
+class ValueView  final
 {
+public:
     ValueView();                                             /**< Creates an empty value with a type of 'void'. */
     ValueView (Type&&, void* data, StringDictionary*);       /**< Creates a value using the given type and raw block of data. */
     ValueView (const Type&, void* data, StringDictionary*);  /**< Creates a value using the given type and raw block of data. */
@@ -350,22 +365,21 @@ struct ValueView  final
     ValueView& operator= (const ValueView&) = default;
 
     //==============================================================================
-    bool isVoid() const                         { return type.isVoid(); }
-
     const Type& getType() const                 { return type; }
 
-    bool isInt32() const                        { return type.isInt32(); }
-    bool isInt64() const                        { return type.isInt64(); }
-    bool isInt() const                          { return type.isInt(); }
-    bool isFloat32() const                      { return type.isFloat32(); }
-    bool isFloat64() const                      { return type.isFloat64(); }
-    bool isFloat() const                        { return type.isFloat(); }
-    bool isBool() const                         { return type.isBool(); }
-    bool isPrimitive() const                    { return type.isPrimitive(); }
-    bool isObject() const                       { return type.isObject(); }
-    bool isString() const                       { return type.isString(); }
-    bool isVector() const                       { return type.isVector(); }
-    bool isArray() const                        { return type.isArray(); }
+    bool isVoid() const noexcept                { return type.isVoid(); }
+    bool isInt32() const noexcept               { return type.isInt32(); }
+    bool isInt64() const noexcept               { return type.isInt64(); }
+    bool isInt() const noexcept                 { return type.isInt(); }
+    bool isFloat32() const noexcept             { return type.isFloat32(); }
+    bool isFloat64() const noexcept             { return type.isFloat64(); }
+    bool isFloat() const noexcept               { return type.isFloat(); }
+    bool isBool() const noexcept                { return type.isBool(); }
+    bool isPrimitive() const noexcept           { return type.isPrimitive(); }
+    bool isObject() const noexcept              { return type.isObject(); }
+    bool isString() const noexcept              { return type.isString(); }
+    bool isVector() const noexcept              { return type.isVector(); }
+    bool isArray() const noexcept               { return type.isArray(); }
 
     //==============================================================================
     int32_t           getInt32() const;     /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
@@ -472,7 +486,7 @@ struct ValueView  final
 
 private:
     //==============================================================================
-    friend struct Value;
+    friend class Value;
     Type type;
     uint8_t* data = nullptr;
     StringDictionary* stringDictionary = nullptr;
@@ -535,8 +549,9 @@ struct MemberNameAndValue
 
     @see ValueView, Type, choc::json::parse(), choc::json::toString()
 */
-struct Value   final
+class Value   final
 {
+public:
     /** Creates an empty value with a type of 'void'. */
     Value();
 
@@ -734,6 +749,26 @@ struct Value   final
     void* getRawData()                                                  { return packedData.data(); }
     /** Returns the size of the raw data that stores this value. */
     size_t getRawDataSize() const                                       { return packedData.size(); }
+
+    /** Stores a complete representation of this value and its type a packed data format.
+        It can later be reloaded with Value::deserialise(). The OutputStream template can
+        be any kind of object which has a method write (const void*, size_t).
+        The data format is:
+        - The serialised Type data, as written by Type::serialise()
+        - The block of value data, which is a copy of getRawData(), the size being Type::getValueDataSize()
+        - If any strings are in the dictionary, this is followed by a packed int with the number of strings,
+          then a sequence of null-terminated strings
+        @see Value::deserialise
+    */
+    template <typename OutputStream>
+    void serialise (OutputStream&) const;
+
+    /*  Recreates a Value from serialised data that was created by the Value::serialise() method.
+        Any errors while reading the data will cause an Error exception to be thrown.
+        The InputData object will be left pointing to any remaining data after the value has been read.
+        @see Value::serialise
+    */
+    static Value deserialise (InputData&);
 
 private:
     //==============================================================================
@@ -968,9 +1003,7 @@ inline Type& Type::operator= (Type&& other)
 
 inline Type& Type::operator= (const Type& other)
 {
-    if (isType (MainType::complexArray))   delete content.complexArray;
-    else if (isObject())                   delete content.object;
-
+    deleteAllocatedObjects();
     mainType = other.mainType;
 
     if (isType (MainType::complexArray))   content.complexArray = new ComplexArray (*other.content.complexArray);
@@ -988,10 +1021,18 @@ inline Type::Type (MainType vectorElementType, uint32_t size)  : mainType (MainT
     content.vector = { vectorElementType, size };
 }
 
-inline Type::~Type()
+inline Type::~Type() noexcept
 {
-    if (isType (MainType::complexArray))   delete content.complexArray;
-    else if (isObject())                   delete content.object;
+    deleteAllocatedObjects();
+}
+
+inline void Type::deleteAllocatedObjects() noexcept
+{
+    if (static_cast<int8_t> (mainType) < 0)
+    {
+        if (isType (MainType::complexArray))   delete content.complexArray;
+        else if (isType (MainType::object))    delete content.object;
+    }
 }
 
 inline bool Type::isUniformArray() const     { return isType (MainType::primitiveArray) || (isType (MainType::complexArray) && content.complexArray->isUniform()); }
@@ -1254,9 +1295,66 @@ struct Type::SerialisationHelpers
         string      = 9
     };
 
+    [[noreturn]] static void throwDataError()      { throwError ("Malformed data"); }
+    static void expect (bool condition)            { if (! condition) throwDataError(); }
+
+    template <typename OutputStream>
+    static void writeVariableLengthInt (OutputStream& out, uint32_t value)
+    {
+        uint8_t data[8];
+        uint32_t index = 0;
+
+        while (value > 127)
+        {
+            data[index++] = static_cast<uint8_t> ((value & 0x7fu) | 0x80u);
+            value >>= 7;
+        }
+
+        data[index++] = static_cast<uint8_t> (value);
+        out.write (data, index);
+    }
+
+    static uint32_t readVariableLengthInt (InputData& source)
+    {
+        uint32_t result = 0;
+
+        for (int shift = 0;;)
+        {
+            expect (source.end > source.start);
+            auto nextByte = *source.start++;
+
+            if (shift == 28)
+                expect (nextByte < 16);
+
+            if (nextByte < 128)
+                return result | (static_cast<uint32_t> (nextByte) << shift);
+
+            result |= static_cast<uint32_t> (nextByte & 0x7fu) << shift;
+            shift += 7;
+        }
+    }
+
+    static std::string readNullTerminatedString (InputData& source)
+    {
+        auto start = source.start, end = source.end;
+
+        for (auto p = start; p < end; ++p)
+        {
+            if (*p == 0)
+            {
+                source.start = p + 1;
+                return std::string (reinterpret_cast<const char*> (start),
+                                    reinterpret_cast<const char*> (p));
+            }
+        }
+
+        throwDataError();
+    }
+
+    template <typename OutputStream>
     struct Writer
     {
-        std::vector<uint8_t> data;
+        OutputStream& out;
 
         void writeType (const Type& t)
         {
@@ -1329,36 +1427,14 @@ struct Type::SerialisationHelpers
         }
 
         void writeType (EncodedType t)            { writeByte (static_cast<uint8_t> (t)); }
-        void writeByte (uint8_t byte)             { data.push_back (byte); }
-        void writeString (const std::string& s)   { for (auto c : s) writeByte (static_cast<uint8_t> (c)); writeByte (0); }
-
-        void writeInt (uint32_t value)
-        {
-            while (value > 127)
-            {
-                writeByte (static_cast<uint8_t> ((value & 0x7fu) | 0x80u));
-                value >>= 7;
-            }
-
-            writeByte (static_cast<uint8_t> (value));
-        }
+        void writeByte (uint8_t byte)             { out.write (&byte, 1); }
+        void writeString (const std::string& s)   { out.write (std::addressof (s[0]), s.length()); writeByte (0); }
+        void writeInt (uint32_t value)            { writeVariableLengthInt (out, value); }
     };
 
     struct Reader
     {
-        const uint8_t* data;
-        const uint8_t* end;
-
-        Type readSingleType()
-        {
-            auto t = readType();
-            expect (data == end);
-            return t;
-        }
-
-    private:
-        [[noreturn]] void throwDataError()      { throwError ("Malformed data"); }
-        void expect (bool condition)            { if (! condition) throwDataError(); }
+        InputData& source;
 
         Type readType()
         {
@@ -1378,6 +1454,7 @@ struct Type::SerialisationHelpers
             }
         }
 
+    private:
         Type readVector()
         {
             auto num = readInt();
@@ -1419,12 +1496,12 @@ struct Type::SerialisationHelpers
         Type readObject()
         {
             auto numMembers = readInt();
-            auto t = createObject (readString());
+            auto t = createObject (readNullTerminatedString (source));
 
             for (uint32_t i = 0; i < numMembers; ++i)
             {
                 auto memberType = readType();
-                t.addObjectMember (readString(), std::move (memberType));
+                t.addObjectMember (readNullTerminatedString (source), std::move (memberType));
             }
 
             return t;
@@ -1432,51 +1509,28 @@ struct Type::SerialisationHelpers
 
         uint8_t readByte()
         {
-            expect (data < end);
-            return *data++;
+            expect (source.end > source.start);
+            return *source.start++;
         }
 
         uint32_t readInt()
         {
-            uint32_t result = 0;
-
-            for (int shift = 0;;)
-            {
-                auto nextByte = readByte();
-
-                if (shift == 28)
-                    expect (nextByte < 16);
-
-                if (nextByte < 128)
-                    return result | (static_cast<uint32_t> (nextByte) << shift);
-
-                result |= static_cast<uint32_t> (nextByte & 0x7fu) << shift;
-                shift += 7;
-            }
-        }
-
-        std::string readString()
-        {
-            auto start = reinterpret_cast<const char*> (data);
-
-            for (;;)
-                if (readByte() == 0)
-                    return std::string (start, reinterpret_cast<const char*> (data - 1));
+            return readVariableLengthInt (source);
         }
     };
 };
 
-inline std::vector<uint8_t> Type::serialise() const
+template <typename OutputStream>
+void Type::serialise (OutputStream& out) const
 {
-    SerialisationHelpers::Writer w;
+    SerialisationHelpers::Writer<OutputStream> w  { out };
     w.writeType (*this);
-    return std::move (w.data);
 }
 
-inline Type Type::deserialise (const void* dataStart, const void* dataEnd)
+inline Type Type::deserialise (InputData& input)
 {
-    SerialisationHelpers::Reader r { static_cast<const uint8_t*> (dataStart), static_cast<const uint8_t*> (dataEnd) };
-    return r.readSingleType();
+    SerialisationHelpers::Reader r { input };
+    return r.readType();
 }
 
 //==============================================================================
@@ -1683,7 +1737,6 @@ struct ValueView::Iterator
 };
 
 inline ValueView::Iterator ValueView::begin() const   { return { *this, 0, size() }; }
-
 
 //==============================================================================
 inline Value::Value() : value (dictionary) {}
@@ -1925,6 +1978,50 @@ template <typename TargetType> TargetType Value::getWithDefault (TargetType d) c
 inline ValueView::Iterator Value::begin() const    { return value.begin(); }
 inline ValueView::EndIterator Value::end() const   { return {}; }
 
+template <typename OutputStream> void Value::serialise (OutputStream& o) const
+{
+    value.type.serialise (o);
+
+    if (! value.type.isVoid())
+    {
+        o.write (getRawData(), value.type.getValueDataSize());
+
+        if (auto numStrings = static_cast<uint32_t> (dictionary.strings.size()))
+        {
+            Type::SerialisationHelpers::writeVariableLengthInt (o, numStrings);
+
+            for (auto& s : dictionary.strings)
+            {
+                 o.write (std::addressof (s[0]), s.length());
+                 o.write ("", 1);
+            }
+        }
+    }
+}
+
+inline Value Value::deserialise (InputData& input)
+{
+    auto type = Type::deserialise (input);
+    auto valueDataSize = type.getValueDataSize();
+    Type::SerialisationHelpers::expect (input.end >= input.start + valueDataSize);
+    Value v (std::move (type));
+    memcpy (v.getRawData(), input.start, valueDataSize);
+    input.start += valueDataSize;
+
+    if (input.end > input.start)
+    {
+        auto numStrings = Type::SerialisationHelpers::readVariableLengthInt (input);
+        v.dictionary.strings.reserve (numStrings);
+
+        for (uint32_t i = 0; i < numStrings; ++i)
+            v.dictionary.strings.push_back (Type::SerialisationHelpers::readNullTerminatedString (input));
+    }
+
+    Type::SerialisationHelpers::expect (input.end == input.start);
+    return v;
+}
+
+//==============================================================================
 inline Value::SimpleStringDictionary::Handle Value::SimpleStringDictionary::getHandleForString (std::string_view text)
 {
     if (text.empty())
@@ -1948,7 +2045,6 @@ inline std::string_view Value::SimpleStringDictionary::getStringForHandle (Handl
 
     throwError ("Unknown string");
 }
-
 
 } // namespace choc::value
 
