@@ -45,6 +45,7 @@
 #endif
 
 #include "../../3rdParty/choc/containers/choc_Value.h"
+#include "../../3rdParty/choc/audio/choc_MIDI.h"
 
 #include <vector>
 #include <string>

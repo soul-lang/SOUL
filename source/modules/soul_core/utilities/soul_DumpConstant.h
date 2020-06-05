@@ -111,8 +111,10 @@ inline std::string dump (const choc::value::ValueView& c)
             if (std::strcmp (m.name, "midiBytes") == 0 && m.value.isInt32())
             {
                 auto v = m.value.getInt32();
-                const uint8_t bytes[] = { (uint8_t) (v >> 16), (uint8_t) (v >> 8), (uint8_t) v };
-                s += " = " + getMIDIMessageDescription (bytes, 3);
+
+                s += " = " + choc::midi::ShortMessage ((uint8_t) (v >> 16),
+                                                       (uint8_t) (v >> 8),
+                                                       (uint8_t) v).getDescription();
             }
         }
 
