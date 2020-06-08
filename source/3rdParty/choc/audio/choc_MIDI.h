@@ -32,11 +32,11 @@ static constexpr float  A440_frequency   = 440.0f;
 static constexpr int    A440_noteNumber  = 69;
 
 /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
-inline float noteNumberToFrequency (int note)          { return A440_frequency * std::pow (2.0f, (note - A440_noteNumber) * (1.0f / 12.0f)); }
+inline float noteNumberToFrequency (int note)          { return A440_frequency * std::pow (2.0f, (static_cast<float> (note) - A440_noteNumber) * (1.0f / 12.0f)); }
 /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
 inline float noteNumberToFrequency (float note)        { return A440_frequency * std::pow (2.0f, (note - static_cast<float> (A440_noteNumber)) * (1.0f / 12.0f)); }
 /** Converts a frequency in Hz to an equivalent MIDI note number. */
-inline float frequencyToNoteNumber (float frequency)   { return static_cast<float> (A440_noteNumber) + (12.0f / log (2.0f)) * log (frequency * (1.0f / A440_frequency)); }
+inline float frequencyToNoteNumber (float frequency)   { return static_cast<float> (A440_noteNumber) + (12.0f / std::log (2.0f)) * std::log (frequency * (1.0f / A440_frequency)); }
 
 /** Returns the name for a MIDI controller number. */
 inline std::string getControllerName (uint8_t controllerNumber);
@@ -90,7 +90,7 @@ struct ShortMessage
     uint8_t length() const;
 
     uint8_t getChannel0to15() const                     { return data[0] & 0x0f; }
-    uint8_t getChannel1to16() const                     { return getChannel0to15() + 1u; }
+    uint8_t getChannel1to16() const                     { return static_cast<uint8_t> (getChannel0to15() + 1u); }
 
     bool isNoteOn() const                               { return isVoiceMessage (0x90) && getVelocity() != 0; }
     bool isNoteOff() const                              { return isVoiceMessage (0x80) || (getVelocity() == 0 && isVoiceMessage (0x90)); }

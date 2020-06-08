@@ -175,7 +175,7 @@ choc::value::Value createAudioDataObject (const choc::value::ValueView& frames, 
 {
     auto o = choc::value::Value::createObject ("soul::AudioFile");
     o.addObjectMember ("frames", frames);
-    o.addObjectMember ("sampleRate", choc::value::Value::createPrimitive (sampleRate));
+    o.addObjectMember ("sampleRate", sampleRate);
     return o;
 }
 

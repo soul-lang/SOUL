@@ -630,10 +630,12 @@ public:
     /** Creates a new empty object. */
     static Value createObject (std::string className);
 
-    /** Appends a member to an object, with the given name and value. This will throw an Error if
-        this isn't possible for some reason.
+    /** Appends a member to an object, with the given name and value.
+        The value can be a supported primitive type, a string, or a Value or ValueView.
+        This will throw an Error if this isn't possible for some reason (e.g. if the value isn't an object)
     */
-    void addObjectMember (std::string memberName, const ValueView& memberValue);
+    template <typename MemberType>
+    void addObjectMember (std::string memberName, MemberType memberValue);
 
     //==============================================================================
     bool isVoid() const                         { return value.isVoid(); }
@@ -772,7 +774,9 @@ public:
 
 private:
     //==============================================================================
+    void appendData (const void*, size_t);
     void appendValue (ValueView);
+    void appendMember (std::string&&, Type&&, const void*, size_t);
     void importStringHandles (ValueView&, const StringDictionary& old);
 
     struct SimpleStringDictionary  : public StringDictionary
@@ -1805,22 +1809,25 @@ inline Value& Value::operator= (const ValueView& source)
     return *this;
 }
 
+inline void Value::appendData (const void* source, size_t size)
+{
+    packedData.insert (packedData.end(), static_cast<const uint8_t*> (source), static_cast<const uint8_t*> (source) + size);
+    value.data = packedData.data();
+}
+
 inline void Value::appendValue (ValueView newValue)
 {
     check (! newValue.isVoid(), "Cannot add a void value");
-
-    auto source = static_cast<const uint8_t*> (newValue.getRawData());
     auto oldSize = packedData.size();
-    packedData.insert (packedData.end(), source, source + newValue.getType().getValueDataSize());
-    value.data = packedData.data();
+    appendData (newValue.getRawData(), newValue.getType().getValueDataSize());
 
-    if (auto oldDictionary = newValue.stringDictionary)
+    if (auto sourceDictionary = newValue.stringDictionary)
     {
         if (newValue.getType().usesStrings())
         {
             newValue.data = packedData.data() + oldSize;
             newValue.stringDictionary = std::addressof (dictionary);
-            importStringHandles (newValue, *oldDictionary);
+            importStringHandles (newValue, *sourceDictionary);
         }
     }
 }
@@ -1966,10 +1973,36 @@ inline Value Value::createObject (std::string className)
     return Value (Type::createObject (std::move (className)));
 }
 
-inline void Value::addObjectMember (std::string memberName, const ValueView& memberValue)
+inline void Value::appendMember (std::string&& name, Type&& type, const void* data, size_t size)
 {
-    value.type.addObjectMember (std::move (memberName), memberValue.getType());
-    appendValue (memberValue);
+    value.type.addObjectMember (std::move (name), std::move (type));
+    appendData (data, size);
+}
+
+template <typename MemberType>
+void Value::addObjectMember (std::string name, MemberType v)
+{
+    static_assert (ValueView::isValidPrimitiveType<MemberType>()
+                    || ValueView::matchesType<MemberType, std::string, std::string&, std::string_view, const char*, ValueView, Value>(),
+                   "The template type needs to be one of the supported primitive types");
+
+    if constexpr (ValueView::matchesType<MemberType, int32_t>())   return appendMember (std::move (name), Type::createInt32(),   std::addressof (v), sizeof (v));
+    if constexpr (ValueView::matchesType<MemberType, int64_t>())   return appendMember (std::move (name), Type::createInt64(),   std::addressof (v), sizeof (v));
+    if constexpr (ValueView::matchesType<MemberType, float>())     return appendMember (std::move (name), Type::createFloat32(), std::addressof (v), sizeof (v));
+    if constexpr (ValueView::matchesType<MemberType, double>())    return appendMember (std::move (name), Type::createFloat64(), std::addressof (v), sizeof (v));
+    if constexpr (ValueView::matchesType<MemberType, bool>())      { uint8_t b = v ? 1 : 0; return appendMember (std::move (name), Type::createBool(), std::addressof (b), sizeof (b)); }
+
+    if constexpr (ValueView::matchesType<MemberType, std::string, std::string&, std::string_view, const char*>())
+    {
+        auto stringHandle = dictionary.getHandleForString (v);
+        return appendMember (std::move (name), Type::createString(), std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
+    }
+
+    if constexpr (ValueView::matchesType<MemberType, Value, ValueView>())
+    {
+        value.type.addObjectMember (std::move (name), v.getType());
+        return appendValue (v);
+    }
 }
 
 template <typename TargetType> TargetType Value::get() const                           { return value.get<TargetType>(); }
