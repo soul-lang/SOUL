@@ -51,20 +51,20 @@ public:
         Returns true on success; on failure, the CompileMessageList should contain error
         messages describing what went wrong.
     */
-    virtual bool load (CompileMessageList&, const Program& programToLoad) = 0;
+    virtual bool load (CompileMessageList&, const Program& programToLoad) noexcept = 0;
 
     /** Unloads any currently loaded program, and resets the state of the performer. */
-    virtual void unload() = 0;
+    virtual void unload() noexcept = 0;
 
     /** When a program has been loaded, this returns a list of the input endpoints that
         the program provides.
     */
-    virtual ArrayView<const EndpointDetails> getInputEndpoints() = 0;
+    virtual ArrayView<const EndpointDetails> getInputEndpoints() noexcept = 0;
 
     /** When a program has been loaded, this returns a list of the output endpoints that
         the program provides.
     */
-    virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
+    virtual ArrayView<const EndpointDetails> getOutputEndpoints() noexcept = 0;
 
     struct ExternalVariable
     {
@@ -75,10 +75,10 @@ public:
     /** Returns the list of external variables that need to be resolved before a loaded
         program can be linked.
     */
-    virtual ArrayView<const ExternalVariable> getExternalVariables() = 0;
+    virtual ArrayView<const ExternalVariable> getExternalVariables() noexcept = 0;
 
     /** Set the value of an external in the loaded program. */
-    virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) = 0;
+    virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) noexcept = 0;
 
     /** After loading a program, and optionally connecting up to some of its endpoints,
         link() will complete any preparations needed before the code can be executed.
@@ -89,26 +89,26 @@ public:
         that an optimising JIT engine could take up to several seconds, so make sure
         the caller takes this into account.
     */
-    virtual bool link (CompileMessageList&, const LinkOptions&, LinkerCache*) = 0;
+    virtual bool link (CompileMessageList&, const LinkOptions&, LinkerCache*) noexcept = 0;
 
     /** Returns true if a program is currently loaded. */
-    virtual bool isLoaded() = 0;
+    virtual bool isLoaded() noexcept = 0;
 
     /** Returns true if a program is successfully linked and ready to execute. */
-    virtual bool isLinked() = 0;
+    virtual bool isLinked() noexcept = 0;
 
     /** Resets the performer to the state it was in when freshly linked.
         This doesn't unlink or unload the program, it simply resets the program's
         internal state so that the next advance() call will begin a fresh run.
     */
-    virtual void reset() = 0;
+    virtual void reset() noexcept = 0;
 
     /** When a program has been loaded (but not yet linked), this returns
         a handle that can be used later by other methods which need to reference
         an input or output endpoint.
         Will return a null handle if the ID is not found.
     */
-    virtual EndpointHandle getEndpointHandle (const EndpointID&) = 0;
+    virtual EndpointHandle getEndpointHandle (const EndpointID&) noexcept = 0;
 
     /** Indicates that a block of frames is going to be rendered.
 
@@ -121,7 +121,7 @@ public:
         Because you're likely to be calling advance() from an audio thread, be careful not to
         allow any calls to other methods such as unload() to overlap with calls to advance()!
     */
-    virtual void prepare (uint32_t numFramesToBeRendered) = 0;
+    virtual void prepare (uint32_t numFramesToBeRendered) noexcept = 0;
 
     /** Callback function used by iterateOutputEvents().
         The frameOffset is relative to the start of the last block that was rendered during advance().
@@ -136,7 +136,7 @@ public:
         advance(), only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setNextInputStreamFrames (EndpointHandle, const choc::value::ValueView& frameArray) = 0;
+    virtual void setNextInputStreamFrames (EndpointHandle, const choc::value::ValueView& frameArray) noexcept = 0;
 
     /** Sets the next levels for a sparse-stream input.
         After a successful call to prepare(), and before a call to advance(), this should be called
@@ -145,7 +145,7 @@ public:
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
     virtual void setSparseInputStreamTarget (EndpointHandle, const choc::value::ValueView& targetFrameValue,
-                                             uint32_t numFramesToReachValue, float curveShape) = 0;
+                                             uint32_t numFramesToReachValue, float curveShape) noexcept = 0;
 
     /** Sets a new value for a value input.
         After a successful call to prepare(), and before a call to advance(), this may be called
@@ -153,7 +153,7 @@ public:
         only the most recent value is used.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void setInputValue (EndpointHandle, const choc::value::ValueView& newValue) = 0;
+    virtual void setInputValue (EndpointHandle, const choc::value::ValueView& newValue) noexcept = 0;
 
     /** Adds an event to an input queue.
         After a successful call to prepare(), and before a call to advance(), this may be called
@@ -161,26 +161,26 @@ public:
         all the events that were added will be dispatched in order, and the queue will be reset.
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
-    virtual void addInputEvent (EndpointHandle, const choc::value::ValueView& eventData) = 0;
+    virtual void addInputEvent (EndpointHandle, const choc::value::ValueView& eventData) noexcept = 0;
 
     /** Retrieves the most recent block of frames from an output stream.
         After a successful call to advance(), this may be called to get the block of frames which
         were rendered during that call. A nullptr return value indicates an error.
     */
-    virtual choc::value::ValueView getOutputStreamFrames (EndpointHandle) = 0;
+    virtual choc::value::ValueView getOutputStreamFrames (EndpointHandle) noexcept = 0;
 
     /** Retrieves the current value of the value output.
         After a successful call to advance(), this may be called to get the value of the given output.
         A nullptr return value indicates an error.
     */
-    virtual choc::value::ValueView getOutputValue (EndpointHandle) = 0;
+    virtual choc::value::ValueView getOutputValue (EndpointHandle) noexcept = 0;
 
     /** Retrieves the last block of events which were emitted by an event output.
         After a successful call to advance(), this may be called to iterate the list of events
         which the program emitted on the given endpoint. The callback function provides the
         frame offset and content of each event.
     */
-    virtual void iterateOutputEvents (EndpointHandle, HandleNextOutputEventFn) = 0;
+    virtual void iterateOutputEvents (EndpointHandle, HandleNextOutputEventFn) noexcept = 0;
 
     /** Renders the next block of frames.
 
@@ -188,23 +188,31 @@ public:
         block of frames. If any inputs have not been correctly populated, over- and under-runs
         may occur and the associated counters will be incremented to reflect this.
     */
-    virtual void advance() = 0;
+    virtual void advance() noexcept = 0;
 
     /** Returns true if something has got a handle to this endpoint and might be using it
         during the current program run.
     */
-    virtual bool isEndpointActive (const EndpointID&) = 0;
+    virtual bool isEndpointActive (const EndpointID&) noexcept = 0;
 
     /** Returns the number of over- or under-runs that have happened since the program was linked.
         Underruns can happen when an endpoint callback fails to empty or fill the amount of data
         that it is asked to handle.
     */
-    virtual uint32_t getXRuns() = 0;
+    virtual uint32_t getXRuns() noexcept = 0;
 
     /** Returns the block size which is the maximum number of frames that can be rendered in one
         prepare call.
     */
-    virtual uint32_t getBlockSize() = 0;
+    virtual uint32_t getBlockSize() noexcept = 0;
+
+    /** Returns whether the performer is in an error state
+    */
+    virtual bool hasError() noexcept = 0;
+
+    /** Returns the error message for the performer - if no error is present, this returns nullptr
+    */
+    virtual const char* getError() noexcept = 0;
 };
 
 
