@@ -1,4 +1,12 @@
 {
+    "Stereo I/O Pair": {
+        "prefix": ["strio"],
+        "body": [
+            "input stream float<2> audioIn;",
+            "output stream float<2> audioOut;"
+        ],
+        "description": "Stereo I/O stream pair."
+    },
     "Mono Out Processor": {
         "prefix": ["processor", "prm"],
         "body": [
