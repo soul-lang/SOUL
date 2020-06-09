@@ -269,6 +269,7 @@ namespace soul
     X(unsupportedBitDepth,                  "Unsupported bit-depth") \
     X(unsupportedBlockSize,                 "Unsupported block size") \
     X(unsupportedSampleRate,                "Unsupported sample rate") \
+    X(unsupportedOptimisationLevel,         "Unsupported optimisation level") \
     X(unsupportedNumChannels,               "Unsupported number of channels") \
 
 #define SOUL_ERRORS_RUNTIME(X) \

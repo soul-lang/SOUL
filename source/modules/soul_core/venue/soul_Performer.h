@@ -21,6 +21,8 @@
 namespace soul
 {
 
+class LinkerCache;
+
 //==============================================================================
 /**
     Abstract base class for a "performer" which can compile and execute a soul::Program.
@@ -89,7 +91,7 @@ public:
         that an optimising JIT engine could take up to several seconds, so make sure
         the caller takes this into account.
     */
-    virtual bool link (CompileMessageList&, const LinkOptions&, LinkerCache*) noexcept = 0;
+    virtual bool link (CompileMessageList&, const BuildSettings&, LinkerCache*) noexcept = 0;
 
     /** Returns true if a program is currently loaded. */
     virtual bool isLoaded() noexcept = 0;
@@ -215,6 +217,34 @@ public:
     virtual const char* getError() noexcept = 0;
 };
 
+//==============================================================================
+/**
+    Provides a mechanism that a Performer may use to store and retrieve reusable
+    chunks of binary code, to avoid re-compiling things multiple times.
+
+    An implementation just has to store chunks of data for particular string keys. That
+    could be done in some kind of file structure or database depending on the use-case.
+*/
+class LinkerCache
+{
+public:
+    virtual ~LinkerCache() {}
+
+    /** Copies a block of data into the cache with a given key.
+        The key will be an alphanumeric hash string of some kind. If there's already a
+        matching key in the cache, this should overwrite it with the new data.
+        The sourceData pointer will not be null, and the size will be greater than zero.
+    */
+    virtual void storeItem (const char* key, const void* sourceData, uint64_t size) = 0;
+
+    /**
+        The key will be an alphanumeric hash string that was previously used to store the item.
+        If destAddress is nullptr or destSize is too small, then this should return the size
+        that is required to hold this object.
+        If no entry is found for this key, the method returns 0.
+    */
+    virtual uint64_t readItem (const char* key, void* destAddress, uint64_t destSize) = 0;
+};
 
 //==============================================================================
 /**

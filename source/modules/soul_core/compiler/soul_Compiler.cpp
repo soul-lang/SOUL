@@ -82,17 +82,32 @@ void Compiler::addDefaultBuiltInLibrary()
     }
 }
 
+static void sanityCheckBuildSettings (const BuildSettings& settings,
+                                      uint32_t minBlockSize = 1, uint32_t maxBlockSize = 65536)
+{
+    if (settings.maxBlockSize != 0 && (settings.maxBlockSize < minBlockSize || settings.maxBlockSize > maxBlockSize))
+        CodeLocation().throwError (Errors::unsupportedBlockSize());
+
+    constexpr double maxSampleRate = 48000.0 * 100;
+
+    if (settings.sampleRate <= 0 || settings.sampleRate > maxSampleRate)
+        CodeLocation().throwError (Errors::unsupportedSampleRate());
+
+    if (settings.optimisationLevel < -1 || settings.optimisationLevel > 3)
+        CodeLocation().throwError (Errors::unsupportedOptimisationLevel());
+}
 
 //==============================================================================
-Program Compiler::build (CompileMessageList& messageList, CodeLocation code, const LinkOptions& linkOptions)
+Program Compiler::build (CompileMessageList& messageList, const BuildBundle& bundle)
 {
+    sanityCheckBuildSettings (bundle.settings);
     Compiler c;
 
-    if (! messageList.hasErrors())
-        if (c.addCode (messageList, std::move (code)))
-            return c.link (messageList, linkOptions);
+    for (auto& file : bundle.sourceFiles)
+        if (! c.addCode (messageList, CodeLocation::createFromSourceFile (file)))
+            return {};
 
-    return {};
+    return c.link (messageList, bundle.settings);
 }
 
 std::vector<pool_ref<AST::ModuleBase>> Compiler::parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
@@ -116,20 +131,18 @@ void Compiler::compile (CodeLocation code)
 }
 
 //==============================================================================
-AST::ProcessorBase& Compiler::findMainProcessor (const LinkOptions& linkOptions)
+AST::ProcessorBase& Compiler::findMainProcessor (const BuildSettings& settings)
 {
-    auto nameOfProcessorToRun = linkOptions.getMainProcessor();
-
-    if (! nameOfProcessorToRun.empty())
+    if (! settings.mainProcessor.empty())
     {
-        auto path = IdentifierPath::fromString (allocator.identifiers, nameOfProcessorToRun);
+        auto path = IdentifierPath::fromString (allocator.identifiers, settings.mainProcessor);
 
         if (path.isValid())
             for (auto& m : topLevelNamespace->getMatchingSubModules (path))
                 if (auto pb = cast<AST::ProcessorBase> (m))
                     return *pb;
 
-        CodeLocation().throwError (Errors::cannotFindMainProcessorWithName (nameOfProcessorToRun));
+        CodeLocation().throwError (Errors::cannotFindMainProcessorWithName (settings.mainProcessor));
     }
 
     std::vector<pool_ref<AST::ProcessorBase>> mainProcessors;
@@ -156,7 +169,7 @@ AST::ProcessorBase& Compiler::findMainProcessor (const LinkOptions& linkOptions)
     return *main;
 }
 
-Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions)
+Program Compiler::link (CompileMessageList& messageList, const BuildSettings& settings)
 {
     if (messageList.hasErrors())
         return {};
@@ -164,19 +177,19 @@ Program Compiler::link (CompileMessageList& messageList, const LinkOptions& link
     try
     {
         CompileMessageHandler handler (messageList);
-        return link (messageList, linkOptions, findMainProcessor (linkOptions));
+        sanityCheckBuildSettings (settings);
+        return link (messageList, findMainProcessor (settings));
     }
     catch (AbortCompilationException) {}
 
     return {};
 }
 
-Program Compiler::link (CompileMessageList& messageList, const LinkOptions& linkOptions, AST::ProcessorBase& processorToRun)
+Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& processorToRun)
 {
     try
     {
         SOUL_LOG_TIME_OF_SCOPE ("link time");
-        ignoreUnused (linkOptions);
         CompileMessageHandler handler (messageList);
         resolveProcessorInstances (processorToRun);
         ASTUtilities::resolveHoistedEndpoints (allocator, *topLevelNamespace);

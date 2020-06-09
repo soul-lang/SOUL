@@ -177,11 +177,11 @@ public:
             return performer->isEndpointActive (e);
         }
 
-        bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
+        bool link (CompileMessageList& messageList, const BuildSettings& settings) override
         {
             buildOperationList();
 
-            if (state == State::loaded && performer->link (messageList, linkOptions, {}))
+            if (state == State::loaded && performer->link (messageList, settings, {}))
             {
                 setState (State::linked);
                 return true;

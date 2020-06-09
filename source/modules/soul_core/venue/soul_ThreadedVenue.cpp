@@ -160,9 +160,9 @@ struct ThreadedVenue  : public soul::Venue
             return performer->isEndpointActive (e);
         }
 
-        bool link (CompileMessageList& messageList, const LinkOptions& linkOptions) override
+        bool link (CompileMessageList& messageList, const BuildSettings& settings) override
         {
-            if (state == State::loaded && performer->link (messageList, linkOptions, {}))
+            if (state == State::loaded && performer->link (messageList, settings, {}))
             {
                 blockSize = performer->getBlockSize();
                 setState (State::linked);

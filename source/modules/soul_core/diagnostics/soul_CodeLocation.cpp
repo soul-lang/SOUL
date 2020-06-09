@@ -56,6 +56,11 @@ CodeLocation CodeLocation::createFromString (std::string filename, std::string t
     return code;
 }
 
+CodeLocation CodeLocation::createFromSourceFile (const BuildBundle::SourceFile& f)
+{
+    return createFromString (f.filename, f.content);
+}
+
 void CodeLocation::validateUTF8() const
 {
     if (auto invalidBytes = location.findInvalidData())

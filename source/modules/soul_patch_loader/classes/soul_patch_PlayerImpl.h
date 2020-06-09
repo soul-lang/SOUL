@@ -55,9 +55,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     Span<Parameter::Ptr> getParameters() const override         { return parameterSpan; }
 
     //==============================================================================
-    void addSource (soul::CompileMessageList& messageList,
-                    SourceFilePreprocessor* preprocessor,
-                    soul::Compiler& compiler)
+    void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
     {
         for (auto& fileState : fileList.sourceFiles)
         {
@@ -75,29 +73,25 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             if (! readError.empty())
                 throwPatchLoadError (readError);
 
-            compiler.addCode (messageList, CodeLocation::createFromString (fileState.path, content));
+            build.sourceFiles.push_back ({ fileState.path, std::move (content) });
         }
     }
 
     soul::Program compileSources (soul::CompileMessageList& messageList,
-                                  soul::LinkOptions linkOptions,
+                                  const BuildSettings& settings,
                                   SourceFilePreprocessor* preprocessor)
     {
-        soul::Compiler compiler;
-
-        addSource (messageList, preprocessor, compiler);
-
-        auto program = compiler.link (messageList, linkOptions);
+        BuildBundle build;
+        addSource (build, preprocessor);
+        build.settings = settings;
+        auto program = Compiler::build (messageList, build);
 
        #if JUCE_BELA
         {
-            soul::Compiler wrappedCompiler;
-            addSource (messageList, preprocessor, wrappedCompiler);
-            wrappedCompiler.addCode (messageList, CodeLocation::createFromString ("BelaWrapper", soul::patch::BelaWrapper::build (program)));
-
-            auto wrappedLinkOptions = linkOptions;
-            wrappedLinkOptions.setMainProcessor ("BelaWrapper");
-            program = wrappedCompiler.link (messageList, wrappedLinkOptions);
+            auto wrappedBuild = build;
+            wrappedBuild.sourceFiles.push_back ({ "BelaWrapper", soul::patch::BelaWrapper::build (program) });
+            wrappedBuild.settings.mainProcessor = "BelaWrapper";
+            program = Compiler::build (messageList, wrappedBuild);
         }
        #endif
 
@@ -105,7 +99,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     }
 
     void compile (soul::CompileMessageList& messageList,
-                  const soul::LinkOptions& linkOptions,
+                  const BuildSettings& settings,
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
                   ExternalDataProvider* externalDataProvider,
@@ -120,7 +114,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                 throwPatchLoadError (message.getFullDescription() + "\n" + message.getAnnotatedSourceLine());
         };
 
-        auto program = compileSources (messageList, linkOptions, preprocessor);
+        auto program = compileSources (messageList, settings, preprocessor);
 
         if (program.isEmpty())
             return messageList.addError ("Empty program", {});
@@ -132,18 +126,18 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         createRenderOperations (consoleHandler);
         resolveExternalVariables (externalDataProvider);
 
-        if (! performer->link (messageList, linkOptions, CacheConverter::create (cache).get()))
+        if (! performer->link (messageList, settings, CacheConverter::create (cache).get()))
             return messageList.addError ("Failed to link", {});
     }
 
-    void compile (const soul::LinkOptions& linkOptions,
+    void compile (const BuildSettings& settings,
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
                   ExternalDataProvider* externalDataProvider,
                   ConsoleMessageHandler* consoleHandler)
     {
         soul::CompileMessageList messageList;
-        compile (messageList, linkOptions, cache, preprocessor, externalDataProvider, consoleHandler);
+        compile (messageList, settings, cache, preprocessor, externalDataProvider, consoleHandler);
 
         compileMessages.reserve (messageList.messages.size());
 

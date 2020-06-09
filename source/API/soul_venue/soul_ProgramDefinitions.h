@@ -101,6 +101,21 @@ struct Endpoint
 
 //==============================================================================
 /**
+    A collection of properties needed by the compiler, linker and loaders when
+    building SOUL programs.
+    @see BuildBundle
+*/
+struct BuildSettings
+{
+    double       sampleRate         = 0;
+    uint32_t     maxBlockSize       = 0;
+    size_t       maxStateSize       = 0;
+    int          optimisationLevel  = -1;
+    int32_t      sessionID          = 0;
+    std::string  mainProcessor;
+};
+
+/**
     Contains a complete set of all the sources and settings needed to compile and
     link a program.
 */
@@ -111,18 +126,8 @@ struct BuildBundle
         std::string filename, content;
     };
 
-    struct Settings
-    {
-        double       sampleRate         = 0;
-        uint32_t     maxBlockSize       = 0;
-        size_t       maxStateSize       = 0;
-        int          optimisationLevel  = -1;
-        int32_t      sessionID          = 0;
-        std::string  mainProcessor;
-    };
-
     std::vector<SourceFile> sourceFiles;
-    Settings settings;
+    BuildSettings settings;
     choc::value::Value customSettings;
 };
 

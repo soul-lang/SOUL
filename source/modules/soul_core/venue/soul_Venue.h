@@ -68,7 +68,7 @@ public:
             to be run.
             If this returns true, then start() can be called to begin playback.
         */
-        virtual bool link (CompileMessageList&, const LinkOptions&) = 0;
+        virtual bool link (CompileMessageList&, const BuildSettings&) = 0;
 
         /** Instructs the venue to begin playback.
             If no program is linked, this will fail and return false.

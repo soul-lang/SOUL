@@ -28,32 +28,29 @@ namespace soul
 
     You can either create a Compiler, feed it some individual chunks of code with
     addCode() and then call link() to create a finished Program. Or you can just call
-    Compiler::build() to do this in one step for a single piece of code.
+    Compiler::build() to do this in one step for a set of files.
 */
 class Compiler  final
 {
 public:
     Compiler();
 
+    /** This static method runs a complete build and link for a BuildBundle, and returns
+        the resulting program.
+    */
+    static Program build (CompileMessageList& messageList,
+                          const BuildBundle& buildBundle);
+
     /** Compiles a chunk of code which is expected to contain a list of top-level
         processor/graph/namespace decls, and these are added to the program.
     */
     bool addCode (CompileMessageList& messageList, CodeLocation code);
 
-    //==============================================================================
     /** After adding one or more chunks of code, call this to link them all together
         into a single program, which is returned. After calling this, the state
         of the Compiler object is reset to empty.
     */
-    Program link (CompileMessageList& messageList, const LinkOptions& linkOptions);
-
-    /** Instead of creating a Compiler object and calling addCode and link on it, this
-        static method just does it in a single operation, which is handy if you just have
-        one chunk of code to compile.
-    */
-    static Program build (CompileMessageList& messageList,
-                          CodeLocation codeToBuildAndLink,
-                          const LinkOptions& linkOptions);
+    Program link (CompileMessageList& messageList, const BuildSettings&);
 
     /** Just parses the top-level objects from a chunk of code */
     static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator&,
@@ -68,9 +65,9 @@ private:
     void reset();
     void addDefaultBuiltInLibrary();
     void compile (CodeLocation);
-    Program link (CompileMessageList&, const LinkOptions&, AST::ProcessorBase& processorToRun);
+    Program link (CompileMessageList&, AST::ProcessorBase& processorToRun);
     void resolveProcessorInstances (AST::ProcessorBase&);
-    AST::ProcessorBase& findMainProcessor (const LinkOptions&);
+    AST::ProcessorBase& findMainProcessor (const BuildSettings&);
 
     void recursivelyResolveProcessorInstances (pool_ref<AST::ProcessorBase>, std::vector<pool_ref<AST::ProcessorBase>>& usedProcessorInstances);
     void createImplicitProcessorInstanceIfNeeded (AST::Graph&, AST::QualifiedIdentifier& path);

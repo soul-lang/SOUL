@@ -57,6 +57,7 @@ struct CodeLocation   final
         an error if it's dodgy.
     */
     static CodeLocation createFromString (std::string filename, std::string text);
+    static CodeLocation createFromSourceFile (const BuildBundle::SourceFile&);
     void validateUTF8() const;
 
     void emitMessage (CompileMessage) const;
