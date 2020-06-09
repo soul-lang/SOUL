@@ -32,53 +32,47 @@ struct LinkOptions
 
     //==============================================================================
     /** Sets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
-    void setOptimisationLevel (int level)                   { SOUL_ASSERT (level >= -1 && level <= 3); optimisationLevel = level; }
+    void setOptimisationLevel (int level)                   { SOUL_ASSERT (level >= -1 && level <= 3); settings.optimisationLevel = level; }
     /** Gets the optimisation level: -1 for default, or 0 to 3 for the usual -O0 to -O3 levels. */
-    int getOptimisationLevel() const                        { return optimisationLevel; }
+    int getOptimisationLevel() const                        { return settings.optimisationLevel; }
 
     //==============================================================================
     /** Sets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
-    void setMaxStateSize (size_t size)                      { SOUL_ASSERT (size == 0 || size > 4096); maxStateSize = size; }
+    void setMaxStateSize (size_t size)                      { SOUL_ASSERT (size == 0 || size > 4096); settings.maxStateSize = size; }
     /** Gets the maximum allowable size for the processor state in bytes. Zero means a "default" size. */
-    size_t getMaxStateSize() const                          { return maxStateSize; }
+    size_t getMaxStateSize() const                          { return settings.maxStateSize; }
 
     //==============================================================================
     /** Optionally sets the name of the main processor to run when the program is linked.
         If specified, this will override any [[main]] annotations in the program itself.
     */
-    void setMainProcessor (const std::string& name)         { mainProcessor = name; }
+    void setMainProcessor (const std::string& name)         { settings.mainProcessor = name; }
 
     /** Gets the name of the main processor to run when the program is linked.
         This will be empty if a default is to be used.
     */
-    std::string getMainProcessor() const                    { return mainProcessor; }
+    std::string getMainProcessor() const                    { return settings.mainProcessor; }
 
     //==============================================================================
     /** Sets a session ID to use when instantiating the program. Use zero to indicate that a random number should be used. */
-    void setSessionID (int32_t newSessionID)                { sessionID = newSessionID; }
+    void setSessionID (int32_t newSessionID)                { settings.sessionID = newSessionID; }
     /** Gets the session ID to use when instantiating the program. Zero indicates that a random number should be used. */
-    int32_t getSessionID() const                            { return sessionID; }
+    int32_t getSessionID() const                            { return settings.sessionID; }
 
     //==============================================================================
     /** Sets a maximum number of frames that the compiled processor should be able to handle in a single chunk. Use zero for a default. */
-    void setMaxBlockSize (uint32_t newMaxBlockSize)         { maxBlockSize = newMaxBlockSize; }
+    void setMaxBlockSize (uint32_t newMaxBlockSize)         { settings.maxBlockSize = newMaxBlockSize; }
     /** Gets the maximum number of frames that the compiled processor should be able to handle in a single chunk. Returns zero for a default. */
-    uint32_t getMaxBlockSize() const                        { return maxBlockSize; }
+    uint32_t getMaxBlockSize() const                        { return settings.maxBlockSize; }
 
     //==============================================================================
     /** Sets the sample rate at which the compiled processor is going to run. This must be a valid value. */
-    void setSampleRate (double newRate)                     { SOUL_ASSERT (newRate > 0); sampleRate = newRate; }
+    void setSampleRate (double newRate)                     { SOUL_ASSERT (newRate > 0); settings.sampleRate = newRate; }
     /** Returns the sample rate at which the compiled processor is going to run. */
-    double getSampleRate() const                            { return sampleRate; }
+    double getSampleRate() const                            { return settings.sampleRate; }
 
-private:
     //==============================================================================
-    double       sampleRate         = 0;
-    uint32_t     maxBlockSize       = 0;
-    size_t       maxStateSize       = 0;
-    int          optimisationLevel  = -1;
-    int32_t      sessionID          = 0;
-    std::string  mainProcessor;
+    BuildBundle::Settings settings;
 };
 
 //==============================================================================

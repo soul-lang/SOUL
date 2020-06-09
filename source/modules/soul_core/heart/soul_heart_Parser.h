@@ -332,7 +332,7 @@ private:
             expect (HEARTOperator::closeBracket);
         }
 
-        inputDeclaration.kind = parseEndpointKind (*this);
+        inputDeclaration.endpointType = parseEndpointType (*this);
 
         if (inputDeclaration.isEventEndpoint())
             inputDeclaration.dataTypes = readEventTypeList();
@@ -353,7 +353,7 @@ private:
             expect (HEARTOperator::closeBracket);
         }
 
-        output.kind = parseEndpointKind (*this);
+        output.endpointType = parseEndpointType (*this);
 
         if (output.isEventEndpoint())
             output.dataTypes = readEventTypeList();

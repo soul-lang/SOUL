@@ -40,7 +40,7 @@ bool isMIDIMessageStruct (const choc::value::Type& type)
 
 bool isMIDIEventEndpoint (const EndpointDetails& details)
 {
-    return isEvent (details.kind)
+    return isEvent (details)
             && details.dataTypes.size() == 1
             && isMIDIMessageStruct (details.dataTypes.front())
             && ! isConsoleEndpoint (details.name);
@@ -55,13 +55,13 @@ Type createMIDIEventEndpointType()
 
 bool isParameterInput (const EndpointDetails& details)
 {
-    if (isEvent (details.kind) && ! isMIDIEventEndpoint (details))
+    if (isEvent (details) && ! isMIDIEventEndpoint (details))
         return true;
 
-    if (isStream (details.kind) && details.annotation.hasValue ("name"))
+    if (isStream (details) && details.annotation.hasValue ("name"))
         return true;
 
-    if (isValue (details.kind) && details.annotation.hasValue ("name"))
+    if (isValue (details) && details.annotation.hasValue ("name"))
         return true;
 
     return false;

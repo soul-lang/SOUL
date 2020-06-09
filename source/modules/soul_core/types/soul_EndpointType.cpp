@@ -26,22 +26,22 @@ namespace soul
 {
 
 //==============================================================================
-EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointKind k,
+EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointType t,
                                   const std::vector<Type>& types, Annotation a)
    : endpointID (std::move (id)),
      name (std::move (nm)),
-     kind (k),
+     endpointType (t),
      annotation (std::move (a))
 {
     dataTypes.reserve (types.size());
 
-    for (auto& t : types)
-        dataTypes.push_back (t.getExternalType());
+    for (auto& type : types)
+        dataTypes.push_back (type.getExternalType());
 }
 
 uint32_t EndpointDetails::getNumAudioChannels() const
 {
-    if (isStream (kind))
+    if (isStream (endpointType))
         return getFrameType().getNumElements();
 
     return 0;
@@ -49,19 +49,19 @@ uint32_t EndpointDetails::getNumAudioChannels() const
 
 const choc::value::Type& EndpointDetails::getFrameType() const
 {
-    SOUL_ASSERT (isStream (kind) && dataTypes.size() == 1);
+    SOUL_ASSERT (isStream (endpointType) && dataTypes.size() == 1);
     return dataTypes.front();
 }
 
 const choc::value::Type& EndpointDetails::getValueType() const
 {
-    SOUL_ASSERT (isValue (kind) && dataTypes.size() == 1);
+    SOUL_ASSERT (isValue (endpointType) && dataTypes.size() == 1);
     return dataTypes.front();
 }
 
 const choc::value::Type& EndpointDetails::getSingleEventType() const
 {
-    SOUL_ASSERT (isEvent (kind) && dataTypes.size() == 1);
+    SOUL_ASSERT (isEvent (endpointType) && dataTypes.size() == 1);
     return dataTypes.front();
 }
 
@@ -70,17 +70,11 @@ bool EndpointDetails::isConsoleOutput() const
     return name == ASTUtilities::getConsoleEndpointInternalName();
 }
 
-const char* getEndpointKindName (EndpointKind kind)
+const char* getEndpointTypeName (EndpointType type)
 {
-    switch (kind)
-    {
-        case EndpointKind::value:   return "value";
-        case EndpointKind::stream:  return "stream";
-        case EndpointKind::event:   return "event";
-    }
-
-    SOUL_ASSERT_FALSE;
-    return "";
+    auto t = endpointTypeToString (type);
+    SOUL_ASSERT (t != nullptr);
+    return t;
 }
 
 const char* getInterpolationDescription (InterpolationType type)

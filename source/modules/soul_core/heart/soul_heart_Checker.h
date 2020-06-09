@@ -97,9 +97,9 @@ struct heart::Checker
                     if (conn->destEndpointIndex && destInput->arraySize <= conn->destEndpointIndex)
                         conn->location.throwError (Errors::destinationEndpointIndexOutOfRange());
 
-                    if (sourceOutput->kind != destInput->kind)
-                        conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointKindName (sourceOutput->kind),
-                                                                          destDescription, getEndpointKindName (destInput->kind)));
+                    if (sourceOutput->endpointType != destInput->endpointType)
+                        conn->location.throwError (Errors::cannotConnect (sourceDescription, getEndpointTypeName (sourceOutput->endpointType),
+                                                                          destDescription, getEndpointTypeName (destInput->endpointType)));
 
                     if (! areConnectionTypesCompatible (sourceOutput->isEventEndpoint(),
                                                         *sourceOutput,

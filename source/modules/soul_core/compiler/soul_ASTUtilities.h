@@ -128,7 +128,7 @@ struct ASTUtilities
 
         auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
         newDebugEndpoint.name = allocator.get (getConsoleEndpointInternalName());
-        newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointKind::event);
+        newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointType::event);
         newDebugEndpoint.needsToBeExposedInParent = true;
         processor->endpoints.push_back (newDebugEndpoint);
 

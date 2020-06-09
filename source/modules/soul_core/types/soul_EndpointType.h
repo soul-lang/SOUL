@@ -22,32 +22,29 @@ namespace soul
 {
 
 //==============================================================================
-enum class EndpointKind
-{
-    value,
-    stream,
-    event
-};
+const char* getEndpointTypeName (EndpointType);
 
-const char* getEndpointKindName (EndpointKind);
+inline bool isValue  (EndpointType t)         { return t == EndpointType::value; }
+inline bool isStream (EndpointType t)         { return t == EndpointType::stream; }
+inline bool isEvent  (EndpointType t)         { return t == EndpointType::event; }
 
-inline bool isValue  (EndpointKind kind)         { return kind == EndpointKind::value; }
-inline bool isStream (EndpointKind kind)         { return kind == EndpointKind::stream; }
-inline bool isEvent  (EndpointKind kind)         { return kind == EndpointKind::event; }
+template <typename Type> bool isValue  (const Type& t)    { return isValue (t.endpointType); }
+template <typename Type> bool isStream (const Type& t)    { return isStream (t.endpointType); }
+template <typename Type> bool isEvent  (const Type& t)    { return isEvent (t.endpointType); }
 
 template <typename TokeniserType>
-static EndpointKind parseEndpointKind (TokeniserType& tokeniser)
+static EndpointType parseEndpointType (TokeniserType& tokeniser)
 {
-    if (tokeniser.matchIfKeywordOrIdentifier ("value"))   return EndpointKind::value;
-    if (tokeniser.matchIfKeywordOrIdentifier ("stream"))  return EndpointKind::stream;
-    if (tokeniser.matchIfKeywordOrIdentifier ("event"))   return EndpointKind::event;
+    if (tokeniser.matchIfKeywordOrIdentifier ("value"))   return EndpointType::value;
+    if (tokeniser.matchIfKeywordOrIdentifier ("stream"))  return EndpointType::stream;
+    if (tokeniser.matchIfKeywordOrIdentifier ("event"))   return EndpointType::event;
 
     tokeniser.throwError (Errors::expectedStreamType());
-    return EndpointKind::value;
+    return EndpointType::value;
 }
 
 template <typename TokeniserType>
-static bool isNextTokenEndpointKind (TokeniserType& tokeniser)
+static bool isNextTokenEndpointType (TokeniserType& tokeniser)
 {
     return tokeniser.matches ("value")
             || tokeniser.matches ("stream")
@@ -108,7 +105,7 @@ struct EndpointDetails
     EndpointDetails& operator= (const EndpointDetails&) = default;
     EndpointDetails& operator= (EndpointDetails&&) = default;
 
-    EndpointDetails (EndpointID, std::string name, EndpointKind,
+    EndpointDetails (EndpointID, std::string name, EndpointType,
                      const std::vector<Type>& dataTypes, Annotation);
 
     uint32_t getNumAudioChannels() const;
@@ -119,7 +116,7 @@ struct EndpointDetails
 
     EndpointID endpointID;
     std::string name;
-    EndpointKind kind;
+    EndpointType endpointType;
 
     /** The types of the frames or events that this endpoint uses.
         For an event endpoint, there may be multiple data types for the different

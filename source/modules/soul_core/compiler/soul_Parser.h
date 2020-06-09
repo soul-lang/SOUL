@@ -698,35 +698,35 @@ private:
         }
         else
         {
-            if (p.isGraph() && matches (Token::identifier) && ! isNextTokenEndpointKind (*this))
+            if (p.isGraph() && matches (Token::identifier) && ! isNextTokenEndpointType (*this))
                 return parseChildEndpoint (p, isInput);
 
-            auto kind = parseEndpointKind (*this);
+            auto endpointType = parseEndpointType (*this);
 
             if (matchIf (Operator::openBrace))
             {
                 while (! matchIf (Operator::closeBrace))
-                    parseEndpoint (p, isInput, kind);
+                    parseEndpoint (p, isInput, endpointType);
             }
             else
             {
-                parseEndpoint (p, isInput, kind);
+                parseEndpoint (p, isInput, endpointType);
             }
         }
     }
 
-    void parseEndpoint (AST::ProcessorBase& p, bool isInput, EndpointKind kind)
+    void parseEndpoint (AST::ProcessorBase& p, bool isInput, EndpointType endpointType)
     {
         auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput);
-        first.details = std::make_unique<AST::EndpointDetails> (kind);
-        first.details->dataTypes = parseEndpointTypeList (kind);
+        first.details = std::make_unique<AST::EndpointDetails> (endpointType);
+        first.details->dataTypes = parseEndpointTypeList (endpointType);
         parseInputOrOutputName (first);
         p.endpoints.push_back (first);
 
         while (matchIf (Operator::comma))
         {
             auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
-            e.details = std::make_unique<AST::EndpointDetails> (kind);
+            e.details = std::make_unique<AST::EndpointDetails> (endpointType);
             e.details->dataTypes = first.details->dataTypes;
             parseInputOrOutputName (e);
             p.endpoints.push_back (e);
@@ -1731,7 +1731,7 @@ private:
         return *type;
     }
 
-    std::vector<pool_ref<AST::Expression>> parseEndpointTypeList (EndpointKind kind)
+    std::vector<pool_ref<AST::Expression>> parseEndpointTypeList (EndpointType endpointType)
     {
         std::vector<pool_ref<AST::Expression>> result;
         auto loc = location;
@@ -1753,7 +1753,7 @@ private:
             result.push_back (parseType (ParseTypeContext::eventType));
         }
 
-        if (! isEvent (kind) && result.size() > 1)
+        if (! isEvent (endpointType) && result.size() > 1)
             loc.throwError (Errors::noMultipleTypesOnEndpoint());
 
         return result;

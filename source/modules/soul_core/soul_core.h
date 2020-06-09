@@ -46,6 +46,7 @@
 
 #include "../../3rdParty/choc/containers/choc_Value.h"
 #include "../../3rdParty/choc/audio/choc_MIDI.h"
+#include "../../API/soul_venue/soul_ProgramDefinitions.h"
 
 #include <vector>
 #include <string>

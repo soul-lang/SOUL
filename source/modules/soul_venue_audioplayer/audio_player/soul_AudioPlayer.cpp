@@ -300,13 +300,13 @@ public:
             {
                 if (details.endpointID == inputID)
                 {
-                    if (isStream (details.kind) && ! externalEndpoint.isMIDI)
+                    if (isStream (details) && ! externalEndpoint.isMIDI)
                     {
                         connections.push_back ({ externalEndpoint.audioChannelIndex, -1, false, details.endpointID });
                         return true;
                     }
 
-                    if (isEvent (details.kind) && externalEndpoint.isMIDI)
+                    if (isEvent (details) && externalEndpoint.isMIDI)
                     {
                         connections.push_back ({ -1, -1, true, details.endpointID });
                         return true;
@@ -323,7 +323,7 @@ public:
             {
                 if (details.endpointID == outputID)
                 {
-                    if (isStream (details.kind) && ! externalEndpoint.isMIDI)
+                    if (isStream (details) && ! externalEndpoint.isMIDI)
                     {
                         connections.push_back ({ -1, externalEndpoint.audioChannelIndex, false, details.endpointID });
                         return true;
@@ -701,7 +701,7 @@ private:
 
                 if (numInputChannels > 0)
                     addEndpoint (sourceEndpoints,
-                                 EndpointKind::stream,
+                                 EndpointType::stream,
                                  EndpointID::create ("defaultIn"),
                                  "defaultIn",
                                  getVectorType (numInputChannels),
@@ -709,7 +709,7 @@ private:
 
                 if (numOutputChannels > 0)
                     addEndpoint (sinkEndpoints,
-                                 EndpointKind::stream,
+                                 EndpointType::stream,
                                  EndpointID::create ("defaultOut"),
                                  "defaultOut",
                                  getVectorType (numOutputChannels),
@@ -718,14 +718,14 @@ private:
                 auto midiMessageType = soul::createMIDIEventEndpointType();
 
                 addEndpoint (sourceEndpoints,
-                             EndpointKind::event,
+                             EndpointType::event,
                              EndpointID::create ("defaultMidiIn"),
                              "defaultMidiIn",
                              midiMessageType,
                              0, true);
 
                 addEndpoint (sinkEndpoints,
-                             EndpointKind::event,
+                             EndpointType::event,
                              EndpointID::create ("defaultMidiOut"),
                              "defaultMidiOut",
                              midiMessageType,
@@ -745,7 +745,7 @@ private:
 
     static soul::Type getVectorType (int size)    { return (soul::Type::createVector (soul::PrimitiveType::float32, static_cast<size_t> (size))); }
 
-    static void addEndpoint (std::vector<EndpointInfo>& list, EndpointKind kind,
+    static void addEndpoint (std::vector<EndpointInfo>& list, EndpointType endpointType,
                              EndpointID id, std::string name, Type dataType,
                              int audioChannelIndex, bool isMIDI)
     {
@@ -753,7 +753,7 @@ private:
 
         e.details.endpointID    = std::move (id);
         e.details.name          = std::move (name);
-        e.details.kind          = kind;
+        e.details.endpointType  = endpointType;
         e.details.dataTypes.push_back (dataType.getExternalType());
 
         e.audioChannelIndex     = audioChannelIndex;

@@ -125,14 +125,14 @@ struct heart
 
         Identifier name;
         uint32_t index = 0;
-        EndpointKind kind;
+        EndpointType endpointType;
         std::vector<Type> dataTypes;
         std::optional<uint32_t> arraySize;
         Annotation annotation;
 
-        bool isEventEndpoint() const      { return isEvent (kind); }
-        bool isStreamEndpoint() const     { return isStream (kind); }
-        bool isValueEndpoint() const      { return isValue (kind); }
+        bool isEventEndpoint() const      { return isEvent (endpointType); }
+        bool isStreamEndpoint() const     { return isStream (endpointType); }
+        bool isValueEndpoint() const      { return isValue (endpointType); }
         bool isConsoleEndpoint() const    { return isEventEndpoint() && name.toString() == "_console"; }
 
         bool canHandleType (const Type& t) const
@@ -222,7 +222,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { EndpointID::create ("in:" + name.toString()), name, kind, dataTypes, annotation };
+            return { EndpointID::create ("in:" + name.toString()), name, endpointType, dataTypes, annotation };
         }
     };
 
@@ -233,7 +233,7 @@ struct heart
 
         EndpointDetails getDetails() const
         {
-            return { EndpointID::create ("out:" + name.toString()), name, kind, dataTypes, annotation };
+            return { EndpointID::create ("out:" + name.toString()), name, endpointType, dataTypes, annotation };
         }
     };
 

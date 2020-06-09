@@ -207,7 +207,7 @@ struct ModuleCloner
         mapping = io;
         io.name = newModule.allocator.get (old.name);
         io.index = old.index;
-        io.kind = old.kind;
+        io.endpointType = old.endpointType;
         io.dataTypes = cloneTypes (old.dataTypes);
         io.annotation = old.annotation;
         io.arraySize = old.arraySize;
@@ -222,7 +222,7 @@ struct ModuleCloner
         mapping = io;
         io.name = newModule.allocator.get (old.name);
         io.index = old.index;
-        io.kind = old.kind;
+        io.endpointType = old.endpointType;
         io.dataTypes = cloneTypes (old.dataTypes);
         io.annotation = old.annotation;
         io.arraySize = old.arraySize;

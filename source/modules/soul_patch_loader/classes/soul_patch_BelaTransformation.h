@@ -70,7 +70,7 @@ namespace soul::patch
                 }
                 else
                 {
-                    streams << "input " << getEndpointKindName (input->kind) << " " << getSampleTypeString (input)
+                    streams << "input " << getEndpointTypeName (input->endpointType) << " " << getSampleTypeString (input)
                             << " " << name << input->annotation.toHEART() << ";" << newLine;
 
                     connections << name << " -> " << "wrappedModule." << name << ";" << newLine;
@@ -82,7 +82,7 @@ namespace soul::patch
                 auto& name      = output->name.toString();
                 auto typeString = getSampleTypeString (output);
 
-                streams << "output " << getEndpointKindName (output->kind) <<" " << typeString << " " << name << ";" << newLine;
+                streams << "output " << getEndpointTypeName (output->endpointType) <<" " << typeString << " " << name << ";" << newLine;
                 connections << "wrappedModule." << name << " -> " << name << ";" << newLine;
             }
 
@@ -191,7 +191,7 @@ namespace soul::patch
             }
             else
             {
-                streams << "input " << getEndpointKindName (input.kind) << " "
+                streams << "input " << getEndpointTypeName (input.endpointType) << " "
                         << getSampleTypeString (input) << " " << name
                         << input.annotation.toHEART() << ";" << newLine;
 

@@ -44,20 +44,20 @@ bool containsEndpoint (const ArrayType& endpoints, const EndpointID& endpointID)
 }
 
 template <typename VenueOrPerformer>
-EndpointID findFirstInputOfType (VenueOrPerformer& p, EndpointKind kind)
+EndpointID findFirstInputOfType (VenueOrPerformer& p, EndpointType t)
 {
     for (auto& i : p.getInputEndpoints())
-        if (i.kind == kind)
+        if (i.endpointType == t)
             return i.endpointID;
 
     return {};
 }
 
 template <typename VenueOrPerformer>
-EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointKind kind)
+EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointType t)
 {
     for (auto& o : p.getOutputEndpoints())
-        if (o.kind == kind)
+        if (o.endpointType == t)
             return o.endpointID;
 
     return {};

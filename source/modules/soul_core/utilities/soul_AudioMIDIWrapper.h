@@ -82,7 +82,7 @@ struct AudioMIDIWrapper
                         auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
                         auto floatValue = choc::value::Value::createFloat32 (0);
 
-                        if (isEvent (inputEndpoint.kind))
+                        if (isEvent (inputEndpoint))
                         {
                             preRenderOperations.push_back ([&perf, endpointHandle, floatValue, getNewValueForParamIfChanged] (RenderContext&) mutable
                             {
@@ -93,7 +93,7 @@ struct AudioMIDIWrapper
                                 }
                             });
                         }
-                        else if (isStream (inputEndpoint.kind))
+                        else if (isStream (inputEndpoint))
                         {
                             SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
                             auto rampFrames = getRampLengthForSparseStreamFn (inputEndpoint);
@@ -107,7 +107,7 @@ struct AudioMIDIWrapper
                                 }
                             });
                         }
-                        else if (isValue (inputEndpoint.kind))
+                        else if (isValue (inputEndpoint))
                         {
                             preRenderOperations.push_back ([&perf, endpointHandle, floatValue, getNewValueForParamIfChanged] (RenderContext&) mutable
                             {
@@ -216,7 +216,7 @@ struct AudioMIDIWrapper
                     SOUL_ASSERT_FALSE;
                 }
             }
-            else if (handleUnusedEventFn != nullptr && isEvent (outputEndpoint.kind))
+            else if (handleUnusedEventFn != nullptr && isEvent (outputEndpoint))
             {
                 auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
                 auto endpointName = outputEndpoint.name;

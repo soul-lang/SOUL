@@ -284,7 +284,7 @@ private:
             {
                 // If the processor has non-event I/O then we need a run processor
                 for (auto e : processorOrGraph.getEndpoints())
-                    if (e->details != nullptr && ! isEvent (e->details->kind))
+                    if (e->details != nullptr && ! isEvent (*(e->details)))
                         processor->context.throwError (Errors::processorNeedsRunFunction());
             }
 

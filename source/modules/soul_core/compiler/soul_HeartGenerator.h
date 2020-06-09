@@ -194,7 +194,7 @@ private:
             auto& i = module.allocate<heart::InputDeclaration> (e.context.location);
             i.name = convertIdentifier (e.name);
             i.index = (uint32_t) module.inputs.size();
-            i.kind = e.details->kind;
+            i.endpointType = e.details->endpointType;
             i.dataTypes = e.details->getResolvedDataTypes();
             i.annotation = e.annotation.toPlainAnnotation (module.program.getStringDictionary());
             i.arraySize = getProcessorArraySize (e.details->arraySize);
@@ -210,7 +210,7 @@ private:
             auto& o = module.allocate<heart::OutputDeclaration> (e.context.location);
             o.name = convertIdentifier (e.name);
             o.index = (uint32_t) module.outputs.size();
-            o.kind = e.details->kind;
+            o.endpointType = e.details->endpointType;
             o.dataTypes = e.details->getResolvedDataTypes();
             o.annotation = e.annotation.toPlainAnnotation (module.program.getStringDictionary());
             o.arraySize = getProcessorArraySize (e.details->arraySize);

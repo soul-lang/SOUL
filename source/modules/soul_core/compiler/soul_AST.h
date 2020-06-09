@@ -957,16 +957,16 @@ struct AST
     //==============================================================================
     struct EndpointDetails
     {
-        EndpointDetails (EndpointKind k) : kind (k) {}
+        EndpointDetails (EndpointType t) : endpointType (t) {}
         EndpointDetails (const EndpointDetails&) = default;
 
-        const EndpointKind kind;
+        const EndpointType endpointType;
         std::vector<pool_ref<Expression>> dataTypes;
         pool_ptr<Expression> arraySize;
 
         void checkDataTypesValid (const Context& context)
         {
-            if (isStream (kind))
+            if (isStream (endpointType))
             {
                 SOUL_ASSERT (dataTypes.size() == 1);
                 auto dataType = getResolvedDataTypes().front();
@@ -1116,7 +1116,7 @@ struct AST
         {
             auto& details = *input->details;
 
-            if (isEvent (details.kind))
+            if (isEvent (details))
                 return (details.arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (details.getArraySize()));
 
             SOUL_ASSERT (details.dataTypes.size() == 1);
