@@ -495,6 +495,8 @@ private:
     template <typename TargetType> TargetType readContentAs() const;
     template <typename TargetType> TargetType readPrimitive (Type::MainType) const;
     template <typename PrimitiveType> void setUnchecked (PrimitiveType);
+    template <typename TargetType> static TargetType readUnaligned (const void*);
+    template <typename TargetType> static void writeUnaligned (void*, TargetType);
 
     template <typename Type1> static constexpr bool matchesType()                                       { return false; }
     template <typename Type1, typename Type2, typename... Type3> static constexpr bool matchesType()    { return std::is_same<const Type1, const Type2>::value || matchesType<Type1, Type3...>(); }
@@ -1557,13 +1559,20 @@ ValueView ValueView::create2DArray (ElementType* sourceData, uint32_t numArrayEl
     return ValueView (Type::createArrayOfVectors<ElementType> (numArrayElements, numVectorElements), sourceData, nullptr);
 }
 
-template <typename TargetType>
-TargetType ValueView::readContentAs() const
+template <typename TargetType> TargetType ValueView::readUnaligned (const void* src)
 {
     TargetType v;
-    memcpy (std::addressof (v), data, sizeof (v));
+    memcpy (std::addressof (v), src, sizeof (v));
     return v;
 }
+
+template <typename TargetType> void ValueView::writeUnaligned (void* dest, TargetType src)
+{
+    memcpy (dest, std::addressof (src), sizeof (TargetType));
+}
+
+template <typename TargetType>
+TargetType ValueView::readContentAs() const     { return readUnaligned<TargetType> (data); }
 
 template <typename TargetType> TargetType ValueView::readPrimitive (Type::MainType t) const
 {
@@ -1645,7 +1654,7 @@ template <typename PrimitiveType> void ValueView::setUnchecked (PrimitiveType v)
         return setUnchecked (stringDictionary->getHandleForString (v));
     }
 
-    memcpy (data, std::addressof (v), sizeof (v));
+    writeUnaligned (data, v);
 }
 
 template <typename PrimitiveType> void ValueView::set (PrimitiveType v)
@@ -1899,9 +1908,13 @@ inline Value Value::createVector (uint32_t numElements, const GetElementValue& g
     using ElementType = decltype (getValueForIndex (0));
     static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     Value v (Type::createVector<ElementType> (numElements));
+    auto dest = static_cast<uint8_t*> (v.getRawData());
 
     for (uint32_t i = 0; i < numElements; ++i)
-        static_cast<ElementType*> (v.getRawData())[i] = getValueForIndex (i);
+    {
+        ValueView::writeUnaligned (dest, getValueForIndex (i));
+        dest += sizeof (ElementType);
+    }
 
     return v;
 }
@@ -1916,9 +1929,13 @@ inline Value Value::createArray (uint32_t numElements, const GetElementValue& ge
     if constexpr (ValueView::isValidPrimitiveType<ElementType>())
     {
         Value v (Type::createArray (numElements, Type::createPrimitive<ElementType>()));
+        auto dest = static_cast<uint8_t*> (v.getRawData());
 
         for (uint32_t i = 0; i < numElements; ++i)
-            static_cast<ElementType*> (v.getRawData())[i] = getValueForIndex (i);
+        {
+            ValueView::writeUnaligned (dest, getValueForIndex (i));
+            dest += sizeof (ElementType);
+        }
 
         return v;
     }
@@ -1944,11 +1961,16 @@ inline Value Value::createArray (uint32_t numArrayElements, uint32_t numVectorEl
     static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The functor needs to return a supported primitive type");
 
     Value v (Type::createArray (numArrayElements, Type::createVector<ElementType> (numVectorElements)));
-    auto dest = static_cast<ElementType*> (v.getRawData());
+    auto dest = static_cast<uint8_t*> (v.getRawData());
 
     for (uint32_t j = 0; j < numArrayElements; ++j)
+    {
         for (uint32_t i = 0; i < numVectorElements; ++i)
-            *dest++ = getValueAt (j, i);
+        {
+            ValueView::writeUnaligned (dest, getValueAt (j, i));
+            dest += sizeof (ElementType);
+        }
+    }
 
     return v;
 }
@@ -1958,7 +1980,7 @@ Value Value::create2DArray (const ElementType* sourceData, uint32_t numArrayElem
 {
     static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     Value v (Type::createArrayOfVectors<ElementType> (numArrayElements, numVectorElements));
-    std::copy_n (sourceData, numArrayElements * numVectorElements, static_cast<ElementType*> (v.getRawData()));
+    memcpy (v.getRawData(), sourceData, numArrayElements * numVectorElements * sizeof (ElementType));
     return v;
 }
 
