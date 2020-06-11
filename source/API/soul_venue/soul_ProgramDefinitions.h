@@ -95,7 +95,7 @@ struct Endpoint
 {
     std::string ID, name;
     EndpointType type;
-    std::vector<choc::value::Type> dataTypes;
+    std::vector<choc::value::Type> valueTypes;
     choc::value::Value annotation;
 };
 

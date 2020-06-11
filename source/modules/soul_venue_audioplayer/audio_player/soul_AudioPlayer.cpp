@@ -348,8 +348,8 @@ public:
                 {
                     if (isMIDIEventEndpoint (findDetailsForID (perf.getInputEndpoints(), connection.endpointID)))
                     {
-                        auto midiEvent = choc::value::Value::createObject ("soul::midi::Message");
-                        midiEvent.addObjectMember ("midiBytes", choc::value::Value::createInt32 (0));
+                        auto midiEvent = choc::value::createObject ("soul::midi::Message",
+                                                                    "midiBytes", int32_t {});
 
                         preRenderOperations.push_back ([&perf, endpointHandle, midiEvent] (RenderContext& rc) mutable
                         {
@@ -376,9 +376,9 @@ public:
                         {
                             copyChannelSet (interleaved.channelSet, rc.inputChannels.getChannelSet (startChannel, numChans));
 
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::ValueView::create2DArray (interleaved.channelSet.data,
-                                                                                                                  interleaved.channelSet.numFrames,
-                                                                                                                  interleaved.channelSet.numChannels));
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.channelSet.data,
+                                                                                                           interleaved.channelSet.numFrames,
+                                                                                                           interleaved.channelSet.numChannels));
                         });
                     }
                     else

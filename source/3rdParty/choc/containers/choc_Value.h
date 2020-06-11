@@ -467,19 +467,7 @@ public:
     void visitObjectMembers (Visitor&&) const;
 
     //==============================================================================
-    /** Creates a view directly onto a packed array of primitives.
-        The ValueView that is returned will not take a copy of the data, so its lifetime must be managed by the caller.
-    */
-    template <typename ElementType>
-    static ValueView createArray (ElementType* targetData, uint32_t numElements);
-
-    /** Creates a view directly onto a packed array of vector primitives.
-        The ValueView that is returned will not take a copy of the data, so its lifetime must be managed by the caller.
-    */
-    template <typename ElementType>
-    static ValueView create2DArray (ElementType* targetData, uint32_t numArrayElements, uint32_t numVectorElements);
-
-    ValueView withDictionary (StringDictionary* newDictionary)  { return ValueView (type, data, newDictionary); }
+    ValueView withDictionary (StringDictionary* newDictionary)      { return ValueView (type, data, newDictionary); }
 
     void* getRawData()                   { return data; }
     const void* getRawData() const       { return data; }
@@ -495,12 +483,6 @@ private:
     template <typename TargetType> TargetType readContentAs() const;
     template <typename TargetType> TargetType readPrimitive (Type::MainType) const;
     template <typename PrimitiveType> void setUnchecked (PrimitiveType);
-    template <typename TargetType> static TargetType readUnaligned (const void*);
-    template <typename TargetType> static void writeUnaligned (void*, TargetType);
-
-    template <typename Type1> static constexpr bool matchesType()                                       { return false; }
-    template <typename Type1, typename Type2, typename... Type3> static constexpr bool matchesType()    { return std::is_same<const Type1, const Type2>::value || matchesType<Type1, Type3...>(); }
-    template <typename PrimitiveType> static constexpr bool isValidPrimitiveType()                      { return matchesType<PrimitiveType, int32_t, int64_t, float, double, bool, StringDictionary::Handle>(); }
 
     ValueView operator[] (const void*) const = delete;
     ValueView operator[] (bool) const = delete;
@@ -572,72 +554,31 @@ public:
     explicit Value (const ValueView&);
 
     /** Creates a deep-copy of the given ValueView. */
+    explicit Value (ValueView&&);
+
+    /** Creates a deep-copy of the given ValueView. */
     Value& operator= (const ValueView&);
 
-    static Value createInt32   (int32_t);
-    static Value createInt64   (int64_t);
-    static Value createFloat32 (float);
-    static Value createFloat64 (double);
-    static Value createBool    (bool);
-
-    static Value createPrimitive (int32_t);
-    static Value createPrimitive (int64_t);
-    static Value createPrimitive (float);
-    static Value createPrimitive (double);
-    static Value createPrimitive (bool);
-
-    static Value createString (std::string_view);
+    explicit Value (int32_t);
+    explicit Value (int64_t);
+    explicit Value (float);
+    explicit Value (double);
+    explicit Value (bool);
+    explicit Value (std::string_view);
 
     //==============================================================================
-    /** Allocates a vector, populating it from an array of primitive values. */
-    template <typename ElementType>
-    static Value createVector (const ElementType* sourceElements, uint32_t numElements);
-
-    /** Allocates a vector, populating it using a functor to return the initial primitive values.
-        The functor must be a class or lambda which takes a uint32_t index parameter and returns
-        the primitive value for that index. The type of the returned primitive is used as the
-        vector's element type.
-    */
-    template <typename GetElementValue>
-    static Value createVector (uint32_t numElements, const GetElementValue& getValueForIndex);
-
-    //==============================================================================
-    /** Creates an empty array (to which elements can then be appended with addArrayElement) */
-    static Value createEmptyArray();
-
-    /** Allocates an array, populating it using a functor to return the initial values.
-        The functor must be a class or lambda which takes a uint32_t index parameter and returns
-        either Value objects or primitive types to store at that index.
-    */
-    template <typename GetElementValue>
-    static Value createArray (uint32_t numElements, const GetElementValue& getValueForIndex);
-
-    /** Allocates an array which is a packed array of vector primitives, populating it using a
-        functor to return the initial values.
-        The functor must be a class or lambda which takes two uint32_t index parameters (the outer
-        and inner indices for the required element) and returns a primitive type to store at that
-        location.
-    */
-    template <typename GetElementValue>
-    static Value createArray (uint32_t numArrayElements, uint32_t numVectorElements, const GetElementValue& getValueAt);
-
-    /** Allocates a copy of a packed array of vector primitives. */
-    template <typename ElementType>
-    static Value create2DArray (const ElementType* sourceElements, uint32_t numArrayElements, uint32_t numVectorElements);
-
     /** Appends an element to this object, if it's an array. If not, then this will throw an Error exception. */
-    void addArrayElement (const ValueView&);
+    template <typename ElementType>
+    void addArrayElement (ElementType);
 
     //==============================================================================
-    /** Creates a new empty object. */
-    static Value createObject (std::string className);
-
-    /** Appends a member to an object, with the given name and value.
+    /** Appends one or more members to an object, with the given names and values.
         The value can be a supported primitive type, a string, or a Value or ValueView.
+        The function can take any number of name/value pairs.
         This will throw an Error if this isn't possible for some reason (e.g. if the value isn't an object)
     */
-    template <typename MemberType>
-    void addObjectMember (std::string memberName, MemberType memberValue);
+    template <typename MemberType, typename... Others>
+    void addMember (std::string name, MemberType value, Others&&...);
 
     //==============================================================================
     bool isVoid() const                         { return value.isVoid(); }
@@ -774,6 +715,11 @@ public:
     */
     static Value deserialise (InputData&);
 
+    /** @internal */
+    Value (Type&&, const void*, size_t);
+    /** @internal */
+    Value (const Type&, const void*, size_t);
+
 private:
     //==============================================================================
     void appendData (const void*, size_t);
@@ -793,6 +739,76 @@ private:
     ValueView value;
 };
 
+//==============================================================================
+static Value createInt32   (int32_t);
+static Value createInt64   (int64_t);
+static Value createFloat32 (float);
+static Value createFloat64 (double);
+static Value createBool    (bool);
+
+static Value createPrimitive (int32_t);
+static Value createPrimitive (int64_t);
+static Value createPrimitive (float);
+static Value createPrimitive (double);
+static Value createPrimitive (bool);
+
+static Value createString (std::string_view);
+
+/** Allocates a vector, populating it from an array of primitive values. */
+template <typename ElementType>
+static Value createVector (const ElementType* sourceElements, uint32_t numElements);
+
+/** Allocates a vector, populating it using a functor to return the initial primitive values.
+    The functor must be a class or lambda which takes a uint32_t index parameter and returns
+    the primitive value for that index. The type of the returned primitive is used as the
+    vector's element type.
+*/
+template <typename GetElementValue>
+static Value createVector (uint32_t numElements, const GetElementValue& getValueForIndex);
+
+/** Creates an empty array (to which elements can then be appended with addArrayElement) */
+static Value createEmptyArray();
+
+/** Allocates an array, populating it using a functor to return the initial values.
+    The functor must be a class or lambda which takes a uint32_t index parameter and returns
+    either Value objects or primitive types to store at that index.
+*/
+template <typename GetElementValue>
+static Value createArray (uint32_t numElements, const GetElementValue& getValueForIndex);
+
+/** Allocates an array which is a packed array of vector primitives, populating it using a
+    functor to return the initial values.
+    The functor must be a class or lambda which takes two uint32_t index parameters (the outer
+    and inner indices for the required element) and returns a primitive type to store at that
+    location.
+*/
+template <typename GetElementValue>
+static Value createArray (uint32_t numArrayElements, uint32_t numVectorElements, const GetElementValue& getValueAt);
+
+/** Allocates a copy of a packed array of vector primitives. */
+template <typename ElementType>
+static Value create2DArray (const ElementType* sourceElements, uint32_t numArrayElements, uint32_t numVectorElements);
+
+/** Creates a view directly onto a packed array of primitives.
+    The ValueView that is returned will not take a copy of the data, so its lifetime must be managed by the caller.
+*/
+template <typename ElementType>
+static ValueView createArrayView (ElementType* targetData, uint32_t numElements);
+
+/** Creates a view directly onto a packed array of vector primitives.
+    The ValueView that is returned will not take a copy of the data, so its lifetime must be managed by the caller.
+*/
+template <typename ElementType>
+static ValueView create2DArrayView (ElementType* targetData, uint32_t numArrayElements, uint32_t numVectorElements);
+
+
+/** Returns a Value which is a new empty object. */
+static Value createObject (std::string className);
+
+/** Returns a Value which is a new object, with some member values set. */
+template <typename... Members>
+static Value createObject (std::string className, Members&&... members);
+
 
 //==============================================================================
 //        _        _           _  _
@@ -804,6 +820,18 @@ private:
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
+
+namespace
+{
+    template <typename Type1> static constexpr bool matchesType()                                       { return false; }
+    template <typename Type1, typename Type2, typename... Type3> static constexpr bool matchesType()    { return std::is_same<const Type1, const Type2>::value || matchesType<Type1, Type3...>(); }
+    template <typename Type> static constexpr bool isPrimitiveType()    { return matchesType<Type, int32_t, int64_t, float, double, bool, StringDictionary::Handle>(); }
+    template <typename Type> static constexpr bool isStringType()       { return matchesType<Type, std::string, std::string&, std::string_view, const char*>(); }
+    template <typename Type> static constexpr bool isValueType()        { return matchesType<Type, Value, ValueView>(); }
+
+    template <typename TargetType> TargetType readUnaligned (const void* src)          { TargetType v; memcpy (std::addressof (v), src, sizeof (v)); return v; }
+    template <typename TargetType> void writeUnaligned (void* dest, TargetType src)    { memcpy (dest, std::addressof (src), sizeof (TargetType)); }
+}
 
 inline size_t Type::Vector::getElementSize() const    { return getPrimitiveSize (elementType); }
 inline size_t Type::Vector::getValueDataSize() const  { return getElementSize() * numElements; }
@@ -1546,29 +1574,15 @@ inline ValueView::ValueView (Type&& t, void* d, StringDictionary* dic) : type (s
 inline ValueView::ValueView (const Type& t, void* d, StringDictionary* dic) : type (t), data (static_cast<uint8_t*> (d)), stringDictionary (dic) {}
 
 template <typename ElementType>
-ValueView ValueView::createArray (ElementType* targetData, uint32_t numElements)
+ValueView createArrayView (ElementType* targetData, uint32_t numElements)
 {
-    static_assert (isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     return ValueView (Type::createArray<ElementType> (numElements), targetData, nullptr);
 }
 
 template <typename ElementType>
-ValueView ValueView::create2DArray (ElementType* sourceData, uint32_t numArrayElements, uint32_t numVectorElements)
+ValueView create2DArrayView (ElementType* sourceData, uint32_t numArrayElements, uint32_t numVectorElements)
 {
-    static_assert (isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     return ValueView (Type::createArrayOfVectors<ElementType> (numArrayElements, numVectorElements), sourceData, nullptr);
-}
-
-template <typename TargetType> TargetType ValueView::readUnaligned (const void* src)
-{
-    TargetType v;
-    memcpy (std::addressof (v), src, sizeof (v));
-    return v;
-}
-
-template <typename TargetType> void ValueView::writeUnaligned (void* dest, TargetType src)
-{
-    memcpy (dest, std::addressof (src), sizeof (TargetType));
 }
 
 template <typename TargetType>
@@ -1602,11 +1616,11 @@ inline bool     ValueView::getBool() const      { check (type.isBool(),    "Valu
 
 template <typename TargetType> TargetType ValueView::get() const
 {
-    if constexpr (matchesType<TargetType, std::string, std::string_view>())
+    if constexpr (isStringType<TargetType>())
     {
         return TargetType (getString());
     }
-    else if constexpr (matchesType<TargetType, uint32_t, uint64_t>())
+    else if constexpr (matchesType<TargetType, uint32_t, uint64_t, size_t>())
     {
         using SignedType = typename std::make_signed<TargetType>::type;
         auto n = get<SignedType>();
@@ -1615,7 +1629,7 @@ template <typename TargetType> TargetType ValueView::get() const
     }
     else
     {
-        static_assert (isValidPrimitiveType<TargetType>(), "The TargetType template argument must be a valid primitive type");
+        static_assert (isPrimitiveType<TargetType>(), "The TargetType template argument must be a valid primitive type");
         return readPrimitive<TargetType> (type.isVectorSize1() ? type.content.vector.elementType
                                                                : type.mainType);
     }
@@ -1623,14 +1637,14 @@ template <typename TargetType> TargetType ValueView::get() const
 
 template <typename TargetType> TargetType ValueView::getWithDefault (TargetType defaultValue) const
 {
-    if constexpr (matchesType<TargetType, std::string, std::string_view>())
+    if constexpr (isStringType<TargetType>())
     {
         if (isString())
             return TargetType (getString());
     }
     else
     {
-        static_assert (isValidPrimitiveType<TargetType>() || matchesType<TargetType, uint32_t, uint64_t>(),
+        static_assert (isPrimitiveType<TargetType>() || matchesType<TargetType, uint32_t, uint64_t, size_t>(),
                        "The TargetType template argument must be a valid primitive type");
 
         if (type.isPrimitive())     return readPrimitive<TargetType> (type.mainType);
@@ -1642,13 +1656,13 @@ template <typename TargetType> TargetType ValueView::getWithDefault (TargetType 
 
 template <typename PrimitiveType> void ValueView::setUnchecked (PrimitiveType v)
 {
-    static_assert (isValidPrimitiveType<PrimitiveType>() || matchesType<PrimitiveType, std::string&, std::string_view, const char*>(),
+    static_assert (isPrimitiveType<PrimitiveType>() || isStringType<PrimitiveType>(),
                    "The template type needs to be one of the supported primitive types");
 
     if constexpr (matchesType<PrimitiveType, bool>())                       { *data = v ? 1 : 0; return; }
     if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>())   return setUnchecked (static_cast<int32_t> (v.handle));
 
-    if constexpr (matchesType<PrimitiveType, std::string, std::string_view, const char*>())
+    if constexpr (isStringType<PrimitiveType>())
     {
         check (stringDictionary != nullptr, "No string dictionary supplied");
         return setUnchecked (stringDictionary->getHandleForString (v));
@@ -1659,7 +1673,7 @@ template <typename PrimitiveType> void ValueView::setUnchecked (PrimitiveType v)
 
 template <typename PrimitiveType> void ValueView::set (PrimitiveType v)
 {
-    static_assert (isValidPrimitiveType<PrimitiveType>() || matchesType<PrimitiveType, std::string&, std::string_view, const char*>(),
+    static_assert (isPrimitiveType<PrimitiveType>() || isStringType<PrimitiveType>(),
                    "The template type needs to be one of the supported primitive types");
 
     if constexpr (matchesType<PrimitiveType, int32_t>())  check (type.isInt32(),   "Value is not an int32");;
@@ -1668,8 +1682,8 @@ template <typename PrimitiveType> void ValueView::set (PrimitiveType v)
     if constexpr (matchesType<PrimitiveType, double>())   check (type.isFloat64(), "Value is not a float64");
     if constexpr (matchesType<PrimitiveType, bool>())     check (type.isBool(),    "Value is not a bool");
 
-    if constexpr (matchesType<PrimitiveType, StringDictionary::Handle, std::string&, std::string_view, const char*>())
-        check (type.isString(),  "Value is not a string");
+    if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>() || isStringType<PrimitiveType>())
+        check (type.isString(), "Value is not a string");
 
     setUnchecked (v);
 }
@@ -1796,13 +1810,36 @@ inline Value::Value (Type&& t)
 {
 }
 
-inline Value::Value (const ValueView& source)  : Value (source.getType())
+inline Value::Value (const Type& t, const void* source, size_t size)
+   : packedData (static_cast<const uint8_t*> (source), static_cast<const uint8_t*> (source) + size),
+     value (t, packedData.data(), std::addressof (dictionary))
 {
-    memcpy (getRawData(), source.getRawData(), getRawDataSize());
+}
 
-    if (source.stringDictionary != nullptr && source.getType().usesStrings())
+inline Value::Value (Type&& t, const void* source, size_t size)
+   : packedData (static_cast<const uint8_t*> (source), static_cast<const uint8_t*> (source) + size),
+     value (std::move (t), packedData.data(), std::addressof (dictionary))
+{
+}
+
+inline Value::Value (const ValueView& source) : Value (source.type, source.getRawData(), source.type.getValueDataSize())
+{
+    if (source.stringDictionary != nullptr && value.type.usesStrings())
         importStringHandles (value, *source.stringDictionary);
 }
+
+inline Value::Value (ValueView&& source) : Value (std::move (source.type), source.getRawData(), source.type.getValueDataSize())
+{
+    if (source.stringDictionary != nullptr && value.type.usesStrings())
+        importStringHandles (value, *source.stringDictionary);
+}
+
+inline Value::Value (int32_t n)           : Value (Type::createInt32(),   std::addressof (n), sizeof (n)) {}
+inline Value::Value (int64_t n)           : Value (Type::createInt64(),   std::addressof (n), sizeof (n)) {}
+inline Value::Value (float n)             : Value (Type::createFloat32(), std::addressof (n), sizeof (n)) {}
+inline Value::Value (double n)            : Value (Type::createFloat64(), std::addressof (n), sizeof (n)) {}
+inline Value::Value (bool n)              : Value (Type::createBool(),    std::addressof (n), sizeof (n)) {}
+inline Value::Value (std::string_view s)  : Value (Type::createString())   { writeUnaligned (value.data, dictionary.getHandleForString (s)); }
 
 inline Value& Value::operator= (const ValueView& source)
 {
@@ -1878,41 +1915,36 @@ inline void Value::importStringHandles (ValueView& target, const StringDictionar
     StringHandleImporter { oldDictionary }.importStrings (target);
 }
 
-inline Value Value::createPrimitive (int32_t n)         { Value v (Type::createInt32());   v.value.setUnchecked (n); return v; }
-inline Value Value::createPrimitive (int64_t n)         { Value v (Type::createInt64());   v.value.setUnchecked (n); return v; }
-inline Value Value::createPrimitive (float n)           { Value v (Type::createFloat32()); v.value.setUnchecked (n); return v; }
-inline Value Value::createPrimitive (double n)          { Value v (Type::createFloat64()); v.value.setUnchecked (n); return v; }
-inline Value Value::createPrimitive (bool n)            { Value v (Type::createBool());    v.value.setUnchecked (n); return v; }
-inline Value Value::createString (std::string_view s)   { Value v (Type::createString());  v.value.setUnchecked (v.dictionary.getHandleForString (s)); return v; }
-
-inline Value Value::createInt32   (int32_t v)     { return createPrimitive (v); }
-inline Value Value::createInt64   (int64_t v)     { return createPrimitive (v); }
-inline Value Value::createFloat32 (float v)       { return createPrimitive (v); }
-inline Value Value::createFloat64 (double v)      { return createPrimitive (v); }
-inline Value Value::createBool    (bool v)        { return createPrimitive (v); }
-
-inline Value Value::createEmptyArray()            { return Value (Type::createEmptyArray()); }
+inline Value createPrimitive (int32_t n)           { return Value (n); }
+inline Value createPrimitive (int64_t n)           { return Value (n); }
+inline Value createPrimitive (float n)             { return Value (n); }
+inline Value createPrimitive (double n)            { return Value (n); }
+inline Value createPrimitive (bool n)              { return Value (n); }
+inline Value createString    (std::string_view s)  { return Value (s); }
+inline Value createInt32     (int32_t v)           { return Value (v); }
+inline Value createInt64     (int64_t v)           { return Value (v); }
+inline Value createFloat32   (float v)             { return Value (v); }
+inline Value createFloat64   (double v)            { return Value (v); }
+inline Value createBool      (bool v)              { return Value (v); }
+inline Value createEmptyArray()                    { return Value (Type::createEmptyArray()); }
 
 template <typename ElementType>
-inline Value Value::createVector (const ElementType* source, uint32_t numElements)
+inline Value createVector (const ElementType* source, uint32_t numElements)
 {
-    static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
-    Value v (Type::createVector<ElementType> (numElements));
-    memcpy (v.getRawData(), source, sizeof (ElementType) * numElements);
-    return v;
+    return Value (Type::createVector<ElementType> (numElements), source, sizeof (ElementType) * numElements);
 }
 
 template <typename GetElementValue>
-inline Value Value::createVector (uint32_t numElements, const GetElementValue& getValueForIndex)
+inline Value createVector (uint32_t numElements, const GetElementValue& getValueForIndex)
 {
     using ElementType = decltype (getValueForIndex (0));
-    static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
+    static_assert (isPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     Value v (Type::createVector<ElementType> (numElements));
     auto dest = static_cast<uint8_t*> (v.getRawData());
 
     for (uint32_t i = 0; i < numElements; ++i)
     {
-        ValueView::writeUnaligned (dest, getValueForIndex (i));
+        writeUnaligned (dest, getValueForIndex (i));
         dest += sizeof (ElementType);
     }
 
@@ -1920,20 +1952,20 @@ inline Value Value::createVector (uint32_t numElements, const GetElementValue& g
 }
 
 template <typename GetElementValue>
-inline Value Value::createArray (uint32_t numElements, const GetElementValue& getValueForIndex)
+inline Value createArray (uint32_t numElements, const GetElementValue& getValueForIndex)
 {
     using ElementType = decltype (getValueForIndex (0));
-    static_assert (ValueView::isValidPrimitiveType<ElementType>() || ValueView::matchesType<ElementType, ValueView>(),
+    static_assert (isPrimitiveType<ElementType>() || isValueType<ElementType>(),
                    "The functor needs to return either a supported primitive type, or a Value");
 
-    if constexpr (ValueView::isValidPrimitiveType<ElementType>())
+    if constexpr (isPrimitiveType<ElementType>())
     {
         Value v (Type::createArray (numElements, Type::createPrimitive<ElementType>()));
         auto dest = static_cast<uint8_t*> (v.getRawData());
 
         for (uint32_t i = 0; i < numElements; ++i)
         {
-            ValueView::writeUnaligned (dest, getValueForIndex (i));
+            writeUnaligned (dest, getValueForIndex (i));
             dest += sizeof (ElementType);
         }
 
@@ -1944,21 +1976,17 @@ inline Value Value::createArray (uint32_t numElements, const GetElementValue& ge
         Value v (Type::createEmptyArray());
 
         for (uint32_t i = 0; i < numElements; ++i)
-        {
-            ValueView element (getValueForIndex (i));
-            v.value.type.addArrayElements (element.type, 1);
-            v.appendValue (element);
-        }
+            v.addArrayElement (getValueForIndex (i));
 
         return v;
     }
 }
 
 template <typename GetElementValue>
-inline Value Value::createArray (uint32_t numArrayElements, uint32_t numVectorElements, const GetElementValue& getValueAt)
+inline Value createArray (uint32_t numArrayElements, uint32_t numVectorElements, const GetElementValue& getValueAt)
 {
     using ElementType = decltype (getValueAt (0, 0));
-    static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The functor needs to return a supported primitive type");
+    static_assert (isPrimitiveType<ElementType>(), "The functor needs to return a supported primitive type");
 
     Value v (Type::createArray (numArrayElements, Type::createVector<ElementType> (numVectorElements)));
     auto dest = static_cast<uint8_t*> (v.getRawData());
@@ -1967,7 +1995,7 @@ inline Value Value::createArray (uint32_t numArrayElements, uint32_t numVectorEl
     {
         for (uint32_t i = 0; i < numVectorElements; ++i)
         {
-            ValueView::writeUnaligned (dest, getValueAt (j, i));
+            writeUnaligned (dest, getValueAt (j, i));
             dest += sizeof (ElementType);
         }
     }
@@ -1976,23 +2004,53 @@ inline Value Value::createArray (uint32_t numArrayElements, uint32_t numVectorEl
 }
 
 template <typename ElementType>
-Value Value::create2DArray (const ElementType* sourceData, uint32_t numArrayElements, uint32_t numVectorElements)
+Value create2DArray (const ElementType* sourceData, uint32_t numArrayElements, uint32_t numVectorElements)
 {
-    static_assert (ValueView::isValidPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
+    static_assert (isPrimitiveType<ElementType>(), "The template type needs to be one of the supported primitive types");
     Value v (Type::createArrayOfVectors<ElementType> (numArrayElements, numVectorElements));
     memcpy (v.getRawData(), sourceData, numArrayElements * numVectorElements * sizeof (ElementType));
     return v;
 }
 
-inline void Value::addArrayElement (const ValueView& v)
+template <typename ElementType>
+void Value::addArrayElement (ElementType v)
 {
-    value.type.addArrayElements (v.getType(), 1);
-    appendValue (v);
+    static_assert (isPrimitiveType<ElementType>() || isValueType<ElementType>() || isStringType<ElementType>(),
+                   "The template type needs to be one of the supported primitive types");
+
+    if constexpr (matchesType<ElementType, int32_t>())   { value.type.addArrayElements (Type::createInt32(),   1); appendData (std::addressof (v), sizeof (v)); return; }
+    if constexpr (matchesType<ElementType, int64_t>())   { value.type.addArrayElements (Type::createInt64(),   1); appendData (std::addressof (v), sizeof (v)); return; }
+    if constexpr (matchesType<ElementType, float>())     { value.type.addArrayElements (Type::createFloat32(), 1); appendData (std::addressof (v), sizeof (v)); return; }
+    if constexpr (matchesType<ElementType, double>())    { value.type.addArrayElements (Type::createFloat64(), 1); appendData (std::addressof (v), sizeof (v)); return; }
+    if constexpr (matchesType<ElementType, bool>())      { value.type.addArrayElements (Type::createBool(),    1); uint8_t b = v ? 1 : 0; appendData (std::addressof (b), sizeof (b)); return; }
+
+    if constexpr (isStringType<ElementType>())
+    {
+        value.type.addArrayElements (Type::createString(), 1);
+        auto stringHandle = dictionary.getHandleForString (v);
+        return appendData (std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
+    }
+
+    if constexpr (isValueType<ElementType>())
+    {
+        value.type.addArrayElements (v.getType(), 1);
+        return appendValue (v);
+    }
 }
 
-inline Value Value::createObject (std::string className)
+inline Value createObject (std::string className)
 {
     return Value (Type::createObject (std::move (className)));
+}
+
+template <typename... Members>
+inline Value createObject (std::string className, Members&&... members)
+{
+    static_assert ((sizeof...(members) & 1) == 0, "The member arguments must be a sequence of name, value pairs");
+
+    auto v = createObject (std::move (className));
+    v.addMember (std::forward<Members> (members)...);
+    return v;
 }
 
 inline void Value::appendMember (std::string&& name, Type&& type, const void* data, size_t size)
@@ -2001,30 +2059,32 @@ inline void Value::appendMember (std::string&& name, Type&& type, const void* da
     appendData (data, size);
 }
 
-template <typename MemberType>
-void Value::addObjectMember (std::string name, MemberType v)
+template <typename MemberType, typename... Others>
+void Value::addMember (std::string name, MemberType v, Others&&... others)
 {
-    static_assert (ValueView::isValidPrimitiveType<MemberType>()
-                    || ValueView::matchesType<MemberType, std::string, std::string&, std::string_view, const char*, ValueView, Value>(),
+    static_assert ((sizeof...(others) & 1) == 0, "The arguments must be a sequence of name, value pairs");
+
+    static_assert (isPrimitiveType<MemberType>() || isStringType<MemberType>() || isValueType<MemberType>(),
                    "The template type needs to be one of the supported primitive types");
 
-    if constexpr (ValueView::matchesType<MemberType, int32_t>())   return appendMember (std::move (name), Type::createInt32(),   std::addressof (v), sizeof (v));
-    if constexpr (ValueView::matchesType<MemberType, int64_t>())   return appendMember (std::move (name), Type::createInt64(),   std::addressof (v), sizeof (v));
-    if constexpr (ValueView::matchesType<MemberType, float>())     return appendMember (std::move (name), Type::createFloat32(), std::addressof (v), sizeof (v));
-    if constexpr (ValueView::matchesType<MemberType, double>())    return appendMember (std::move (name), Type::createFloat64(), std::addressof (v), sizeof (v));
-    if constexpr (ValueView::matchesType<MemberType, bool>())      { uint8_t b = v ? 1 : 0; return appendMember (std::move (name), Type::createBool(), std::addressof (b), sizeof (b)); }
-
-    if constexpr (ValueView::matchesType<MemberType, std::string, std::string&, std::string_view, const char*>())
-    {
-        auto stringHandle = dictionary.getHandleForString (v);
-        return appendMember (std::move (name), Type::createString(), std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
-    }
-
-    if constexpr (ValueView::matchesType<MemberType, Value, ValueView>())
+    if constexpr (isValueType<MemberType>())
     {
         value.type.addObjectMember (std::move (name), v.getType());
-        return appendValue (v);
+        appendValue (v);
     }
+    else if constexpr (isStringType<MemberType>())
+    {
+        auto stringHandle = dictionary.getHandleForString (v);
+        appendMember (std::move (name), Type::createString(), std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
+    }
+    else if constexpr (matchesType<MemberType, int32_t>())   { appendMember (std::move (name), Type::createInt32(),   std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, int64_t>())   { appendMember (std::move (name), Type::createInt64(),   std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, float>())     { appendMember (std::move (name), Type::createFloat32(), std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, double>())    { appendMember (std::move (name), Type::createFloat64(), std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, bool>())      { uint8_t b = v ? 1 : 0; appendMember (std::move (name), Type::createBool(), std::addressof (b), sizeof (b)); }
+
+    if constexpr (sizeof...(others) != 0)
+        addMember (std::forward<Others> (others)...);
 }
 
 template <typename TargetType> TargetType Value::get() const                           { return value.get<TargetType>(); }

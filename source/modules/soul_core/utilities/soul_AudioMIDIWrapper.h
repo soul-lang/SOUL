@@ -80,7 +80,7 @@ struct AudioMIDIWrapper
                     if (auto getNewValueForParamIfChanged = getNewParameterValueFn (inputEndpoint))
                     {
                         auto endpointHandle = perf.getEndpointHandle (inputEndpoint.endpointID);
-                        auto floatValue = choc::value::Value::createFloat32 (0);
+                        auto floatValue = choc::value::createFloat32 (0);
 
                         if (isEvent (inputEndpoint))
                         {
@@ -148,8 +148,8 @@ struct AudioMIDIWrapper
                     {
                         preRenderOperations.push_back ([&perf, endpointHandle, startChannel] (RenderContext& rc)
                         {
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::ValueView::createArray (const_cast<float*> (rc.inputChannels.getChannel (startChannel)),
-                                                                                                                rc.inputChannels.numFrames));
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::createArrayView (const_cast<float*> (rc.inputChannels.getChannel (startChannel)),
+                                                                                                         rc.inputChannels.numFrames));
                         });
                     }
                     else
@@ -163,8 +163,8 @@ struct AudioMIDIWrapper
                             copyChannelSet (interleaved.channelSet.getSlice (0, numFrames),
                                             rc.inputChannels.getChannelSet (startChannel, numChans));
 
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::ValueView::create2DArray (interleaved.channelSet.data,
-                                                                                                                  numFrames, interleaved.channelSet.numChannels));
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.channelSet.data,
+                                                                                                           numFrames, interleaved.channelSet.numChannels));
                         });
                     }
                 }

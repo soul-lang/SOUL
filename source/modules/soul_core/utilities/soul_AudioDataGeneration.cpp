@@ -122,15 +122,15 @@ template <typename ChannelSet>
 choc::value::Value createArrayFromChannelSet (ChannelSet source, uint32_t targetNumChans)
 {
     if (targetNumChans <= source.numChannels)
-        return choc::value::Value::createArray (source.numFrames, targetNumChans,
-                                                [&] (uint32_t frame, uint32_t chan) { return source.getSample (chan, frame); });
+        return choc::value::createArray (source.numFrames, targetNumChans,
+                                         [&] (uint32_t frame, uint32_t chan) { return source.getSample (chan, frame); });
 
     if (source.numChannels == 1 && targetNumChans == 2)
-        return choc::value::Value::createArray (source.numFrames, targetNumChans,
-                                                [&] (uint32_t frame, uint32_t) { return source.getSample (0, frame); });
+        return choc::value::createArray (source.numFrames, targetNumChans,
+                                         [&] (uint32_t frame, uint32_t) { return source.getSample (0, frame); });
 
-    return choc::value::Value::createArray (source.numFrames, targetNumChans,
-                                            [&] (uint32_t frame, uint32_t chan) { return source.getSampleOrZero (chan, frame); });
+    return choc::value::createArray (source.numFrames, targetNumChans,
+                                     [&] (uint32_t frame, uint32_t chan) { return source.getSampleOrZero (chan, frame); });
 }
 
 choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> source)
@@ -145,12 +145,12 @@ choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> sou
 
 choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<float> source)
 {
-    return choc::value::ValueView::create2DArray (static_cast<float*> (source.data), source.numFrames, source.numChannels);
+    return choc::value::create2DArrayView (static_cast<float*> (source.data), source.numFrames, source.numChannels);
 }
 
 choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<const float> source)
 {
-    return choc::value::ValueView::create2DArray (const_cast<float*> (source.data), source.numFrames, source.numChannels);
+    return choc::value::create2DArrayView (const_cast<float*> (source.data), source.numFrames, source.numChannels);
 }
 
 InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray)
@@ -173,10 +173,9 @@ InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueVie
 
 choc::value::Value createAudioDataObject (const choc::value::ValueView& frames, double sampleRate)
 {
-    auto o = choc::value::Value::createObject ("soul::AudioFile");
-    o.addObjectMember ("frames", frames);
-    o.addObjectMember ("sampleRate", sampleRate);
-    return o;
+    return choc::value::createObject ("soul::AudioFile",
+                                      "frames", frames,
+                                      "sampleRate", sampleRate);
 }
 
 choc::value::Value convertAudioDataToObject (InterleavedChannelSet<const float> source, double sampleRate)
@@ -232,14 +231,14 @@ choc::value::Value coerceAudioFileObjectToTargetType (const Type& targetType, co
 
     if (targetType.isStruct())
     {
-        auto o = choc::value::Value::createObject ("soul::AudioSample");
+        auto o = choc::value::createObject ("soul::AudioSample");
 
         for (auto& m : targetType.getStructRef().getMembers())
         {
             if (m.type.isArray() && m.type.getArrayElementType().isPrimitiveOrVector())
-                o.addObjectMember (m.name, sourceFrameArray);
+                o.addMember (m.name, sourceFrameArray);
             else if ((m.type.isFloatingPoint() || m.type.isPrimitiveInteger()) && isRateName (m.name))
-                o.addObjectMember (m.name, sourceRate);
+                o.addMember (m.name, sourceRate);
         }
 
         return o;

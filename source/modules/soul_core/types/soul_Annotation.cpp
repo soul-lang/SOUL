@@ -234,11 +234,11 @@ const StringDictionary& Annotation::getDictionary() const     { return dictionar
 
 choc::value::Value Annotation::toExternalValue() const
 {
-    auto o = choc::value::Value::createObject ("Annotation");
+    auto o = choc::value::createObject ("Annotation");
 
     if (properties != nullptr)
         for (auto& p : *properties)
-            o.addObjectMember (p.name, p.value.toExternalValue (ConstantTable(), dictionary));
+            o.addMember (p.name, p.value.toExternalValue (ConstantTable(), dictionary));
 
     return o;
 }

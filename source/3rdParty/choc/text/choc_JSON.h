@@ -261,7 +261,7 @@ inline value::Value parse (text::UTF8Pointer text)
 
         value::Value parseArray()
         {
-            auto result = value::Value::createEmptyArray();
+            auto result = value::createEmptyArray();
             auto arrayStart = current;
 
             skipWhitespace();
@@ -285,7 +285,7 @@ inline value::Value parse (text::UTF8Pointer text)
 
         value::Value parseObject()
         {
-            auto result = value::Value::createObject ("JSON");
+            auto result = value::createObject ("JSON");
             auto objectStart = current;
 
             skipWhitespace();
@@ -306,7 +306,7 @@ inline value::Value parse (text::UTF8Pointer text)
                 skipWhitespace();
                 errorPos = current;
                 if (! popIf (':')) throwError ("Expected ':'");
-                result.addObjectMember (std::move (name), parseValue());
+                result.addMember (std::move (name), parseValue());
                 skipWhitespace();
 
                 if (popIf (',')) continue;
@@ -326,7 +326,7 @@ inline value::Value parse (text::UTF8Pointer text)
             {
                 case '[':                                 return parseArray();
                 case '{':                                 return parseObject();
-                case '"':                                 return value::Value::createString (parseString ('"'));
+                case '"':                                 return value::createString (parseString ('"'));
                 case '-':                                 skipWhitespace(); return parseNumber (true);
                 case '0': case '1': case '2':
                 case '3': case '4': case '5':
@@ -336,8 +336,8 @@ inline value::Value parse (text::UTF8Pointer text)
 
             current = startPos;
             if (popIf ("null"))   return {};
-            if (popIf ("true"))   return value::Value::createBool (true);
-            if (popIf ("false"))  return value::Value::createBool (false);
+            if (popIf ("true"))   return value::createBool (true);
+            if (popIf ("false"))  return value::createBool (false);
 
             throwError ("Syntax error");
         }
@@ -373,13 +373,13 @@ inline value::Value parse (text::UTF8Pointer text)
                         if (endOfParsedNumber == lastPos.data()
                              && v != std::numeric_limits<long long>::max()
                              && v != std::numeric_limits<long long>::min())
-                            return value::Value::createInt64 (static_cast<int64_t> (negate ? -v : v));
+                            return value::createInt64 (static_cast<int64_t> (negate ? -v : v));
                     }
 
                     auto v = std::strtod (startPos.data(), &endOfParsedNumber);
 
                     if (endOfParsedNumber == lastPos.data())
-                        return value::Value::createFloat64 (negate ? -v : v);
+                        return value::createFloat64 (negate ? -v : v);
                 }
 
                 throwError ("Syntax error in number", lastPos);

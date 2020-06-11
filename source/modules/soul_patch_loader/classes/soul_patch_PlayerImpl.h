@@ -186,7 +186,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         if (value.isArray())
         {
-            auto v = choc::value::Value::createEmptyArray();
+            auto v = choc::value::createEmptyArray();
 
             for (auto i : value)
                 v.addArrayElement (replaceStringsWithFileContent (i, convertStringToValue));
@@ -196,11 +196,11 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
         if (value.isObject())
         {
-            auto v = choc::value::Value::createObject (value.getObjectClassName());
+            auto v = choc::value::createObject (value.getObjectClassName());
 
             value.visitObjectMembers ([&] (const choc::value::MemberNameAndValue& member)
             {
-                v.addObjectMember (member.name, replaceStringsWithFileContent (member.value, convertStringToValue));
+                v.addMember (member.name, replaceStringsWithFileContent (member.value, convertStringToValue));
             });
 
             return v;
@@ -227,7 +227,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
                                                           if (auto file = fileList.checkAndCreateVirtualFile (std::string (s)))
                                                               return AudioFileToValue::load (std::move (file), ev.annotation);
 
-                                                          return choc::value::Value::createString (s);
+                                                          return choc::value::createString (s);
                                                       });
             }
             catch (const PatchLoadError& error)

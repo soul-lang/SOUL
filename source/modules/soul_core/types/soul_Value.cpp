@@ -813,26 +813,26 @@ choc::value::Value Value::toExternalValue (const ConstantTable& constantTable, c
 
             if (sourceType.isPrimitive())
             {
-                if (sourceType.isInteger32())   return choc::value::Value::createInt32 (source.getAsInt32());
-                if (sourceType.isInteger64())   return choc::value::Value::createInt64 (source.getAsInt64());
-                if (sourceType.isFloat32())     return choc::value::Value::createFloat32 (source.getAsFloat());
-                if (sourceType.isFloat64())     return choc::value::Value::createFloat64 (source.getAsDouble());
-                if (sourceType.isBool())        return choc::value::Value::createBool (source.getAsBool());
+                if (sourceType.isInteger32())   return choc::value::createInt32 (source.getAsInt32());
+                if (sourceType.isInteger64())   return choc::value::createInt64 (source.getAsInt64());
+                if (sourceType.isFloat32())     return choc::value::createFloat32 (source.getAsFloat());
+                if (sourceType.isFloat64())     return choc::value::createFloat64 (source.getAsDouble());
+                if (sourceType.isBool())        return choc::value::createBool (source.getAsBool());
             }
 
             if (sourceType.isStringLiteral())
-                return choc::value::Value::createString (dictionary.getStringForHandle (source.getStringLiteral()));
+                return choc::value::createString (dictionary.getStringForHandle (source.getStringLiteral()));
 
             if (sourceType.isVector())
             {
                 auto size = static_cast<uint32_t> (sourceType.getVectorSize());
                 auto elementType = sourceType.getElementType();
 
-                if (elementType.isInteger32())   return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt32(); });
-                if (elementType.isInteger64())   return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt64(); });
-                if (elementType.isFloat32())     return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsFloat(); });
-                if (elementType.isFloat64())     return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsDouble(); });
-                if (elementType.isBool())        return choc::value::Value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsBool(); });
+                if (elementType.isInteger32())   return choc::value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt32(); });
+                if (elementType.isInteger64())   return choc::value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsInt64(); });
+                if (elementType.isFloat32())     return choc::value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsFloat(); });
+                if (elementType.isFloat64())     return choc::value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsDouble(); });
+                if (elementType.isBool())        return choc::value::createVector (size, [&] (uint32_t index)  { return source.getSubElement (index).getAsBool(); });
             }
 
             if (sourceType.isUnsizedArray())
@@ -843,23 +843,17 @@ choc::value::Value Value::toExternalValue (const ConstantTable& constantTable, c
             }
 
             if (sourceType.isArray())
-            {
-                auto a = choc::value::Value::createEmptyArray();
-
-                for (size_t i = 0; i < sourceType.getArraySize(); ++i)
-                    a.addArrayElement (convert (source.getSubElement (i)));
-
-                return a;
-            }
+                return choc::value::createArray (static_cast<uint32_t> (sourceType.getArraySize()),
+                                                 [&] (uint32_t i) { return convert (source.getSubElement (i)); });
 
             if (sourceType.isStruct())
             {
                 auto& s = sourceType.getStructRef();
-                auto o = choc::value::Value::createObject (s.getName());
+                auto o = choc::value::createObject (s.getName());
                 size_t i = 0;
 
                 for (auto& m : s.getMembers())
-                    o.addObjectMember (m.name, convert (source.getSubElement (i++)));
+                    o.addMember (m.name, convert (source.getSubElement (i++)));
 
                 return o;
             }
