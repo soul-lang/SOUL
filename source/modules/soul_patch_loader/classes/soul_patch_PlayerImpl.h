@@ -198,9 +198,9 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         {
             auto v = choc::value::createObject (value.getObjectClassName());
 
-            value.visitObjectMembers ([&] (const choc::value::MemberNameAndValue& member)
+            value.visitObjectMembers ([&] (const std::string& memberName, const choc::value::ValueView& memberValue)
             {
-                v.addMember (member.name, replaceStringsWithFileContent (member.value, convertStringToValue));
+                v.addMember (memberName, replaceStringsWithFileContent (memberValue, convertStringToValue));
             });
 
             return v;

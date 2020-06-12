@@ -171,9 +171,9 @@ struct FileList
         if (! externals.isObject())
             throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
 
-        externals.visitObjectMembers ([] (const choc::value::MemberNameAndValue& member)
+        externals.visitObjectMembers ([] (const std::string& memberName, const choc::value::ValueView&)
         {
-            auto name = trim (std::string (member.name));
+            auto name = trim (memberName);
 
             Identifier::Pool tempAllocator;
             auto path = IdentifierPath::fromString (tempAllocator, name);

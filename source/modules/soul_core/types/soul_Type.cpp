@@ -513,7 +513,8 @@ choc::value::Type Type::getExternalType() const
     }
 
     if (isArray())
-        return choc::value::Type::createArray (static_cast<uint32_t> (getArraySize()), getArrayElementType().getExternalType());
+        return choc::value::Type::createArray (getArrayElementType().getExternalType(),
+                                               static_cast<uint32_t> (getArraySize()));
 
     if (isStruct())
     {

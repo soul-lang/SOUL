@@ -168,7 +168,7 @@ public:
     static Type createEmptyArray();
 
     /** Creates a type representing an array containing a set of elements of a fixed type. */
-    static Type createArray (uint32_t numElements, Type elementType);
+    static Type createArray (Type elementType, uint32_t numElements);
 
     /** Creates a type representing an array of primitives based on the templated type. */
     template <typename PrimitiveType>
@@ -227,6 +227,12 @@ public:
         @see serialise
     */
     static Type deserialise (InputData&);
+
+    /** Returns a representation of this type in the form of a Value. @see fromValue */
+    Value toValue() const;
+
+    /** Parses a Value which was created by toValue(), converting it back into a Type object. */
+    static Type fromValue (const ValueView&);
 
 private:
     //==============================================================================
@@ -463,6 +469,9 @@ public:
     /** Returns true if this is an object and contains the given member name. */
     bool hasObjectMember (std::string_view name) const;
 
+    /** Calls a functor on each member in an object.
+        The functor must take two parameters of type (string_view name, const ValueView& value).
+    */
     template <typename Visitor>
     void visitObjectMembers (Visitor&&) const;
 
@@ -571,7 +580,6 @@ public:
     template <typename ElementType>
     void addArrayElement (ElementType);
 
-    //==============================================================================
     /** Appends one or more members to an object, with the given names and values.
         The value can be a supported primitive type, a string, or a Value or ValueView.
         The function can take any number of name/value pairs.
@@ -1162,7 +1170,7 @@ inline Type Type::createEmptyArray()
     return t;
 }
 
-inline Type Type::createArray (uint32_t numElements, Type elementType)
+inline Type Type::createArray (Type elementType, uint32_t numElements)
 {
     check (! elementType.isVoid(), "Type is void");
     check (numElements < maxNumArrayElements, "Too many array elements");
@@ -1223,7 +1231,7 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
 
         if (content.primitiveArray.numElements == 0)
         {
-            *this = createArray (numElementsToAdd, elementType);
+            *this = createArray (elementType, numElementsToAdd);
             return;
         }
 
@@ -1744,7 +1752,7 @@ void ValueView::visitObjectMembers (Visitor&& visit) const
     {
         auto& member = type.getObjectMember (i);
         auto info = type.getElementTypeAndOffset (i);
-        visit (MemberNameAndValue { member.name.c_str(), ValueView (std::move (info.elementType), data + info.offset, stringDictionary) });
+        visit (member.name, ValueView (std::move (info.elementType), data + info.offset, stringDictionary));
     }
 }
 
@@ -1960,7 +1968,7 @@ inline Value createArray (uint32_t numElements, const GetElementValue& getValueF
 
     if constexpr (isPrimitiveType<ElementType>())
     {
-        Value v (Type::createArray (numElements, Type::createPrimitive<ElementType>()));
+        Value v (Type::createArray (Type::createPrimitive<ElementType>(), numElements));
         auto dest = static_cast<uint8_t*> (v.getRawData());
 
         for (uint32_t i = 0; i < numElements; ++i)
@@ -1988,7 +1996,7 @@ inline Value createArray (uint32_t numArrayElements, uint32_t numVectorElements,
     using ElementType = decltype (getValueAt (0, 0));
     static_assert (isPrimitiveType<ElementType>(), "The functor needs to return a supported primitive type");
 
-    Value v (Type::createArray (numArrayElements, Type::createVector<ElementType> (numVectorElements)));
+    Value v (Type::createArray (Type::createVector<ElementType> (numVectorElements), numArrayElements));
     auto dest = static_cast<uint8_t*> (v.getRawData());
 
     for (uint32_t j = 0; j < numArrayElements; ++j)
@@ -2134,6 +2142,103 @@ inline Value Value::deserialise (InputData& input)
 
     Type::SerialisationHelpers::expect (input.end == input.start);
     return v;
+}
+
+//==============================================================================
+inline Value Type::toValue() const
+{
+    auto valueForArray = [] (const ComplexArray& a) -> Value
+    {
+        if (a.groups.empty())
+            return value::createObject ("array");
+
+        auto groupList = value::createEmptyArray();
+
+        for (auto& g : a.groups)
+            groupList.addArrayElement (value::createObject ("group",
+                                                            "type", g.elementType.toValue(),
+                                                            "size", static_cast<int32_t> (g.repetitions)));
+
+        return value::createObject ("array", "types", groupList);
+    };
+
+    auto valueForObject = [] (const Object& o) -> Value
+    {
+        auto v = value::createObject ("object", "class", o.className);
+
+        for (auto& m : o.members)
+            v.addMember (m.name, m.type.toValue());
+
+        return v;
+    };
+
+    switch (mainType)
+    {
+        case MainType::void_:           return value::createObject ("void");
+        case MainType::int32:           return value::createObject ("int32");
+        case MainType::int64:           return value::createObject ("int64");
+        case MainType::float32:         return value::createObject ("float32");
+        case MainType::float64:         return value::createObject ("float64");
+        case MainType::boolean:         return value::createObject ("bool");
+        case MainType::string:          return value::createObject ("string");
+        case MainType::vector:          return value::createObject ("vector", "type", getElementType().toValue(), "size", static_cast<int32_t> (getNumElements()));
+        case MainType::primitiveArray:  return value::createObject ("array",  "type", getElementType().toValue(), "size", static_cast<int32_t> (getNumElements()));
+        case MainType::complexArray:    return valueForArray (*content.complexArray);
+        case MainType::object:          return valueForObject (*content.object);
+        default:                        throwError ("Invalid type");
+    }
+}
+
+inline Type Type::fromValue (const ValueView& value)
+{
+    auto fromVector = [] (const Type& type, uint32_t size) -> Type
+    {
+        check (type.isPrimitive(), "Vectors can only contain primitive elements");
+        return Type (type.mainType, size);
+    };
+
+    auto fromArray = [] (const ValueView& v) -> Type
+    {
+        if (v.hasObjectMember ("type"))
+            return createArray (fromValue (v["type"]), v["size"].get<uint32_t>());
+
+        if (v.hasObjectMember ("types"))
+        {
+            auto result = Type::createEmptyArray();
+
+            for (auto group : v["types"])
+                result.addArrayElements (fromValue (group["type"]), group["size"].get<uint32_t>());
+
+            return result;
+        }
+
+       throwError ("This value doesn't match the format generated by Type::toValue()");
+    };
+
+    auto fromObject = [] (const ValueView& v, std::string className) -> Type
+    {
+        auto o = createObject (std::move (className));
+        v.visitObjectMembers ([&o] (const std::string& name, const ValueView& mv) { o.addObjectMember (name, fromValue (mv)); });
+        return o;
+    };
+
+    if (value.isObject())
+    {
+        auto& name = value.getObjectClassName();
+
+        if (name == "void")     return {};
+        if (name == "int32")    return Type::createInt32();
+        if (name == "int64")    return Type::createInt64();
+        if (name == "float32")  return Type::createFloat32();
+        if (name == "float64")  return Type::createFloat64();
+        if (name == "bool")     return Type::createBool();
+        if (name == "string")   return Type::createString();
+        if (name == "vector")   return fromVector (fromValue (value["type"]), value["size"].get<uint32_t>());
+        if (name == "array")    return fromArray (value);
+        if (name == "object")   return fromObject (value, value["class"].get<std::string>());
+    }
+
+    throwError ("This value doesn't match the format generated by Type::toValue()");
 }
 
 //==============================================================================
