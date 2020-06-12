@@ -28,9 +28,15 @@ R"library(
 */
 namespace soul::random
 {
-    /** State for a Park-Miller random number generator */
+    /** State for a Park-Miller random number generator. */
     struct RandomNumberState
     {
+        /** The current seed.
+            Top tip: when generating a seed, you might want to use the processor.id constant,
+            to make sure that each instance of a processor has a differently-seeded RNG. If you
+            want the RNG to be different each time the program runs, you could also throw the
+            processor.session constant into the mix too.
+        */
         int64 seed;
     }
 
@@ -67,7 +73,7 @@ namespace soul::noise
 
         void run()
         {
-            var rng = random::RandomNumberState (1);
+            var rng = random::RandomNumberState (processor.id + 10);
 
             loop
             {
@@ -86,7 +92,7 @@ namespace soul::noise
         {
             let limit = 32.0f;
             float runningTotal;
-            var rng = random::RandomNumberState (1);
+            var rng = random::RandomNumberState (processor.id + 20);
 
             loop
             {
@@ -114,7 +120,7 @@ namespace soul::noise
             int counter;
             float[pinkBits] values;
             float total;
-            var rng = random::RandomNumberState (1);
+            var rng = random::RandomNumberState (processor.id + 30);
 
             loop
             {
