@@ -75,7 +75,7 @@ SOUL largely follows familiar C/Java/Javascript conventions for numeric values:
 
 - ##### Integers
     Numbers without suffixes are 32-bit signed, e.g. `1234` (32-bit decimal), `0xabcd` (32-bit hexadecimal), `0b101010` (binary).
-    For 64-bit values, SOUL supports both C/Java-style `L` or Rust-style `i64` suffixes. E.g. `123L` is the same as `123i64`. 
+    For 64-bit values, SOUL supports both C/Java-style `L` or Rust-style `i64` suffixes. E.g. `123L` is the same as `123i64`.
     (Lower-case `l` is not allowed, as it's too easy to confuse with `1`)
     To explicitly mark a number as a 32-bit integer, you can use the suffix `i32`.
     For readability, you can also add an underscore before any of these suffixes, e.g. `123_i64`
@@ -274,14 +274,14 @@ The host app will have to supply the data for these variables - in a SOUL patch 
 {
   "soulPatchV1": {
     "ID": "dev.soul.examples.drumloop",
-    
+
     ...etc...
 
     "source": "DrumLoopPlayer.soul",
-    "externals": { 
+    "externals": {
       "DrumLoopPlayer::drumLoop": "DrumLoop.wav",
-      "DrumLoopPlayer::otherThings": [ 
-          { "thing1": 123, "thing2": 456 }, 
+      "DrumLoopPlayer::otherThings": [
+          { "thing1": 123, "thing2": 456 },
           { "thing1": 234, "thing2": 789 }
         ]
     }
@@ -891,7 +891,7 @@ processor EventGenerator
         // Output 2* and 5* the received event value
         eventOut << f * 2.0f;
         eventOut << f * 5.0f;
-    }  
+    }
 }
 ```
 
@@ -1060,7 +1060,7 @@ Note that these functions can be applied to a type name or a value, and can be c
 ```
 {
     int i = 1;
-    
+
     int.isScalar        // these expressions all
     isScalar(int)       // do exactly the same thing
     i.isScalar
@@ -1195,7 +1195,7 @@ You can use the standard `break` keyword to jump out of any of these loops, and 
 To read the current value of an input, simply use the input's name as an expression.
 The read operation is side-effect free, thus an input name can be used multiple times within a timeslice and yields the same value at each use.
 Similarly, if an input name is not used within a timeslice, the value for the current timeslice is discarded.
- 
+
 To write a value to an output, use the `<<` operator:
 
 ```C++
@@ -1271,7 +1271,7 @@ There are also some vector-reduce operations: `sum` and `product` which take a v
 
 ```
 float<5> myVector = (1, 2, 3, 4, 5);
-float total = sum (myVector); 
+float total = sum (myVector);
 ```
 
 Note that you can use the universal function call syntax to write any of these intrinsics using the dot operator, e.g.
@@ -1286,8 +1286,10 @@ float<5> sines = myVector.sin();
 
 Within a processor or graph, the special keyword `processor` provides information about compile-time constants:
 
-- `processor.period` returns the duration in seconds of one sample (as a float64)
-- `processor.frequency` returns the number of samples per second (as a float64)
+- `processor.period` returns the duration in seconds of one sample (as a float64).
+- `processor.frequency` returns the number of samples per second (as a float64).
+- `processor.id` returns a unique int32 for each instance of a processor. (This is useful for things like seeding RNGs differently for each of an array of processors).
+- `processor.session` returns a unique int32 which is different each time the program runs.
 
 ### Built-in library Functions
 
@@ -1311,7 +1313,7 @@ namespace soul
 ```
 
 ```C++
-/** 
+/**
     This namespace contains some types which are handy for representing synthesiser
     note events. They do a similar job to MIDI events, but in a more modern, strongly
     typed way. Things like the midi::MPEParser class generate them.
@@ -1320,7 +1322,7 @@ namespace soul::note_events
 {
     struct NoteOn
     {
-        int channel; 
+        int channel;
         float note;
         float velocity;
     }
@@ -1396,7 +1398,7 @@ namespace soul::midi
 }```
 
 ```C++
-/** This namespace contains some handy stuctures to use when declaring external 
+/** This namespace contains some handy stuctures to use when declaring external
     variables which are going to be loaded with data from audio files.
 */
 namespace soul::audio_samples
@@ -1417,7 +1419,7 @@ namespace soul::audio_samples
 
 ### HEART
 
-"HEART" is the name we've given to SOUL's internal low-level language, which is used as the format in which code is passed to a performer to be run. It's analogous to low level languages like LLVM-IR or WebAssembly. 
+"HEART" is the name we've given to SOUL's internal low-level language, which is used as the format in which code is passed to a performer to be run. It's analogous to low level languages like LLVM-IR or WebAssembly.
 
 The front-end SOUL compiler converts SOUL into a HEART program, and then it is passed to something like a JIT compiler or a C++ or WASM code-generator. Since HEART is a much simpler, this makes the process of optimising, manipulating and security-checking the code easier, and it makes it simpler to implement new back-end JIT engines.
 
