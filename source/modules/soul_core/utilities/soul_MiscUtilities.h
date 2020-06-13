@@ -65,14 +65,11 @@ void ignoreUnused (Types&&...) noexcept {}
 bool inExceptionHandler();
 
 //==============================================================================
-template <typename Type>
-constexpr bool isPowerOf2 (Type value)  { return (value & (value - 1)) == 0; }
-
 /** Rounds-up a size to a value which is a multiple of the given granularity. */
 template <int granularity, typename SizeType>
 constexpr SizeType getAlignedSize (SizeType size)
 {
-    static_assert (isPowerOf2 (granularity), "granularity must be a power of 2");
+    static_assert (choc::math::isPowerOf2 (granularity), "granularity must be a power of 2");
     return (size + (SizeType) (granularity - 1)) & ~(SizeType)(granularity - 1);
 }
 
@@ -80,7 +77,7 @@ constexpr SizeType getAlignedSize (SizeType size)
 template <int granularity, typename PointerType>
 constexpr bool isAlignedPointer (PointerType p)
 {
-    static_assert (isPowerOf2 (granularity), "granularity must be a power of 2");
+    static_assert (choc::math::isPowerOf2 (granularity), "granularity must be a power of 2");
     return (((size_t) reinterpret_cast<const void*> (p)) & (size_t) (granularity - 1)) == 0;
 }
 
@@ -88,7 +85,7 @@ constexpr bool isAlignedPointer (PointerType p)
 template <int granularity, typename PointerType>
 constexpr PointerType getAlignedPointer (PointerType p)
 {
-    static_assert (isPowerOf2 (granularity), "granularity must be a power of 2");
+    static_assert (choc::math::isPowerOf2 (granularity), "granularity must be a power of 2");
     return reinterpret_cast<PointerType> ((((size_t) reinterpret_cast<const void*> (p))
                                             + (size_t)(granularity - 1)) & ~(size_t)(granularity - 1));
 }

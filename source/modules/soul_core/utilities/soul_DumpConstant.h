@@ -37,7 +37,7 @@ inline std::string dump (const choc::value::ValueView& c)
         if (std::isnan (value))     return "_nan32";
         if (std::isinf (value))     return value > 0 ? "_inf32" : "_ninf32";
 
-        return floatToAccurateString (value) + "f";
+        return choc::text::floatToString (value) + "f";
     };
 
     auto printFloat64 = [] (double value) -> std::string
@@ -46,7 +46,7 @@ inline std::string dump (const choc::value::ValueView& c)
         if (std::isnan (value))     return "_nan64";
         if (std::isinf (value))     return value > 0 ? "_inf64" : "_ninf64";
 
-        return doubleToAccurateString (value);
+        return choc::text::floatToString (value);
     };
 
     if (c.isFloat32())  return printFloat32 (c.getFloat32());

@@ -488,7 +488,7 @@ Value Value::createStringLiteral (StringDictionary::Handle h)
 Value Value::createFromRawData (Type type, const void* sourceData, size_t dataSize)
 {
     ignoreUnused (dataSize);
-    
+
     Value v (std::move (type));
     SOUL_ASSERT (dataSize == v.getPackedDataSize());
     memcpy (v.getPackedData(), sourceData, v.getPackedDataSize());
@@ -882,7 +882,7 @@ void ValuePrinter::printFloat32 (float value)
     if (std::isnan (value))     return print ("_nan32");
     if (std::isinf (value))     return print (value > 0 ? "_inf32" : "_ninf32");
 
-    return print (floatToAccurateString (value) + "f");
+    return print (choc::text::floatToString (value) + "f");
 }
 
 void ValuePrinter::printFloat64 (double value)
@@ -891,7 +891,7 @@ void ValuePrinter::printFloat64 (double value)
     if (std::isnan (value))     return print ("_nan64");
     if (std::isinf (value))     return print (value > 0 ? "_inf64" : "_ninf64");
 
-    return print (doubleToAccurateString (value));
+    return print (choc::text::floatToString (value));
 }
 
 void ValuePrinter::beginStructMembers (const Type&)       { print ("{ "); }
@@ -906,7 +906,7 @@ void ValuePrinter::endVectorMembers()                     { print (" }"); }
 
 void ValuePrinter::printStringLiteral (StringDictionary::Handle h)
 {
-    print (dictionary != nullptr ? addDoubleQuotes (dictionary->getStringForHandle (h))
+    print (dictionary != nullptr ? choc::text::addDoubleQuotes (std::string (dictionary->getStringForHandle (h)))
                                  : std::to_string (h.handle));
 }
 

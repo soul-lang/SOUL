@@ -562,7 +562,7 @@ struct FunctionBuilder  : public BlockBuilder
 
         auto& plusOne = createIntegerChangedByOne (source, BinaryOp::Op::add);
 
-        if (isPowerOf2 (limit) && limit < (1u << 30))
+        if (choc::math::isPowerOf2 (limit) && limit < (1u << 30))
         {
             addAssignment (dest, createBinaryOp (source.location,
                                                  plusOne, createConstantInt32 (limit - 1),

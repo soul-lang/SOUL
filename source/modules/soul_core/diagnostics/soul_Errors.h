@@ -326,7 +326,7 @@ private:
     static std::string replaceArgument (std::string text, size_t index, const std::string& value)
     {
         auto i = std::to_string (index);
-        text = replaceSubString (text, "$Q" + i + "$", addSingleQuotes (value));
+        text = replaceSubString (text, "$Q" + i + "$", choc::text::addSingleQuotes (value));
         return replaceSubString (text, "$" + i + "$", value);
     }
 

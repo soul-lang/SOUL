@@ -272,7 +272,7 @@ struct heart
         if (v < 1 || v > 512)
             errorLocation.throwError (Errors::ratioOutOfRange());
 
-        if (! isPowerOf2 (v))
+        if (! choc::math::isPowerOf2 (v))
             errorLocation.throwError (Errors::ratioMustBePowerOf2());
 
         return v;

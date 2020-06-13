@@ -56,7 +56,6 @@
 #endif
 
 #include "utilities/soul_Tokeniser.h"
-#include "utilities/soul_FloatToString.h"
 #include "utilities/soul_StringUtilities.cpp"
 #include "utilities/soul_UTF8Reader.cpp"
 #include "utilities/soul_MiscUtilities.cpp"

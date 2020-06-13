@@ -65,7 +65,7 @@ std::vector<std::string> splitString (std::string_view textToSplit,
                                       char delimiterCharacter,
                                       bool includeDelimitersInResult);
 
-std::vector<std::string> splitAtWhitespace (std::string_view text);
+std::vector<std::string> splitAtWhitespace (std::string_view text, bool keepDelimiters = false);
 
 /** Splits a string at newline characters, returning an array of strings. */
 std::vector<std::string> splitIntoLines (std::string_view text, bool includeNewLinesInResult);
@@ -180,9 +180,9 @@ inline std::vector<std::string> splitAtWhitespace (std::string_view text, bool k
                         keepDelimiters);
 }
 
-inline std::vector<std::string> splitIntoLines (std::string_view text)
+inline std::vector<std::string> splitIntoLines (std::string_view text, bool includeNewLinesInResult)
 {
-    return splitString (text, '\n', true);
+    return splitString (text, '\n', includeNewLinesInResult);
 }
 
 
@@ -229,7 +229,7 @@ size_t getLevenshteinDistance (const StringType& string1, const StringType& stri
     }
 
     std::unique_ptr<size_t[]> costs (new size_t[sizeNeeded]);
-    return calculate (costs, sizeNeeded, string1, string2);
+    return calculate (costs.get(), sizeNeeded, string1, string2);
 }
 
 

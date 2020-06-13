@@ -74,7 +74,7 @@ struct FileList
             if (auto f = root->getChildFile (relativePath.c_str()))
                 return f;
 
-        throwPatchLoadError ("Cannot find file " + addDoubleQuotes (relativePath));
+        throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath));
     }
 
     FileState checkAndCreateFileState (const std::string& relativePath) const

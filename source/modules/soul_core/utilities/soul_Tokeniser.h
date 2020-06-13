@@ -48,7 +48,7 @@ struct TokenType  final
     std::string getDescription() const
     {
         return text[0] == '$' ? std::string (text + 1)
-                              : addDoubleQuotes (text);
+                              : choc::text::addDoubleQuotes (text);
     }
 };
 

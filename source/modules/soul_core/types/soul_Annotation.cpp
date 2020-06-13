@@ -47,7 +47,7 @@ Annotation& Annotation::operator= (const Annotation& other)
 
 static std::string propertyToString (const StringDictionary& stringDictionary, const Annotation::Property& prop, bool asJSON)
 {
-    auto desc = ((asJSON || ! isSafeIdentifierName (prop.name)) ? addDoubleQuotes (prop.name) : prop.name) + ": ";
+    auto desc = ((asJSON || ! isSafeIdentifierName (prop.name)) ? choc::text::addDoubleQuotes (prop.name) : prop.name) + ": ";
 
     const auto& type = prop.value.getType();
     SOUL_ASSERT (type.isPrimitive() || type.isStringLiteral());

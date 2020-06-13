@@ -109,7 +109,7 @@ void IndentedStream::writeLines (ArrayView<std::string> lines)
 IndentedStream& IndentedStream::operator<< (const std::string& text)
 {
     if (contains (text, '\n'))
-        writeLines (splitAtDelimiter (text, '\n'));
+        writeLines (choc::text::splitIntoLines (text, false));
     else if (text.length() > maxLineLength)
         writeLines (splitLinesOfCode (text, maxLineLength));
     else
@@ -129,10 +129,10 @@ IndentedStream& IndentedStream::operator<< (const char* text)
     return *this << std::string (text);
 }
 
-IndentedStream& IndentedStream::operator<< (double value)   { writeRaw (doubleToAccurateString (value)); return *this; }
-IndentedStream& IndentedStream::operator<< (float value)    { writeRaw (floatToAccurateString (value));  return *this; }
-IndentedStream& IndentedStream::operator<< (size_t value)   { writeRaw (std::to_string (value));         return *this; }
-IndentedStream& IndentedStream::operator<< (int64_t value)  { writeRaw (std::to_string (value));         return *this; }
+IndentedStream& IndentedStream::operator<< (double value)   { writeRaw (choc::text::floatToString (value)); return *this; }
+IndentedStream& IndentedStream::operator<< (float value)    { writeRaw (choc::text::floatToString (value)); return *this; }
+IndentedStream& IndentedStream::operator<< (size_t value)   { writeRaw (std::to_string (value)); return *this; }
+IndentedStream& IndentedStream::operator<< (int64_t value)  { writeRaw (std::to_string (value)); return *this; }
 
 IndentedStream& IndentedStream::operator<< (const NewLine&)
 {

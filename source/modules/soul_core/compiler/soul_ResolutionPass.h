@@ -1611,7 +1611,7 @@ private:
             for (auto& f : scope.getFunctions())
             {
                 auto functionName = f->name.toString();
-                auto distance = levenshteinDistance (name, functionName);
+                auto distance = choc::text::getLevenshteinDistance (name, functionName);
 
                 if (distance < lowestDistance)
                 {

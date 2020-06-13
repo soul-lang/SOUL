@@ -271,7 +271,7 @@ void emitMessage (CompileMessage m)
 
 [[noreturn]] void throwInternalCompilerError (const std::string& message)
 {
-    soul::throwError ({ "Internal compiler error: " + addDoubleQuotes (message),
+    soul::throwError ({ "Internal compiler error: " + choc::text::addDoubleQuotes (message),
                         CodeLocation(), CompileMessage::Type::internalCompilerError });
 }
 
@@ -282,7 +282,7 @@ void emitMessage (CompileMessage m)
 
 [[noreturn]] void throwInternalCompilerError (const char* message, const char* location, int line)
 {
-    throwInternalCompilerError (addDoubleQuotes (message) + " failed at " + location + ":" + std::to_string (line));
+    throwInternalCompilerError (choc::text::addDoubleQuotes (message) + " failed at " + location + ":" + std::to_string (line));
 }
 
 void checkAssertion (bool condition, const char* message, const char* location, int line)

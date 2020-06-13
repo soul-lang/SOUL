@@ -84,9 +84,6 @@ static std::string joinStrings (const Array& strings, const std::string& separat
     return s;
 }
 
-std::vector<std::string> splitAtDelimiter (const std::string& text, char delimiter);
-std::vector<std::string> splitAtWhitespace (const std::string& text);
-std::vector<std::string> splitIntoLines (const std::string& text);
 std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targetLineLength);
 size_t getMaxLineLength (const std::string& textWithLines);
 
@@ -110,24 +107,17 @@ static std::string addSuffixToMakeUnique (const std::string& name, IsAlreadyUsed
 }
 
 std::string toStringWithDecPlaces (double n, size_t numDecPlaces);
-std::string floatToAccurateString (float n);
-std::string doubleToAccurateString (double n);
 std::string getDescriptionOfTimeInSeconds (double numSeconds);
 std::string toHexString (int64_t value);
 std::string toHexString (int64_t value, int numDigits);
 int getHexDigitValue (uint32_t digit) noexcept;
 std::string doubleToJSONString (double n);
 std::string getReadableDescriptionOfByteSize (uint64_t bytes);
-size_t levenshteinDistance (const std::string&, const std::string&);
 std::string toCppStringLiteral (const std::string& text,
                                 int maxCharsOnLine, bool breakAtNewLines,
                                 bool replaceSingleQuotes, bool allowStringBreaks);
 
 //==============================================================================
-std::string addDoubleQuotes (std::string_view);
-std::string addSingleQuotes (std::string_view);
-std::string removeDoubleQuotes (const std::string&);
-
 std::string convertToString (const std::string& name);
 std::string convertToString (const Identifier& name);
 std::string convertToString (const IdentifierPath& name);

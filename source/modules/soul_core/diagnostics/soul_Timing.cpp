@@ -100,11 +100,11 @@ float CPULoadMeasurer::getCurrentLoad() const
 
 float getBelaLoadFromString (const std::string& input)
 {
-    for (auto& l : splitIntoLines (input))
+    for (auto& l : choc::text::splitIntoLines (input, true))
     {
         if (contains (l, "bela-audio"))
         {
-            auto toks = splitAtWhitespace (l);
+            auto toks = choc::text::splitAtWhitespace (l);
             removeIf (toks, [] (const std::string& s) { return trim (s).empty(); });
 
             if (toks.size() > 7)

@@ -120,19 +120,6 @@ bool endsWith (const std::string& text, const std::string& possibleEnd)
     return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
 }
 
-std::string addDoubleQuotes (std::string_view text)    { return "\"" + std::string (text) + "\""; }
-std::string addSingleQuotes (std::string_view text)    { return "'" + std::string (text) + "'"; }
-
-std::string removeDoubleQuotes (const std::string& text)
-{
-    if (text.length() >= 2
-         && text[0] == '"'
-         && text.back() == '"')
-        return text.substr (1, text.length() - 2);
-
-    return text;
-}
-
 std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement)
 {
     for (size_t index = 0;;)
@@ -157,71 +144,6 @@ std::string removeCharacter (std::string s, char charToRemove)
 {
     s.erase (std::remove_if (s.begin(), s.end(), [=] (char c) { return c == charToRemove; }), s.end());
     return s;
-}
-
-template <typename IsDelimiterStart, typename IsDelimiterBody>
-std::vector<std::string> split (const std::string& text,
-                                IsDelimiterStart&& isStart,
-                                IsDelimiterBody&& isBody,
-                                bool includeDelimiters)
-{
-    std::vector<std::string> tokens;
-    auto start = text.c_str();
-    auto end = start;
-
-    for (;;)
-    {
-        if (*end == 0)
-        {
-            if (end != text.c_str())
-                tokens.push_back ({ start, end });
-
-            return tokens;
-        }
-
-        if (isStart (*end))
-        {
-            auto startOfDelimiter = end;
-            ++end;
-
-            while (isBody (*end))
-                ++end;
-
-            if (end != text.c_str())
-                tokens.push_back ({ start, includeDelimiters ? end : startOfDelimiter });
-
-            start = end;
-            continue;
-        }
-
-        ++end;
-    }
-
-    return tokens;
-}
-
-std::vector<std::string> splitAtDelimiter (const std::string& text, char delimiter)
-{
-    return split (text,
-                  [delimiter] (char c) { return c == delimiter; },
-                  [] (char) { return false; },
-                  false);
-}
-
-std::vector<std::string> splitAtWhitespace (const std::string& text)
-{
-    return split (text,
-                  [] (char c) { return isWhitespace (c); },
-                  [] (char c) { return isWhitespace (c); },
-                  false);
-}
-
-std::vector<std::string> splitIntoLines (const std::string& text)
-{
-    return split (text,
-                  [] (char c) { return c == '\n'; },
-                  [] (char) { return false; },
-                  true);
 }
 
 std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targetLineLength)
@@ -268,7 +190,7 @@ size_t getMaxLineLength (const std::string& text)
 {
     size_t len = 0;
 
-    for (auto& l : splitIntoLines (text))
+    for (auto& l : choc::text::splitIntoLines (text, true))
         len = std::max (len, l.length());
 
     return len;
@@ -276,7 +198,7 @@ size_t getMaxLineLength (const std::string& text)
 
 std::string replaceLine (const std::string& text, size_t line, const std::string& replacementLine)
 {
-    auto lines = splitIntoLines (text);
+    auto lines = choc::text::splitIntoLines (text, true);
     lines[line] = replacementLine + (containsChar (lines[line], '\r') ? "\r\n" : "\n");
     return joinStrings (lines, {});
 }
@@ -335,17 +257,6 @@ std::string toStringWithDecPlaces (double n, size_t numDecPlaces)
     return dot == std::string::npos ? s : s.substr (0, std::min (s.length(), dot + 1 + numDecPlaces));
 }
 
-template <typename FloatType>
-static std::string floatToString (FloatType value)
-{
-    char buffer[FloatToString<FloatType>::maxBufferSizeNeeded];
-    auto end = FloatToString<FloatType>::write (value, buffer);
-    return std::string (buffer, end);
-}
-
-std::string floatToAccurateString (float n)     { return floatToString (n); }
-std::string doubleToAccurateString (double n)   { return floatToString (n); }
-
 std::string getDescriptionOfTimeInSeconds (double numSeconds)
 {
     return numSeconds < 1.0 ? (toStringWithDecPlaces (numSeconds * 1000.0, numSeconds < 0.1 ? 2 : 1) + " ms")
@@ -389,7 +300,7 @@ std::string toHexString (int64_t value, int numDigits)
 std::string doubleToJSONString (double n)
 {
     if (std::isfinite (n))
-        return doubleToAccurateString (n);
+        return choc::text::floatToString (n);
 
     if (std::isnan (n))
         return "\"NaN\"";
@@ -411,43 +322,8 @@ std::string convertToString (const std::string& name)        { return name; }
 std::string convertToString (const Identifier& name)         { return name.toString(); }
 std::string convertToString (const IdentifierPath& name)     { return Program::stripRootNamespaceFromQualifiedPath (name.toString()); }
 
-std::string quoteName (const std::string& name)        { return addSingleQuotes (convertToString (name)); }
-std::string quoteName (const Identifier& name)         { return addSingleQuotes (convertToString (name)); }
-
-size_t levenshteinDistance (const std::string& s1, const std::string& s2)
-{
-    auto m = s1.size(),
-         n = s2.size();
-
-    if (m == 0) return n;
-    if (n == 0) return m;
-
-    std::vector<size_t> costs;
-    costs.reserve (n + 1);
-
-    for (size_t i = 0; i <= n; ++i)
-        costs.push_back (i);
-
-    size_t i = 0;
-
-    for (auto c1 : s1)
-    {
-        costs.front() = i + 1;
-        size_t corner = i, j = 0;
-
-        for (auto c2 : s2)
-        {
-            auto upper = costs[j + 1];
-            costs[j + 1] = c1 == c2 ? corner : (std::min (costs[j], std::min (upper, corner)) + 1);
-            corner = upper;
-            ++j;
-        }
-
-        ++i;
-    }
-
-    return costs[n];
-}
+std::string quoteName (const std::string& name)        { return choc::text::addSingleQuotes (convertToString (name)); }
+std::string quoteName (const Identifier& name)         { return choc::text::addSingleQuotes (convertToString (name)); }
 
 void PaddedStringTable::startRow()
 {
