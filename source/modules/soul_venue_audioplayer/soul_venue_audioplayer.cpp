@@ -28,6 +28,7 @@
 #endif
 
 #include "soul_venue_audioplayer.h"
+#include "../../3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #include <thread>
 

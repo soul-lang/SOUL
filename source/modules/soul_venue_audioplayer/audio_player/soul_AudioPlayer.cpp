@@ -22,15 +22,11 @@ namespace soul::audioplayer
 {
 
 //==============================================================================
-class AudioPlayerVenue   : public soul::Venue,
-                           private juce::AudioIODeviceCallback,
-                           private juce::MidiInputCallback,
-                           private juce::Timer
+struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
+                          private juce::MidiInputCallback,
+                          private juce::Timer
 {
-public:
-    AudioPlayerVenue (Requirements r, std::unique_ptr<PerformerFactory> factory)
-        : requirements (std::move (r)),
-          performerFactory (std::move (factory))
+    AudioMIDISystem (Requirements r) : requirements (r)
     {
         if (requirements.sampleRate < 1000.0 || requirements.sampleRate > 48000.0 * 8)
             requirements.sampleRate = 0;
@@ -38,23 +34,384 @@ public:
         if (requirements.blockSize < 1 || requirements.blockSize > 2048)
             requirements.blockSize = 0;
 
-       #if ! JUCE_BELA
-        // With BELA, the midi is handled within the audio thread, so we don't have any timestamp offsets or inter-thread coordination to do
-        midiCollector = std::make_unique<juce::MidiMessageCollector>();
-        midiCollector->reset (44100);
-       #endif
-
+        constexpr uint32_t midiFIFOSize = 1024;
+        inputMIDIBuffer.reserve (midiFIFOSize);
+        midiFIFO.reset (midiFIFOSize);
         openAudioDevice();
         startTimerHz (3);
+    }
+
+    ~AudioMIDISystem() override
+    {
+        audioDevice.reset();
+        midiInputs.clear();
+    }
+
+    //==============================================================================
+    struct MIDIEvent
+    {
+        uint32_t frameIndex = 0;
+        choc::midi::ShortMessage message;
+    };
+
+    struct Callback
+    {
+        virtual ~Callback() = default;
+
+        virtual void render (DiscreteChannelSet<const float> input,
+                             DiscreteChannelSet<float> output,
+                             const MIDIEvent* midiIn,
+                             MIDIEvent* midiOut,
+                             uint32_t midiInCount,
+                             uint32_t midiOutCapacity,
+                             uint32_t& numMIDIOutMessages) = 0;
+
+        virtual void renderStarting (double sampleRate, uint32_t blockSize) = 0;
+        virtual void renderStopped() = 0;
+    };
+
+    void setCallback (Callback* newCallback)
+    {
+        Callback* oldCallback = nullptr;
+
+        {
+            std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+
+            if (callback != newCallback)
+            {
+                if (newCallback != nullptr && sampleRate != 0)
+                    newCallback->renderStarting (sampleRate, blockSize);
+
+                oldCallback = callback;
+                callback = newCallback;
+            }
+        }
+
+        if (oldCallback != nullptr)
+            oldCallback->renderStopped();
+    }
+
+    double getSampleRate() const                { return sampleRate; }
+    uint32_t getMaxBlockSize() const            { return blockSize; }
+
+    float getCPULoad() const                    { return loadMeasurer.getCurrentLoad(); }
+    int getXRunCount() const                    { return audioDevice != nullptr ? audioDevice->getXRunCount() : -1; }
+
+    int getNumInputChannels() const             { return audioDevice != nullptr ? audioDevice->getActiveInputChannels().countNumberOfSetBits() : 0; }
+    int getNumOutputChannels() const            { return audioDevice != nullptr ? audioDevice->getActiveOutputChannels().countNumberOfSetBits() : 0; }
+
+private:
+    //==============================================================================
+    Requirements requirements;
+
+    std::unique_ptr<juce::AudioIODevice> audioDevice;
+    uint64_t totalFramesProcessed = 0;
+    std::atomic<uint32_t> audioCallbackCount { 0 };
+    uint32_t lastCallbackCount = 0;
+    static constexpr uint64_t numWarmUpFrames = 15000;
+    double sampleRate = 0;
+    uint32_t blockSize = 0;
+
+    juce::StringArray lastMidiDevices;
+    std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
+    std::chrono::system_clock::time_point lastMIDIDeviceCheckTime, lastKnownActiveCallbackTime;
+
+    using MIDIClock = std::chrono::high_resolution_clock;
+
+    struct IncomingMIDIEvent
+    {
+        MIDIClock::time_point time;
+        choc::midi::ShortMessage message;
+    };
+
+    choc::fifo::SingleReaderSingleWriterFIFO<IncomingMIDIEvent> midiFIFO;
+    std::vector<MIDIEvent> inputMIDIBuffer;
+    MIDIClock::time_point lastMIDIBlockTime;
+
+    CPULoadMeasurer loadMeasurer;
+
+    std::mutex callbackLock;
+    Callback* callback = nullptr;
+
+    //==============================================================================
+    void log (const std::string& text)
+    {
+        if (requirements.printLogMessage != nullptr)
+            requirements.printLogMessage (text);
+    }
+
+    //==============================================================================
+    void audioDeviceAboutToStart (juce::AudioIODevice* device) override
+    {
+        sampleRate = device->getCurrentSampleRate();
+        blockSize  = static_cast<uint32_t> (device->getCurrentBufferSizeSamples());
+
+        lastCallbackCount = 0;
+        audioCallbackCount = 0;
+        midiFIFO.reset();
+
+        loadMeasurer.reset();
+
+        std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+
+        if (callback != nullptr)
+            callback->renderStarting (sampleRate, blockSize);
+    }
+
+    void audioDeviceStopped() override
+    {
+        sampleRate = 0;
+        blockSize = 0;
+        loadMeasurer.reset();
+
+        std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+
+        if (callback != nullptr)
+            callback->renderStopped();
+    }
+
+    void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
+                                float** outputChannelData, int numOutputChannels,
+                                int numFrames) override
+    {
+        loadMeasurer.startMeasurement();
+        juce::ScopedNoDenormals disableDenormals;
+        ++audioCallbackCount;
+
+        for (int i = 0; i < numOutputChannels; ++i)
+            juce::FloatVectorOperations::clear (outputChannelData[i], numFrames);
+
+       #if ! JUCE_BELA
+        fillMIDIInputBuffer (static_cast<uint32_t> (numFrames));
+       #endif
+
+        if (totalFramesProcessed > numWarmUpFrames)
+        {
+            std::lock_guard<decltype(callbackLock)> lock (callbackLock);
+
+            if (callback != nullptr)
+            {
+                uint32_t numMIDIOut = 0;
+
+                callback->render ({ inputChannelData,  (uint32_t) numInputChannels,  0, (uint32_t) numFrames },
+                                  { outputChannelData, (uint32_t) numOutputChannels, 0, (uint32_t) numFrames },
+                                  inputMIDIBuffer.data(), nullptr, static_cast<uint32_t> (inputMIDIBuffer.size()), 0, numMIDIOut);
+            }
+        }
+
+        totalFramesProcessed += static_cast<uint64_t> (numFrames);
+        loadMeasurer.stopMeasurement();
+
+       #if JUCE_BELA
+        inputMIDIBuffer.clear();
+       #endif
+    }
+
+    void handleIncomingMidiMessage (juce::MidiInput*, const juce::MidiMessage& message) override
+    {
+        if (message.getRawDataSize() < 4)  // long messages are ignored for now...
+        {
+            auto bytes = message.getRawData();
+            auto m = choc::midi::ShortMessage (bytes[0], bytes[1], bytes[2]);
+
+           #if JUCE_BELA
+            inputMIDIBuffer.push_back ({ 0, m });
+           #else
+            midiFIFO.push ({ MIDIClock::now(), m });
+           #endif
+        }
+    }
+
+    void fillMIDIInputBuffer (uint32_t numFrames)
+    {
+        inputMIDIBuffer.clear();
+        auto now = MIDIClock::now();
+        using TimeSeconds = std::chrono::duration<double, std::ratio<1, 1>>;
+        auto startOfFrame = lastMIDIBlockTime;
+        lastMIDIBlockTime = now;
+
+        if (midiFIFO.getUsedSlots() != 0)
+        {
+            auto frameLength = TimeSeconds (1.0 / sampleRate);
+            IncomingMIDIEvent e;
+
+            while (midiFIFO.pop (e))
+            {
+                TimeSeconds timeSinceBufferStart = e.time - startOfFrame;
+                auto frame = static_cast<int> (timeSinceBufferStart.count() / frameLength.count());
+
+                if (frame < 0)
+                {
+                    if (frame < -40000)
+                        break;
+
+                    frame = 0;
+                }
+
+                auto frameIndex = static_cast<uint32_t> (frame) < numFrames ? static_cast<uint32_t> (frame)
+                                                                            : static_cast<uint32_t> (numFrames - 1);
+                inputMIDIBuffer.push_back ({ frameIndex, e.message });
+            }
+        }
+    }
+
+    void timerCallback() override
+    {
+        auto now = std::chrono::system_clock::now();
+        checkMIDIDevices (now);
+        checkForStalledProcessor (now);
+    }
+
+    void checkForStalledProcessor (std::chrono::system_clock::time_point now)
+    {
+        if (lastCallbackCount != audioCallbackCount)
+        {
+            lastCallbackCount = audioCallbackCount;
+            lastKnownActiveCallbackTime = now;
+            return;
+        }
+
+        if (lastCallbackCount != 0 && now > lastKnownActiveCallbackTime + std::chrono::milliseconds (2000))
+        {
+            log ("Fatal error! run() function took too long to execute.\n"
+                 "Process terminating...");
+
+            std::terminate();
+        }
+    }
+
+    void openAudioDevice()
+    {
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_CoreAudio(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_iOSAudio(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_ASIO(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_WASAPI (false); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_WASAPI (true); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_DirectSound(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_Bela(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_Oboe(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_OpenSLES(); });
+        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_ALSA(); });
+
+        if (audioDevice != nullptr)
+        {
+            if (requirements.numInputChannels > 0)
+            {
+                juce::RuntimePermissions::request (juce::RuntimePermissions::recordAudio,
+                                                   [this] (bool granted)
+                                                   {
+                                                       if (! granted)
+                                                           log ("Failed to get audio input permission");
+                                                   });
+            }
+
+            auto getBitSetForNumChannels = [] (int num)
+            {
+                juce::BigInteger b;
+                b.setRange (0, num, true);
+                return b;
+            };
+
+            auto error = audioDevice->open (getBitSetForNumChannels (requirements.numInputChannels),
+                                            getBitSetForNumChannels (requirements.numOutputChannels),
+                                            requirements.sampleRate,
+                                            requirements.blockSize);
+
+            if (error.isEmpty())
+            {
+                log (soul::utilities::getAudioDeviceSetup (*audioDevice));
+                audioDevice->start (this);
+                return;
+            }
+
+            log (("Error opening audio device: " + error).toStdString());
+        }
+
+        audioDevice.reset();
+        loadMeasurer.reset();
+        SOUL_ASSERT_FALSE;
+    }
+
+    void tryToCreateDeviceType (std::function<juce::AudioIODeviceType*()> createDeviceType)
+    {
+        if (audioDevice == nullptr)
+        {
+            if (auto type = std::unique_ptr<juce::AudioIODeviceType> (createDeviceType()))
+            {
+                type->scanForDevices();
+
+                juce::String outputDevice, inputDevice;
+
+                if (requirements.numOutputChannels > 0)
+                    outputDevice = type->getDeviceNames(false) [type->getDefaultDeviceIndex(false)];
+
+                if (requirements.numInputChannels > 0)
+                    inputDevice = type->getDeviceNames(true) [type->getDefaultDeviceIndex(true)];
+
+                audioDevice.reset (type->createDevice (outputDevice, inputDevice));
+            }
+        }
+    }
+
+    void checkMIDIDevices (std::chrono::system_clock::time_point now)
+    {
+        if (now > lastMIDIDeviceCheckTime + std::chrono::seconds (2))
+        {
+            lastMIDIDeviceCheckTime = now;
+            openMIDIDevices();
+        }
+    }
+
+    void openMIDIDevices()
+    {
+        lastMIDIDeviceCheckTime = std::chrono::system_clock::now();
+        auto devices = juce::MidiInput::getDevices();
+
+        if (lastMidiDevices != devices)
+        {
+            lastMidiDevices = devices;
+
+            for (auto& mi : midiInputs)
+            {
+                log (("Closing MIDI device: " + mi->getName()).toStdString());
+                mi.reset();
+            }
+
+            midiInputs.clear();
+
+            for (int i = devices.size(); --i >= 0;)
+                if (auto mi = juce::MidiInput::openDevice (i, this))
+                    midiInputs.emplace_back (std::move (mi));
+
+            for (auto& mi : midiInputs)
+            {
+                log (("Opening MIDI device: " + mi->getName()).toStdString());
+                mi->start();
+            }
+        }
+
+        startTimer (2000);
+    }
+};
+
+//==============================================================================
+class AudioPlayerVenue   : public soul::Venue,
+                           private AudioMIDISystem::Callback
+{
+public:
+    AudioPlayerVenue (Requirements r, std::unique_ptr<PerformerFactory> factory)
+        : audioSystem (std::move (r)),
+          performerFactory (std::move (factory))
+    {
+        createDeviceEndpoints (audioSystem.getNumInputChannels(),
+                               audioSystem.getNumOutputChannels());
     }
 
     ~AudioPlayerVenue() override
     {
         SOUL_ASSERT (activeSessions.empty());
+        audioSystem.setCallback (nullptr);
         performerFactory.reset();
-        audioDevice.reset();
-        midiInputs.clear();
-        midiCollector.reset();
     }
 
     std::unique_ptr<Venue::Session> createSession() override
@@ -67,40 +424,23 @@ public:
 
     bool connectSessionInputEndpoint (Session& session, EndpointID inputID, EndpointID venueSourceID) override
     {
-        if (audioDevice != nullptr)
-            if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
-                if (auto venueEndpoint = findEndpoint (sourceEndpoints, venueSourceID))
-                    return audioSession->connectInputEndpoint (*venueEndpoint, inputID);
+        if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
+            if (auto venueEndpoint = findEndpoint (sourceEndpoints, venueSourceID))
+                return audioSession->connectInputEndpoint (*venueEndpoint, inputID);
 
         return false;
     }
 
     bool connectSessionOutputEndpoint (Session& session, EndpointID outputID, EndpointID venueSinkID) override
     {
-        if (audioDevice != nullptr)
-            if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
-                if (auto venueEndpoint = findEndpoint (sinkEndpoints, venueSinkID))
-                    return audioSession->connectOutputEndpoint (*venueEndpoint, outputID);
+        if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
+            if (auto venueEndpoint = findEndpoint (sinkEndpoints, venueSinkID))
+                return audioSession->connectOutputEndpoint (*venueEndpoint, outputID);
 
         return false;
     }
 
     //==============================================================================
-    struct MIDIEvent
-    {
-        MIDIEvent (const MIDIEvent&) = default;
-
-        MIDIEvent (uint32_t index, uint8_t byte0, uint8_t byte1, uint8_t byte2)
-            : frameIndex (index), packedData ((int) ((byte0 << 16) + (byte1 << 8) + (byte2)))
-        {
-        }
-
-        uint32_t frameIndex;
-        int packedData;
-    };
-
-    static int getPackedMIDIEvent (const MIDIEvent& m)   { return m.packedData; }
-
     struct EndpointInfo
     {
         EndpointDetails details;
@@ -114,9 +454,6 @@ public:
         AudioPlayerSession (AudioPlayerVenue& v)  : venue (v)
         {
             performer = venue.performerFactory->createPerformer();
-
-            if (venue.audioDevice != nullptr)
-                updateDeviceProperties (*venue.audioDevice);
         }
 
         ~AudioPlayerSession() override
@@ -179,6 +516,7 @@ public:
 
         bool link (CompileMessageList& messageList, const BuildSettings& settings) override
         {
+            maxBlockSize = settings.maxBlockSize;
             buildOperationList();
 
             if (state == State::loaded && performer->link (messageList, settings, {}))
@@ -234,18 +572,15 @@ public:
         {
             Status s;
             s.state = state;
-            s.cpu = venue.loadMeasurer.getCurrentLoad();
+            s.cpu = venue.audioSystem.getCPULoad();
+            s.sampleRate = venue.audioSystem.getSampleRate();
+            s.blockSize = venue.audioSystem.getMaxBlockSize();
             s.xruns = performer->getXRuns();
-            s.sampleRate = currentSampleRate;
-            s.blockSize = maxBlockSize;
 
-            if (venue.audioDevice != nullptr)
-            {
-                auto deviceXruns = venue.audioDevice->getXRunCount();
+            auto deviceXruns = venue.audioSystem.getXRunCount();
 
-                if (deviceXruns > 0) // < 0 means not known
-                    s.xruns += (uint32_t) deviceXruns;
-            }
+            if (deviceXruns > 0) // < 0 means not known
+                s.xruns += (uint32_t) deviceXruns;
 
             return s;
         }
@@ -283,15 +618,8 @@ public:
             return true;
         }
 
-        void prepareToPlay (juce::AudioIODevice& device)
-        {
-            updateDeviceProperties (device);
-        }
-
         void deviceStopped()
         {
-            currentSampleRate = 0;
-            maxBlockSize = 0;
         }
 
         bool connectInputEndpoint (const EndpointInfo& externalEndpoint, EndpointID inputID)
@@ -333,6 +661,8 @@ public:
 
             return false;
         }
+
+        static int getPackedMIDIEvent (const AudioMIDISystem::MIDIEvent& m)   { return (int) ((m.message.data[0] << 16) + (m.message.data[1] << 8) + m.message.data[2]); }
 
         void buildOperationList()
         {
@@ -411,7 +741,7 @@ public:
 
         void processBlock (soul::DiscreteChannelSet<const float> input,
                            soul::DiscreteChannelSet<float> output,
-                           ArrayView<const MIDIEvent> midiIn)
+                           ArrayView<const AudioMIDISystem::MIDIEvent> midiIn)
         {
             auto maxFramesPerBlock = std::min (512u, maxBlockSize);
             SOUL_ASSERT (input.numFrames == output.numFrames && maxFramesPerBlock > 0);
@@ -437,20 +767,13 @@ public:
                 for (auto& c : outputCallbacks)
                     c.callback (*this, c.endpointHandle);
             },
-            [] (MIDIEvent midi) { return midi.frameIndex; });
+            [] (AudioMIDISystem::MIDIEvent midi) { return midi.frameIndex; });
 
             totalFramesRendered += input.numFrames;
         }
 
-        void updateDeviceProperties (juce::AudioIODevice& device)
-        {
-            currentSampleRate = device.getCurrentSampleRate();
-            maxBlockSize = (uint32_t) device.getCurrentBufferSizeSamples();
-        }
-
         AudioPlayerVenue& venue;
         std::unique_ptr<Performer> performer;
-        double currentSampleRate = 0;
         uint32_t maxBlockSize = 0;
         std::atomic<uint64_t> totalFramesRendered { 0 };
         StateChangeCallbackFn stateChangeCallback;
@@ -470,7 +793,7 @@ public:
             EndpointID endpointID;
         };
 
-        using RenderContext = AudioMIDIWrapper<MIDIEvent>::RenderContext;
+        using RenderContext = AudioMIDIWrapper<AudioMIDISystem::MIDIEvent>::RenderContext;
 
         std::vector<Connection> connections;
         std::vector<std::function<void(RenderContext&)>> preRenderOperations;
@@ -487,6 +810,7 @@ public:
         if (! contains (activeSessions, s))
             activeSessions.push_back (s);
 
+        audioSystem.setCallback (this);
         return true;
     }
 
@@ -494,44 +818,60 @@ public:
     {
         std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
         removeFirst (activeSessions, [=] (AudioPlayerSession* i) { return i == s; });
+
+        if (activeSessions.empty())
+            audioSystem.setCallback (nullptr);
+    
         return true;
     }
 
 
 private:
     //==============================================================================
-    Requirements requirements;
+    AudioMIDISystem audioSystem;
     std::unique_ptr<PerformerFactory> performerFactory;
-
-    std::unique_ptr<juce::AudioIODevice> audioDevice;
-    juce::StringArray lastMidiDevices;
-    std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
-
-    std::unique_ptr<juce::MidiMessageCollector> midiCollector;
-    juce::MidiBuffer incomingMIDI;
-    std::vector<MIDIEvent> incomingMIDIEvents;
-
-    CPULoadMeasurer loadMeasurer;
 
     std::vector<EndpointInfo> sourceEndpoints, sinkEndpoints;
 
     std::recursive_mutex activeSessionLock;
     std::vector<AudioPlayerSession*> activeSessions;
 
-    uint64_t totalFramesProcessed = 0;
-    std::atomic<uint32_t> audioCallbackCount { 0 };
-    static constexpr uint64_t numWarmUpSamples = 15000;
-
-    uint32_t lastCallbackCount = 0;
-    juce::Time lastMIDIDeviceCheck, lastCallbackCountChange;
-
-    void log (const juce::String& text)
+    //==============================================================================
+    void createDeviceEndpoints (int numInputChannels, int numOutputChannels)
     {
-        if (requirements.printLogMessage != nullptr)
-            requirements.printLogMessage (text.toRawUTF8());
+        if (numInputChannels > 0)
+            addEndpoint (sourceEndpoints,
+                         EndpointType::stream,
+                         EndpointID::create ("defaultIn"),
+                         "defaultIn",
+                         getVectorType (numInputChannels),
+                         0, false);
+
+        if (numOutputChannels > 0)
+            addEndpoint (sinkEndpoints,
+                         EndpointType::stream,
+                         EndpointID::create ("defaultOut"),
+                         "defaultOut",
+                         getVectorType (numOutputChannels),
+                         0, false);
+
+        auto midiMessageType = soul::createMIDIEventEndpointType();
+
+        addEndpoint (sourceEndpoints,
+                     EndpointType::event,
+                     EndpointID::create ("defaultMidiIn"),
+                     "defaultMidiIn",
+                     midiMessageType,
+                     0, true);
+
+        addEndpoint (sinkEndpoints,
+                     EndpointType::event,
+                     EndpointID::create ("defaultMidiOut"),
+                     "defaultMidiOut",
+                     midiMessageType,
+                     0, true);
     }
 
-    //==============================================================================
     const EndpointInfo* findEndpoint (ArrayView<EndpointInfo> endpoints, const EndpointID& endpointID) const
     {
         for (auto& e : endpoints)
@@ -551,196 +891,21 @@ private:
         return result;
     }
 
-    //==============================================================================
-    void audioDeviceAboutToStart (juce::AudioIODevice* device) override
+    void renderStarting (double, uint32_t) override {}
+    void renderStopped() override {}
+
+    void render (DiscreteChannelSet<const float> input,
+                 DiscreteChannelSet<float> output,
+                 const AudioMIDISystem::MIDIEvent* midiIn,
+                 AudioMIDISystem::MIDIEvent* /*midiOut*/,
+                 uint32_t midiInCount,
+                 uint32_t /*midiOutCapacity*/,
+                 uint32_t& /*numMIDIOutMessages*/) override
     {
-        lastCallbackCount = 0;
-        audioCallbackCount = 0;
-
-        if (midiCollector)
-            midiCollector->reset (device->getCurrentSampleRate());
-
-        incomingMIDI.ensureSize (1024);
-        incomingMIDIEvents.reserve (1024);
-
-        loadMeasurer.reset();
-
         std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
 
         for (auto& s : activeSessions)
-            s->prepareToPlay (*device);
-    }
-
-    void audioDeviceStopped() override
-    {
-        {
-            std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
-
-            for (auto& s : activeSessions)
-                s->deviceStopped();
-        }
-
-        loadMeasurer.reset();
-    }
-
-    void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
-                                float** outputChannelData, int numOutputChannels,
-                                int numFrames) override
-    {
-        juce::ScopedNoDenormals disableDenormals;
-        loadMeasurer.startMeasurement();
-
-        ++audioCallbackCount;
-
-        for (int i = 0; i < numOutputChannels; ++i)
-            if (auto* chan = outputChannelData[i])
-                juce::FloatVectorOperations::clear (chan, numFrames);
-
-        if (midiCollector)
-        {
-            midiCollector->removeNextBlockOfMessages (incomingMIDI, numFrames);
-
-            incomingMIDIEvents.clear();
-
-            juce::MidiMessage message;
-            int frameOffset = 0;
-
-            for (juce::MidiBuffer::Iterator iterator (incomingMIDI); iterator.getNextEvent (message, frameOffset);)
-            {
-                auto* rawData = message.getRawData();
-                incomingMIDIEvents.push_back ({ (uint32_t) frameOffset, rawData[0], rawData[1], rawData[2] });
-            }
-        }
-
-        if (totalFramesProcessed > numWarmUpSamples)
-        {
-            std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
-
-            for (auto& s : activeSessions)
-                s->processBlock ({ inputChannelData,  (uint32_t) numInputChannels,  0, (uint32_t) numFrames },
-                                 { outputChannelData, (uint32_t) numOutputChannels, 0, (uint32_t) numFrames },
-                                 incomingMIDIEvents);
-        }
-
-        incomingMIDI.clear();
-
-        totalFramesProcessed += static_cast<uint64_t> (numFrames);
-        loadMeasurer.stopMeasurement();
-    }
-
-    void handleIncomingMidiMessage (juce::MidiInput*, const juce::MidiMessage& message) override
-    {
-        if (message.getRawDataSize() < 4)  // long messages are ignored for now...
-        {
-            if (midiCollector)
-                midiCollector->addMessageToQueue (message);
-            else
-                incomingMIDI.addEvent (message, 0);
-        }
-    }
-
-    void timerCallback() override
-    {
-        checkMIDIDevices();
-        checkForStalledProcessor();
-    }
-
-    void checkForStalledProcessor()
-    {
-        auto now = juce::Time::getCurrentTime();
-
-        if (lastCallbackCount != audioCallbackCount)
-        {
-            lastCallbackCount = audioCallbackCount;
-            lastCallbackCountChange = now;
-        }
-
-        if (lastCallbackCount != 0 && now > lastCallbackCountChange + juce::RelativeTime::seconds (2))
-        {
-            log ("Fatal error! run() function took too long to execute.\n"
-                 "Process terminating...");
-
-            std::terminate();
-        }
-    }
-
-    void openAudioDevice()
-    {
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_CoreAudio(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_iOSAudio(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_ASIO(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_WASAPI (false); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_WASAPI (true); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_DirectSound(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_Bela(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_Oboe(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_OpenSLES(); });
-        tryToCreateDeviceType ([] { return juce::AudioIODeviceType::createAudioIODeviceType_ALSA(); });
-
-        if (audioDevice != nullptr)
-        {
-            if (requirements.numInputChannels > 0)
-            {
-                juce::RuntimePermissions::request (juce::RuntimePermissions::recordAudio,
-                                                   [] (bool granted)
-                                                   {
-                                                       if (! granted)
-                                                           SOUL_ASSERT_FALSE;
-                                                   });
-            }
-
-            auto error = audioDevice->open (getBitSetForNumChannels (requirements.numInputChannels),
-                                            getBitSetForNumChannels (requirements.numOutputChannels),
-                                            requirements.sampleRate,
-                                            requirements.blockSize);
-
-            if (error.isEmpty())
-            {
-                auto numInputChannels  = audioDevice->getActiveInputChannels().countNumberOfSetBits();
-                auto numOutputChannels = audioDevice->getActiveOutputChannels().countNumberOfSetBits();
-
-                if (numInputChannels > 0)
-                    addEndpoint (sourceEndpoints,
-                                 EndpointType::stream,
-                                 EndpointID::create ("defaultIn"),
-                                 "defaultIn",
-                                 getVectorType (numInputChannels),
-                                 0, false);
-
-                if (numOutputChannels > 0)
-                    addEndpoint (sinkEndpoints,
-                                 EndpointType::stream,
-                                 EndpointID::create ("defaultOut"),
-                                 "defaultOut",
-                                 getVectorType (numOutputChannels),
-                                 0, false);
-
-                auto midiMessageType = soul::createMIDIEventEndpointType();
-
-                addEndpoint (sourceEndpoints,
-                             EndpointType::event,
-                             EndpointID::create ("defaultMidiIn"),
-                             "defaultMidiIn",
-                             midiMessageType,
-                             0, true);
-
-                addEndpoint (sinkEndpoints,
-                             EndpointType::event,
-                             EndpointID::create ("defaultMidiOut"),
-                             "defaultMidiOut",
-                             midiMessageType,
-                             0, true);
-
-                log (soul::utilities::getAudioDeviceSetup (*audioDevice));
-                audioDevice->start (this);
-
-                return;
-            }
-        }
-
-        audioDevice.reset();
-        loadMeasurer.reset();
-        SOUL_ASSERT_FALSE;
+            s->processBlock (input, output, { midiIn, midiIn + midiInCount });
     }
 
     static soul::Type getVectorType (int size)    { return (soul::Type::createVector (soul::PrimitiveType::float32, static_cast<size_t> (size))); }
@@ -760,77 +925,6 @@ private:
         e.isMIDI                = isMIDI;
 
         list.push_back (e);
-    }
-
-    void tryToCreateDeviceType (std::function<juce::AudioIODeviceType*()> createDeviceType)
-    {
-        if (audioDevice == nullptr)
-        {
-            if (auto type = std::unique_ptr<juce::AudioIODeviceType> (createDeviceType()))
-            {
-                type->scanForDevices();
-
-                juce::String outputDevice, inputDevice;
-
-                if (requirements.numOutputChannels > 0)
-                    outputDevice = type->getDeviceNames(false) [type->getDefaultDeviceIndex(false)];
-
-                if (requirements.numInputChannels > 0)
-                    inputDevice = type->getDeviceNames(true) [type->getDefaultDeviceIndex(true)];
-
-                audioDevice.reset (type->createDevice (outputDevice, inputDevice));
-            }
-        }
-    }
-
-    static juce::BigInteger getBitSetForNumChannels (int num)
-    {
-        juce::BigInteger b;
-        b.setRange (0, num, true);
-        return b;
-    }
-
-    void checkMIDIDevices()
-    {
-        auto now = juce::Time::getCurrentTime();
-
-        if (now > lastMIDIDeviceCheck + juce::RelativeTime::seconds (2))
-        {
-            lastMIDIDeviceCheck = now;
-            openMIDIDevices();
-        }
-    }
-
-    void openMIDIDevices()
-    {
-        lastMIDIDeviceCheck = juce::Time::getCurrentTime();
-
-        auto devices = juce::MidiInput::getDevices();
-
-        if (lastMidiDevices != devices)
-        {
-            lastMidiDevices = devices;
-
-            for (auto& mi : midiInputs)
-            {
-                log ("Closing MIDI device: " + mi->getName());
-                mi.reset();
-            }
-
-            midiInputs.clear();
-
-            for (int i = devices.size(); --i >= 0;)
-                if (auto mi = juce::MidiInput::openDevice (i, this))
-                    midiInputs.emplace_back (std::move (mi));
-
-            for (auto& mi : midiInputs)
-            {
-                log ("Opening MIDI device: " + mi->getName());
-                mi->start();
-            }
-        }
-
-        startTimer (2000);
     }
 };
 

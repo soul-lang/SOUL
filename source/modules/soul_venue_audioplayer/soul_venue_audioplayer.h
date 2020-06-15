@@ -54,7 +54,7 @@ namespace soul::audioplayer
         /** The caller can provide a lambda here to handle log messages about audio
             and MIDI devices being opened and closed.
         */
-        std::function<void(const char*)> printLogMessage;
+        std::function<void(std::string_view)> printLogMessage;
     };
 
     /** Returns an implementation of a soul::Venue which uses the standard JUCE
