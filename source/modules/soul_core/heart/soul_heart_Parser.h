@@ -623,9 +623,16 @@ private:
             UTF8Reader code;
         };
 
+        void setCurrentBlock (BlockCode& b)
+        {
+            currentBlock = &b;
+        }
+
         heart::Function& function;
         std::vector<BlockCode> blocks;
         std::vector<pool_ref<heart::Variable>> variables;
+        BlockCode* currentBlock = nullptr;
+
     };
 
     void parseFunctionParams (heart::Function& f)
@@ -685,6 +692,7 @@ private:
         {
             resetPosition (b.code);
             builder.beginBlock (b.block);
+            state.setCurrentBlock (b);
 
             while (! parseTerminator (state, builder))
                 if (! parseStatement (state, builder))
@@ -699,8 +707,31 @@ private:
         for (;;)
         {
             auto name = readBlockName();
+
+            auto& block = builder.createBlock (name);
+
+            if (matchIf (HEARTOperator::openParen))
+            {
+                if (! matchIf (HEARTOperator::closeParen))
+                {
+                    for (;;)
+                    {
+                        auto paramType = readValueOrRefType();
+                        auto paramLocation = location;
+                        auto paramName = parseIdentifier();
+                        block.parameters.push_back (module->allocate<heart::Variable> (std::move (paramLocation), paramType, paramName, heart::Variable::Role::parameter));
+
+                        if (matchIf (HEARTOperator::comma))
+                            continue;
+
+                        expect (HEARTOperator::closeParen);
+                        break;
+                    }
+                }
+            }
+
             expect (HEARTOperator::colon);
-            state.blocks.push_back ({ builder.createBlock (name), getCurrentTokeniserPosition() });
+            state.blocks.push_back ({ block, getCurrentTokeniserPosition() });
 
             skipPastNextOccurrenceOf (HEARTOperator::semicolon);
 
@@ -885,8 +916,9 @@ private:
         if (matchIf ("branch"))
         {
             auto& dest = readBlockNameAndFind (state);
+            auto destArgs = parseOptionalBranchArgs<heart::Branch::ArgListType> (state);
             expectSemicolon();
-            builder.addBranch (dest, {});
+            builder.addBranch (dest, std::move (destArgs), {});
             return true;
         }
 
@@ -895,10 +927,12 @@ private:
             auto& condition = parseExpression (state, PrimitiveType::bool_);
             expect (HEARTOperator::question);
             auto& trueBranch = readBlockNameAndFind (state);
+            auto trueBranchArgs = parseOptionalBranchArgs<heart::BranchIf::ArgListType> (state);
             expect (HEARTOperator::colon);
             auto& falseBranch = readBlockNameAndFind (state);
+            auto falseBranchArgs = parseOptionalBranchArgs<heart::BranchIf::ArgListType> (state);
             expectSemicolon();
-            builder.addBranchIf (condition, trueBranch, falseBranch, {});
+            builder.addBranchIf (condition, trueBranch, std::move (trueBranchArgs), falseBranch, std::move (falseBranchArgs), {});
             return true;
         }
 
@@ -917,6 +951,32 @@ private:
         }
 
         return false;
+    }
+
+    template<class ArgListType>
+    ArgListType parseOptionalBranchArgs (const FunctionParseState& state)
+    {
+        heart::FunctionCall::ArgListType args;
+
+        if (matchIf (HEARTOperator::openParen))
+        {
+            if (! matchIf (HEARTOperator::closeParen))
+            {
+                for (;;)
+                {
+                    auto& arg = parseExpression (state);
+                    args.push_back (arg);
+
+                    if (matchIf (HEARTOperator::comma))
+                        continue;
+
+                    expect (HEARTOperator::closeParen);
+                    break;
+                }
+            }
+        }
+
+        return args;
     }
 
     void parseReadStream (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
@@ -1020,6 +1080,13 @@ private:
             for (auto& v : module->stateVariables)
                 if (v->name == name)
                     return v;
+
+        if (state.currentBlock != nullptr)
+        {
+            for (auto& blockParameter : state.currentBlock->block.parameters)
+                if (blockParameter->name == name)
+                    return blockParameter;
+        }
 
         return program.getVariableWithName (name);
     }

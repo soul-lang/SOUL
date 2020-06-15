@@ -796,25 +796,28 @@ private:
         if (currentTargetVariable == nullptr)
             t.context.throwError (Errors::ternaryCannotBeStatement());
 
-        auto& targetVar = *currentTargetVariable;
         auto labelIndex = ifIndex++;
+        auto& targetVar = *currentTargetVariable;
 
-        auto& trueBlock   = builder.createBlock ("@if_true_", labelIndex);
-        auto& falseBlock  = builder.createBlock ("@if_false_", labelIndex);
-        auto& endBlock    = builder.createBlock ("@if_end_", labelIndex);
+        auto& trueBlock   = builder.createBlock ("@ternary_true_", labelIndex);
+        auto& falseBlock  = builder.createBlock ("@ternary_false_", labelIndex);
+        auto& endBlock    = builder.createBlock ("@ternary_end_", labelIndex);
+
+        auto& paramVar = module.allocate<heart::Variable> (t.context.location,
+                                                           targetVar.getType().removeReferenceIfPresent(),
+                                                           module.allocator.get ("$_T" + std::to_string (labelIndex)),
+                                                           heart::Variable::Role::parameter);
+
+        endBlock.addParameter (paramVar);
+
         auto resultType  = t.getResultType();
 
-        auto& tempVar = module.allocate<heart::Variable> (t.context.location,
-                                                          targetVar.getType().removeReferenceIfPresent(),
-                                                          heart::Variable::Role::mutableLocal);
-        builder.addZeroAssignment (tempVar);
-
         addBranchIf (t.condition, trueBlock, falseBlock, trueBlock);
-        visitWithDestination (tempVar, t.trueBranch);
-        builder.addBranch (endBlock, falseBlock);
-        visitWithDestination (tempVar, t.falseBranch);
-        builder.beginBlock (endBlock);
-        builder.addAssignment (targetVar, tempVar);
+        auto& trueVariable = builder.createRegisterVariable (evaluateAsExpression (t.trueBranch));
+        builder.addBranch (endBlock, { trueVariable }, falseBlock);
+        auto& falseVariable = builder.createRegisterVariable (evaluateAsExpression (t.falseBranch));
+        builder.addBranch (endBlock, { falseVariable }, endBlock);
+        builder.addAssignment (targetVar, paramVar);
     }
 
     void visit (AST::Constant& o) override

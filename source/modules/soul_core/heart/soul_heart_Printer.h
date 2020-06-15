@@ -228,14 +228,9 @@ private:
                 printFunction (f);
         }
 
-        void printFunction (heart::Function& f)
+        void printParameters (const std::vector<pool_ref<Variable>>& parameters)
         {
-            SOUL_ASSERT (f.name.isValid());
-
-            out << (f.functionType.isEvent() ? "event " : "function ");
-            out << getFunctionName (f);
-
-            if (f.parameters.empty())
+            if (parameters.empty())
             {
                 out << "()";
             }
@@ -245,7 +240,7 @@ private:
 
                 bool isFirst = true;
 
-                for (auto p : f.parameters)
+                for (auto p : parameters)
                 {
                     if (isFirst)
                         isFirst = false;
@@ -258,6 +253,38 @@ private:
 
                 out << ')';
             }
+        }
+
+        void printBlock (heart::Block& b)
+        {
+            auto labelIndent = out.createIndent (2);
+            out << getBlockName (b);
+
+            if (!b.parameters.empty())
+                printParameters (b.parameters);
+            
+            out << ":" << newLine;
+
+            auto statementIndent = out.createIndent (2);
+
+            for (auto s : b.statements)
+            {
+                printStatementDescription (*s);
+                out << ';' << newLine;
+            }
+
+            printStatementDescription (*b.terminator);
+            out << ';' << newLine;
+        }
+
+        void printFunction (heart::Function& f)
+        {
+            SOUL_ASSERT (f.name.isValid());
+
+            out << (f.functionType.isEvent() ? "event " : "function ");
+            out << getFunctionName (f);
+
+            printParameters (f.parameters);
 
             if (! f.functionType.isEvent())
                 out << " -> " << getTypeDescription (f.returnType);
@@ -276,21 +303,7 @@ private:
             buildLocalVariableList (f);
 
             for (auto b : f.blocks)
-            {
-                auto labelIndent = out.createIndent (2);
-                out << getBlockName (b) << ":" << newLine;
-
-                auto statementIndent = out.createIndent (2);
-
-                for (auto s : b->statements)
-                {
-                    printStatementDescription (*s);
-                    out << ';' << newLine;
-                }
-
-                printStatementDescription (*b->terminator);
-                out << ';' << newLine;
-            }
+                printBlock (b);
 
             out << '}' << blankLine;
         }
@@ -522,16 +535,27 @@ private:
             SOUL_ASSERT_FALSE;
         }
 
-        void printDescription (const heart::Branch& b) const
+        void printDescription (const heart::Branch& b)
         {
             out << "branch " << getBlockName (b.target);
+
+            if (! b.targetArgs.empty())
+                printArgList (b.targetArgs);
         }
 
         void printDescription (const heart::BranchIf& b)
         {
             out << "branch_if ";
             printExpression (b.condition);
-            out << " ? " << getBlockName (b.targets[0]) << " : " << getBlockName (b.targets[1]);
+            out << " ? " << getBlockName (b.targets[0]);
+
+            if (! b.targetArgs[0].empty())
+                printArgList (b.targetArgs[0]);
+
+            out << " : " << getBlockName (b.targets[1]);
+
+            if (! b.targetArgs[1].empty())
+                printArgList (b.targetArgs[1]);
         }
 
         void printDescription (const heart::ReturnVoid&) const
@@ -551,7 +575,7 @@ private:
             printExpression (a.source);
         }
 
-        void printArgList (ArrayView<pool_ref<heart::Expression>> args)
+        void printArgList (const ArrayView<pool_ref<heart::Expression>>& args)
         {
             if (args.empty())
             {

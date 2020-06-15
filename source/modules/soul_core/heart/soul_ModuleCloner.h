@@ -318,6 +318,9 @@ struct ModuleCloner
     {
         LinkedList<heart::Statement>::Iterator last;
 
+        for (auto p : old.parameters)
+            b.parameters.push_back (cloneVariable (p));
+
         for (auto s : old.statements)
             last = b.statements.insertAfter (last, cloneStatement (*s));
 
@@ -345,14 +348,27 @@ struct ModuleCloner
 
     heart::Branch& clone (const heart::Branch& old)
     {
-        return newModule.allocate<heart::Branch> (getRemappedBlock (old.target));
+        auto& b = newModule.allocate<heart::Branch> (getRemappedBlock (old.target));
+
+        for (auto& arg : old.targetArgs)
+            b.targetArgs.push_back (cloneExpression (arg));
+
+        return b;
     }
 
     heart::BranchIf& clone (const heart::BranchIf& old)
     {
-        return newModule.allocate<heart::BranchIf> (cloneExpression (old.condition),
-                                                    getRemappedBlock (old.targets[0]),
-                                                    getRemappedBlock (old.targets[1]));
+        auto& b =  newModule.allocate<heart::BranchIf> (cloneExpression (old.condition),
+                                                        getRemappedBlock (old.targets[0]),
+                                                        getRemappedBlock (old.targets[1]));
+
+        for (auto& arg : old.targetArgs[0])
+            b.targetArgs[0].push_back (cloneExpression (arg));
+
+        for (auto& arg : old.targetArgs[1])
+            b.targetArgs[1].push_back (cloneExpression (arg));
+
+        return b;
     }
 
     heart::ReturnVoid& clone (const heart::ReturnVoid&)

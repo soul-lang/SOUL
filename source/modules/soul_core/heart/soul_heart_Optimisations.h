@@ -244,6 +244,9 @@ private:
             if (b.predecessors.empty())
                 return true;
 
+            if (b.terminator != nullptr && b.terminator->isParameterised())
+                return false;
+
             if (! b.statements.empty())
                 return false;
 
@@ -314,7 +317,7 @@ private:
     {
         return heart::Utilities::removeBlocks (f, [&] (heart::Block& b) -> bool
         {
-            if (b.predecessors.size() != 1 || b.doNotOptimiseAway)
+            if (b.predecessors.size() != 1 || b.doNotOptimiseAway || (! b.parameters.empty()))
                 return false;
 
             auto pred = b.predecessors.front();

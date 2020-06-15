@@ -862,13 +862,22 @@ struct heart
 
         void visitExpressions (ExpressionVisitorFn fn)
         {
+            for (auto p : parameters)
+                p->visitExpressions (fn, AccessType::read);
+
             for (auto s : statements)
                 s->visitExpressions (fn);
 
             terminator->visitExpressions (fn);
         }
 
+        void addParameter (heart::Variable& v)
+        {
+            parameters.push_back (v);
+        }
+
         Identifier name;
+        std::vector<pool_ref<Variable>> parameters;
         LinkedList<Statement> statements;
         pool_ptr<Terminator> terminator;
 
@@ -897,6 +906,7 @@ struct heart
         virtual bool isReturn() const                               { return false; }
         virtual bool readsVariable (Variable&) const                { return false; }
         virtual void visitExpressions (ExpressionVisitorFn)         {}
+        virtual bool isParameterised() const                        { return false; }
     };
 
     struct Branch  : public Terminator
@@ -904,7 +914,21 @@ struct heart
         Branch (Block& b)  : target (b) {}
         ArrayView<pool_ref<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
 
+        void visitExpressions (ExpressionVisitorFn fn) override
+        {
+            for (auto& arg : targetArgs)
+            {
+                arg->visitExpressions (fn, AccessType::read);
+                fn (arg, AccessType::read);
+            }
+        }
+
+        bool isParameterised() const override                       { return ! targetArgs.empty(); }
+
         pool_ref<Block> target;
+        using ArgListType = ArrayWithPreallocation<pool_ref<Expression>, 4>;
+        ArgListType targetArgs;
+
     };
 
     struct BranchIf  : public Terminator
@@ -917,15 +941,31 @@ struct heart
 
         ArrayView<pool_ref<Block>> getDestinationBlocks() override    { return { targets, targets + (isConditional() ? 2 : 1) }; }
         bool isConditional() const override                           { return targets[0] != targets[1]; }
+        bool isParameterised() const override                         { return (! targetArgs[0].empty()) || (! targetArgs[1].empty()); }
 
         void visitExpressions (ExpressionVisitorFn fn) override
         {
             condition->visitExpressions (fn, AccessType::read);
             fn (condition, AccessType::read);
+
+            for (auto arg : targetArgs[0])
+            {
+                arg->visitExpressions (fn, AccessType::read);
+                fn (arg, AccessType::read);
+            }
+
+            for (auto arg : targetArgs[1])
+            {
+                arg->visitExpressions (fn, AccessType::read);
+                fn (arg, AccessType::read);
+            }
+
         }
 
         pool_ref<Expression> condition;
         pool_ref<Block> targets[2];   // index 0 = true, 1 = false
+        using ArgListType = ArrayWithPreallocation<pool_ref<Expression>, 4>;
+        ArgListType targetArgs[2];
     };
 
     struct ReturnVoid  : public Terminator

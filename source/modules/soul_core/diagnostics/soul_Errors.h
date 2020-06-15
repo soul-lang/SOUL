@@ -263,6 +263,9 @@ namespace soul
     X(cannotNegateConstant,                 "Cannot negate this type of constant") \
     X(useOfUninitialisedVariable,           "Use of uninitialised variable $Q0$ in function $1$") \
     X(functionHasNoImplementation,          "This function has no implementation") \
+    X(functionBlockCantBeParameterised,     "Function block $0$ cannot be parameterised") \
+    X(branchInvalidParameters,              "Block $0$ terminator has invalid block paramteters") \
+    X(blockParametersInvalid,               "Block $0$ parameters invalid") \
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \

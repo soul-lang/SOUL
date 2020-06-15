@@ -528,12 +528,67 @@ struct FunctionBuilder  : public BlockBuilder
         addTerminatorStatement (module.allocate<heart::Branch> (target), subsequentBlock);
     }
 
-    void addBranchIf (heart::Expression& condition, heart::Block& trueBranch,
-                      heart::Block& falseBranch, pool_ptr<heart::Block> subsequentBlock)
+    void addBranch (heart::Block& target, heart::Branch::ArgListType&& targetArgs, pool_ptr<heart::Block> subsequentBlock)
+    {
+        auto& branch = module.allocate<heart::Branch> (target);
+
+        branch.targetArgs = std::move (targetArgs);
+
+        addTerminatorStatement (branch, subsequentBlock);
+    }
+
+    void addBranch (heart::Block& target, std::initializer_list<pool_ref<heart::Expression>> targetArgs, pool_ptr<heart::Block> subsequentBlock)
+    {
+        auto& branch = module.allocate<heart::Branch> (target);
+
+        for (auto& a : targetArgs)
+            branch.targetArgs.push_back (a);
+
+        addTerminatorStatement (branch, subsequentBlock);
+    }
+
+    void addBranchIf (heart::Expression& condition,
+                      heart::Block& trueBranch,
+                      heart::Block& falseBranch,
+                      pool_ptr<heart::Block> subsequentBlock)
     {
         addTerminatorStatement (module.allocate<heart::BranchIf> (condition, trueBranch, falseBranch),
                                 subsequentBlock);
     }
+
+    void addBranchIf (heart::Expression& condition,
+                      heart::Block& trueBranch,
+                      std::initializer_list<pool_ref<heart::Expression>> trueBranchArgs,
+                      heart::Block& falseBranch,
+                      std::initializer_list<pool_ref<heart::Expression>> falseBranchArgs,
+                      pool_ptr<heart::Block> subsequentBlock)
+    {
+        auto& branchIf = module.allocate<heart::BranchIf> (condition, trueBranch, falseBranch);
+
+        for (auto& a : trueBranchArgs)
+            branchIf.targetArgs[0].push_back (a);
+
+        for (auto& a : falseBranchArgs)
+            branchIf.targetArgs[1].push_back (a);
+
+        addTerminatorStatement (branchIf, subsequentBlock);
+    }
+
+    void addBranchIf (heart::Expression& condition,
+                      heart::Block& trueBranch,
+                      heart::BranchIf::ArgListType&& trueBranchArgs,
+                      heart::Block& falseBranch,
+                      heart::BranchIf::ArgListType&& falseBranchArgs,
+                      pool_ptr<heart::Block> subsequentBlock)
+    {
+        auto& branchIf = module.allocate<heart::BranchIf> (condition, trueBranch, falseBranch);
+
+        branchIf.targetArgs[0] = std::move (trueBranchArgs);
+        branchIf.targetArgs[1] = std::move (falseBranchArgs);
+
+        addTerminatorStatement (branchIf, subsequentBlock);
+    }
+
 
     void addAdvance (CodeLocation l)
     {

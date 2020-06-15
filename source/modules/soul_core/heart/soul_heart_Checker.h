@@ -31,6 +31,7 @@ struct heart::Checker
         checkConnections (program);
         checkForRecursiveFunctions (program);
         checkForInfiniteLoops (program);
+        checkBlockParameters (program);
     }
 
     static void sanityCheckInputsAndOutputs (Program& program)
@@ -211,6 +212,54 @@ struct heart::Checker
             if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
         }
     }
+
+    //==============================================================================
+    static void checkBlockParameters (Program& program)
+    {
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions)
+            {
+                if (! f->blocks.empty())
+                {
+                    if (! f->blocks[0]->parameters.empty())
+                        f->location.throwError (Errors::functionBlockCantBeParameterised (f->blocks[0]->name));
+
+                    for (auto& b : f->blocks)
+                    {
+                        for (auto& param : b->parameters)
+                        {
+                            auto& type = param->getType();
+
+                            if (type.isReference() || type.isVoid())
+                                f->location.throwError (Errors::blockParametersInvalid (b->name));
+                        }
+
+                        if (auto branch = cast<heart::Branch> (b->terminator))
+                        {
+                            if (branch->target->parameters.size() != branch->targetArgs.size())
+                                f->location.throwError (Errors::branchInvalidParameters (b->name));
+
+                            for (size_t n = 0; n < branch->targetArgs.size(); n++)
+                            {
+                                auto& argType = branch->targetArgs[n]->getType();
+                                auto& parameterType = branch->target->parameters[n]->getType();
+
+                                if (! TypeRules::canSilentlyCastTo (parameterType, argType))
+                                    f->location.throwError (Errors::branchInvalidParameters (b->name));
+                            }
+                        }
+                        else if (auto branchIf = cast<heart::BranchIf> (b->terminator))
+                        {
+                            if (! branchIf->targetArgs[0].empty() || ! branchIf->targetArgs[1].empty())
+                                f->location.throwError (Errors::notYetImplemented ("BranchIf parameterised blocks"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     static void testHEARTRoundTrip (const Program& program)
     {
