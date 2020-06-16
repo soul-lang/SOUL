@@ -68,12 +68,6 @@ public:
     */
     virtual ArrayView<const EndpointDetails> getOutputEndpoints() noexcept = 0;
 
-    struct ExternalVariable
-    {
-        std::string name;
-        choc::value::Value annotation;
-    };
-
     /** Returns the list of external variables that need to be resolved before a loaded
         program can be linked.
     */

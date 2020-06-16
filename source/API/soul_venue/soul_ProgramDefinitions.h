@@ -100,6 +100,15 @@ struct Endpoint
     choc::value::Value annotation;
 };
 
+//==============================================================================
+/** Holds the properties that describe an external variable. */
+struct ExternalVariable
+{
+    std::string name;
+    choc::value::Type type;
+    choc::value::Value annotation;
+};
+
 
 //==============================================================================
 /** This holds a short MIDI message and a frame-based timestamp, and is used in

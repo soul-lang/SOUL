@@ -209,7 +209,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         return choc::value::Value (value);
     }
 
-    choc::value::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const soul::Performer::ExternalVariable& ev)
+    choc::value::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const ExternalVariable& ev)
     {
         if (externalDataProvider != nullptr)
             if (auto file = externalDataProvider->getExternalFile (ev.name.c_str()))
