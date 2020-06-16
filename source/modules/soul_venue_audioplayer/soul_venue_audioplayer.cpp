@@ -28,11 +28,12 @@
 #endif
 
 #include "soul_venue_audioplayer.h"
-#include "../../3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #include <thread>
+#include "../../3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #include <soul_core/soul_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
+#include "audio_player/soul_AudioMIDISystem.h"
 #include "audio_player/soul_AudioPlayer.cpp"
