@@ -48,12 +48,6 @@ struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
     }
 
     //==============================================================================
-    struct MIDIEvent
-    {
-        uint32_t frameIndex = 0;
-        choc::midi::ShortMessage message;
-    };
-
     struct Callback
     {
         virtual ~Callback() = default;
@@ -448,6 +442,8 @@ public:
         bool isMIDI = false;
     };
 
+    using RenderContext = AudioMIDIWrapper::RenderContext;
+
     //==============================================================================
     struct AudioPlayerSession   : public Venue::Session
     {
@@ -662,8 +658,6 @@ public:
             return false;
         }
 
-        static int getPackedMIDIEvent (const AudioMIDISystem::MIDIEvent& m)   { return (int) ((m.message.data[0] << 16) + (m.message.data[1] << 8) + m.message.data[2]); }
-
         void buildOperationList()
         {
             preRenderOperations.clear();
@@ -685,7 +679,7 @@ public:
                         {
                             for (uint32_t i = 0; i < rc.midiInCount; ++i)
                             {
-                                midiEvent.getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
+                                midiEvent.getObjectMemberAt (0).value.set (rc.midiIn[i].getPackedMIDIData());
                                 perf.addInputEvent (endpointHandle, midiEvent);
                             }
                         });
@@ -739,15 +733,11 @@ public:
             }
         }
 
-        void processBlock (soul::DiscreteChannelSet<const float> input,
-                           soul::DiscreteChannelSet<float> output,
-                           ArrayView<const AudioMIDISystem::MIDIEvent> midiIn)
+        void processBlock (AudioMIDIWrapper::RenderContext context)
         {
+            SOUL_ASSERT (maxBlockSize > 0);
             auto maxFramesPerBlock = std::min (512u, maxBlockSize);
-            SOUL_ASSERT (input.numFrames == output.numFrames && maxFramesPerBlock > 0);
-
-            RenderContext context { totalFramesRendered, input, output, midiIn.data(),
-                                    nullptr, 0, (uint32_t) midiIn.size(), 0, 0 };
+            context.totalFramesRendered = totalFramesRendered;
 
             context.iterateInBlocks (maxFramesPerBlock, [&] (RenderContext& rc)
             {
@@ -766,10 +756,9 @@ public:
 
                 for (auto& c : outputCallbacks)
                     c.callback (*this, c.endpointHandle);
-            },
-            [] (AudioMIDISystem::MIDIEvent midi) { return midi.frameIndex; });
+            });
 
-            totalFramesRendered += input.numFrames;
+            totalFramesRendered += context.outputChannels.getNumFrames();
         }
 
         AudioPlayerVenue& venue;
@@ -792,8 +781,6 @@ public:
             bool isMIDI = false;
             EndpointID endpointID;
         };
-
-        using RenderContext = AudioMIDIWrapper<AudioMIDISystem::MIDIEvent>::RenderContext;
 
         std::vector<Connection> connections;
         std::vector<std::function<void(RenderContext&)>> preRenderOperations;
@@ -896,16 +883,18 @@ private:
 
     void render (DiscreteChannelSet<const float> input,
                  DiscreteChannelSet<float> output,
-                 const AudioMIDISystem::MIDIEvent* midiIn,
-                 AudioMIDISystem::MIDIEvent* /*midiOut*/,
+                 const MIDIEvent* midiIn,
+                 MIDIEvent* /*midiOut*/,
                  uint32_t midiInCount,
                  uint32_t /*midiOutCapacity*/,
                  uint32_t& /*numMIDIOutMessages*/) override
     {
         std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
 
+        auto context = RenderContext { 0, input, output, midiIn, nullptr, 0, midiInCount, 0, 0 };
+
         for (auto& s : activeSessions)
-            s->processBlock (input, output, { midiIn, midiIn + midiInCount });
+            s->processBlock (context);
     }
 
     static soul::Type getVectorType (int size)    { return (soul::Type::createVector (soul::PrimitiveType::float32, static_cast<size_t> (size))); }

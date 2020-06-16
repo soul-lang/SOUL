@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include "../../3rdParty/choc/containers/choc_Value.h"
+#include "../../3rdParty/choc/audio/choc_MIDI.h"
 
 namespace soul
 {
@@ -97,6 +98,31 @@ struct Endpoint
     EndpointType type;
     std::vector<choc::value::Type> valueTypes;
     choc::value::Value annotation;
+};
+
+
+//==============================================================================
+/** This holds a short MIDI message and a frame-based timestamp, and is used in
+    various places where buffers of time-stamped MIDI messages are needed.
+ */
+struct MIDIEvent
+{
+    uint32_t frameIndex = 0;
+    choc::midi::ShortMessage message;
+
+    int32_t getPackedMIDIData() const
+    {
+        return static_cast<int32_t> ((message.data[0] << 16)
+                                      | (message.data[1] << 8)
+                                      | message.data[2]);
+    }
+
+    static MIDIEvent fromPackedMIDIData (uint32_t frame, int32_t packedData)
+    {
+        return { frame, { static_cast<uint8_t> (packedData >> 16),
+                          static_cast<uint8_t> (packedData >> 8),
+                          static_cast<uint8_t> (packedData) } };
+    }
 };
 
 //==============================================================================

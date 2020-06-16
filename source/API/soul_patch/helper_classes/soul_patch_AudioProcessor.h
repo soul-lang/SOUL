@@ -299,14 +299,18 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             if (preprocessInputData != nullptr)
                 preprocessInputData (inputBuffer);
 
+            // we're reinterpret-casting between these types to avoid having to include choc::midi::ShortMessage in
+            // the public patch API headers, so this just checks that the layout is actually the same.
+            static_assert (sizeof (MIDIEvent) == sizeof (soul::patch::MIDIMessage));
+
             rc.inputChannels = inputBuffer.getArrayOfWritePointers();
             rc.numInputChannels = (uint32_t) numPatchInputChannels;
             rc.outputChannels = outputBuffer.getArrayOfWritePointers();
             rc.numOutputChannels = (uint32_t) numPatchOutputChannels;
             rc.numFrames = (uint32_t) numFrames;
-            rc.incomingMIDI = std::addressof (messageSpaceIn[0]);
+            rc.incomingMIDI = reinterpret_cast<const soul::patch::MIDIMessage*> (std::addressof (messageSpaceIn[0]));
             rc.numMIDIMessagesIn = 0;
-            rc.outgoingMIDI = std::addressof (messageSpaceOut[0]);
+            rc.outgoingMIDI = reinterpret_cast<soul::patch::MIDIMessage*> (std::addressof (messageSpaceOut[0]));
             rc.maximumMIDIMessagesOut = (uint32_t) messageSpaceOut.size();
             rc.numMIDIMessagesOut = 0;
 
@@ -328,14 +332,10 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                         break;
 
                     if (numBytesOfMidiData < 4)
-                    {
-                        auto& m = messageSpaceIn[i++];
-
-                        m.frameIndex = (uint32_t) samplePosition;
-                        m.byte0 = (uint8_t) midiData[0];
-                        m.byte1 = (uint8_t) midiData[1];
-                        m.byte2 = (uint8_t) midiData[2];
-                    }
+                        messageSpaceIn[i++] = { static_cast<uint32_t> (samplePosition),
+                                                { static_cast<uint8_t> (midiData[0]),
+                                                  static_cast<uint8_t> (midiData[1]),
+                                                  static_cast<uint8_t> (midiData[2]) } };
                 }
 
                 rc.numMIDIMessagesIn = (uint32_t) i;
@@ -354,11 +354,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                 auto numMessagesOut = std::min (rc.numMIDIMessagesOut, rc.maximumMIDIMessagesOut);
 
                 for (uint32_t i = 0; i < numMessagesOut; ++i)
-                {
-                    auto message = messageSpaceOut[i];
-                    uint8_t bytes[3] = { message.byte0, message.byte1, message.byte2 };
-                    midi.addEvent (bytes, 3, (int) message.frameIndex);
-                }
+                    midi.addEvent (messageSpaceOut[i].message.data, 3, (int) messageSpaceOut[i].frameIndex);
             }
         }
 
@@ -482,7 +478,7 @@ private:
 
     juce::AudioBuffer<float> inputBuffer;
     juce::AudioBuffer<float> outputBuffer;
-    std::vector<soul::patch::MIDIMessage> messageSpaceIn, messageSpaceOut;
+    std::vector<soul::MIDIEvent> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
     const int millisecsBetweenFileChecks;

@@ -27,7 +27,6 @@ namespace soul
     A wrapper to simplify the job of rendering a Performer which only needs to deal
     with a synchronous set of audio, MIDI and parameter data (i.e. standard plugin stuff).
 */
-template <typename MIDIEventType>
 struct AudioMIDIWrapper
 {
     AudioMIDIWrapper (Performer& p)  : performer (p)
@@ -130,7 +129,7 @@ struct AudioMIDIWrapper
                 {
                     for (uint32_t i = 0; i < rc.midiInCount; ++i)
                     {
-                        midiEvent.getObjectMemberAt (0).value.set ((int32_t) getPackedMIDIEvent (rc.midiIn[i]));
+                        midiEvent.getObjectMemberAt (0).value.set (rc.midiIn[i].getPackedMIDIData());
                         perf.addInputEvent (endpointHandle, midiEvent);
                     }
                 });
@@ -188,9 +187,8 @@ struct AudioMIDIWrapper
                     perf.iterateOutputEvents (endpointHandle, [&rc] (uint32_t frameOffset, const choc::value::ValueView& event) -> bool
                     {
                         if (rc.midiOutCount < rc.midiOutCapacity)
-                            createMIDIMessage (rc.midiOut[rc.midiOutCount++],
-                                               rc.frameOffset + frameOffset,
-                                               (uint32_t) event["midiBytes"].getInt32());
+                            rc.midiOut[rc.midiOutCount++] = MIDIEvent::fromPackedMIDIData (rc.frameOffset + frameOffset,
+                                                                                           event["midiBytes"].getInt32());
 
                         return true;
                     });
@@ -234,8 +232,8 @@ struct AudioMIDIWrapper
 
     void render (DiscreteChannelSet<const float> input,
                  DiscreteChannelSet<float> output,
-                 const MIDIEventType* midiIn,
-                 MIDIEventType* midiOut,
+                 const MIDIEvent* midiIn,
+                 MIDIEvent* midiOut,
                  uint32_t midiInCount,
                  uint32_t midiOutCapacity,
                  uint32_t& numMIDIOutMessages)
@@ -255,8 +253,7 @@ struct AudioMIDIWrapper
 
             for (auto& op : postRenderOperations)
                 op (rc);
-        },
-        [] (const MIDIEventType& midi) { return getFrameIndex (midi); });
+        });
 
         numMIDIOutMessages = context.midiOutCount;
         totalFramesRendered += input.numFrames;
@@ -270,12 +267,12 @@ struct AudioMIDIWrapper
         uint64_t totalFramesRendered = 0;
         DiscreteChannelSet<const float> inputChannels;
         DiscreteChannelSet<float> outputChannels;
-        const MIDIEventType* midiIn;
-        MIDIEventType* midiOut;
+        const MIDIEvent* midiIn;
+        MIDIEvent* midiOut;
         uint32_t frameOffset = 0, midiInCount = 0, midiOutCount = 0, midiOutCapacity = 0;
 
-        template <typename RenderBlockFn, typename GetMIDIFrameFn>
-        void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render, GetMIDIFrameFn&& getMIDIFrame)
+        template <typename RenderBlockFn>
+        void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render)
         {
             auto framesRemaining = inputChannels.numFrames;
             auto context = *this;
@@ -288,7 +285,7 @@ struct AudioMIDIWrapper
 
                 while (midiInCount != 0)
                 {
-                    auto time = getMIDIFrame (*midiIn);
+                    auto time = midiIn->frameIndex;
 
                     if (time > frameOffset)
                     {

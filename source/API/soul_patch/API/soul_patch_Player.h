@@ -39,7 +39,8 @@ struct MIDIMessage
     */
     uint32_t frameIndex;
 
-    uint8_t byte0, byte1, byte2;
+    /** The 3 bytes of MIDI data (plus a dummy byte to align it when packed). */
+    uint8_t data[4];
 };
 
 //==============================================================================

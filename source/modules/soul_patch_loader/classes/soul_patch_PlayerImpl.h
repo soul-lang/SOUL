@@ -318,10 +318,14 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
              || rc.numOutputChannels != wrapper.getExpectedNumOutputChannels())
             return RenderResult::wrongNumberOfChannels;
 
+        // we're reinterpret-casting between these types to avoid having to include choc::midi::ShortMessage in
+        // the public patch API headers, so this just checks that the layout is actually the same.
+        static_assert (sizeof (MIDIEvent) == sizeof (soul::patch::MIDIMessage));
+
         wrapper.render ({ rc.inputChannels,  (uint32_t) rc.numInputChannels,  0, (uint32_t) rc.numFrames },
                         { rc.outputChannels, (uint32_t) rc.numOutputChannels, 0, (uint32_t) rc.numFrames },
-                        rc.incomingMIDI,
-                        rc.outgoingMIDI,
+                        reinterpret_cast<const MIDIEvent*> (rc.incomingMIDI),
+                        reinterpret_cast<MIDIEvent*> (rc.outgoingMIDI),
                         rc.numMIDIMessagesIn,
                         rc.maximumMIDIMessagesOut,
                         rc.numMIDIMessagesOut);
@@ -445,7 +449,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
 
     PatchPlayerConfiguration config;
     std::unique_ptr<soul::Performer> performer;
-    AudioMIDIWrapper<MIDIMessage> wrapper;
+    AudioMIDIWrapper wrapper;
 
     static constexpr int64_t maxRampLength = 0x7fffffff;
 };

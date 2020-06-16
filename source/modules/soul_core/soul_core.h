@@ -45,7 +45,6 @@
 #endif
 
 #include "../../3rdParty/choc/containers/choc_Value.h"
-#include "../../3rdParty/choc/audio/choc_MIDI.h"
 #include "../../3rdParty/choc/text/choc_StringUtilities.h"
 #include "../../3rdParty/choc/text/choc_FloatToString.h"
 #include "../../3rdParty/choc/math/choc_MathHelpers.h"
