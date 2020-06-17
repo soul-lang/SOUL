@@ -148,6 +148,8 @@ struct BuildSettings
     int          optimisationLevel  = -1;
     int32_t      sessionID          = 0;
     std::string  mainProcessor;
+
+    choc::value::Value customSettings;
 };
 
 /**
@@ -163,7 +165,6 @@ struct BuildBundle
 
     std::vector<SourceFile> sourceFiles;
     BuildSettings settings;
-    choc::value::Value customSettings;
 };
 
 
