@@ -574,6 +574,7 @@ private:
         if (isEventFunction)                              fn.functionType = FunctionType::event();
         else if (fn.name == getRunFunctionName())         fn.functionType = FunctionType::run();
         else if (fn.name == getUserInitFunctionName())    fn.functionType = FunctionType::userInit();
+        else if (fn.name == getSystemInitFunctionName())  fn.functionType = FunctionType::systemInit();
 
         if (module->findFunction (fn.name) != nullptr)
             throwError (Errors::nameInUse (fn.name));

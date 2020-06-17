@@ -276,7 +276,11 @@ Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation 
     try
     {
         CompileMessageHandler handler (messageList);
-        return heart::Parser::parse (std::move (asmCode));
+        auto program = heart::Parser::parse (std::move (asmCode));
+
+        heart::Checker::sanityCheck (program);
+
+        return program;
     }
     catch (AbortCompilationException) {}
 
