@@ -48,17 +48,6 @@ bool Module::isProcessor() const        { return moduleType == ModuleType::proce
 bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
 bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
 
-std::vector<pool_ref<heart::Function>> Module::getExportedFunctions() const
-{
-    std::vector<pool_ref<heart::Function>> result;
-
-    for (auto& f : functions)
-        if (f->isExported)
-            result.push_back (f);
-
-    return result;
-}
-
 pool_ptr<heart::Function> Module::findRunFunction() const
 {
     for (auto& f : functions)
