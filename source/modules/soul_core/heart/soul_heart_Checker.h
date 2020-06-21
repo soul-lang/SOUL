@@ -69,7 +69,12 @@ struct heart::Checker
 
                     if (conn->sourceProcessor != nullptr)
                     {
-                        sourceOutput = program.getModuleWithName (conn->sourceProcessor->sourceName)->findOutput (conn->sourceEndpoint);
+                        auto sourceModule = program.getModuleWithName (conn->sourceProcessor->sourceName);
+
+                        if (sourceModule == nullptr)
+                            conn->location.throwError (Errors::cannotFindProcessor (conn->sourceProcessor->sourceName));
+
+                        sourceOutput = sourceModule->findOutput (conn->sourceEndpoint);
                         sourceInstanceArraySize = conn->sourceEndpointIndex.has_value() ? conn->sourceProcessor->arraySize : 1;
                         sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
                     }
@@ -80,7 +85,12 @@ struct heart::Checker
 
                     if (conn->destProcessor != nullptr)
                     {
-                        destInput = program.getModuleWithName (conn->destProcessor->sourceName)->findInput (conn->destEndpoint);
+                        auto destModule = program.getModuleWithName (conn->destProcessor->sourceName);
+
+                        if (destModule == nullptr)
+                            conn->location.throwError (Errors::cannotFindProcessor (conn->destProcessor->sourceName));
+
+                        destInput = destModule->findInput (conn->destEndpoint);
                         destInstanceArraySize = conn->destEndpointIndex.has_value() ? conn->destProcessor->arraySize : 1;
                         destDescription = conn->destProcessor->instanceName + "." + destDescription;
                     }

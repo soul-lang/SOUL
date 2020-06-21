@@ -1644,6 +1644,9 @@ private:
     {
         if (matchIf (HEARTOperator::openBracket))
         {
+            if (! elementType.canBeArrayElementType())
+                throwError (Errors::wrongTypeForArrayElement());
+
             if (matchIf (HEARTOperator::closeBracket))
                 return parseArrayTypeSuffixes (elementType.createUnsizedArray());
 
