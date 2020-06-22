@@ -504,7 +504,6 @@ private:
                 return m;
 
         throwError (Errors::cannotFindProcessor (instanceName));
-        return {};
     }
 
     void scanStateVariable (ScannedTopLevelItem& item)
@@ -785,6 +784,9 @@ private:
 
         if (matchIf ("advance"))
         {
+            if (! state.function.functionType.isRun())
+                location.throwError (Errors::advanceCannotBeCalledHere());
+
             expectSemicolon();
             builder.addAdvance (location);
             return true;
@@ -985,6 +987,9 @@ private:
         if (src == nullptr)
             throwError (Errors::cannotFindInput (name));
 
+        if (! (state.function.functionType.isRun()))
+            throwError (Errors::streamsCanOnlyBeUsedInRun());
+
         builder.addReadStream (location, *target.create (state, builder, src->getSingleDataType()), *src);
         expectSemicolon();
     }
@@ -1020,13 +1025,10 @@ private:
         }
         else
         {
-            if (target->arraySize == 0)
-                throwError (Errors::wrongTypeForEndpoint());
+            if (! target->arraySize.has_value())
+                throwError (Errors::endpointIndexInvalid());
 
-            bool validElementType = index == nullptr ? target->canHandleType (type)
-                                                     : target->canHandleElementType (type);
-
-            if (! validElementType)
+            if (! target->canHandleElementType (type))
                 throwError (Errors::wrongTypeForEndpoint());
         }
 
@@ -1154,6 +1156,10 @@ private:
                 return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
 
             expect (HEARTOperator::closeBracket);
+
+            if (! lhs.getType().isArrayOrVector())
+                location.throwError (Errors::expectedArrayOrVector());
+
             return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
         }
 
