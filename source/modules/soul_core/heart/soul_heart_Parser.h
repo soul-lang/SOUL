@@ -333,12 +333,9 @@ private:
         }
 
         inputDeclaration.endpointType = parseEndpointType (*this);
+        inputDeclaration.dataTypes = readEventTypeList();
 
-        if (inputDeclaration.isEventEndpoint())
-            inputDeclaration.dataTypes = readEventTypeList();
-        else
-            inputDeclaration.dataTypes.emplace_back (readValueType());
-
+        inputDeclaration.checkDataTypesValid (location);
         parseAnnotation (inputDeclaration.annotation);
         expectSemicolon();
     }
@@ -354,12 +351,9 @@ private:
         }
 
         output.endpointType = parseEndpointType (*this);
+        output.dataTypes = readEventTypeList();
 
-        if (output.isEventEndpoint())
-            output.dataTypes = readEventTypeList();
-        else
-            output.dataTypes.emplace_back (readValueType());
-
+        output.checkDataTypesValid (location);
         parseAnnotation (output.annotation);
         expectSemicolon();
     }
@@ -399,7 +393,7 @@ private:
         if (infOrNaN.isValid())
             return infOrNaN;
 
-        return {};
+        location.throwError (Errors::missingAnnotationValue());
     }
 
     void parseUsing()

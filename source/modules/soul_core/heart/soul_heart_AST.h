@@ -135,6 +135,42 @@ struct heart
         bool isValueEndpoint() const      { return isValue (endpointType); }
         bool isConsoleEndpoint() const    { return isEventEndpoint() && name.toString() == "_console"; }
 
+        template <typename Thrower>
+        void checkDataTypesValid (Thrower&& errorLocation)
+        {
+            if (isStreamEndpoint())
+            {
+                if (dataTypes.size() != 1)
+                    errorLocation.throwError (Errors::noMultipleTypesOnEndpoint());
+
+                auto dataType = dataTypes.front();
+
+                if (! dataType.isPrimitiveOrVector())
+                    errorLocation.throwError (Errors::illegalTypeForEndpoint());
+
+                if (dataType.isVoid())
+                    errorLocation.throwError (Errors::voidCannotBeUsedForEndpoint());
+            }
+
+            // Ensure all of the types are unique
+            {
+                std::vector<Type> processedTypes;
+
+                for (auto& dataType : dataTypes)
+                {
+                    if (dataType.isVoid())
+                        errorLocation.throwError (Errors::voidCannotBeUsedForEndpoint());
+
+                    for (auto& processedType : processedTypes)
+                        if (processedType.isEqual (dataType, Type::ignoreVectorSize1))
+                            errorLocation.throwError (Errors::duplicateTypesInList (processedType.getDescription(),
+                                                                                    dataType.getDescription()));
+
+                    processedTypes.push_back (dataType);
+                }
+            }
+        }
+
         bool canHandleType (const Type& t) const
         {
             for (auto& type : dataTypes)

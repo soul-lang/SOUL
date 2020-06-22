@@ -102,6 +102,7 @@ namespace soul
     X(duplicateTypesInList,                 "Duplicate types found in type list: $0$ and $1$") \
     X(unresolvedAnnotation,                 "Cannot resolve constant value in annotation") \
     X(illegalTypeForEndpoint,               "Only primitives or vectors supported by this endpoint type") \
+    X(voidCannotBeUsedForEndpoint,          "void is not a valid endpoint type") \
     X(noMultipleTypesOnEndpoint,            "Multiple data types not supported by this endoint type") \
     X(incompatibleRatesOnEndpoints,         "Endpoints have incompatible sample rates: $0$ and $1$") \
     X(noSampleRateForEndpoint,              "No endpoint specifies a valid sample rate") \
@@ -266,6 +267,7 @@ namespace soul
     X(functionBlockCantBeParameterised,     "Function block $0$ cannot be parameterised") \
     X(branchInvalidParameters,              "Block $0$ terminator has invalid block paramteters") \
     X(blockParametersInvalid,               "Block $0$ parameters invalid") \
+    X(missingAnnotationValue,               "Missing annotation value") \
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \
