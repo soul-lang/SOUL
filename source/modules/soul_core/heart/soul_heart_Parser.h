@@ -1052,12 +1052,20 @@ private:
 
     heart::Block& findBlock (const FunctionParseState& state, Identifier name)
     {
-        for (auto& b : state.blocks)
-            if (b.block.name == name)
-                return b.block;
+        const FunctionParseState::BlockCode* blockCode = nullptr;
 
-        throwError (Errors::cannotFind (name));
-        return state.blocks.front().block;
+        for (auto& b : state.blocks)
+        {
+            if (b.block.name == name)
+            {
+                blockCode = &b;
+            }
+        }
+
+        if (blockCode == nullptr)
+            throwError (Errors::cannotFind (name));
+
+        return blockCode->block;
     }
 
     heart::Block& readBlockNameAndFind (const FunctionParseState& state)
@@ -1100,6 +1108,9 @@ private:
 
     heart::Expression& parseArraySlice (const FunctionParseState& state, heart::Expression& lhs, int64_t start, int64_t end)
     {
+        if (! lhs.getType().isArrayOrVector())
+            throwError (Errors::targetIsNotAnArray());
+
         if (! lhs.getType().isValidArrayOrVectorRange (start, end))
             throwError (Errors::illegalSliceSize());
 
