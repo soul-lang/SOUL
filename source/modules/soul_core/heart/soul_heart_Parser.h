@@ -499,11 +499,21 @@ private:
 
     pool_ptr<heart::ProcessorInstance> findProcessorInstance (const std::string& instanceName)
     {
-        for (auto m : module->processorInstances)
-            if (m->instanceName == instanceName)
-                return m;
+        pool_ptr<heart::ProcessorInstance> result;
 
-        throwError (Errors::cannotFindProcessor (instanceName));
+        for (auto m : module->processorInstances)
+        {
+            if (m->instanceName == instanceName)
+            {
+                result = m;
+                break;
+            }
+        }
+
+        if (result == nullptr)
+            throwError (Errors::cannotFindProcessor (instanceName));
+
+        return result;
     }
 
     void scanStateVariable (ScannedTopLevelItem& item)
