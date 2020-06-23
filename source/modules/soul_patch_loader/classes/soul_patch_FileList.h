@@ -71,7 +71,7 @@ struct FileList
             throwPatchLoadError ("Empty file name");
 
         if (root != nullptr)
-            if (auto f = root->getChildFile (relativePath.c_str()))
+            if (auto f = VirtualFile::Ptr (root->getChildFile (relativePath.c_str())))
                 return f;
 
         throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath));

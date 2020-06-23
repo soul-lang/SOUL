@@ -76,7 +76,7 @@ struct Parameter  : public RefCountedBase
     /** Returns one of the properties from the annotation on the SOUL stream.
         If there's no property with this name, it will return a nullptr.
     */
-    virtual String::Ptr getProperty (const char* propertyName) const = 0;
+    virtual String* getProperty (const char* propertyName) const = 0;
 
     /** Returns the names of all the annotations on the SOUL stream. */
     virtual Span<const char*> getPropertyNames() const = 0;

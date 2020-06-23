@@ -31,6 +31,11 @@
 #pragma pack (push, 1)
 #define SOUL_PATCH_MAIN_INCLUDE_FILE 1
 
+#if __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
 namespace soul
 {
 namespace patch
@@ -43,10 +48,6 @@ class RefCountedBase
 public:
     virtual void addRef() noexcept = 0;
     virtual void release() noexcept = 0;
-
-protected:
-    RefCountedBase() = default;
-    virtual ~RefCountedBase() = default;
 };
 
 //==============================================================================
@@ -60,7 +61,7 @@ struct RefCountingPtr
     RefCountingPtr() noexcept = default;
     RefCountingPtr (decltype(nullptr)) noexcept {}
     ~RefCountingPtr() noexcept                                                     { release(); }
-    explicit RefCountingPtr (ObjectType* object) noexcept : source (object)        { addRef(); }
+    explicit RefCountingPtr (ObjectType* object) noexcept : source (object)        {}
     RefCountingPtr (const RefCountingPtr& other) noexcept : source (other.source)  { addRef(); }
     RefCountingPtr (RefCountingPtr&& other) noexcept : source (other.source)       { other.source = {}; }
     RefCountingPtr& operator= (const RefCountingPtr& other) noexcept               { other.addRef(); release(); source = other.source; return *this; }
@@ -70,6 +71,7 @@ struct RefCountingPtr
     ObjectType& operator*() const noexcept                { return *source; }
     ObjectType* operator->() const noexcept               { return source; }
     operator bool() const noexcept                        { return source != nullptr; }
+    ObjectType* incrementAndGetPointer() const noexcept   { addRef(); return source; }
 
     bool operator== (decltype(nullptr)) const noexcept    { return source == nullptr; }
     bool operator!= (decltype(nullptr)) const noexcept    { return source != nullptr; }
@@ -139,3 +141,7 @@ struct Span
 
 #pragma pack (pop)
 #undef SOUL_PATCH_MAIN_INCLUDE_FILE
+
+#if __clang__
+ #pragma clang diagnostic pop
+#endif

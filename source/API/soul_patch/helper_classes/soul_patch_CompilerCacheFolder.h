@@ -15,6 +15,11 @@
 
 #include "../API/soul_patch.h"
 
+#if __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
 namespace soul
 {
 namespace patch
@@ -25,7 +30,7 @@ namespace patch
     Implements a simple CompilerCache that stores the cached object code chunks
     as files in a folder.
 */
-struct CompilerCacheFolder   : public CompilerCache
+struct CompilerCacheFolder final  : public CompilerCache
 {
     /** Creates a cache in the given folder (which must exist!) */
     CompilerCacheFolder (juce::File cacheFolder, uint32_t maxNumFilesToCache)
@@ -34,7 +39,7 @@ struct CompilerCacheFolder   : public CompilerCache
         purgeOldestFiles (maxNumFiles);
     }
 
-    ~CompilerCacheFolder() override = default;
+    ~CompilerCacheFolder() = default;
 
     void storeItemInCache (const char* key, const void* sourceData, uint64_t size) override
     {
@@ -122,3 +127,7 @@ private:
 
 } // namespace patch
 } // namespace soul
+
+#if __clang__
+ #pragma clang diagnostic pop
+#endif

@@ -70,7 +70,7 @@ public:
         If this class doesn't want to modify the file, it can just return a nullptr to let
         the compiler handle the file in its default way.
     */
-    virtual VirtualFile::Ptr preprocessSourceFile (VirtualFile& inputFile) = 0;
+    virtual VirtualFile* preprocessSourceFile (VirtualFile& inputFile) = 0;
 };
 
 //==============================================================================
@@ -96,7 +96,7 @@ public:
         supplied will be fully-qualified, and the method must return an audio file that
         can be successfully loaded to provide suitable data for the type of that variable.
     */
-    virtual VirtualFile::Ptr getExternalFile (const char* externalVariableName) = 0;
+    virtual VirtualFile* getExternalFile (const char* externalVariableName) = 0;
 };
 
 //==============================================================================
@@ -131,7 +131,7 @@ public:
     using Ptr = RefCountingPtr<PatchInstance>;
 
     /** Returns the file from which this instance was created. */
-    virtual VirtualFile::Ptr getLocation() = 0;
+    virtual VirtualFile* getLocation() = 0;
 
     /** Returns an up-to-date description of this patch.
         If the patch is being loaded from a disk file, this method may check it
@@ -155,11 +155,11 @@ public:
         The various other custom callbacks are optional parameters, and can be
         nullptr if not needed.
     */
-    virtual PatchPlayer::Ptr compileNewPlayer (const PatchPlayerConfiguration&,
-                                               CompilerCache* cacheToUse,
-                                               SourceFilePreprocessor* preprocessor,
-                                               ExternalDataProvider* externalDataProvider,
-                                               ConsoleMessageHandler* consoleHandler) = 0;
+    virtual PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration&,
+                                           CompilerCache* cacheToUse,
+                                           SourceFilePreprocessor* preprocessor,
+                                           ExternalDataProvider* externalDataProvider,
+                                           ConsoleMessageHandler* consoleHandler) = 0;
 };
 
 

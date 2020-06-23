@@ -24,17 +24,17 @@ namespace soul::patch
 /**
     Implementation of the PatchInstance interface.
 */
-struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
+struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInstanceImpl>
 {
     PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, VirtualFile::Ptr f)
         : performerFactory (std::move (factory)), root (std::move (f))
     {
-        if (auto name = root->getName())
+        if (auto name = String::Ptr (root->getName()))
         {
             fileList.manifestName = name.toString<std::string>();
 
             if (endsWith (fileList.manifestName, getManifestSuffix()))
-                fileList.root = root->getParent();
+                fileList.root = VirtualFile::Ptr (root->getParent());
         }
     }
 
@@ -60,9 +60,9 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
         }
     }
 
-    VirtualFile::Ptr getLocation() override
+    VirtualFile* getLocation() override
     {
-        return root;
+        return root.incrementAndGetPointer();
     }
 
     Description getDescription() override
@@ -77,7 +77,7 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
         return fileList.getMostRecentModificationTime();
     }
 
-    PatchPlayer::Ptr compileNewPlayer (const PatchPlayerConfiguration& config,
+    PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration& config,
                                        CompilerCache* cache,
                                        SourceFilePreprocessor* preprocessor,
                                        ExternalDataProvider* externalDataProvider,
@@ -112,7 +112,7 @@ struct PatchInstanceImpl  : public RefCountHelper<PatchInstance>
             patchImpl->updateCompileMessageStatus();
         }
 
-        return patch;
+        return patch.incrementAndGetPointer();
     }
 
     std::unique_ptr<soul::PerformerFactory> performerFactory;

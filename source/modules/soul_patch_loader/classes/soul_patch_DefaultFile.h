@@ -23,21 +23,21 @@ namespace soul::patch
 
 //==============================================================================
 /** A simple URL-based implementation of VirtualFile */
-struct RemoteFile  : public RefCountHelper<VirtualFile>
+struct RemoteFile final  : public RefCountHelper<VirtualFile, RemoteFile>
 {
     RemoteFile (juce::URL u) : url (std::move (u)) {}
-    ~RemoteFile() override = default;
+    ~RemoteFile() = default;
 
-    String::Ptr getName() override                 { return makeString (url.getFileName()); }
-    String::Ptr getAbsolutePath() override         { return makeString (url.toString (true)); }
-    VirtualFile::Ptr getParent() override          { return VirtualFile::Ptr (new RemoteFile (url.getParentURL())); }
+    String* getName() override                     { return makeString (url.getFileName()); }
+    String* getAbsolutePath() override             { return makeString (url.toString (true)); }
+    VirtualFile* getParent() override              { return new RemoteFile (url.getParentURL()); }
     int64_t getSize() override                     { return -1; }
     int64_t getLastModificationTime() override     { return -1; }
 
-    VirtualFile::Ptr getChildFile (const char* path) override
+    VirtualFile* getChildFile (const char* path) override
     {
         if (isValidPathString (path))
-            return VirtualFile::Ptr (new RemoteFile (url.getChildURL (juce::CharPointer_UTF8 (path))));
+            return new RemoteFile (url.getChildURL (juce::CharPointer_UTF8 (path)));
 
         return {};
     }
@@ -86,22 +86,22 @@ struct RemoteFile  : public RefCountHelper<VirtualFile>
 
 //==============================================================================
 /** A local-file-based implementation of VirtualFile */
-struct LocalFile  : public RefCountHelper<VirtualFile>
+struct LocalFile final  : public RefCountHelper<VirtualFile, LocalFile>
 {
     LocalFile (juce::File f) : file (std::move (f)) {}
     LocalFile (const std::string& path) : LocalFile (juce::File::getCurrentWorkingDirectory().getChildFile (path)) {}
-    ~LocalFile() override = default;
+    ~LocalFile() = default;
 
-    String::Ptr getName() override                 { return makeString (file.getFileName()); }
-    String::Ptr getAbsolutePath() override         { return makeString (file.getFullPathName()); }
-    VirtualFile::Ptr getParent() override          { return VirtualFile::Ptr (new LocalFile (file.getParentDirectory())); }
+    String* getName() override                     { return makeStringPtr (file.getFileName().toStdString()); }
+    String* getAbsolutePath() override             { return makeStringPtr (file.getFullPathName().toStdString()); }
+    VirtualFile* getParent() override              { return new LocalFile (file.getParentDirectory()); }
     int64_t getSize() override                     { return file.exists() ? file.getSize() : 0; }
     int64_t getLastModificationTime() override     { return file.exists() ? file.getLastModificationTime().toMilliseconds() : -1; }
 
-    VirtualFile::Ptr getChildFile (const char* path) override
+    VirtualFile* getChildFile (const char* path) override
     {
         if (isValidPathString (path))
-            return VirtualFile::Ptr (new LocalFile (file.getChildFile (juce::CharPointer_UTF8 (path))));
+            return new LocalFile (file.getChildFile (juce::CharPointer_UTF8 (path)));
 
         return {};
     }

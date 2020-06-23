@@ -24,14 +24,14 @@ namespace soul::patch
 /**
     Implementation of the PatchPlayer interface.
 */
-struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
+struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerImpl>
 {
     PatchPlayerImpl (FileList f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
         : fileList (std::move (f)), config (c), performer (std::move (p)), wrapper (*performer)
     {
     }
 
-    ~PatchPlayerImpl() override
+    ~PatchPlayerImpl()
     {
         if (performer != nullptr)
         {
@@ -62,7 +62,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             VirtualFile::Ptr source;
 
             if (preprocessor != nullptr)
-                source = preprocessor->preprocessSourceFile (*fileState.file);
+                source = VirtualFile::Ptr (preprocessor->preprocessSourceFile (*fileState.file));
 
             if (source == nullptr)
                 source = fileState.file;
@@ -213,7 +213,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     {
         if (externalDataProvider != nullptr)
             if (auto file = externalDataProvider->getExternalFile (ev.name.c_str()))
-                return AudioFileToValue::load (std::move (file), ev.annotation);
+                return AudioFileToValue::load (VirtualFile::Ptr (file), ev.annotation);
 
         auto externals = fileList.getExternalsList();
 
@@ -334,7 +334,7 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
     }
 
     //==============================================================================
-    struct ParameterImpl  : public RefCountHelper<Parameter>
+    struct ParameterImpl final  : public RefCountHelper<Parameter, ParameterImpl>
     {
         ParameterImpl (const EndpointDetails& details)  : annotation (details.annotation)
         {
@@ -384,10 +384,10 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
             return std::addressof (value);
         }
 
-        String::Ptr getProperty (const char* propertyName) const override
+        String* getProperty (const char* propertyName) const override
         {
             if (annotation.hasValue (propertyName))
-                return makeString (annotation.getString (propertyName));
+                return makeStringPtr (annotation.getString (propertyName));
 
             return {};
         }

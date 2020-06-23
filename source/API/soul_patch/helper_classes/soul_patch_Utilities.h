@@ -14,6 +14,11 @@
 #include "../../../3rdParty/choc/text/choc_JSON.h"
 #include "../../../3rdParty/choc/text/choc_StringUtilities.h"
 
+#if __clang__
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
 /*
     This file contains some helper classes and functions that are handy for JUCE-based apps
     working with the patch API.
@@ -25,19 +30,19 @@ namespace patch
 {
 
 //==============================================================================
-template <typename BaseClass>
+template <typename BaseClass, typename DerivedClass>
 struct RefCountHelper  : public BaseClass
 {
     void addRef() noexcept override   { ++refCount; }
-    void release() noexcept override  { if (--refCount == 0) delete this; }
-    std::atomic<int> refCount { 0 };
+    void release() noexcept override  { if (--refCount == 0) delete static_cast<DerivedClass*> (this); }
+    std::atomic<int> refCount { 1 };
 };
 
 //==============================================================================
 /** A simple soul::patch::String implementation.
     To create one, use the various makeString() functions.
 */
-struct StringImpl : public RefCountHelper<String>
+struct StringImpl final  : public RefCountHelper<String, StringImpl>
 {
     StringImpl (std::string t) : text (std::move (t)), rawPointer (text.c_str()) {}
     const char* getCharPointer() const override    { return rawPointer; }
@@ -46,7 +51,9 @@ struct StringImpl : public RefCountHelper<String>
     const char* const rawPointer;
 };
 
-inline String::Ptr makeString (std::string s)                    { return String::Ptr (new StringImpl (std::move (s))); }
+inline String* makeStringPtr (std::string s)                     { return new StringImpl (std::move (s)); }
+
+inline String::Ptr makeString (std::string s)                    { return String::Ptr (makeStringPtr (std::move (s))); }
 inline String::Ptr makeString (const choc::value::ValueView& s)  { return makeString (s.isString() ? std::string (s.getString()) : std::string()); }
 
 #ifdef JUCE_CORE_H_INCLUDED
@@ -82,7 +89,7 @@ inline std::string loadVirtualFileAsMemoryBlock (VirtualFile& f, std::string& er
 
         if (numRead < 0)
         {
-            error = "Failed to read from file: " + f.getAbsolutePath().toString<std::string>();
+            error = "Failed to read from file: " + String::Ptr (f.getAbsolutePath()).toString<std::string>();
             return {};
         }
 
@@ -124,8 +131,8 @@ inline std::string loadVirtualFileAsString (VirtualFile& f, std::string& error)
 */
 inline VirtualFile::Ptr getFileRelativeToManifest (VirtualFile& manifest, std::string_view relativePath)
 {
-    if (auto parent = manifest.getParent())
-        return parent->getChildFile (std::string (relativePath).c_str());
+    if (auto parent = VirtualFile::Ptr (manifest.getParent()))
+        return VirtualFile::Ptr (parent->getChildFile (std::string (relativePath).c_str()));
 
     return {};
 }
@@ -163,7 +170,7 @@ inline choc::value::Value parseManifestFile (VirtualFile& manifestFile, std::str
     }
     catch (choc::json::ParseError error)
     {
-        errorMessage = manifestFile.getAbsolutePath().toString<std::string>()
+        errorMessage = String::Ptr (manifestFile.getAbsolutePath()).toString<std::string>()
                         + ":" + std::to_string (error.line) + ":" + std::to_string (error.column) + ": " + error.message;
     }
 
@@ -295,3 +302,7 @@ struct VirtualFileInputStream   : public juce::InputStream
 
 } // namespace patch
 } // namespace soul
+
+#if __clang__
+ #pragma clang diagnostic pop
+#endif

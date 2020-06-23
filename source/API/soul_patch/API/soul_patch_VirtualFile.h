@@ -27,18 +27,18 @@ public:
     using Ptr = RefCountingPtr<VirtualFile>;
 
     /** Returns the filename portion of this file. */
-    virtual String::Ptr getName() = 0;
+    virtual String* getName() = 0;
 
     /** Returns an absolute path for this file, if such a thing is appropriate. */
-    virtual String::Ptr getAbsolutePath() = 0;
+    virtual String* getAbsolutePath() = 0;
 
     /** Returns the parent folder of this file, or nullptr if that isn't possible. */
-    virtual VirtualFile::Ptr getParent() = 0;
+    virtual VirtualFile* getParent() = 0;
 
     /** Returns the file found at the given relative path, assuming this object is a folder.
         If there's no such child, it may just return a nullptr.
     */
-    virtual VirtualFile::Ptr getChildFile (const char* subPath) = 0;
+    virtual VirtualFile* getChildFile (const char* subPath) = 0;
 
     /** Returns the file size, or -1 if unknown. */
     virtual int64_t getSize() = 0;

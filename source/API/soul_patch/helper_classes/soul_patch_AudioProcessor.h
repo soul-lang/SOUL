@@ -155,7 +155,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         d.category            = desc.category;
         d.manufacturerName    = desc.manufacturer;
         d.version             = desc.version;
-        d.fileOrIdentifier    = instance.getLocation()->getAbsolutePath();
+        d.fileOrIdentifier    = String::Ptr (instance.getLocation()->getAbsolutePath());
         d.lastFileModTime     = juce::Time (instance.getLastModificationTime());
         d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
         d.uid                 = (int) desc.UID.toString<juce::String>().hash();
@@ -173,7 +173,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         if (player != nullptr)
             for (auto& p : player->getParameters())
                 if (! getFlagState (*p, "hidden", false))
-                    treeBuilder.addParam (std::make_unique<PatchParameter> (p), p->getProperty ("group"));
+                    treeBuilder.addParam (std::make_unique<PatchParameter> (p), String::Ptr (p->getProperty ("group")));
 
         setParameterTree (std::move (treeBuilder.tree));
     }
@@ -509,7 +509,7 @@ private:
 
     static bool getFlagState (const soul::patch::Parameter& param, const char* flagName, bool defaultState)
     {
-        if (auto flag = param.getProperty (flagName))
+        if (auto flag = String::Ptr (param.getProperty (flagName)))
         {
             auto s = flag.toString<juce::String>();
 
@@ -524,7 +524,7 @@ private:
     juce::File getManifestFile() const
     {
         if (auto manifest = patch->getDescription().manifestFile)
-            return juce::File::getCurrentWorkingDirectory().getChildFile (manifest->getAbsolutePath());
+            return juce::File::getCurrentWorkingDirectory().getChildFile (String::Ptr (manifest->getAbsolutePath()));
 
         return {};
     }
@@ -542,9 +542,9 @@ private:
                 {
                     if (player == nullptr || player->needsRebuilding (currentConfig))
                     {
-                        auto newPlayer = patch->compileNewPlayer (currentConfig, cache.get(),
-                                                                  preprocessor.get(), externalData.get(),
-                                                                  consoleHandler.get());
+                        auto newPlayer = soul::patch::PatchPlayer::Ptr (patch->compileNewPlayer (currentConfig, cache.get(),
+                                                                                                 preprocessor.get(), externalData.get(),
+                                                                                                 consoleHandler.get()));
 
                         if (threadShouldExit())
                             return;
@@ -619,7 +619,7 @@ private:
             : AudioProcessorParameterWithID (p->ID, p->name),
               param (std::move (p)),
               unit (param->unit.toString<juce::String>()),
-              textValues (parseTextValues (param->getProperty ("text"))),
+              textValues (parseTextValues (String::Ptr (param->getProperty ("text")))),
               range (param->minValue, param->maxValue, param->step),
               initialValue (param->initialValue),
               numDecimalPlaces (getNumDecimalPlaces (range)),
