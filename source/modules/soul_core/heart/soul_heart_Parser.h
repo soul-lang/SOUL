@@ -387,8 +387,7 @@ private:
         if (matches (Token::literalString))    { auto v = program.getStringDictionary().getHandleForString (currentStringValue); skip(); return Value::createStringLiteral(v); }
         if (matchIf ("true"))                  return Value (true);
         if (matchIf ("false"))                 return Value (false);
-        if (matchIf (HEARTOperator::minus))
-            return negate (parseAnnotationValue());
+        if (matchIf (HEARTOperator::minus))    return negate (parseAnnotationValue());
 
         auto infOrNaN = parseNaNandInfinityTokens();
 

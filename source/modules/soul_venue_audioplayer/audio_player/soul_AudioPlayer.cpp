@@ -327,15 +327,15 @@ public:
 
                     if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
                     {
-                        AllocatedChannelSet<InterleavedChannelSet<float>> interleaved (numChans, maxBlockSize);
+                        choc::buffer::InterleavedBuffer<float> interleaved (numChans, maxBlockSize);
 
                         preRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans, interleaved] (RenderContext& rc)
                         {
-                            copyChannelSet (interleaved.channelSet, rc.inputChannels.getChannelSet (startChannel, numChans));
+                            copy (interleaved, rc.inputChannels.getChannelRange ({ startChannel, startChannel + numChans }));
 
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.channelSet.data,
-                                                                                                           interleaved.channelSet.numFrames,
-                                                                                                           interleaved.channelSet.numChannels));
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.view.data.data,
+                                                                                                           interleaved.getNumFrames(),
+                                                                                                           interleaved.getNumChannels()));
                         });
                     }
                     else
@@ -354,8 +354,8 @@ public:
                     {
                         postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
                         {
-                            copyChannelSetHandlingLengthDifference (rc.outputChannels.getChannelSet (startChannel, numChans),
-                                                                    getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
+                            copyIntersectionAndClearOutside (rc.outputChannels.getChannelRange ({ startChannel, startChannel + numChans }),
+                                                             getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
                         });
                     }
                     else
@@ -374,7 +374,7 @@ public:
 
             context.iterateInBlocks (maxFramesPerBlock, [&] (RenderContext& rc)
             {
-                performer->prepare (rc.inputChannels.numFrames);
+                performer->prepare (rc.inputChannels.getNumFrames());
 
                 for (auto& op : preRenderOperations)
                     op (rc);
@@ -441,7 +441,7 @@ public:
 
         if (activeSessions.empty())
             audioSystem.setCallback (nullptr);
-    
+
         return true;
     }
 
@@ -514,8 +514,8 @@ private:
     void renderStarting (double, uint32_t) override {}
     void renderStopped() override {}
 
-    void render (DiscreteChannelSet<const float> input,
-                 DiscreteChannelSet<float> output,
+    void render (choc::buffer::ChannelArrayView<const float> input,
+                 choc::buffer::ChannelArrayView<float> output,
                  const MIDIEvent* midiIn,
                  uint32_t midiInCount) override
     {

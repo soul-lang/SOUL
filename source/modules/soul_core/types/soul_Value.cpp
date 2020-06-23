@@ -156,20 +156,20 @@ struct Value::PackedData
         return getAs<StringDictionary::Handle>();
     }
 
-    InterleavedChannelSet<float> getAsChannelSet32() const
+    choc::buffer::InterleavedView<float> getAsChannelSet32() const
     {
         auto elementType = type.getElementType();
         SOUL_ASSERT (elementType.isFloat32());
-        auto numChans = (uint32_t) elementType.getVectorSize();
-        return { reinterpret_cast<float*> (data), numChans, (uint32_t) type.getArraySize(), numChans };
+        return choc::buffer::createInterleavedView (reinterpret_cast<float*> (data),
+                                                    elementType.getVectorSize(), type.getArraySize());
     }
 
-    InterleavedChannelSet<double> getAsChannelSet64() const
+    choc::buffer::InterleavedView<double> getAsChannelSet64() const
     {
         auto elementType = type.getElementType();
         SOUL_ASSERT (elementType.isFloat64());
-        auto numChans = (uint32_t) elementType.getVectorSize();
-        return { reinterpret_cast<double*> (data), numChans, (uint32_t) type.getArraySize(), numChans };
+        return choc::buffer::createInterleavedView (reinterpret_cast<double*> (data),
+                                                    elementType.getVectorSize(), type.getArraySize());
     }
 
     void setFrom (const PackedData& other) const
@@ -455,22 +455,22 @@ Value Value::createUnsizedArray (const Type& elementType, ConstantTable::Handle 
     return v;
 }
 
-Value Value::createFloatVectorArray (InterleavedChannelSet<float> data)
+Value Value::createFloatVectorArray (choc::buffer::InterleavedView<float> data)
 {
-    Value v (Type::createVector (PrimitiveType::float32, data.numChannels).createArray (data.numFrames));
-    copyChannelSet (v.getAsChannelSet32(), data);
+    Value v (Type::createVector (PrimitiveType::float32, data.getNumChannels()).createArray (data.getNumFrames()));
+    copy (v.getAsChannelSet32(), data);
     return v;
 }
 
-Value Value::createFloatVectorArray (DiscreteChannelSet<float> data)
+Value Value::createFloatVectorArray (choc::buffer::ChannelArrayView<float> data)
 {
-    Value v (Type::createVector (PrimitiveType::float32, data.numChannels).createArray (data.numFrames));
-    copyChannelSet (v.getAsChannelSet32(), data);
+    Value v (Type::createVector (PrimitiveType::float32, data.getNumChannels()).createArray (data.getNumFrames()));
+    copy (v.getAsChannelSet32(), data);
     return v;
 }
 
-InterleavedChannelSet<float>  Value::getAsChannelSet32() const   { return getData().getAsChannelSet32(); }
-InterleavedChannelSet<double> Value::getAsChannelSet64() const   { return getData().getAsChannelSet64(); }
+choc::buffer::InterleavedView<float>  Value::getAsChannelSet32() const   { return getData().getAsChannelSet32(); }
+choc::buffer::InterleavedView<double> Value::getAsChannelSet64() const   { return getData().getAsChannelSet64(); }
 
 Value Value::zeroInitialiser (Type t)
 {

@@ -121,39 +121,39 @@ namespace WaveGenerators
 template <typename ChannelSet>
 choc::value::Value createArrayFromChannelSet (ChannelSet source, uint32_t targetNumChans)
 {
-    if (targetNumChans <= source.numChannels)
-        return choc::value::createArray (source.numFrames, targetNumChans,
+    if (targetNumChans <= source.getNumChannels())
+        return choc::value::createArray (source.getNumFrames(), targetNumChans,
                                          [&] (uint32_t frame, uint32_t chan) { return source.getSample (chan, frame); });
 
-    if (source.numChannels == 1 && targetNumChans == 2)
-        return choc::value::createArray (source.numFrames, targetNumChans,
+    if (source.getNumChannels() == 1 && targetNumChans == 2)
+        return choc::value::createArray (source.getNumFrames(), targetNumChans,
                                          [&] (uint32_t frame, uint32_t) { return source.getSample (0, frame); });
 
-    return choc::value::createArray (source.numFrames, targetNumChans,
-                                     [&] (uint32_t frame, uint32_t chan) { return source.getSampleOrZero (chan, frame); });
+    return choc::value::createArray (source.getNumFrames(), targetNumChans,
+                                     [&] (uint32_t frame, uint32_t chan) { return source.getSampleIfInRange (chan, frame); });
 }
 
-choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> source)
+choc::value::Value convertChannelSetToArray (choc::buffer::ChannelArrayView<const float> source)
 {
-    return createArrayFromChannelSet (source, source.numChannels);
+    return createArrayFromChannelSet (source, source.getNumChannels());
 }
 
-choc::value::Value convertChannelSetToArray (DiscreteChannelSet<const float> source, uint32_t targetNumChannels)
+choc::value::Value convertChannelSetToArray (choc::buffer::ChannelArrayView<const float> source, uint32_t targetNumChannels)
 {
     return createArrayFromChannelSet (source, targetNumChannels);
 }
 
-choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<float> source)
+choc::value::ValueView getChannelSetAsArrayView (choc::buffer::InterleavedView<float> source)
 {
-    return choc::value::create2DArrayView (static_cast<float*> (source.data), source.numFrames, source.numChannels);
+    return choc::value::create2DArrayView (source.data.data, source.getNumFrames(), source.getNumChannels());
 }
 
-choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<const float> source)
+choc::value::ValueView getChannelSetAsArrayView (choc::buffer::InterleavedView<const float> source)
 {
-    return choc::value::create2DArrayView (const_cast<float*> (source.data), source.numFrames, source.numChannels);
+    return choc::value::create2DArrayView (const_cast<float*> (source.data.data), source.getNumFrames(), source.getNumChannels());
 }
 
-InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray)
+choc::buffer::InterleavedView<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray)
 {
     auto frameType = sourceArray.getType().getElementType();
     uint32_t numChannels = 1;
@@ -168,7 +168,8 @@ InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueVie
         SOUL_ASSERT (frameType.isFloat32());
     }
 
-    return { static_cast<float*> (const_cast<void*> (sourceArray.getRawData())), numChannels, sourceArray.size(), numChannels };
+    return choc::buffer::createInterleavedView (static_cast<float*> (const_cast<void*> (sourceArray.getRawData())),
+                                                numChannels, sourceArray.size());
 }
 
 choc::value::Value createAudioDataObject (const choc::value::ValueView& frames, double sampleRate)
@@ -178,12 +179,12 @@ choc::value::Value createAudioDataObject (const choc::value::ValueView& frames, 
                                       "sampleRate", sampleRate);
 }
 
-choc::value::Value convertAudioDataToObject (InterleavedChannelSet<const float> source, double sampleRate)
+choc::value::Value convertAudioDataToObject (choc::buffer::InterleavedView<const float> source, double sampleRate)
 {
     return createAudioDataObject (getChannelSetAsArrayView (source), sampleRate);
 }
 
-choc::value::Value convertAudioDataToObject (DiscreteChannelSet<const float> source, double sampleRate)
+choc::value::Value convertAudioDataToObject (choc::buffer::ChannelArrayView<const float> source, double sampleRate)
 {
     return createAudioDataObject (convertChannelSetToArray (source), sampleRate);
 }
@@ -254,24 +255,25 @@ choc::value::Value generateWaveform (double frequency, double sampleRate, int64_
 {
     if (numFrames > 0 && frequency > 0 && sampleRate > 0 && numFrames < 48000 * 60 * 60 * 2)
     {
-        AllocatedChannelSet<DiscreteChannelSet<float>> data (1, (uint32_t) (numFrames * oversamplingFactor));
-        auto* samples = data.getChannel (0);
+        choc::buffer::ChannelArrayBuffer<float> data (1, (uint32_t) (numFrames * oversamplingFactor));
+        auto dst = data.getIterator (0);
 
         generator.init (frequency, sampleRate * oversamplingFactor);
 
         for (uint32_t i = 0; i < data.getNumFrames(); ++i)
         {
-            samples[i] = (float) generator.getSample();
+            *dst = (float) generator.getSample();
+            ++dst;
             generator.advance();
         }
 
         if (oversamplingFactor == 1)
-            return convertAudioDataToObject (data.channelSet, sampleRate);
+            return convertAudioDataToObject (data, sampleRate);
 
         // Resample to the right size
-        AllocatedChannelSet<DiscreteChannelSet<float>> resampledData (1, (uint32_t) (numFrames));
-        resampleToFit (resampledData.channelSet, data.channelSet);
-        return convertAudioDataToObject (resampledData.channelSet, sampleRate);
+        choc::buffer::ChannelArrayBuffer<float> resampledData (1, (uint32_t) numFrames);
+        resampleToFit (resampledData, data);
+        return convertAudioDataToObject (resampledData, sampleRate);
     }
 
     return {};

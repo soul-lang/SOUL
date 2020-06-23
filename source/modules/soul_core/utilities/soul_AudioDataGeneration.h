@@ -21,13 +21,13 @@
 namespace soul
 {
 
-choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<const float>);
-choc::value::ValueView getChannelSetAsArrayView (InterleavedChannelSet<float>);
+choc::value::ValueView getChannelSetAsArrayView (choc::buffer::InterleavedView<const float>);
+choc::value::ValueView getChannelSetAsArrayView (choc::buffer::InterleavedView<float>);
 
-InterleavedChannelSet<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray);
+choc::buffer::InterleavedView<float> getChannelSetFromArray (const choc::value::ValueView& sourceArray);
 
-choc::value::Value convertAudioDataToObject (DiscreteChannelSet<const float> data, double sampleRate);
-choc::value::Value convertAudioDataToObject (InterleavedChannelSet<const float> data, double sampleRate);
+choc::value::Value convertAudioDataToObject (choc::buffer::ChannelArrayView<const float> data, double sampleRate);
+choc::value::Value convertAudioDataToObject (choc::buffer::InterleavedView<const float> data, double sampleRate);
 
 /** Builds a suitable type of value from a generated waveform, where the
     generator function takes a phase value 0->1 and returns the amplitude -1 to 1.

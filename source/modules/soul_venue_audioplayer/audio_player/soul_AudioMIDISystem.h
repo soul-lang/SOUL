@@ -52,8 +52,8 @@ struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
     {
         virtual ~Callback() = default;
 
-        virtual void render (DiscreteChannelSet<const float> input,
-                             DiscreteChannelSet<float> output,
+        virtual void render (choc::buffer::ChannelArrayView<const float> input,
+                             choc::buffer::ChannelArrayView<float> output,
                              const MIDIEvent* midiIn, uint32_t midiInCount) = 0;
 
         virtual void renderStarting (double sampleRate, uint32_t blockSize) = 0;
@@ -180,8 +180,8 @@ private:
             std::lock_guard<decltype(callbackLock)> lock (callbackLock);
 
             if (callback != nullptr)
-                callback->render ({ inputChannelData,  (uint32_t) numInputChannels,  0, (uint32_t) numFrames },
-                                  { outputChannelData, (uint32_t) numOutputChannels, 0, (uint32_t) numFrames },
+                callback->render (choc::buffer::createChannelArrayView (inputChannelData,  (uint32_t) numInputChannels,  (uint32_t) numFrames),
+                                  choc::buffer::createChannelArrayView (outputChannelData, (uint32_t) numOutputChannels, (uint32_t) numFrames),
                                   inputMIDIBuffer.data(), static_cast<uint32_t> (inputMIDIBuffer.size()));
         }
 

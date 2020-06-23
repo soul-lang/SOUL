@@ -60,8 +60,8 @@ struct Value  final
     static Value createFromRawData (Type type, const void* data, size_t dataSize);
 
     /** Creates an array of float vectors to match the size of the data provided. */
-    static Value createFloatVectorArray (InterleavedChannelSet<float> data);
-    static Value createFloatVectorArray (DiscreteChannelSet<float> data);
+    static Value createFloatVectorArray (choc::buffer::InterleavedView<float> data);
+    static Value createFloatVectorArray (choc::buffer::ChannelArrayView<float> data);
 
     template <typename IntType>
     static Value createInt32 (IntType n)           { return Value (static_cast<int32_t> (n)); }
@@ -109,12 +109,12 @@ struct Value  final
     /** Assuming the value is an array of float32 primitives or vectors, this returns a channel set
         which points directly into the packed data.
     */
-    InterleavedChannelSet<float> getAsChannelSet32() const;
+    choc::buffer::InterleavedView<float> getAsChannelSet32() const;
 
     /** Assuming the value is an array of float64 primitives or vectors, this returns a channel set
         which points directly into the packed data.
     */
-    InterleavedChannelSet<double> getAsChannelSet64() const;
+    choc::buffer::InterleavedView<double> getAsChannelSet64() const;
 
     /** True if this Value is not an uninitialised (i.e. default-constructed) value. */
     bool isValid() const;

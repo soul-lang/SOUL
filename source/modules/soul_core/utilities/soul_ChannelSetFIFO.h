@@ -62,17 +62,17 @@ struct ChannelSetFIFO
     {
         std::lock_guard<std::mutex> lock (writeLock);
 
-        FIFO::WriteOperation w (fifo, (int) sourceData.numFrames, deadline);
+        FIFO::WriteOperation w (fifo, (int) sourceData.getNumFrames(), deadline);
 
         if (w.failed())
             return false;
 
-        copyChannelSetToFit (buffer.getSlice ((uint32_t) w.startIndex1, (uint32_t) w.blockSize1),
-                             sourceData.getSlice (0, (uint32_t) w.blockSize1));
+        copyRemappingChannels (buffer.getFrameRange ({ (uint32_t) w.startIndex1, (uint32_t) (w.startIndex1 + w.blockSize1) }),
+                               sourceData.getStart ((uint32_t) w.blockSize1));
 
         if (w.blockSize2 != 0)
-            copyChannelSetToFit (buffer.getSlice (0, (uint32_t) w.blockSize2),
-                                 sourceData.getSlice ((uint32_t) w.blockSize1, (uint32_t) w.blockSize2));
+            copyRemappingChannels (buffer.getStart ((uint32_t) w.blockSize2),
+                                   sourceData.getFrameRange ({ (uint32_t) w.blockSize1, (uint32_t) (w.blockSize1 + w.blockSize2) }));
 
         return true;
     }
@@ -86,7 +86,7 @@ struct ChannelSetFIFO
     {
         std::lock_guard<std::mutex> lock (readLock);
 
-        FIFO::ReadOperation r (fifo, (int) dest.numFrames, deadline);
+        FIFO::ReadOperation r (fifo, (int) dest.getNumFrames(), deadline);
 
         if (r.failed())
         {
@@ -94,19 +94,19 @@ struct ChannelSetFIFO
             return false;
         }
 
-        copyChannelSetToFit (dest.getSlice (0, (uint32_t) r.blockSize1),
-                             buffer.getSlice ((uint32_t) r.startIndex1, (uint32_t) r.blockSize1));
+        copyRemappingChannels (dest.getStart ((uint32_t) r.blockSize1),
+                               buffer.getFrameRange ({ (uint32_t) r.startIndex1, (uint32_t) (r.startIndex1 + r.blockSize1) }));
 
         if (r.blockSize2 != 0)
-            copyChannelSetToFit (dest.getSlice ((uint32_t) r.blockSize1, (uint32_t) r.blockSize2),
-                                 buffer.getSlice (0, (uint32_t) r.blockSize2));
+            copyRemappingChannels (dest.getFrameRange ({ (uint32_t) r.blockSize1, (uint32_t) (r.blockSize1 + r.blockSize2) }),
+                                   buffer.getStart ((uint32_t) r.blockSize2));
 
         return true;
     }
 
 private:
     //==============================================================================
-    AllocatedChannelSet<InterleavedChannelSet<float>> buffer;
+    choc::buffer::InterleavedBuffer<float> buffer;
     FIFO fifo;
     std::mutex readLock, writeLock;
 };

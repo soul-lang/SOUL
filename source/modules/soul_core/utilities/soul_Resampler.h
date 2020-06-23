@@ -23,21 +23,21 @@ namespace soul
 
 /** A sinc interpolator that can resample a chunk of audio data to fit a new number of frames. */
 template <typename DestType, typename SourceType>
-void resampleToFit (DestType dest, SourceType source, int zeroCrossings = 50)
+void resampleToFit (DestType&& dest, const SourceType& source, int zeroCrossings = 50)
 {
-    SOUL_ASSERT (dest.numChannels == source.numChannels);
-    using SampleType = typename DestType::SampleType;
+    SOUL_ASSERT (dest.getNumChannels() == source.getNumChannels());
+    using SampleType = typename std::remove_reference<DestType>::type::Sample;
     static constexpr auto localPi = SampleType (soul::pi);
 
     struct Resampler
     {
-        static void resample (DestType dest, const SourceType& source, int zeroCrossings)
+        static void resample (choc::buffer::MonoView<SampleType> dest, const choc::buffer::MonoView<SampleType>& source, int zeroCrossings)
         {
-            if (dest.numFrames < source.numFrames)
+            if (dest.getNumFrames() < source.getNumFrames())
             {
-                AllocatedChannelSet<DestType> bandlimitedInput (1, source.numFrames);
-                resample (bandlimitedInput.channelSet, source, float (dest.numFrames) / float (source.numFrames), zeroCrossings);
-                resample (dest, bandlimitedInput.channelSet, 1.0f, zeroCrossings);
+                choc::buffer::MonoBuffer<SampleType> bandlimitedInput (1, source.getNumFrames());
+                resample (bandlimitedInput, source, float (dest.getNumFrames()) / float (source.getNumFrames()), zeroCrossings);
+                resample (dest, bandlimitedInput, 1.0f, zeroCrossings);
             }
             else
             {
@@ -45,25 +45,27 @@ void resampleToFit (DestType dest, SourceType source, int zeroCrossings = 50)
             }
         }
 
-        static void resample (DestType dest, const SourceType& source, float ratio, int zeroCrossings) noexcept
+        static void resample (choc::buffer::MonoView<SampleType> dest, const choc::buffer::MonoView<SampleType>& source, float ratio, int zeroCrossings) noexcept
         {
-            auto sampleIncrement = double (source.numFrames) / double (dest.numFrames);
-            auto destFrames = dest.getChannel (0);
+            SOUL_ASSERT (source.data.stride == 1);
+            auto sampleIncrement = double (source.getNumFrames()) / double (dest.getNumFrames());
+            auto dst = dest.data;
 
-            for (uint32_t i = 0; i < dest.numFrames; ++i)
+            for (choc::buffer::FrameCount i = 0; i < dest.getNumFrames(); ++i)
             {
-                *destFrames = static_cast<SampleType> (ratio * getBandlimitedSample (source, sampleIncrement * i, ratio, zeroCrossings));
-                destFrames += dest.stride;
+                *dst.data = static_cast<SampleType> (ratio * getBandlimitedSample (source, sampleIncrement * i, ratio, zeroCrossings));
+                dst.data += dst.stride;
             }
         }
 
-        static SampleType getBandlimitedSample (const SourceType& source, double pos, float ratio, int numZeroCrossings) noexcept
+        static SampleType getBandlimitedSample (const choc::buffer::MonoView<SampleType>& source, double pos, float ratio, int numZeroCrossings) noexcept
         {
             auto intPos  = (int64_t) pos;
             auto fracPos = (float) (pos - (double) intPos);
             auto result = SampleType();
             auto floatZeroCrossings = SampleType (numZeroCrossings);
-            auto data = source.getChannel (0);
+            auto data = source.data.data;
+            auto numFrames = source.getNumFrames();
 
             if (fracPos > 0)
             {
@@ -78,7 +80,7 @@ void resampleToFit (DestType dest, SourceType source, int zeroCrossings = 50)
                 auto sincPosition = SampleType (fracPos + (ratio * float (i)));
                 auto samplePosition = (uint32_t) (intPos + i);
 
-                if (samplePosition < source.numFrames)
+                if (samplePosition < numFrames)
                     result += static_cast<SampleType> (data[samplePosition] * windowedSinc (sincPosition, floatZeroCrossings));
             }
 
@@ -99,11 +101,11 @@ void resampleToFit (DestType dest, SourceType source, int zeroCrossings = 50)
         }
     };
 
-    if (dest.numFrames == source.numFrames)
-        return copyChannelSet (dest, source);
+    if (dest.getNumFrames() == source.getNumFrames())
+        return copy (dest, source);
 
-    for (uint32_t channel = 0; channel < source.numChannels; ++channel)
-        Resampler::resample (dest.getChannelSet (channel, 1), source.getChannelSet (channel, 1), zeroCrossings);
+    for (choc::buffer::ChannelCount channel = 0; channel < source.getNumChannels(); ++channel)
+        Resampler::resample (dest.getChannel (channel), source.getChannel (channel), zeroCrossings);
 }
 
 }

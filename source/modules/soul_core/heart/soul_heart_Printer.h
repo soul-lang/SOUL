@@ -262,7 +262,7 @@ private:
 
             if (!b.parameters.empty())
                 printParameters (b.parameters);
-            
+
             out << ":" << newLine;
 
             auto statementIndent = out.createIndent (2);

@@ -322,8 +322,8 @@ struct PatchPlayerImpl  : public RefCountHelper<PatchPlayer>
         // the public patch API headers, so this just checks that the layout is actually the same.
         static_assert (sizeof (MIDIEvent) == sizeof (soul::patch::MIDIMessage));
 
-        wrapper.render ({ rc.inputChannels,  (uint32_t) rc.numInputChannels,  0, (uint32_t) rc.numFrames },
-                        { rc.outputChannels, (uint32_t) rc.numOutputChannels, 0, (uint32_t) rc.numFrames },
+        wrapper.render (choc::buffer::createChannelArrayView (rc.inputChannels, rc.numInputChannels, rc.numFrames),
+                        choc::buffer::createChannelArrayView (rc.outputChannels, rc.numOutputChannels, rc.numFrames),
                         reinterpret_cast<const MIDIEvent*> (rc.incomingMIDI),
                         reinterpret_cast<MIDIEvent*> (rc.outgoingMIDI),
                         rc.numMIDIMessagesIn,

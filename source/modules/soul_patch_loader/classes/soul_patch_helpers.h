@@ -94,13 +94,13 @@ private:
             if (numFrames == 0)
                 return {};
 
-            AllocatedChannelSet<DiscreteChannelSet<float>> buffer (numSourceChannels, numFrames);
-            reader.read (buffer.channelSet.channels, (int) numSourceChannels, 0, (int) numFrames);
+            choc::buffer::ChannelArrayBuffer<float> buffer (numSourceChannels, numFrames);
+            reader.read (buffer.view.data.channels, (int) numSourceChannels, 0, (int) numFrames);
 
             resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation["resample"]);
             extractChannelIfNeeded (buffer, annotation["sourceChannel"]);
 
-            auto result = convertAudioDataToObject (buffer.channelSet, reader.sampleRate);
+            auto result = convertAudioDataToObject (buffer, reader.sampleRate);
 
             if (result.isVoid())
                 throwPatchLoadError ("Could not load audio file");
@@ -111,7 +111,7 @@ private:
         return {};
     }
 
-    static void resampleAudioDataIfNeeded (AllocatedChannelSet<DiscreteChannelSet<float>>& buffer,
+    static void resampleAudioDataIfNeeded (choc::buffer::ChannelArrayBuffer<float>& buffer,
                                            double currentRate, const choc::value::ValueView& resampleRate)
     {
         if (! resampleRate.isVoid())
@@ -131,9 +131,9 @@ private:
 
                 if (newNumFrames > 0 && newNumFrames < maxNumFrames)
                 {
-                    AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (buffer.getNumChannels(), (uint32_t) newNumFrames);
-                    resampleToFit (newBuffer.channelSet, buffer.channelSet);
-                    std::swap (newBuffer.channelSet, buffer.channelSet);
+                    choc::buffer::ChannelArrayBuffer<float> newBuffer (buffer.getNumChannels(), (uint32_t) newNumFrames);
+                    resampleToFit (newBuffer, buffer);
+                    buffer = std::move (newBuffer);
                     return;
                 }
             }
@@ -142,7 +142,7 @@ private:
         }
     }
 
-    static void extractChannelIfNeeded (AllocatedChannelSet<DiscreteChannelSet<float>>& buffer,
+    static void extractChannelIfNeeded (choc::buffer::ChannelArrayBuffer<float>& buffer,
                                         const choc::value::ValueView& channelToExtract)
     {
         if (! channelToExtract.isVoid())
@@ -151,9 +151,9 @@ private:
 
             if (sourceChannel >= 0 && sourceChannel < buffer.getNumFrames())
             {
-                AllocatedChannelSet<DiscreteChannelSet<float>> newBuffer (1, buffer.getNumFrames());
-                copyChannelSet (newBuffer.channelSet, buffer.getChannelSet ((uint32_t) sourceChannel, 1));
-                std::swap (newBuffer.channelSet, buffer.channelSet);
+                choc::buffer::ChannelArrayBuffer<float> newBuffer (1, buffer.getNumFrames());
+                copy (newBuffer, buffer.getChannelRange ({ (uint32_t) sourceChannel, (uint32_t) (sourceChannel + 1) }));
+                buffer = std::move (newBuffer);
                 return;
             }
 

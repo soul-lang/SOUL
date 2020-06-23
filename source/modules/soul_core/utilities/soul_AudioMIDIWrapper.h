@@ -147,23 +147,24 @@ struct AudioMIDIWrapper
                     {
                         preRenderOperations.push_back ([&perf, endpointHandle, startChannel] (RenderContext& rc)
                         {
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::createArrayView (const_cast<float*> (rc.inputChannels.getChannel (startChannel)),
-                                                                                                         rc.inputChannels.numFrames));
+                            auto channel = rc.inputChannels.getChannel (startChannel);
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::createArrayView (const_cast<float*> (channel.data.data),
+                                                                                                         channel.getNumFrames()));
                         });
                     }
                     else
                     {
-                        AllocatedChannelSet<InterleavedChannelSet<float>> interleaved (numChans, maxBlockSize);
+                        choc::buffer::InterleavedBuffer<float> interleaved (numChans, maxBlockSize);
 
                         preRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans, interleaved] (RenderContext& rc)
                         {
-                            auto numFrames = rc.inputChannels.numFrames;
+                            auto numFrames = rc.inputChannels.getNumFrames();
 
-                            copyChannelSet (interleaved.channelSet.getSlice (0, numFrames),
-                                            rc.inputChannels.getChannelSet (startChannel, numChans));
+                            copy (interleaved.getStart (numFrames),
+                                  rc.inputChannels.getChannelRange ({ startChannel, startChannel + numChans }));
 
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.channelSet.data,
-                                                                                                           numFrames, interleaved.channelSet.numChannels));
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.view.data.data,
+                                                                                                           numFrames, interleaved.getNumChannels()));
                         });
                     }
                 }
@@ -205,8 +206,8 @@ struct AudioMIDIWrapper
                 {
                     postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
                     {
-                        copyChannelSetHandlingLengthDifference (rc.outputChannels.getChannelSet (startChannel, numChans),
-                                                                getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
+                        copyIntersectionAndClearOutside (rc.outputChannels.getChannelRange ({ startChannel, startChannel + numChans }),
+                                                         getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
                     });
                 }
                 else
@@ -230,21 +231,21 @@ struct AudioMIDIWrapper
         }
     }
 
-    void render (DiscreteChannelSet<const float> input,
-                 DiscreteChannelSet<float> output,
+    void render (choc::buffer::ChannelArrayView<const float> input,
+                 choc::buffer::ChannelArrayView<float> output,
                  const MIDIEvent* midiIn,
                  MIDIEvent* midiOut,
                  uint32_t midiInCount,
                  uint32_t midiOutCapacity,
                  uint32_t& numMIDIOutMessages)
     {
-        SOUL_ASSERT (input.numFrames == output.numFrames && maxBlockSize != 0);
+        SOUL_ASSERT (input.getNumFrames() == output.getNumFrames() && maxBlockSize != 0);
 
         RenderContext context { totalFramesRendered, input, output, midiIn, midiOut, 0, midiInCount, 0, midiOutCapacity };
 
         context.iterateInBlocks (maxBlockSize, [&] (RenderContext& rc)
         {
-            performer.prepare (rc.inputChannels.numFrames);
+            performer.prepare (rc.inputChannels.getNumFrames());
 
             for (auto& op : preRenderOperations)
                 op (rc);
@@ -256,7 +257,7 @@ struct AudioMIDIWrapper
         });
 
         numMIDIOutMessages = context.midiOutCount;
-        totalFramesRendered += input.numFrames;
+        totalFramesRendered += input.getNumFrames();
     }
 
     uint32_t getExpectedNumInputChannels() const     { return numInputChannelsExpected; }
@@ -265,8 +266,8 @@ struct AudioMIDIWrapper
     struct RenderContext
     {
         uint64_t totalFramesRendered = 0;
-        DiscreteChannelSet<const float> inputChannels;
-        DiscreteChannelSet<float> outputChannels;
+        choc::buffer::ChannelArrayView<const float> inputChannels;
+        choc::buffer::ChannelArrayView<float> outputChannels;
         const MIDIEvent* midiIn;
         MIDIEvent* midiOut;
         uint32_t frameOffset = 0, midiInCount = 0, midiOutCount = 0, midiOutCapacity = 0;
@@ -274,7 +275,7 @@ struct AudioMIDIWrapper
         template <typename RenderBlockFn>
         void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render)
         {
-            auto framesRemaining = inputChannels.numFrames;
+            auto framesRemaining = inputChannels.getNumFrames();
             auto context = *this;
 
             while (framesRemaining != 0)
@@ -298,8 +299,8 @@ struct AudioMIDIWrapper
                     context.midiInCount++;
                 }
 
-                context.inputChannels = inputChannels.getSlice (frameOffset, framesToDo);
-                context.outputChannels = outputChannels.getSlice (frameOffset, framesToDo);
+                context.inputChannels  = inputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
+                context.outputChannels = outputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
 
                 render (context);
 
