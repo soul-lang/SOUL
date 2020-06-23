@@ -904,7 +904,8 @@ struct heart
             for (auto s : statements)
                 s->visitExpressions (fn);
 
-            terminator->visitExpressions (fn);
+            if (terminator != nullptr)
+                terminator->visitExpressions (fn);
         }
 
         void addParameter (heart::Variable& v)
