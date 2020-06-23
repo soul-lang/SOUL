@@ -181,7 +181,7 @@ namespace soul
     X(expectedUnqualifiedName,              "This name cannot have a namespace qualifier") \
     X(qualifierOnGeneric,                   "Generic function types must be a non-qualified identifier") \
     X(tooManyParameters,                    "Too many function parameters") \
-    X(tooManyInitialisers,                  "Initialiser list exceeeds max length limit") \
+    X(tooManyInitialisers,                  "Initialiser list exceeds max length limit") \
     X(cannotPassConstAsNonConstRef,         "Cannot pass a const value as a non-const reference") \
     X(assignmentInsideExpression,           "Assignment is not allowed inside an expression") \
     X(propertiesOutsideProcessor,           "Processor properties are only valid inside a processor declaration") \

@@ -13,7 +13,7 @@ The low-level C++ source code for various compiler tasks is arranged as JUCE mod
 - `modules/soul_patch_loader` - this module implements a lot of the glue logic required to turn a `soul::Performer` into a set of COM classes which implement the SOUL Patch API
 
 - `API/soul_patch/API` - This contains the completely dependency-free C++ header-only COM base classes which define the SOUL Patch API
-- `API/soul_patch/helper_classes` - A set of header-only C++ utlities providing various client-side helpers for dealing with the SOUL Patch API. This includes classes to load patches as a `juce::AudioPluginInstance`
+- `API/soul_patch/helper_classes` - A set of header-only C++ utilities providing various client-side helpers for dealing with the SOUL Patch API. This includes classes to load patches as a `juce::AudioPluginInstance`
 
 ### Current Project Status
 

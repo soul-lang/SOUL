@@ -2,7 +2,7 @@
 
 SOUL is short for __SOU__*nd* __L__*anguage*.
 
-It's a platform for writing and running audio code, consisting of two elements: a **language** and a **runtime**. 
+It's a platform for writing and running audio code, consisting of two elements: a **language** and a **runtime**.
 - The SOUL _language_ is a small, carefully crafted DSL for writing real-time DSP code. Its design goals are to be fast, secure, safe, and simple for even beginners to learn.
 - The SOUL _runtime_ is a collection of tools and technologies for running SOUL code with very high efficiency, on heterogeneous CPUs and DSPs, both locally and remotely.
 
@@ -56,7 +56,7 @@ We expect SOUL to be valuable to audio developers at all levels - from absolute 
 
 ### Who is the target audience for the SOUL platform architecture?
 
-At the high-end, SOUL will allow musicians to connect external accelarator devices to work on larger, more power-hungry sessions with much lower latency, while freeing up their laptop CPUs to handle the UI for their tools.
+At the high-end, SOUL will allow musicians to connect external accelerator devices to work on larger, more power-hungry sessions with much lower latency, while freeing up their laptop CPUs to handle the UI for their tools.
 
 At a more general consumer level, SOUL can improve power and battery life for mobile devices that support it with dedicated hardware. And by providing a flexible platform for implementing audio codecs, it could be a more future-proof replacement for silicon which is dedicated to performing decompression of specific common codec formats.
 
@@ -138,7 +138,7 @@ To write an app which can load and run SOUL code, there are two levels of API:
 
 The SOUL patch format is described in detail [here](./SOUL_Patch_Format.md).
 
-This is a high-level audio-plugin-like format for writing SOUL that can be loaded into a host like a DAW. It is designed to be fairly similar in structure to formats like VST/AU/AAX so that it could be supported alongside them in a typical DAW without it being too disruptive. 
+This is a high-level audio-plugin-like format for writing SOUL that can be loaded into a host like a DAW. It is designed to be fairly similar in structure to formats like VST/AU/AAX so that it could be supported alongside them in a typical DAW without it being too disruptive.
 
 A SOUL patch can declare a set of audio and MIDI i/o channels, and parameter controls. The format also contains a convention for patches to follow if they want to provide GUI code for a host to show (not written in SOUL!)
 
@@ -150,7 +150,7 @@ The main concepts involved in this API are **Performers** and **Venues**.
 
 - A *Performer* is an implementation of a JIT compiler which can be given a SOUL program and asked to synchronously render blocks of data.
 
-- A *Venue* is an independant device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely and asynchronously.
+- A *Venue* is an independent device (e.g. a machine accessed via a network, or a separate process or driver running on your local machine), which can be sent a SOUL program to run, and then controlled remotely and asynchronously.
 
 A developer can build a SOUL host which either compiles and runs SOUL synchronously inside its own process using a *performer*, or which dispatches the code to run remotely (and at low latency) in a suitable *venue*. Either way, using these APIs means that the programs are not limited to simple audio/MIDI i/o like the SOUL Patch format, and can have input and output channels containing any kind of data stream.
 
