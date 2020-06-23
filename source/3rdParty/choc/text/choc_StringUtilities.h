@@ -26,6 +26,7 @@
 
 #include <string>
 #include <cmath>
+#include <assert.h>
 
 #ifndef CHOC_ASSERT
  #define CHOC_ASSERT(x)  assert(x);

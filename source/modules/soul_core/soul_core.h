@@ -44,13 +44,6 @@
  #define SOUL_INTEL 1
 #endif
 
-#include "../../3rdParty/choc/containers/choc_Value.h"
-#include "../../3rdParty/choc/text/choc_StringUtilities.h"
-#include "../../3rdParty/choc/text/choc_FloatToString.h"
-#include "../../3rdParty/choc/math/choc_MathHelpers.h"
-#include "../../3rdParty/choc/audio/choc_SampleBuffers.h"
-#include "../../API/soul_venue/soul_ProgramDefinitions.h"
-
 #include <vector>
 #include <string>
 #include <sstream>
@@ -70,8 +63,18 @@
 #include <random>
 #include <optional>
 
-#include "utilities/soul_MiscUtilities.h"
 #include "utilities/soul_DebugUtilities.h"
+
+#define CHOC_ASSERT(x)  SOUL_ASSERT(x)
+
+#include "../../3rdParty/choc/containers/choc_Value.h"
+#include "../../3rdParty/choc/text/choc_StringUtilities.h"
+#include "../../3rdParty/choc/text/choc_FloatToString.h"
+#include "../../3rdParty/choc/math/choc_MathHelpers.h"
+#include "../../3rdParty/choc/audio/choc_SampleBuffers.h"
+#include "../../API/soul_venue/soul_ProgramDefinitions.h"
+
+#include "utilities/soul_MiscUtilities.h"
 
 //==============================================================================
 namespace soul

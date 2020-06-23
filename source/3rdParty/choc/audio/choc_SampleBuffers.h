@@ -23,6 +23,11 @@
 #define CHOC_SAMPLE_BUFFERS_HEADER_INCLUDED
 
 #include <memory>
+#include <cassert>
+
+#ifndef CHOC_ASSERT
+ #define CHOC_ASSERT(x)  assert(x);
+#endif
 
 /**
     A collection of classes for creating views and buffers to operate on multichannel sample data.
