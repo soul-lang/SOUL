@@ -40,14 +40,18 @@
 namespace choc::buffer
 {
 
+/** The buffer classes use this type for referring to numbers of samples */
 using SampleCount   = uint32_t;
+/** The buffer classes use this type for referring to numbers of frames */
 using FrameCount    = uint32_t;
+/** The buffer classes use this type for referring to numbers of channels */
 using ChannelCount  = uint32_t;
 
 template <typename SampleType, template<typename> typename LayoutType> struct AllocatedBuffer;
+template <typename SampleType> struct MonoLayout;
 
 //==============================================================================
-/** */
+/** Represents a range of frame numbers. */
 struct FrameRange
 {
     FrameCount start = 0, end = 0;
@@ -59,7 +63,7 @@ struct FrameRange
 };
 
 //==============================================================================
-/** */
+/** Represents a range of channel numbers. */
 struct ChannelRange
 {
     ChannelCount start = 0, end = 0;
@@ -71,7 +75,7 @@ struct ChannelRange
 };
 
 //==============================================================================
-/** */
+/** Represents the size of a buffer, i.e. the number of channels and frames it contains. */
 struct Size
 {
     ChannelCount numChannels;
@@ -83,12 +87,18 @@ struct Size
     ChannelRange getChannelRange() const                            { return { 0, numChannels }; }
     FrameRange getFrameRange() const                                { return { 0, numFrames }; }
 
+    /** Returns true if either the number of channels or frames is zero. */
     bool isEmpty() const                                            { return numChannels == 0 || numFrames == 0; }
+    /** Returns true if the given channel number and frame number lie within this size range. */
     bool contains (ChannelCount channel, FrameCount frame) const    { return channel < numChannels && frame < numFrames; }
 
+    /** Returns the overlap section between two sizes. */
     Size getIntersection (Size other) const                         { return { numChannels < other.numChannels ? numChannels : other.numChannels,
                                                                                numFrames < other.numFrames ? numFrames : other.numFrames }; }
 
+    /** Creates a size from a channel and frame count, allowing them to be passed as any kind of
+        signed or unsigned integer types.
+    */
     template <typename ChannelCountType, typename FrameCountType>
     static Size create (ChannelCountType numChannels, FrameCountType numFrames)
     {
@@ -102,6 +112,7 @@ struct Size
     }
 };
 
+/** This object contains a pointer to a sample, and can also be incremented to move to the next sample. */
 template <typename SampleType>
 struct SampleIterator
 {
@@ -116,7 +127,215 @@ struct SampleIterator
 };
 
 //==============================================================================
-/** */
+/**
+    Represents a view into a buffer of samples where the data is owned by something else.
+    A BufferView never manages the data that it refers to - it simply acts as a lightweight
+    pointer into some kind of data layout (as specified by the LayoutType template parameter,
+    which could be MonoLayout, InterleavedLayout or SeparateChannelLayout).
+
+    Rather than using BufferView directly, there are typedefs to make it easier, so you'll
+    probably want to use InterleavedView, MonoView and ChannelArrayView in your own code.
+    There are also various helper functions to create a BufferView, such as createInterleavedView(),
+    createMonoView(), createChannelArrayView().
+
+    If you need an object that also allocates and manages the memory needed for the buffer,
+    see AllocatedBuffer, InterleavedBuffer, MonoBuffer, SeparateChannelBuffer.
+ */
+template <typename SampleType, template<typename> typename LayoutType>
+struct BufferView
+{
+    using Sample         = SampleType;
+    using Layout         = LayoutType<Sample>;
+    using AllocatedType  = AllocatedBuffer<Sample, LayoutType>;
+
+    Layout data;
+    Size size;
+
+    /** Returns the size of the view. */
+    constexpr Size getSize() const                                              { return size; }
+    /** Returns the number of frames in the view. */
+    constexpr FrameCount getNumFrames() const                                   { return size.numFrames; }
+    /** Returns the number of frames in the view as a range starting from zero . */
+    constexpr FrameRange getFrameRange() const                                  { return size.getFrameRange(); }
+    /** Returns the number of channels in the view. */
+    constexpr ChannelCount getNumChannels() const                               { return size.numChannels; }
+    /** Returns the number of channels in the view as a range starting from zero . */
+    constexpr ChannelRange getChannelRange() const                              { return size.getChannelRange(); }
+
+    /** Returns a reference to a sample in the view. This will assert if the position is out-of-range. */
+    Sample& getSample (ChannelCount channel, FrameCount frame)                  { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
+    /** Returns a sample in the view. This will assert if the position is out-of-range. */
+    const Sample getSample (ChannelCount channel, FrameCount frame) const       { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
+    /** Returns the value of a sample in the view, or zero if the position is out-of-range. */
+    Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return size.contains (channel, frame) ? data.getSample (channel, frame) : Sample(); }
+
+    /** Copies the samples from a frame into a given packed destination array.
+        It's up to the caller to make sure the destination has enough space for the number of channels in this view.
+        This will assert if the position is out-of-range.
+    */
+    void getSamplesInFrame (FrameCount frame, Sample* dest) const
+    {
+        CHOC_ASSERT (frame < size.numFrames);
+        return data.getSamplesInFrame (frame, dest, size.numChannels);
+    }
+
+    /** Returns an iterator that points to the start of a given channel. */
+    SampleIterator<SampleType> getIterator (ChannelCount channel) const         { CHOC_ASSERT (channel < size.numChannels); return data.getIterator (channel); }
+
+    /** Returns a view of a single channel. This will assert if the channel number is out-of-range. */
+    BufferView<Sample, MonoLayout> getChannel (ChannelCount channel) const
+    {
+         CHOC_ASSERT (channel < size.numChannels);
+         return { data.getChannelLayout (channel), { 1, size.numFrames } };
+    }
+
+    /** Returns a view of a subset of channels. This will assert if the channels requested are out-of-range. */
+    BufferView getChannelRange (ChannelRange channels) const
+    {
+        CHOC_ASSERT (getChannelRange().contains (channels));
+        return { data.getChannelRange (channels), { channels.end - channels.start, size.numFrames } };
+    }
+
+    /** Returns a view of a subset of frames. This will assert if the frame numbers are out-of-range. */
+    BufferView getFrameRange (FrameRange range) const
+    {
+        CHOC_ASSERT (getFrameRange().contains (range));
+        return { data.getFrameRange (range), { size.numChannels, range.end - range.start } };
+    }
+
+    /** Returns a view of the start section of this view, up to the given number of frames. This will assert if the frame count is out-of-range. */
+    BufferView getStart (FrameCount numberOfFrames) const
+    {
+        CHOC_ASSERT (numberOfFrames <= size.numFrames);
+        return { data, { size.numChannels, numberOfFrames } };
+    }
+
+    /** Returns a view of a sub-section of this view. This will assert if the range is out-of-range. */
+    BufferView getSection (ChannelRange channels, FrameRange range) const
+    {
+        CHOC_ASSERT (getFrameRange().contains (range) && getChannelRange().contains (channels));
+        return { data.getFrameRange (range).getChannelRange (channels), { channels.end - channels.start, range.end - range.start } };
+    }
+
+    /** Sets all samples in the view to zero. */
+    void clear()                                                { data.clear (size); }
+
+    /** Allows a view of non-const samples to be cast to one of const samples. */
+    operator BufferView<const Sample, LayoutType>() const       { return { static_cast<LayoutType<const Sample>> (data), size }; }
+};
+
+
+//==============================================================================
+/**
+    Allocates and manages a buffer of samples.
+
+    AllocatedBuffer and BufferView have similar interfaces, but AllocatedBuffer owns
+    the sample data that it refers to, so when copied, it takes a full copy of its data
+    with it.
+    Like for BufferView, the LayoutType template parameter controls the type of data
+    layout that should be used: this could be MonoLayout, InterleavedLayout or
+    SeparateChannelLayout.
+
+    Rather than using AllocatedBuffer directly, there are typedefs to make it easier, so you'll
+    probably want to use InterleavedBuffer, MonoBuffer and ChannelArrayBuffer in your own code.
+    There are also various helper functions to create an AllocatedBuffer, such as
+    createInterleavedBuffer(), createMonoBuffer(), createChannelArrayBuffer().
+ */
+template <typename SampleType, template<typename> typename LayoutType>
+struct AllocatedBuffer
+{
+    using Sample         = SampleType;
+    using Layout         = LayoutType<Sample>;
+    using AllocatedType  = AllocatedBuffer<Sample, LayoutType>;
+
+    /** Creates an empty buffer with a zero size. */
+    AllocatedBuffer() = default;
+    ~AllocatedBuffer()                  { view.data.freeAllocatedData(); }
+
+    explicit AllocatedBuffer (const AllocatedBuffer& other)  : AllocatedBuffer (other.view) {}
+    AllocatedBuffer (AllocatedBuffer&& other)  : view (other.view)    { other.view = {}; }
+    AllocatedBuffer& operator= (const AllocatedBuffer&);
+    AllocatedBuffer& operator= (AllocatedBuffer&&);
+
+    /** Allocates a buffer of the given size (without clearing its content!)
+        For efficiency, this will allocate but not clear the data needed, so be sure to call
+        clear() after construction if you need an empty buffer.
+     */
+    AllocatedBuffer (Size size)  : view { size.isEmpty() ? Layout() : Layout::createAllocated (size), size } {}
+
+    /** Allocates a buffer of the given size (without clearing its content!)
+        For efficiency, this will allocate but not clear the data needed, so be sure to call
+        clear() after construction if you need an empty buffer.
+     */
+    AllocatedBuffer (ChannelCount numChannels, FrameCount numFrames)  : AllocatedBuffer (Size { numChannels, numFrames }) {}
+
+    /** Creats a buffer which is a copy of the given view. */
+    template <typename SourceView>
+    AllocatedBuffer (const SourceView& viewToCopy);
+
+    /** Allows the buffer to be cast to a compatible view. */
+    template <typename TargetSampleType>
+    operator BufferView<TargetSampleType, LayoutType>() const                   { return static_cast<BufferView<TargetSampleType, LayoutType>> (view); }
+
+    /** Provides a version of this buffer as a view. */
+    BufferView<Sample, LayoutType> getView() const                              { return view; }
+
+    //==============================================================================
+    /** Returns the size of the buffer. */
+    constexpr Size getSize() const                                              { return view.getSize(); }
+    /** Returns the number of frames in the buffer. */
+    constexpr FrameCount getNumFrames() const                                   { return view.getNumFrames(); }
+    /** Returns the number of frames in the buffer as a range starting from zero . */
+    constexpr FrameRange getFrameRange() const                                  { return view.getFrameRange(); }
+    /** Returns the number of channels in the buffer. */
+    constexpr ChannelCount getNumChannels() const                               { return view.getNumChannels(); }
+    /** Returns the number of channels in the buffer as a range starting from zero . */
+    constexpr ChannelRange getChannelRange() const                              { return view.getChannelRange(); }
+
+    /** Returns a reference to a sample in the buffer. This will assert if the position is out-of-range. */
+    Sample& getSample (ChannelCount channel, FrameCount frame)                  { return view.getSample (channel, frame); }
+    /** Returns a sample in the buffer. This will assert if the position is out-of-range. */
+    const Sample getSample (ChannelCount channel, FrameCount frame) const       { return view.getSample (channel, frame); }
+    /** Returns the value of a sample in the buffer, or zero if the position is out-of-range. */
+    Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return view.getSampleIfInRange (channel, frame); }
+
+    /** Copies the samples from a frame into a given packed destination array.
+        It's up to the caller to make sure the destination has enough space for the number of channels in this buffer.
+        This will assert if the position is out-of-range.
+    */
+    void getSamplesInFrame (FrameCount frame, Sample* dest) const               { return view.getSamplesInFrame (frame, dest); }
+
+    /** Returns an iterator that points to the start of a given channel. */
+    SampleIterator<SampleType> getIterator (ChannelCount channel) const         { return view.getIterator (channel); }
+
+    //==============================================================================
+    /** Returns a view of a single channel from the buffer. This will assert if the channel number is out-of-range. */
+    BufferView<Sample, MonoLayout> getChannel (ChannelCount channel) const      { return view.getChannel (channel); }
+    /** Returns a view of a subset of channels. This will assert if the channels requested are out-of-range. */
+    BufferView<Sample, LayoutType> getChannelRange (ChannelRange range) const   { return view.getChannelRange (range); }
+    /** Returns a view of a subset of frames. This will assert if the frame numbers are out-of-range. */
+    BufferView<Sample, LayoutType> getFrameRange (FrameRange range) const       { return view.getFrameRange (range); }
+    /** Returns a view of the start section of this buffer, up to the given number of frames. This will assert if the frame count is out-of-range. */
+    BufferView<Sample, LayoutType> getStart (FrameCount numberOfFrames) const   { return view.getStart (numberOfFrames); }
+    /** Returns a view of a sub-section of this buffer. This will assert if the range is out-of-range. */
+    BufferView<Sample, LayoutType> getSection (ChannelRange channels, FrameRange range) const   { return view.getSection (channels, range); }
+
+    /** Sets all samples in the buffer to zero. */
+    void clear()                                                                { view.clear(); }
+
+    /** Resizes the buffer. This will try to preserve as much of the existing content as will fit into
+        the new size, and will clear any newly-allocated areas.
+    */
+    void resize (Size newSize);
+
+private:
+    BufferView<Sample, LayoutType> view;
+};
+
+//==============================================================================
+/** Handles single-channel layouts (with arbitrary stride).
+    The layout classes are used in conjunction with the BufferView class.
+*/
 template <typename SampleType>
 struct MonoLayout
 {
@@ -150,7 +369,10 @@ struct MonoLayout
 };
 
 //==============================================================================
-/** */
+/** Handles multi-channel layouts where packed frames of samples are laid out
+    sequentially in memory.
+    The layout classes are used in conjunction with the BufferView class.
+*/
 template <typename SampleType>
 struct InterleavedLayout
 {
@@ -187,7 +409,10 @@ struct InterleavedLayout
 };
 
 //==============================================================================
-/** */
+/** Handles layouts where each channel is packed into a separate block, and there is a master
+    array of pointers to these channel blocks.
+    The layout classes are used in conjunction with the BufferView class.
+*/
 template <typename SampleType>
 struct SeparateChannelLayout
 {
@@ -245,88 +470,149 @@ struct SeparateChannelLayout
 };
 
 //==============================================================================
-/** */
-template <typename SampleType, template<typename> typename LayoutType>
-struct BufferView
-{
-    using Sample = SampleType;
-    using Layout = LayoutType<Sample>;
-    using AllocatedType = AllocatedBuffer<Sample, LayoutType>;
+/** A handy typedef which is a more readable way to create a interleaved view. */
+template <typename SampleType>
+using InterleavedView = BufferView<SampleType, InterleavedLayout>;
 
-    Layout data;
-    Size size;
+/** A handy typedef which is a more readable way to create an allocated interleaved buffer. */
+template <typename SampleType>
+using InterleavedBuffer = AllocatedBuffer<SampleType, InterleavedLayout>;
 
-    /** */
-    constexpr Size getSize() const                                              { return size; }
-    /** */
-    constexpr FrameCount getNumFrames() const                                   { return size.numFrames; }
-    /** */
-    constexpr FrameRange getFrameRange() const                                  { return size.getFrameRange(); }
-    /** */
-    constexpr ChannelCount getNumChannels() const                               { return size.numChannels; }
-    /** */
-    constexpr ChannelRange getChannelRange() const                              { return size.getChannelRange(); }
+/** A handy typedef which is a more readable way to create a channel-array view. */
+template <typename SampleType>
+using ChannelArrayView = BufferView<SampleType, SeparateChannelLayout>;
 
-    /** */
-    Sample& getSample (ChannelCount channel, FrameCount frame)                  { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
-    /** */
-    const Sample getSample (ChannelCount channel, FrameCount frame) const       { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
+/** A handy typedef which is a more readable way to create an allocated channel-array buffer. */
+template <typename SampleType>
+using ChannelArrayBuffer = AllocatedBuffer<SampleType, SeparateChannelLayout>;
 
-    /** */
-    Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return size.contains (channel, frame) ? data.getSample (channel, frame) : Sample(); }
+/** A handy typedef which is a more readable way to create a mono view. */
+template <typename SampleType>
+using MonoView = BufferView<SampleType, MonoLayout>;
 
-    /** */
-    void getSamplesInFrame (FrameCount frame, Sample* dest) const
-    {
-        CHOC_ASSERT (frame < size.numFrames);
-        return data.getSamplesInFrame (frame, dest, size.numChannels);
-    }
-
-    /** */
-    SampleIterator<SampleType> getIterator (ChannelCount channel) const         { CHOC_ASSERT (channel < size.numChannels); return data.getIterator (channel); }
-
-    /** */
-    BufferView<Sample, MonoLayout> getChannel (ChannelCount channel) const
-    {
-         CHOC_ASSERT (channel < size.numChannels);
-         return { data.getChannelLayout (channel), { 1, size.numFrames } };
-    }
-
-    /** */
-    BufferView getChannelRange (ChannelRange channels) const
-    {
-        CHOC_ASSERT (getChannelRange().contains (channels));
-        return { data.getChannelRange (channels), { channels.end - channels.start, size.numFrames } };
-    }
-
-    /** */
-    BufferView getFrameRange (FrameRange range) const
-    {
-        CHOC_ASSERT (getFrameRange().contains (range));
-        return { data.getFrameRange (range), { size.numChannels, range.end - range.start } };
-    }
-
-    /** */
-    BufferView getStart (FrameCount numberOfFrames) const
-    {
-        CHOC_ASSERT (numberOfFrames <= size.numFrames);
-        return { data, { size.numChannels, numberOfFrames } };
-    }
-
-    /** */
-    BufferView getSection (ChannelRange channels, FrameRange range) const
-    {
-        CHOC_ASSERT (getFrameRange().contains (range) && getChannelRange().contains (channels));
-        return { data.getFrameRange (range).getChannelRange (channels), { channels.end - channels.start, range.end - range.start } };
-    }
-
-    /** */
-    void clear()       { data.clear (size); }
-
-    operator BufferView<const Sample, LayoutType>() const                 { return { static_cast<LayoutType<const Sample>> (data), size }; }
-};
+/** A handy typedef which is a more readable way to create an allocated mono buffer. */
+template <typename SampleType>
+using MonoBuffer = AllocatedBuffer<SampleType, MonoLayout>;
 
 //==============================================================================
+/** Iterates each sample in a view or buffer, applying a user-supplied functor to generate
+    or moodify their values.
+
+    The functor must return a value of the appropriate type for the sample, but there are
+    several options for the parameters that it can take:
+     - Sample() : the functor can have no parameters if none are needed.
+     - Sample(Sample) : a functor with 1 parameter will be passed the current value of that
+                        sample in the destination, so it can return a modified version.
+     - Sample(ChannelCount, FrameCount)  : if there are 2 parameters, these will be the channel
+                        and frame number, so that the generator can use these to compute its result
+     - Sample(ChannelCount, FrameCount, Sample) : if there are 3 parameters, it will be given the
+                        channel, frame, and current values
+*/
+template <typename BufferType, typename SampleGenerator>
+void setAllSamples (BufferType&& buffer, SampleGenerator&& getSampleValue);
+
+/** Copies the contents of one view or buffer to a destination.
+    This will assert if the two views do not have exactly the same size.
+*/
+template <typename DestBuffer, typename SourceBuffer>
+static void copy (DestBuffer&& dest, const SourceBuffer& source);
+
+/** Adds the contents of one view or buffer to a destination.
+    This will assert if the two views do not have exactly the same size.
+*/
+template <typename DestBuffer, typename SourceBuffer>
+static void add (DestBuffer&& dest, const SourceBuffer& source);
+
+/** Copies from one view or buffer to another with a potentially different number of channels,
+    and attempts to do some basic remapping and clearing of channels.
+    This expects that both views are the same length. If the destination has more channels,
+    then a mono input will be copied to all of them, or a multi-channel input will be copied
+    across with any subsequent channels being cleared. If the destination has fewer channels
+    then it will copy as many as can fit into the destination.
+*/
+template <typename DestBuffer, typename SourceBuffer>
+static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source);
+
+/** Copies as much of the source as will fit into the destination, and clears any
+    destination areas outside that area.
+*/
+template <typename DestBuffer, typename SourceBuffer>
+static void copyIntersectionAndClearOutside (DestBuffer&& dest, const SourceBuffer& source);
+
+/** Applies a multiplier to all samples in the given view or buffer. */
+template <typename BufferType, typename GainType>
+void applyGain (BufferType&& buffer, GainType gainMultiplier);
+
+/** Takes a BufferView or AllocatedBuffer and returns true if all its samples are zero. */
+template <typename BufferType>
+bool isAllZero (const BufferType& buffer);
+
+/** Takes two views or buffers and returns true if their size and content are identical. */
+template <typename Buffer1, typename Buffer2>
+static bool contentMatches (const Buffer1& buffer1, const Buffer2& buffer2);
+
+//==============================================================================
+/** Returns a view onto a single channel of samples with the given length.
+    The data provided is expected to be a valid chunk of samples, and will not be owned
+    or copied by the view object, so the caller must manage its lifetime safely.
+*/
+template <typename SampleType, typename FrameCountType>
+MonoView<SampleType> createMonoView (SampleType* packedSamples,
+                                     FrameCountType numFrames);
+
+/** Returns an interleaved view with the given size, pointing to the given set of channels.
+    The data provided is expected to be a valid chunk of packed, interleaved samples, and will
+    not be owned or copied by the view object, so the caller must manage its lifetime safely.
+*/
+template <typename SampleType, typename ChannelCountType, typename FrameCountType>
+InterleavedView<SampleType> createInterleavedView (SampleType* packedSamples,
+                                                   ChannelCountType numChannels,
+                                                   FrameCountType numFrames);
+
+/** Returns a view into a set of channel pointers with the given size.
+    The channel list provided is expected to be valid data, and will not be owned or
+    copied by the view object, so the caller must be sure to manage its lifetime safely.
+*/
+template <typename SampleType>
+ChannelArrayView<SampleType> createChannelArrayView (SampleType* const* channelPointers,
+                                                     ChannelCount numChannels,
+                                                     FrameCount numFrames);
+
+/** Returns an allocated copy of the given view. */
+template <typename SourceBufferView>
+auto createAllocatedCopy (const SourceBufferView& source);
+
+/** Returns an allocated mono buffer with the given size. Note that the buffer is left
+    uninitialised, so call clear() on it if you need a clear one.
+*/
+template <typename FrameCountType, typename GeneratorFunction>
+auto createMonoBuffer (FrameCountType numFrames, GeneratorFunction&& generateSample);
+
+/** Returns an allocated interleaved buffer with the given size. Note that the buffer is left
+    uninitialised, so call clear() on it if you need a clear one.
+*/
+template <typename ChannelCountType, typename FrameCountType, typename GeneratorFunction>
+auto createInterleavedBuffer (ChannelCountType numChannels, FrameCountType numFrames, GeneratorFunction&& generateSample);
+
+/** Returns an allocated channel-array buffer with the given size. Note that the buffer is left
+    uninitialised, so call clear() on it if you need a clear one.
+*/
+template <typename ChannelCountType, typename FrameCountType, typename GeneratorFunction>
+auto createChannelArrayBuffer (ChannelCountType numChannels, FrameCountType numFrames, GeneratorFunction&& generateSample);
+
+
+
+//==============================================================================
+//        _        _           _  _
+//     __| |  ___ | |_   __ _ (_)| | ___
+//    / _` | / _ \| __| / _` || || |/ __|
+//   | (_| ||  __/| |_ | (_| || || |\__ \ _  _  _
+//    \__,_| \___| \__| \__,_||_||_||___/(_)(_)(_)
+//
+//   Code beyond this point is implementation detail...
+//
+//==============================================================================
+
 template <typename Functor, typename Sample>
 static auto invokeGetSample (Functor&& fn, ChannelCount c, FrameCount f, Sample s) -> decltype(fn (f, c, s))  { return fn (c, f, s); }
 
@@ -339,7 +625,6 @@ static auto invokeGetSample (Functor&& fn, ChannelCount,   FrameCount,   Sample 
 template <typename Functor, typename Sample>
 static auto invokeGetSample (Functor&& fn, ChannelCount,   FrameCount,   Sample)   -> decltype(fn())  { return fn(); }
 
-/** */
 template <typename BufferType, typename SampleGenerator>
 void setAllSamples (BufferType&& buffer, SampleGenerator&& getSampleValue)
 {
@@ -357,7 +642,6 @@ void setAllSamples (BufferType&& buffer, SampleGenerator&& getSampleValue)
     }
 }
 
-/** */
 template <typename DestBuffer, typename SourceBuffer>
 static void copy (DestBuffer&& dest, const SourceBuffer& source)
 {
@@ -378,7 +662,6 @@ static void copy (DestBuffer&& dest, const SourceBuffer& source)
     }
 }
 
-/** */
 template <typename DestBuffer, typename SourceBuffer>
 static void add (DestBuffer&& dest, const SourceBuffer& source)
 {
@@ -399,7 +682,6 @@ static void add (DestBuffer&& dest, const SourceBuffer& source)
     }
 }
 
-/** */
 template <typename DestBuffer, typename SourceBuffer>
 static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source)
 {
@@ -428,9 +710,6 @@ static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source
     }
 }
 
-/** Copies as much of the source as will fit into the destination, and clears any
-    destination areas outside that area.
-*/
 template <typename DestBuffer, typename SourceBuffer>
 static void copyIntersectionAndClearOutside (DestBuffer&& dest, const SourceBuffer& source)
 {
@@ -451,14 +730,12 @@ static void copyIntersectionAndClearOutside (DestBuffer&& dest, const SourceBuff
         dest.getChannelRange ({ overlap.numChannels, dstSize.numChannels }).clear();
 }
 
-/** */
 template <typename BufferType, typename GainType>
 void applyGain (BufferType&& buffer, GainType gainMultiplier)
 {
     setAllSamples (buffer, [=] (auto sample) { return static_cast<decltype (sample)> (sample * gainMultiplier); });
 }
 
-/** */
 template <typename BufferType>
 bool isAllZero (const BufferType& buffer)
 {
@@ -480,7 +757,6 @@ bool isAllZero (const BufferType& buffer)
     return true;
 }
 
-/** */
 template <typename Buffer1, typename Buffer2>
 static bool contentMatches (const Buffer1& buffer1, const Buffer2& buffer2)
 {
@@ -507,176 +783,39 @@ static bool contentMatches (const Buffer1& buffer1, const Buffer2& buffer2)
     return true;
 }
 
-
-//==============================================================================
-/** */
-template <typename SampleType, template<typename> typename LayoutType>
-struct AllocatedBuffer
-{
-    using Sample = SampleType;
-    using Layout = LayoutType<Sample>;
-    using AllocatedType = AllocatedBuffer<Sample, LayoutType>;
-
-    /** */
-    AllocatedBuffer() = default;
-
-    /** */
-    AllocatedBuffer (Size size)  : view { size.isEmpty() ? Layout() : Layout::createAllocated (size), size } {}
-
-    /** */
-    AllocatedBuffer (ChannelCount numChannels, FrameCount numFrames)  : AllocatedBuffer (Size { numChannels, numFrames }) {}
-
-    /** */
-    ~AllocatedBuffer()      { view.data.freeAllocatedData(); }
-
-    /** */
-    template <typename SourceView>
-    AllocatedBuffer (const SourceView& viewToCopy)  : AllocatedBuffer (viewToCopy.getSize())
-    {
-        copy (view, viewToCopy);
-    }
-
-    /** */
-    explicit AllocatedBuffer (const AllocatedBuffer& other)  : AllocatedBuffer (other.view) {}
-
-    /** */
-    AllocatedBuffer (AllocatedBuffer&& other)  : view (other.view)
-    {
-        other.view = {};
-    }
-
-    /** */
-    AllocatedBuffer& operator= (const AllocatedBuffer& other)
-    {
-        view.data.freeAllocatedData();
-        view = { Layout::createAllocated (other.view.size), other.view.size };
-        copy (view, other.view);
-        return *this;
-    }
-
-    /** */
-    AllocatedBuffer& operator= (AllocatedBuffer&& other)
-    {
-        view.data.freeAllocatedData();
-        view = other.view;
-        other.view = {};
-        return *this;
-    }
-
-    /** */
-    BufferView<Sample, LayoutType> view;
-
-    /** */
-    template <typename TargetSampleType>
-    operator BufferView<TargetSampleType, LayoutType>() const                   { return static_cast<BufferView<TargetSampleType, LayoutType>> (view); }
-
-    //==============================================================================
-    /** */
-    constexpr Size getSize() const                                              { return view.getSize(); }
-    /** */
-    constexpr FrameCount getNumFrames() const                                   { return view.getNumFrames(); }
-    /** */
-    constexpr FrameRange getFrameRange() const                                  { return view.getFrameRange(); }
-    /** */
-    constexpr ChannelCount getNumChannels() const                               { return view.getNumChannels(); }
-    /** */
-    constexpr ChannelRange getChannelRange() const                              { return view.getChannelRange(); }
-
-    /** */
-    Sample& getSample (ChannelCount channel, FrameCount frame)                  { return view.getSample (channel, frame); }
-    /** */
-    const Sample getSample (ChannelCount channel, FrameCount frame) const       { return view.getSample (channel, frame); }
-
-    /** */
-    Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return view.getSampleIfInRange (channel, frame); }
-
-    /** */
-    void getSamplesInFrame (FrameCount frame, Sample* dest) const               { return view.getSamplesInFrame (frame, dest); }
-
-    /** */
-    SampleIterator<SampleType> getIterator (ChannelCount channel) const         { return view.getIterator (channel); }
-
-    //==============================================================================
-    /** */
-    BufferView<Sample, MonoLayout> getChannel (ChannelCount channel) const      { return view.getChannel (channel); }
-    /** */
-    BufferView<Sample, LayoutType> getChannelRange (ChannelRange range) const   { return view.getChannelRange (range); }
-    /** */
-    BufferView<Sample, LayoutType> getFrameRange (FrameRange range) const       { return view.getFrameRange (range); }
-    /** */
-    BufferView<Sample, LayoutType> getStart (FrameCount numberOfFrames) const   { return view.getStart (numberOfFrames); }
-    /** */
-    BufferView<Sample, LayoutType> getSection (ChannelRange channels, FrameRange range) const   { return view.getSection (channels, range); }
-
-    /** */
-    void clear()                                                                { view.clear(); }
-
-    /** */
-    void resize (Size newSize)
-    {
-        if (view.getSize() != newSize)
-        {
-            auto newView = decltype(view) { Layout::createAllocated (newSize), newSize };
-            copyIntersectionAndClearOutside (newView, view);
-            view.data.freeAllocatedData();
-            view = newView;
-        }
-    }
-};
-
-//==============================================================================
-template <typename SampleType>
-using InterleavedView = BufferView<SampleType, InterleavedLayout>;
-
-template <typename SampleType>
-using InterleavedBuffer = AllocatedBuffer<SampleType, InterleavedLayout>;
-
-template <typename SampleType>
-using ChannelArrayView = BufferView<SampleType, SeparateChannelLayout>;
-
-template <typename SampleType>
-using ChannelArrayBuffer = AllocatedBuffer<SampleType, SeparateChannelLayout>;
-
-template <typename SampleType>
-using MonoView = BufferView<SampleType, MonoLayout>;
-
-template <typename SampleType>
-using MonoBuffer = AllocatedBuffer<SampleType, MonoLayout>;
-
-//==============================================================================
-/** */
-template <typename SampleType, typename ChannelCountType, typename FrameCountType>
-InterleavedView<SampleType> createInterleavedView (SampleType* data,
-                                                   ChannelCountType numChannels,
-                                                   FrameCountType numFrames)
-{
-    return { { data, static_cast<uint32_t> (numChannels) }, Size::create (numChannels, numFrames) };
-}
-
-/** */
-template <typename SampleType>
-ChannelArrayView<SampleType> createChannelArrayView (SampleType* const* channels,
-                                                     ChannelCount numChannels,
-                                                     FrameCount numFrames)
-{
-    return { { channels, 0 }, Size::create (numChannels, numFrames) };
-}
-
-/** */
 template <typename SampleType, typename FrameCountType>
 MonoView<SampleType> createMonoView (SampleType* data, FrameCountType numFrames)
 {
     return { { data, 1u }, { 1, static_cast<FrameCount> (numFrames) } };
 }
 
-/** */
-template <typename SourceBufferType>
-auto createAllocatedCopy (const SourceBufferType& source)
+template <typename SampleType, typename ChannelCountType, typename FrameCountType>
+InterleavedView<SampleType> createInterleavedView (SampleType* data, ChannelCountType numChannels, FrameCountType numFrames)
 {
-    return SourceBufferType::AllocatedType (source);
+    return { { data, static_cast<uint32_t> (numChannels) }, Size::create (numChannels, numFrames) };
 }
 
-/** */
+template <typename SampleType>
+ChannelArrayView<SampleType> createChannelArrayView (SampleType* const* channels, ChannelCount numChannels, FrameCount numFrames)
+{
+    return { { channels, 0 }, Size::create (numChannels, numFrames) };
+}
+
+template <typename SourceBufferView>
+auto createAllocatedCopy (const SourceBufferView& source)
+{
+    return SourceBufferView::AllocatedType (source);
+}
+
+template <typename FrameCountType, typename GeneratorFunction>
+auto createMonoBuffer (FrameCountType numFrames, GeneratorFunction&& generateSample)
+{
+    using Sample = decltype (invokeGetSample (generateSample, 0, 0, 0));
+    InterleavedBuffer<Sample> result (Size::create (1, numFrames));
+    setAllSamples (result, generateSample);
+    return result;
+}
+
 template <typename ChannelCountType, typename FrameCountType, typename GeneratorFunction>
 auto createInterleavedBuffer (ChannelCountType numChannels, FrameCountType numFrames, GeneratorFunction&& generateSample)
 {
@@ -686,7 +825,6 @@ auto createInterleavedBuffer (ChannelCountType numChannels, FrameCountType numFr
     return result;
 }
 
-/** */
 template <typename ChannelCountType, typename FrameCountType, typename GeneratorFunction>
 auto createChannelArrayBuffer (ChannelCountType numChannels, FrameCountType numFrames, GeneratorFunction&& generateSample)
 {
@@ -696,6 +834,42 @@ auto createChannelArrayBuffer (ChannelCountType numChannels, FrameCountType numF
     return result;
 }
 
+template <typename SampleType, template<typename> typename LayoutType>
+template <typename SourceView>
+AllocatedBuffer<SampleType, LayoutType>::AllocatedBuffer (const SourceView& viewToCopy)  : AllocatedBuffer (viewToCopy.getSize())
+{
+    copy (view, viewToCopy);
+}
+
+template <typename SampleType, template<typename> typename LayoutType>
+AllocatedBuffer<SampleType, LayoutType>& AllocatedBuffer<SampleType, LayoutType>::operator= (const AllocatedBuffer& other)
+{
+    view.data.freeAllocatedData();
+    view = { Layout::createAllocated (other.view.size), other.view.size };
+    copy (view, other.view);
+    return *this;
+}
+
+template <typename SampleType, template<typename> typename LayoutType>
+AllocatedBuffer<SampleType, LayoutType>& AllocatedBuffer<SampleType, LayoutType>::operator= (AllocatedBuffer&& other)
+{
+    view.data.freeAllocatedData();
+    view = other.view;
+    other.view = {};
+    return *this;
+}
+
+template <typename SampleType, template<typename> typename LayoutType>
+void AllocatedBuffer<SampleType, LayoutType>::resize (Size newSize)
+{
+    if (view.getSize() != newSize)
+    {
+        auto newView = decltype(view) { Layout::createAllocated (newSize), newSize };
+        copyIntersectionAndClearOutside (newView, view);
+        view.data.freeAllocatedData();
+        view = newView;
+    }
+}
 
 
 } // namespace choc::buffer

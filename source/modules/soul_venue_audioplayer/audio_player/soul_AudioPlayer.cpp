@@ -333,7 +333,7 @@ public:
                         {
                             copy (interleaved, rc.inputChannels.getChannelRange ({ startChannel, startChannel + numChans }));
 
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.view.data.data,
+                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.getView().data.data,
                                                                                                            interleaved.getNumFrames(),
                                                                                                            interleaved.getNumChannels()));
                         });

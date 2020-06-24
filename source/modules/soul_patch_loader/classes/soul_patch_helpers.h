@@ -95,7 +95,7 @@ private:
                 return {};
 
             choc::buffer::ChannelArrayBuffer<float> buffer (numSourceChannels, numFrames);
-            reader.read (buffer.view.data.channels, (int) numSourceChannels, 0, (int) numFrames);
+            reader.read (buffer.getView().data.channels, (int) numSourceChannels, 0, (int) numFrames);
 
             resampleAudioDataIfNeeded (buffer, reader.sampleRate, annotation["resample"]);
             extractChannelIfNeeded (buffer, annotation["sourceChannel"]);
