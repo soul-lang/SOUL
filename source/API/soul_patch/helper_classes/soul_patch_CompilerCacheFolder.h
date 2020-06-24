@@ -116,7 +116,7 @@ struct CompilerCacheFolder final  : public CompilerCache
     void release() noexcept override        { if (--refCount == 0) delete this; }
 
 private:
-    std::atomic<int> refCount { 0 };
+    std::atomic<int> refCount { 1 };
     juce::File folder;
     uint32_t maxNumFiles;
     juce::CriticalSection lock;
