@@ -236,6 +236,7 @@ struct FileList
             UID           = stringUID.c_str();
             version       = stringVersion.c_str();
             name          = stringName.c_str();
+            description   = stringDescription.c_str();
             category      = stringCategory.c_str();
             manufacturer  = stringManufacturer.c_str();
             URL           = stringURL.c_str();
