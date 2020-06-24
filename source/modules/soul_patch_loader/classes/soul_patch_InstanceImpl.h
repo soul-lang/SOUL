@@ -41,7 +41,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     void refreshFileList()
     {
         fileList.refresh();
-        description = fileList.createDescription();
+        description = Description::Ptr (fileList.createDescription());
     }
 
     void silentRefreshFileList()
@@ -52,11 +52,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         }
         catch (const PatchLoadError& e)
         {
-            Description d;
-            d.manifestFile = fileList.manifest.file;
-            d.description = makeString (e.message);
-
-            description = d;
+            description = Description::Ptr (new FileList::DescriptionImpl (fileList.manifest.file, e.message));
         }
     }
 
@@ -65,10 +61,14 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         return root.incrementAndGetPointer();
     }
 
-    Description getDescription() override
+    Description* getDescription() override
     {
         silentRefreshFileList(); // ignore error for now - can report this later on trying to compile
-        return description;
+
+        if (description != nullptr)
+            description->addRef();
+
+        return description.get();
     }
 
     int64_t getLastModificationTime() override
@@ -118,7 +118,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     std::unique_ptr<soul::PerformerFactory> performerFactory;
     const VirtualFile::Ptr root;
     FileList fileList;
-    Description description;
+    Description::Ptr description;
 };
 
 } // namespace soul::patch

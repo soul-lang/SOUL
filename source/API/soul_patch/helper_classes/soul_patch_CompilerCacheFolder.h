@@ -112,8 +112,8 @@ struct CompilerCacheFolder final  : public CompilerCache
     static std::string getFileName (const char* cacheKey)    { return getFilePrefix() + cacheKey; }
     juce::File getFileForKey (const char* cacheKey) const    { return folder.getChildFile (getFileName (cacheKey)); }
 
-    void addRef() noexcept override         { ++refCount; }
-    void release() noexcept override        { if (--refCount == 0) delete this; }
+    int addRef() noexcept override   { return ++refCount; }
+    int release() noexcept override  { auto newCount = --refCount; if (newCount == 0) delete this; return newCount; }
 
 private:
     std::atomic<int> refCount { 1 };

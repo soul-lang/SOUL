@@ -101,11 +101,11 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     */
     void reinitialise()
     {
-        auto desc = patch->getDescription();
+        auto desc = soul::patch::Description::Ptr (patch->getDescription());
 
-        name = desc.name;
-        description = desc.description;
-        showMIDIKeyboard = desc.isInstrument;
+        name = desc->name;
+        description = desc->description;
+        showMIDIKeyboard = desc->isInstrument;
 
         if (replacementPlayer != nullptr)
         {
@@ -147,19 +147,19 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     static juce::PluginDescription createPluginDescription (soul::patch::PatchInstance& instance)
     {
         juce::PluginDescription d;
-        auto desc = instance.getDescription();
+        auto desc = Description::Ptr (instance.getDescription());
 
-        d.name                = desc.name;
-        d.descriptiveName     = desc.description;
+        d.name                = desc->name;
+        d.descriptiveName     = desc->description;
         d.pluginFormatName    = getPluginFormatName();
-        d.category            = desc.category;
-        d.manufacturerName    = desc.manufacturer;
-        d.version             = desc.version;
+        d.category            = desc->category;
+        d.manufacturerName    = desc->manufacturer;
+        d.version             = desc->version;
         d.fileOrIdentifier    = String::Ptr (instance.getLocation()->getAbsolutePath());
         d.lastFileModTime     = juce::Time (instance.getLastModificationTime());
         d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
-        d.uid                 = (int) desc.UID.toString<juce::String>().hash();
-        d.isInstrument        = desc.isInstrument;
+        d.uid                 = (int) juce::String (desc->UID).hash();
+        d.isInstrument        = desc->isInstrument;
 
         return d;
     }
@@ -523,8 +523,9 @@ private:
 
     juce::File getManifestFile() const
     {
-        if (auto manifest = patch->getDescription().manifestFile)
-            return juce::File::getCurrentWorkingDirectory().getChildFile (String::Ptr (manifest->getAbsolutePath()));
+        if (auto desc = Description::Ptr (patch->getDescription()))
+            if (auto manifest = desc->manifestFile)
+                return juce::File::getCurrentWorkingDirectory().getChildFile (String::Ptr (manifest->getAbsolutePath()));
 
         return {};
     }
@@ -568,18 +569,18 @@ private:
     bool isMatchingStateType (const juce::ValueTree& state) const
     {
         return state.hasType (ids.SOULPatch)
-                && state[ids.id] == patch->getDescription().UID.toString<juce::String>();
+                && state[ids.id] == Description::Ptr (patch->getDescription())->UID;
     }
 
     void updateLastState()
     {
         if (player != nullptr)
         {
-            auto desc = patch->getDescription();
+            auto desc = Description::Ptr (patch->getDescription());
 
             juce::ValueTree state (ids.SOULPatch);
-            state.setProperty (ids.id, desc.UID, nullptr);
-            state.setProperty (ids.version, desc.version, nullptr);
+            state.setProperty (ids.id, desc->UID, nullptr);
+            state.setProperty (ids.version, desc->version, nullptr);
 
             auto editorState = lastValidState.getChildWithName (ids.EDITORS);
 

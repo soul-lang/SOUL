@@ -108,7 +108,7 @@ public:
     juce::String getNameOfPluginFromIdentifier (const juce::String& fileOrIdentifier) override
     {
         if (auto instance = library->createInstance (fileOrIdentifier))
-            return instance->getDescription().name;
+            return Description::Ptr (instance->getDescription())->name;
 
         return fileOrIdentifier;
     }

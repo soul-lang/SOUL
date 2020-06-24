@@ -33,8 +33,9 @@ namespace patch
 template <typename BaseClass, typename DerivedClass>
 struct RefCountHelper  : public BaseClass
 {
-    void addRef() noexcept override   { ++refCount; }
-    void release() noexcept override  { if (--refCount == 0) delete static_cast<DerivedClass*> (this); }
+    int addRef() noexcept override   { return ++refCount; }
+    int release() noexcept override  { auto newCount = --refCount; if (newCount == 0) delete static_cast<DerivedClass*> (this); return newCount; }
+
     std::atomic<int> refCount { 1 };
 };
 

@@ -140,7 +140,7 @@ public:
         Note that if there was an error when parsing the manifest file, the description
         returned will have an null UID and an error message in the description field.
     */
-    virtual Description getDescription() = 0;
+    virtual Description* getDescription() = 0;
 
     /** Looks at the modification times of all the files that this patch uses, and
         returns the most recent one.

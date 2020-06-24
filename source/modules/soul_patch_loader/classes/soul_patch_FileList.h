@@ -212,21 +212,42 @@ struct FileList
         return mostRecent;
     }
 
-    Description createDescription() const
+    struct DescriptionImpl final  : public RefCountHelper<Description, DescriptionImpl>
     {
-        Description d;
+        DescriptionImpl (VirtualFile::Ptr m, std::string description)
+            : manifestHolder (m), stringDescription (description)
+        {
+            manifestFile = manifestHolder.get();
+            description = stringDescription.c_str();
+        }
 
-        d.manifestFile   = manifest.file;
-        d.UID            = makeString (manifestJSON["ID"]);
-        d.version        = makeString (manifestJSON["version"]);
-        d.name           = makeString (manifestJSON["name"]);
-        d.description    = makeString (manifestJSON["description"]);
-        d.category       = makeString (manifestJSON["category"]);
-        d.manufacturer   = makeString (manifestJSON["manufacturer"]);
-        d.URL            = makeString (manifestJSON["URL"]);
-        d.isInstrument   = manifestJSON["isInstrument"].getWithDefault<bool> (false);
+        DescriptionImpl (const FileList& fl)
+            : DescriptionImpl (fl.manifest.file,
+                               fl.manifestJSON["description"].getWithDefault<std::string> ({}))
+        {
+            stringUID            = fl.manifestJSON["ID"].getWithDefault<std::string> ({});
+            stringVersion        = fl.manifestJSON["version"].getWithDefault<std::string> ({});
+            stringName           = fl.manifestJSON["name"].getWithDefault<std::string> ({});
+            stringCategory       = fl.manifestJSON["category"].getWithDefault<std::string> ({});
+            stringManufacturer   = fl.manifestJSON["manufacturer"].getWithDefault<std::string> ({});
+            stringURL            = fl.manifestJSON["URL"].getWithDefault<std::string> ({});
+            isInstrument         = fl.manifestJSON["isInstrument"].getWithDefault<bool> (false);
 
-        return d;
+            UID           = stringUID.c_str();
+            version       = stringVersion.c_str();
+            name          = stringName.c_str();
+            category      = stringCategory.c_str();
+            manufacturer  = stringManufacturer.c_str();
+            URL           = stringURL.c_str();
+        }
+
+        VirtualFile::Ptr manifestHolder;
+        std::string stringUID, stringVersion, stringName, stringDescription, stringCategory, stringManufacturer, stringURL;
+    };
+
+    Description* createDescription() const
+    {
+        return new DescriptionImpl (*this);
     }
 };
 

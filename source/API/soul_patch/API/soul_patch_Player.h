@@ -20,13 +20,20 @@ namespace patch
 /** The set of properties that are known about a patch before it is compiled.
     Most of these are taken directly from the .soulpatch manifest file contents.
 */
-struct Description
+struct Description   : public RefCountedBase
 {
-    /** Provides acces to the .soulpatch manifest file from which this patch was loaded. */
-    VirtualFile::Ptr manifestFile;
+    using Ptr = RefCountingPtr<Description>;
 
-    String::Ptr UID, version;
-    String::Ptr name, description, category, manufacturer, URL;
+    /** Provides acces to the .soulpatch manifest file from which this patch was loaded. */
+    VirtualFile* manifestFile;
+
+    const char* UID;
+    const char* version;
+    const char* name;
+    const char* description;
+    const char* category;
+    const char* manufacturer;
+    const char* URL;
     bool isInstrument = false;
 };
 
@@ -130,7 +137,7 @@ public:
     virtual bool isPlayable() const = 0;
 
     /** Returns a Description object containing all the details about this patch. */
-    virtual Description getDescription() const = 0;
+    virtual Description* getDescription() const = 0;
 
     /** Checks whether the configuration or other internal factors (such as the source
         files of the patch) have changed in a way that means this player is out of date

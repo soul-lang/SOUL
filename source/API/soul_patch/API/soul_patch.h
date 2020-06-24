@@ -46,8 +46,8 @@ namespace patch
 class RefCountedBase
 {
 public:
-    virtual void addRef() noexcept = 0;
-    virtual void release() noexcept = 0;
+    virtual int addRef() noexcept = 0;
+    virtual int release() noexcept = 0;
 };
 
 //==============================================================================

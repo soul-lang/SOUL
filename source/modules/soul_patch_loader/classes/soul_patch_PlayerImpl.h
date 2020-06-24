@@ -42,7 +42,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
     Span<CompilationMessage> getCompileMessages() const override    { return compileMessagesSpan; }
     bool isPlayable() const override                                { return ! anyErrors; }
-    Description getDescription() const override                     { return fileList.createDescription(); }
+    Description* getDescription() const override                    { return fileList.createDescription(); }
 
     bool needsRebuilding (const PatchPlayerConfiguration& newConfig) override
     {
