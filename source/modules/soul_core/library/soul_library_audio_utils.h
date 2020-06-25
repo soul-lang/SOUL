@@ -45,7 +45,7 @@ namespace soul
     float32 noteNumberToFrequency (int note, int rootNote, float32 rootFrequency, float32[] scale)
     {
         note -= rootNote + 1;
-        return scale[note] * rootFrequency * pow(scale[-1], float32((note-wrap(note, scale.size)) / scale.size));
+        return scale.at(note) * rootFrequency * pow(scale[-1], float32((note-wrap(note, scale.size)) / scale.size));
     }
     /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz using A440 12-TET tuning. */
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
