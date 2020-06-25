@@ -32,47 +32,6 @@ struct heart::Checker
         checkForRecursiveFunctions (program);
         checkForInfiniteLoops (program);
         checkBlockParameters (program);
-        sanityCheckStateMemberInitialisation (program);
-    }
-
-    static void sanityCheckStateMemberInitialisation (const Program& program)
-    {
-        std::vector<soul::pool_ref<heart::Variable>> stateVariables;
-        std::vector<soul::pool_ref<heart::Variable>> initialisedVariables;
-
-        for (auto& m : program.getModules())
-        {
-            // Exclude externals as they won't be initialised at this point
-            for (auto v : m->stateVariables)
-                if (! v->isExternal())
-                    stateVariables.push_back (v);
-
-            if (! m->stateVariables.empty())
-            {
-                auto initFn = m->findFunction (heart::getSystemInitFunctionName());
-
-                if (initFn != nullptr)
-                {
-                    // Check the first block only - we can't reliably track clever logic within the function, so just
-                    // use the statements that are definitely visited
-                    if (! initFn->blocks.empty())
-                    {
-                        for (auto s : initFn->blocks.front()->statements)
-                            if (auto a = cast<heart::Assignment> (*s))
-                                if (auto v = cast<heart::Variable> (a->target))
-                                    initialisedVariables.push_back (*v);
-                    }
-                }
-            }
-        }
-
-        sortAndRemoveDuplicates (stateVariables);
-        sortAndRemoveDuplicates (initialisedVariables);
-
-        removeFromVector (stateVariables, initialisedVariables);
-
-        if (! stateVariables.empty())
-            stateVariables.front()->location.throwError (Errors::uninitialisedStateVariable (stateVariables.front()->name.toString()));
     }
 
     static void sanityCheckInputsAndOutputs (Program& program)
