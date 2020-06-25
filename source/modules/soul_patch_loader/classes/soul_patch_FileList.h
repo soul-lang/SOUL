@@ -214,11 +214,17 @@ struct FileList
 
     struct DescriptionImpl final  : public RefCountHelper<Description, DescriptionImpl>
     {
-        DescriptionImpl (VirtualFile::Ptr m, std::string description)
-            : manifestHolder (m), stringDescription (description)
+        DescriptionImpl (VirtualFile::Ptr m, std::string desc)
+            : manifestHolder (std::move (m)), stringDescription (std::move (desc))
         {
             manifestFile = manifestHolder.get();
             description = stringDescription.c_str();
+            UID           = "";
+            version       = "";
+            name          = "";
+            category      = "";
+            manufacturer  = "";
+            URL           = "";
         }
 
         DescriptionImpl (const FileList& fl)
@@ -236,7 +242,6 @@ struct FileList
             UID           = stringUID.c_str();
             version       = stringVersion.c_str();
             name          = stringName.c_str();
-            description   = stringDescription.c_str();
             category      = stringCategory.c_str();
             manufacturer  = stringManufacturer.c_str();
             URL           = stringURL.c_str();
