@@ -147,24 +147,28 @@ The array size between square brackets must be either a compile-time constant or
 
 Arrays have a special built-in member-style variable `size` which is returns their number of elements.
 
-Access into an array using the square bracket operator requires the parameter type to be a compile time constant, or `wrap` or `clamp` to guarantee that its value is never out-of-bounds. e.g.
+Access into an array using the square bracket operator is ideally done by passing a `wrap` or `clamp` type, because these are guaranteed to never be out-of-bounds, so optimal code can be generated.
+
+If an array index is passed as a normal integer, then the compiler will generate a wrap operation around it so that any out-of-range values are brought within safe bounds. This adds run-time overhead so a warning is emitted when this happens. To avoid the warning, you can use the `.at()` method or cast the integer to a suitable `wrap<>` or '`clamp<>` type explicitly.
 
 ```C
 int[4] myArray;
 
-let x = myArray[4]; // error
-let x = myArray[3]; // OK
-
 let y = myArray.size; // y has the type int, and value 4
 
+let x = myArray[3]; // OK
+let x = myArray[4]; // Compile-time error because the compiler knows this is out of bounds
+
 wrap<4> wrappedIndex;
-let x = myArray[wrappedIndex]; // OK
+let x = myArray[wrappedIndex]; // This is ideal because the compiler knows the index is always in-range
 
 wrap<2> wrappedIndex;
-let x = myArray[wrappedIndex]; // OK - the wrap size can be less than the array size
+let x = myArray[wrappedIndex]; // Also good - the wrap size can be smaller than the array size
 
-clamp<5> clampedIndex;
-let x = myArray[clampedIndex]; // error - would need to be clamp<4> or less to work
+int intIndex;
+let x = myArray[intIndex]; // Emits a performance warning because the compiler must add a runtime wrap operation
+let x = myArray.at (intIndex); // Compiles cleanly, and performs a run-time wrap on the index value
+let x = myArray[wrap<4> (intIndex)]; // Compiles without warnings and the cast performs the wrap operation
 ```
 
 Negative indexes allow you to take an element at the back of the array, e.g.
@@ -175,15 +179,6 @@ int[10] myArray;
 let x = myArray[-1];  // returns the last element (same as myArray[9] for a size of 10)
 let y = myArray[-2];  // returns the last-but-one element in the array
 let z = myArray[-10];  // error: this is out-of-bounds
-```
-
-To access an index with an integer, you can either cast it to a `wrap` or `clamp`, or use the `at()` method:
-
-```C++
-let x = myArray.at (someInteger); // this will check the incoming value and modulo
-                                  // it with the array size if it's out-of-bounds
-
-let x = myArray[clamp<myArray.size>(someInteger)];  // use a cast to clamp the value
 ```
 
 #### Array slicing
