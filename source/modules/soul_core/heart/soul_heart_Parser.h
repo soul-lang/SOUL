@@ -704,6 +704,9 @@ private:
                     throwError (Errors::expectedStatement());
         }
 
+        if (f.blocks.empty())
+            f.location.throwError (Errors::emptyFunction(f.name.toString()));
+
         builder.endFunction();
     }
 
@@ -1414,44 +1417,47 @@ private:
             return castValue (Value (val), requiredType);
         }
 
-        if (requiredType.isFloat64())
+        if (requiredType.isPrimitive())
         {
-            if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
-                return Value ((double) literalIntValue);
+            if (requiredType.isFloat64())
+            {
+                if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
+                    return Value ((double) literalIntValue);
 
-            auto val = literalDoubleValue;
-            expect (Token::literalFloat64);
-            return castValue (Value (val), requiredType);
-        }
+                auto val = literalDoubleValue;
+                expect (Token::literalFloat64);
+                return castValue (Value (val), requiredType);
+            }
 
-        if (requiredType.isFloat32())
-        {
-            if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
-                return Value ((float) literalIntValue);
+            if (requiredType.isFloat32())
+            {
+                if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
+                    return Value ((float) literalIntValue);
 
-            auto val = literalDoubleValue;
-            expect (Token::literalFloat32);
-            return castValue (Value (val), requiredType);
-        }
+                auto val = literalDoubleValue;
+                expect (Token::literalFloat32);
+                return castValue (Value (val), requiredType);
+            }
 
-        if (requiredType.isInteger32())
-        {
-            auto val = literalIntValue;
-            expect (Token::literalInt32);
-            return castValue (Value (val), requiredType);
-        }
+            if (requiredType.isInteger32())
+            {
+                auto val = literalIntValue;
+                expect (Token::literalInt32);
+                return castValue (Value (val), requiredType);
+            }
 
-        if (requiredType.isInteger64())
-        {
-            auto val = literalIntValue;
-            expect (Token::literalInt64);
-            return castValue (Value (val), requiredType);
-        }
+            if (requiredType.isInteger64())
+            {
+                auto val = literalIntValue;
+                expect (Token::literalInt64);
+                return castValue (Value (val), requiredType);
+            }
 
-        if (requiredType.isBool())
-        {
-            if (matchIf ("true"))  return Value (true);
-            if (matchIf ("false")) return Value (false);
+            if (requiredType.isBool())
+            {
+                if (matchIf ("true"))  return Value (true);
+                if (matchIf ("false")) return Value (false);
+            }
         }
 
         if (requiredType.isArrayOrVector())

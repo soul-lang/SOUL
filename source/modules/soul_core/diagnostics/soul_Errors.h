@@ -269,6 +269,7 @@ namespace soul
     X(branchInvalidParameters,              "Block $0$ terminator has invalid block paramteters") \
     X(blockParametersInvalid,               "Block $0$ parameters invalid") \
     X(missingAnnotationValue,               "Missing annotation value") \
+    X(emptyFunction,                        "Function $0$ is empty") \
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \
