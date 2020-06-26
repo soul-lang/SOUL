@@ -210,7 +210,7 @@ inline std::string CodePrinter::toString() const
         if (auto contentLen = getLengthWithTrimmedEnd (l.line))
         {
             s.append (l.indent, ' ');
-            s.append (l.line.begin(), l.line.begin() + static_cast<ssize_t> (contentLen));
+            s.append (l.line.begin(), l.line.begin() + static_cast<typename std::string::difference_type> (contentLen));
         }
 
         s.append (newLineString);

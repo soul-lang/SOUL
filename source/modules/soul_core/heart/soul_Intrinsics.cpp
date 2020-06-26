@@ -117,6 +117,7 @@ namespace CompileTimeIntrinsicEvaluation
             case IntrinsicType::atan2:                   return perform (args, atan2_d);
             case IntrinsicType::isnan:                   return perform (args, isnan_d);
             case IntrinsicType::isinf:                   return perform (args, isinf_d);
+            case IntrinsicType::roundToInt:              return {};
             case IntrinsicType::sum:                     return {};
             case IntrinsicType::product:                 return {};
             case IntrinsicType::get_array_size:          return {};
@@ -190,6 +191,7 @@ Value performIntrinsic (IntrinsicType i, ArrayView<Value> args)
     X(atan2) \
     X(isnan) \
     X(isinf) \
+    X(roundToInt) \
     X(sum) \
     X(product) \
     X(get_array_size) \

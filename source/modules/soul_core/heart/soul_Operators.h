@@ -249,7 +249,7 @@ namespace BinaryOp
         return false;
     }
 
-    template<typename IntType, typename HandleError>
+    template <typename IntType, typename HandleError>
     bool SOUL_NO_SIGNED_INTEGER_OVERFLOW_WARNING applyInt (Value& lhs, IntType a, IntType b, Op op, HandleError&& handleError)
     {
         if (op == Op::add)                { lhs = Value (a + b);  return true; }

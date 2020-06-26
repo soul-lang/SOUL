@@ -964,7 +964,7 @@ private:
         return false;
     }
 
-    template<class ArgListType>
+    template <class ArgListType>
     ArgListType parseOptionalBranchArgs (const FunctionParseState& state)
     {
         heart::FunctionCall::ArgListType args;

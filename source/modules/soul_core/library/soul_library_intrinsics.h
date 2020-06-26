@@ -40,14 +40,14 @@ namespace soul::intrinsics
     /** Returns the lesser of two scalar values. */
     T.removeReference min<T>       (T a, T b)              [[intrin: "min"]]       { static_assert (T.isScalar, "min() only works with scalar types"); return a < b ? a : b; }
     /** Returns the lesser of two scalar values. */
-    int32 min      (int32 a, int32 b)      [[intrin: "min"]]       { return a < b ? a : b; }
+    int32 min                      (int32 a, int32 b)      [[intrin: "min"]]       { return a < b ? a : b; }
 
     /** Clamps a scalar value to the nearest value within a given range. */
     T.removeReference clamp<T>     (T n, T low, T high)    [[intrin: "clamp"]]     { static_assert (T.isScalar, "clamp() only works with scalar types"); return n < low ? low : (n > high ? high : n); }
     /** Performs a negative-number-aware modulo operation to wrap a number to a zero-based range. */
     T.removeReference wrap<T>      (T n, T range)          [[intrin: "wrap"]]      { static_assert (T.isScalar, "wrap() only works with scalar types");  if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
     /** Performs a negative-number-aware integer modulo operation. */
-    int32 wrap     (int32 n, int32 range)  [[intrin: "wrap"]]      { if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
+    int32 wrap                     (int32 n, int32 range)  [[intrin: "wrap"]]      { if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
     /** Performs a C++-compatible floor function on a scalar floating point value. */
     T.removeReference floor<T>     (T n)                   [[intrin: "floor"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "floor() only works with scalar floating point types");     return T (int (n)); }
     /** Performs a C++-compatible ceil function on a scalar floating point value. */
@@ -70,6 +70,11 @@ namespace soul::intrinsics
     /** Returns the log 10 of a scalar floating point value. */
     T.removeReference log10<T>     (T n)                   [[intrin: "log10"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "log10() only works with scalar floating point types");     return T(); }
 
+    /** Rounds a floating point number up or down to the nearest integer. */
+    int32 roundToInt (float32 n)    [[intrin: "roundToInt"]]                       { return int32 (n + (n < 0 ? -0.5f : 0.5f)); }
+    /** Rounds a floating point number up or down to the nearest integer. */
+    int64 roundToInt (float64 n)    [[intrin: "roundToInt"]]                       { return int64 (n + (n < 0 ? -0.5 : 0.5)); }
+
     /** Returns true if the floating point argument is a NaN. */
     bool isnan<T> (T n)  [[intrin: "isnan"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isnan() only works with floating point types"); return false; }
     /** Returns true if the floating point argument is an INF. */
@@ -91,10 +96,7 @@ namespace soul::intrinsics
             return value - pi2;
         }
 
-        if (value < 0)
-            return value % pi2 + pi2;
-
-        return value;
+        return value < 0 ? value % pi2 + pi2 : value;
     }
 
     /** Returns the sum of an array or vector of scalar values. */

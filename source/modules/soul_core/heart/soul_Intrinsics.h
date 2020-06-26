@@ -55,6 +55,7 @@ namespace soul
         isnan,
         isinf,
         sum,
+        roundToInt,
         product,
         get_array_size,
         read,

@@ -164,8 +164,8 @@ private:
     template <typename Type, typename... Args>
     Type& allocate (Args&&... args) const    { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
-    AST::Expression& matchCloseParen (AST::Expression& e)                 { expect (Operator::closeParen); return e; }
-    template<typename ExpType> ExpType& matchEndOfStatement (ExpType& e)  { expect (Operator::semicolon);  return e; }
+    AST::Expression& matchCloseParen (AST::Expression& e)                  { expect (Operator::closeParen); return e; }
+    template <typename ExpType> ExpType& matchEndOfStatement (ExpType& e)  { expect (Operator::semicolon);  return e; }
 
     AST::Context getContext() const             { return { location, currentScope }; }
     AST::Block& getCurrentBlock() const         { auto b = currentScope->getAsBlock(); SOUL_ASSERT (b != nullptr); return *b; }
