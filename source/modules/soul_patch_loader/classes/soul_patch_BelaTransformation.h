@@ -285,8 +285,8 @@ namespace Bela
 }
 
 )";
-        static constexpr choc::text::CodePrinter::NewLine newLine;
-        static constexpr choc::text::CodePrinter::BlankLine blankLine;
-        static constexpr choc::text::CodePrinter::SectionBreak sectionBreak;
+        static constexpr choc::text::CodePrinter::NewLine newLine = {};
+        static constexpr choc::text::CodePrinter::BlankLine blankLine = {};
+        static constexpr choc::text::CodePrinter::SectionBreak sectionBreak = {};
     };
 }
