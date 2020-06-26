@@ -60,7 +60,8 @@ namespace soul::patch
                 {
                     auto channels = input->dataTypes.front().getVectorSize();
 
-                    parameters << name << "Input = Bela::InputAudioStream (" << std::to_string (nextOutputChannel) << ", " << channels << ");" << newLine;
+                    parameters << name << "Input = Bela::InputAudioStream (" << std::to_string (nextOutputChannel)
+                               << ", " << std::to_string (channels) << ");" << newLine;
 
                     connections << "audioIn -> " << name << "Input.audioIn;" << newLine
                                 << name << "Input.audioOut -> wrappedModule." << name << ";" << newLine
@@ -86,32 +87,31 @@ namespace soul::patch
                 connections << "wrappedModule." << name << " -> " << name << ";" << newLine;
             }
 
-            IndentedStream graph;
+            choc::text::CodePrinter graph;
 
-            graph.writeMultipleLines (namespaceCode);
-
-            graph << blankLine
+            graph << namespaceCode
+                  << blankLine
                   << "graph BelaWrapper [[ main ]]" << newLine;
 
             {
-                auto indent1 = graph.createBracedIndent();
+                auto indent1 = graph.createIndentWithBraces();
 
-                graph << "input stream float<10> audioIn;" << newLine;
-                graph.writeMultipleLines (streams.toString());
-                graph << blankLine
+                graph << "input stream float<10> audioIn;" << newLine
+                      << streams.toString()
+                      << blankLine
                       << "let" << newLine;
 
                 {
-                    auto indent2 = graph.createBracedIndent();
-                    graph.writeMultipleLines (parameters.toString());
+                    auto indent2 = graph.createIndentWithBraces();
+                    graph << parameters.toString();
                 }
 
                 graph << blankLine
                       << "connection" << newLine;
 
                 {
-                    auto indent2 = graph.createBracedIndent();
-                    graph.writeMultipleLines (connections.toString());
+                    auto indent2 = graph.createIndentWithBraces();
+                    graph << connections.toString();
                 }
 
                 graph << newLine;
@@ -201,7 +201,7 @@ namespace soul::patch
 
         const soul::Program& program;
 
-        IndentedStream parameters, connections, streams;
+        choc::text::CodePrinter parameters, connections, streams;
 
         int  nextParameterId              = 0;
         const int maxParameters           = 8;
@@ -285,5 +285,8 @@ namespace Bela
 }
 
 )";
+        static constexpr choc::text::CodePrinter::NewLine newLine;
+        static constexpr choc::text::CodePrinter::BlankLine blankLine;
+        static constexpr choc::text::CodePrinter::SectionBreak sectionBreak;
     };
 }

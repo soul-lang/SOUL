@@ -316,10 +316,10 @@ std::string Program::stripRootNamespaceFromQualifiedPath (std::string path)     
 
 std::string Program::getHash() const
 {
-    IndentedStream dump;
+    choc::text::CodePrinter dump;
     heart::Printer::print (*this, dump);
     HashBuilder hash;
-    hash << dump.getContent();
+    hash << dump.toString();
     return hash.toString();
 }
 

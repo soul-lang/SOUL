@@ -24,7 +24,7 @@ namespace soul
 //==============================================================================
 struct heart::Printer
 {
-    static void print (const Program& p, IndentedStream& out)
+    static void print (const Program& p, choc::text::CodePrinter& out)
     {
         out << '#' << getHEARTFormatVersionPrefix() << ' ' << getHEARTFormatVersion() << blankLine;
 
@@ -34,19 +34,23 @@ struct heart::Printer
 
     static std::string getDump (const Program& p)
     {
-        IndentedStream out;
+        choc::text::CodePrinter out;
         print (p, out);
         return out.toString();
     }
 
 private:
+    static constexpr choc::text::CodePrinter::NewLine newLine;
+    static constexpr choc::text::CodePrinter::BlankLine blankLine;
+    static constexpr choc::text::CodePrinter::SectionBreak sectionBreak;
+
     struct PrinterStream
     {
-        PrinterStream (const Module& m, IndentedStream& o)
+        PrinterStream (const Module& m, choc::text::CodePrinter& o)
            : module (m), out (o) {}
 
         const Module& module;
-        IndentedStream& out;
+        choc::text::CodePrinter& out;
 
         std::unordered_map<pool_ref<heart::Variable>, std::string> localVariableNames;
         std::vector<std::string> allVisibleVariables;
@@ -65,7 +69,7 @@ private:
             out << newLine;
 
             {
-                auto indent = out.createBracedIndent (2);
+                auto indent = out.createIndentWithBraces (2);
 
                 if (! module.isNamespace())
                 {
@@ -159,7 +163,7 @@ private:
                 out << "node " << padded (mi->instanceName, 16) << " = " << mi->sourceName;
 
                 if (mi->arraySize > 1)
-                    out << '[' << (size_t) mi->arraySize << ']';
+                    out << '[' << mi->arraySize << ']';
 
                 SOUL_ASSERT (! (mi->hasClockMultiplier() && mi->hasClockDivider())); // Can't have both
 
@@ -348,7 +352,7 @@ private:
                 maxTypeLen = std::max (maxTypeLen, (int) getTypeDescription (m.type).length());
 
             {
-                auto indent = out.createBracedIndent (2);
+                auto indent = out.createIndentWithBraces (2);
 
                 for (auto& m : s.getMembers())
                     out << padded (getTypeDescription (m.type), maxTypeLen + 2) << m.name << ';' << newLine;
@@ -361,13 +365,13 @@ private:
         {
             struct Printer  : public ValuePrinter
             {
-                Printer (IndentedStream& s) : outStream (s) {}
+                Printer (choc::text::CodePrinter& s) : outStream (s) {}
 
                 void print (std::string_view s) override    { outStream << s; }
                 void printFloat32 (float value) override    { if (value == 0) print ("0.0f"); else ValuePrinter::printFloat32 (value); }
                 void printFloat64 (double value) override   { if (value == 0) print ("0.0");  else ValuePrinter::printFloat64 (value); }
 
-                IndentedStream& outStream;
+                choc::text::CodePrinter& outStream;
             };
 
             Printer p { out };
@@ -612,12 +616,12 @@ private:
         {
             out << getAssignmentRole (*r.target);
             printExpression (*r.target);
-            out << " = read " << r.source->name;
+            out << " = read " << r.source->name.toString();
         }
 
         void printDescription (const heart::WriteStream& w)
         {
-            out << "write " << w.target->name;
+            out << "write " << w.target->name.toString();
 
             if (w.element != nullptr)
             {

@@ -72,6 +72,7 @@
 #include "../../3rdParty/choc/text/choc_FloatToString.h"
 #include "../../3rdParty/choc/math/choc_MathHelpers.h"
 #include "../../3rdParty/choc/audio/choc_SampleBuffers.h"
+#include "../../3rdParty/choc/text/choc_CodePrinter.h"
 #include "../../API/soul_venue/soul_ProgramDefinitions.h"
 
 #include "utilities/soul_MiscUtilities.h"
@@ -101,7 +102,6 @@ namespace soul
 #include "utilities/soul_Identifier.h"
 #include "utilities/soul_ObjectHandleList.h"
 #include "utilities/soul_PoolAllocator.h"
-#include "utilities/soul_IndentedStream.h"
 #include "utilities/soul_FIFO.h"
 #include "utilities/soul_ChannelSetFIFO.h"
 #include "utilities/soul_Resampler.h"
