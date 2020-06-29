@@ -165,9 +165,9 @@ private:
 
     static void recursivePatchSearch (juce::StringArray& results, const juce::File& dir, bool recursive)
     {
-        for (juce::DirectoryIterator iter (dir, false, "*", juce::File::findFilesAndDirectories); iter.next();)
+        for (auto i : juce::RangedDirectoryIterator (dir, false, "*", juce::File::findFilesAndDirectories))
         {
-            auto f = iter.getFile();
+            auto f = i.getFile();
 
             if (f.hasFileExtension (".soulpatch"))
             {

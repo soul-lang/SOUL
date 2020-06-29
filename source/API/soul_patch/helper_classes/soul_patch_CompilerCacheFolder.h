@@ -90,11 +90,8 @@ struct CompilerCacheFolder final  : public CompilerCache
         juce::Time modificationTime;
         bool anyFailed = false;
 
-        for (juce::DirectoryIterator i (folder, false, getFilePrefix() + "*", juce::File::findFiles);
-             i.next ({}, {}, {}, &modificationTime, {}, {});)
-        {
+        for (auto i : juce::RangedDirectoryIterator (folder, false, getFilePrefix() + "*", juce::File::findFiles))
             files.push_back ({ i.getFile(), modificationTime });
-        }
 
         if (files.size() > maxNumFilesToRetain)
         {

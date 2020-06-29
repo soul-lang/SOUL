@@ -320,22 +320,17 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             {
                 auto maxEvents = messageSpaceIn.size();
 
-                juce::MidiBuffer::Iterator iter (midi);
+                auto iter = midi.cbegin();
+                auto end = midi.cend();
                 size_t i = 0;
 
-                while (i < maxEvents)
+                while (i < maxEvents && iter != end)
                 {
-                    const juce::uint8* midiData;
-                    int numBytesOfMidiData, samplePosition;
+                    auto message = *iter++;
 
-                    if (! iter.getNextEvent (midiData, numBytesOfMidiData, samplePosition))
-                        break;
-
-                    if (numBytesOfMidiData < 4)
-                        messageSpaceIn[i++] = { static_cast<uint32_t> (samplePosition),
-                                                { static_cast<uint8_t> (midiData[0]),
-                                                  static_cast<uint8_t> (midiData[1]),
-                                                  static_cast<uint8_t> (midiData[2]) } };
+                    if (message.numBytes < 4)
+                        messageSpaceIn[i++] = { static_cast<uint32_t> (message.samplePosition),
+                                                { message.data[0], message.data[1], message.data[2] } };
                 }
 
                 rc.numMIDIMessagesIn = (uint32_t) i;
