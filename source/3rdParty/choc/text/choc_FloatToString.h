@@ -331,7 +331,7 @@ private:
 
     static MantissaAndExponent createPowerOf10 (int exponentBase2, int& K)
     {
-        static constexpr MantissaAndExponent powersOf10[] =
+        static constexpr MantissaAndExponent powerOf10List[] =
         {
             { 0xfa8fd5a0081c0288ull, -1220 }, { 0xbaaee17fa23ebf76ull, -1193 }, { 0x8b16fb203055ac76ull, -1166 }, { 0xcf42894a5dce35eaull, -1140 }, { 0x9a6bb0aa55653b2dull, -1113 },
             { 0xe61acf033d1a45dfull, -1087 }, { 0xab70fe17c79ac6caull, -1060 }, { 0xff77b1fcbebcdc4full, -1034 }, { 0xbe5691ef416bd60cull, -1007 }, { 0x8dd01fad907ffc3cull,  -980 },
@@ -357,7 +357,7 @@ private:
         auto ik = static_cast<int> (dk);
         auto index = ((ik + (dk > ik ? 348 : 347)) >> 3) + 1;
         K = 348 - (index << 3);
-        return powersOf10[index];
+        return powerOf10List[index];
     }
 };
 

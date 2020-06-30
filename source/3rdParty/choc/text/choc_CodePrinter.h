@@ -42,6 +42,10 @@ struct CodePrinter
     CodePrinter (CodePrinter&&) = default;
     CodePrinter (const CodePrinter&) = default;
 
+    /** Returns the finished contents of the stream as a string. */
+    std::string toString() const;
+
+    //==============================================================================
     CodePrinter& operator<< (const char*);
     CodePrinter& operator<< (const std::string&);
     CodePrinter& operator<< (std::string_view);
@@ -49,49 +53,67 @@ struct CodePrinter
     CodePrinter& operator<< (double);
     CodePrinter& operator<< (float);
 
+    /** Prints any kind of integer type. */
     template <typename IntegerType>
     CodePrinter& operator<< (IntegerType);
 
+    /** This class is used as a sentinel which when passed to the `<<` operator, writes a new-line. */
     struct NewLine {};
+    /** This class is used as a sentinel which when passed to the `<<` operator, writes a blank line. */
     struct BlankLine {};
+    /** This class is used as a sentinel which when passed to the `<<` operator, writes a section break. */
     struct SectionBreak {};
 
+    /** Emits a new-line */
     CodePrinter& operator<< (const NewLine&);
+    /** Emits either one or two new-lines, in order to leave exactly one blank line */
     CodePrinter& operator<< (const BlankLine&);
+    /** Emits the section-break text. @see setSectionBreak() */
     CodePrinter& operator<< (const SectionBreak&);
 
+    //==============================================================================
+    /** Sets the current tab size. Note that this won't modify any previously-written lines,
+        it just affects the subsequent printing.
+    */
     void setTabSize (size_t numSpaces);
+    /** Sets a text string to use as a section break - the default is a commented-out line of dashes. */
     void setSectionBreak (std::string newSectionBreakString);
+    /** Modifies the new-line sequence.
+        By default this is just a `\n`, but you may want to change it to a `\r\n` sequence.
+    */
     void setNewLine (const char* newLineSequence);
+    /** This sets a line length limit, so that longer lines will be wrapped where possible.
+        Setting this to 0 turns off line-wrap.
+    */
     void setLineWrapLength (size_t lineWrapCharacters);
+    /** Returns the current line-wrap length, where 0 means no wrapping. */
     size_t getLineWrapLength() const            { return lineWrapLength; }
 
-    size_t getTotalIndent() const;
-    void setTotalIndent (size_t newTotalNumSpaces);
-    void addIndent (int spacesToAdd);
+    //==============================================================================
+    /** An RAII class which resets the indent level when it is deleted. */
+    struct Indent;
 
-    struct Indent
-    {
-        Indent (Indent&&) = default;
-        Indent (const Indent&) = delete;
-        ~Indent();
-
-    private:
-        friend struct CodePrinter;
-        Indent (CodePrinter&, int, char, char);
-        CodePrinter& owner;
-        int amount;
-        char openBrace = 0, closeBrace = 0;
-    };
-
+    /** Returns an Indent object which adds an indentation of the default amount. */
     [[nodiscard]] Indent createIndent();
+    /** Returns an Indent object which adds an indentation of the given amount. */
     [[nodiscard]] Indent createIndent (size_t numSpaces);
+    /** Returns an Indent object which modifies the indent level and adds a pair of brace characters around the block. */
     [[nodiscard]] Indent createIndent (char openBrace, char closeBrace);
+    /** Returns an Indent object which modifies the indent level and adds a pair of brace characters around the block. */
     [[nodiscard]] Indent createIndent (size_t numSpaces, char openBrace, char closeBrace);
+    /** Returns an Indent object which modifies the indent level and adds default curly-braces around the block. */
     [[nodiscard]] Indent createIndentWithBraces();
+    /** Returns an Indent object which modifies the indent level and adds default curly-braces around the block. */
     [[nodiscard]] Indent createIndentWithBraces (size_t numSpaces);
 
-    std::string toString() const;
+    /** Returns the total number of spaces that will be used for indenting the current line. */
+    size_t getTotalIndent() const;
+    /** Adds or removes some indentation to the current level. (The Indent class provides a better
+        way to indent blocks than manually changing this value). @see createIndent()
+    */
+    void addIndent (int spacesToAdd);
+    /** Modifies the current total indent level. @see createIndent() */
+    void setTotalIndent (size_t newTotalNumSpaces);
 
 private:
     struct Line
@@ -171,21 +193,34 @@ inline size_t CodePrinter::getTotalIndent() const                      { return 
 inline void CodePrinter::setTotalIndent (size_t newIndent)             { indent = static_cast<int> (newIndent); }
 inline void CodePrinter::addIndent (int spacesToAdd)                   { indent += spacesToAdd; CHOC_ASSERT (indent >= 0); }
 
-inline CodePrinter::Indent::Indent (CodePrinter& p, int size, char ob, char cb) : owner (p), amount (size), openBrace (ob), closeBrace (cb)
+struct CodePrinter::Indent
 {
-    if (openBrace != 0)
-        owner << openBrace << NewLine();
+    Indent (Indent&&) = default;
+    Indent (const Indent&) = delete;
 
-    owner.addIndent (size);
-}
+    ~Indent()
+    {
+        owner.addIndent (-amount);
 
-inline CodePrinter::Indent::~Indent()
-{
-    owner.addIndent (-amount);
+        if (closeBrace != 0)
+            owner << closeBrace;
+    }
 
-    if (closeBrace != 0)
-        owner << closeBrace;
-}
+private:
+    friend struct CodePrinter;
+
+    CodePrinter& owner;
+    int amount;
+    char openBrace = 0, closeBrace = 0;
+
+    Indent (CodePrinter& p, int size, char ob, char cb) : owner (p), amount (size), openBrace (ob), closeBrace (cb)
+    {
+        if (openBrace != 0)
+            owner << openBrace << NewLine();
+
+        owner.addIndent (size);
+    }
+};
 
 inline CodePrinter::Indent CodePrinter::createIndent()                                { return createIndent (0, 0); }
 inline CodePrinter::Indent CodePrinter::createIndent (size_t size)                    { return createIndent (size, 0, 0); }
@@ -210,7 +245,7 @@ inline std::string CodePrinter::toString() const
         if (auto contentLen = getLengthWithTrimmedEnd (l.line))
         {
             s.append (l.indent, ' ');
-            s.append (l.line.begin(), l.line.begin() + static_cast<typename std::string::difference_type> (contentLen));
+            s.append (l.line.begin(), l.line.begin() + static_cast<std::string::difference_type> (contentLen));
         }
 
         s.append (newLineString);
