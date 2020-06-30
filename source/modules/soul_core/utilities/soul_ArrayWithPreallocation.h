@@ -188,11 +188,11 @@ struct ArrayWithPreallocation
 
     template <typename... Args>
     void emplace_back (Args&&... args)
-	{
+    {
         reserve (numActive + 1);
         new (items + numActive) Item (std::forward<Args> (args)...);
         ++numActive;
-	}
+    }
 
     void insert (Item* insertPos, const Item& item)
     {
