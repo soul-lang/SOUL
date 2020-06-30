@@ -200,21 +200,21 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         if (player == nullptr)
             return true;
 
-        auto inputBuses  = player->getInputBuses();
-        auto outputBuses = player->getOutputBuses();
+        auto playerInputBuses  = player->getInputBuses();
+        auto playerOutputBuses = player->getOutputBuses();
 
-        if (layout.inputBuses.size() != (int) inputBuses.size())
+        if (layout.inputBuses.size() != (int) playerInputBuses.size())
             return false;
 
-        if (layout.outputBuses.size() != (int) outputBuses.size())
+        if (layout.outputBuses.size() != (int) playerOutputBuses.size())
             return false;
 
-        for (int i = 0; i < (int) inputBuses.size(); ++i)
-            if ((int) inputBuses[i].numChannels != layout.getNumChannels (true, i))
+        for (int i = 0; i < (int) playerInputBuses.size(); ++i)
+            if ((int) playerInputBuses[i].numChannels != layout.getNumChannels (true, i))
                 return false;
 
-        for (int i = 0; i < (int) outputBuses.size(); ++i)
-            if ((int) outputBuses[i].numChannels != layout.getNumChannels (false, i))
+        for (int i = 0; i < (int) playerOutputBuses.size(); ++i)
+            if ((int) playerOutputBuses[i].numChannels != layout.getNumChannels (false, i))
                 return false;
 
         return true;

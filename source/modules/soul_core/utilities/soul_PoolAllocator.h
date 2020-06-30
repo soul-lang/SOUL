@@ -181,6 +181,8 @@ inline bool is_type (pool_ptr<SrcType> object)
 template <typename TargetType, typename SrcType>
 inline bool is_type (pool_ref<SrcType> object)
 {
+    ignoreUnused (object);
+
     if constexpr (std::is_same<TargetType, SrcType>::value)
         return true;
     else
@@ -190,6 +192,8 @@ inline bool is_type (pool_ref<SrcType> object)
 template <typename TargetType, typename SrcType>
 inline bool is_type (SrcType& object)
 {
+    ignoreUnused (object);
+
     if constexpr (std::is_same<TargetType, SrcType>::value)
         return true;
     else
