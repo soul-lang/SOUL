@@ -93,7 +93,6 @@
 #ifdef __clang__
  #pragma clang diagnostic pop
 #elif WIN32
- #pragma warning (pop)
 #else
  #pragma GCC diagnostic pop
 #endif
