@@ -14,6 +14,7 @@
 #endif
 
 #include "../API/soul_patch.h"
+#include "../../soul_venue/soul_ProgramDefinitions.h"
 
 namespace soul
 {
