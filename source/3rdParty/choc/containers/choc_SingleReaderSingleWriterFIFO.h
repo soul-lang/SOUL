@@ -43,6 +43,11 @@ struct SingleReaderSingleWriterFIFO
     /** Clears the FIFO and allocates a size for it. */
     void reset (size_t numItems);
 
+    /** Clears the FIFO and allocates a size for it, filling the slots with
+        copies of the given object.
+    */
+    void reset (size_t numItems, const Item& itemInitialiser);
+
     /** Resets the FIFO, keeping the current size. */
     void reset();
 
@@ -93,6 +98,13 @@ template <typename Item> void SingleReaderSingleWriterFIFO<Item>::reset (size_t 
 {
     capacity = static_cast<uint32_t> (size);
     items.resize (capacity + 1u);
+    reset();
+}
+
+template <typename Item> void SingleReaderSingleWriterFIFO<Item>::reset (size_t size, const Item& itemToCopy)
+{
+    capacity = static_cast<uint32_t> (size);
+    items.resize (capacity + 1u, itemToCopy);
     reset();
 }
 
