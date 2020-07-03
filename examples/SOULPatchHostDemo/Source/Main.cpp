@@ -8,8 +8,6 @@
   ==============================================================================
 */
 
-#include <windows.h>
-
 #define DONT_SET_USING_JUCE_NAMESPACE 1
 #include "../JuceLibraryCode/JuceHeader.h"
 
@@ -29,7 +27,7 @@ struct SOULPatchHostDemoApp  : public juce::JUCEApplication
     const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override             { return true; }
 
-    void initialise (const juce::String&) override  { mainWindow = std::make_unique<MainWindow>(); }
+    void initialise (const juce::String&) override              { mainWindow = std::make_unique<MainWindow>(); }
     void shutdown() override                                    { mainWindow.reset(); }
     void systemRequestedQuit() override                         { quit(); }
     void anotherInstanceStarted (const juce::String&) override  {}
