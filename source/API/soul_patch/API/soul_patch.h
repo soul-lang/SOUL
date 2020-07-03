@@ -19,11 +19,16 @@
 
 #include <cstdint>
 
-#if _WIN32
- // Avoid including windows.h as this can cause all kinds of conflicts over what it pulls in
- extern "C" __declspec(dllimport) void* __stdcall LoadLibraryA (const char*);
- extern "C" __declspec(dllimport) int   __stdcall FreeLibrary (void*);
- extern "C" __declspec(dllimport) void* __stdcall GetProcAddress (void*, const char*);
+#if defined (WIN32) 
+ #if !defined (_WINDOWS_)
+  // Since windows.h hasn't been included, we will need to declare these functions
+  // If you see an error related to these declarations, it's likely you've included windows.h after including these
+  // To resolve, move your windows.h include to the first header in your compilation unit
+  typedef void* HMODULE;
+  extern "C" __declspec(dllimport) HMODULE  __stdcall LoadLibraryA (const char*);
+  extern "C" __declspec(dllimport) int   __stdcall FreeLibrary (HMODULE);
+  extern "C" __declspec(dllimport) void*  __stdcall GetProcAddress (HMODULE, const char*);
+ #endif
 #else
  #include <dlfcn.h>
 #endif

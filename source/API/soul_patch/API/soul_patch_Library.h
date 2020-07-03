@@ -103,8 +103,8 @@ private:
 
    #ifdef _WIN32
     static void* openLibrary (const char* name)           { return ::LoadLibraryA (name); }
-    static void closeLibrary (void* h)                    { ::FreeLibrary (h); }
-    static void* getFunction (void* h, const char* name)  { return ::GetProcAddress (h, name); }
+    static void closeLibrary (void* h)                    { ::FreeLibrary ((HMODULE) h); }
+    static void* getFunction (void* h, const char* name)  { return ::GetProcAddress ((HMODULE) h, name); }
    #else
     static void* openLibrary (const char* name)           { return ::dlopen (name, RTLD_LOCAL | RTLD_NOW); }
     static void closeLibrary (void* h)                    { ::dlclose (h); }
