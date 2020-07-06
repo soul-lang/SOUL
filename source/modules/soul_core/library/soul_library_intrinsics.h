@@ -49,9 +49,9 @@ namespace soul::intrinsics
     /** Performs a negative-number-aware integer modulo operation. */
     int32 wrap                     (int32 n, int32 range)  [[intrin: "wrap"]]      { if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
     /** Performs a C++-compatible floor function on a scalar floating point value. */
-    T.removeReference floor<T>     (T n)                   [[intrin: "floor"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "floor() only works with scalar floating point types");     let r = T (int (n)); return (r == n) ? n : (n >= 0 ? r : r - 1); }
+    T.removeReference floor<T>     (T n)                   [[intrin: "floor"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "floor() only works with scalar floating point types");     let r = T (int64 (n)); return (r == n) ? n : (n >= 0 ? r : r - 1); }
     /** Performs a C++-compatible ceil function on a scalar floating point value. */
-    T.removeReference ceil<T>      (T n)                   [[intrin: "ceil"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "ceil() only works with scalar floating point types");      let r = T (int (n)); return (r == n) ? n : (n >= 0 ? r + 1 : r); }
+    T.removeReference ceil<T>      (T n)                   [[intrin: "ceil"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "ceil() only works with scalar floating point types");      let r = T (int64 (n)); return (r == n) ? n : (n >= 0 ? r + 1 : r); }
     /** Returns a linearly-interpolated value between two scalar values. */
     T.removeReference lerp<T>      (T start, T stop, T amount)                     { static_assert (T.isScalar && T.primitiveType.isFloat, "lerp() only works with scalar floating point types");      return start + (stop - start) * amount; }
 
