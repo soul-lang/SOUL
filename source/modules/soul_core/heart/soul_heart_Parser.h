@@ -233,7 +233,7 @@ private:
 
         if (module->isGraph())
         {
-            if (matchIf ("node"))        return parseUsing();
+            if (matchIf ("node"))        return parseNode();
             if (matchIf ("connection"))  return parseConnection();
         }
         else
@@ -397,7 +397,7 @@ private:
         location.throwError (Errors::missingAnnotationValue());
     }
 
-    void parseUsing()
+    void parseNode()
     {
         auto name = readQualifiedIdentifier();
 
