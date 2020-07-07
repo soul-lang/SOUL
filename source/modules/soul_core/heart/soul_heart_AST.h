@@ -848,6 +848,13 @@ struct heart
                                   if (auto v = cast<Variable> (value))
                                       v->readWriteCount.increment (mode);
                               });
+
+            visitExpressions ([&] (pool_ref<Expression>& value, AccessType)
+                              {
+                                  if (auto v = cast<Variable> (value))
+                                      if (v->isFunctionLocal() && v->readWriteCount.numWrites == 0 && v->readWriteCount.numReads != 0)
+                                              value->location.throwError (Errors::useOfUninitialisedVariable (v->name.toString(), name.toString()));
+                              });
         }
 
         void visitExpressions (ExpressionVisitorFn fn)
