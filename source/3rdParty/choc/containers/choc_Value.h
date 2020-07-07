@@ -270,6 +270,7 @@ private:
         size_t getElementSize() const;
         size_t getValueDataSize() const;
         ElementTypeAndOffset getElementInfo (uint32_t) const;
+        ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
         bool operator== (const Vector&) const;
     };
 
@@ -282,6 +283,7 @@ private:
         size_t getElementSize() const;
         size_t getValueDataSize() const;
         ElementTypeAndOffset getElementInfo (uint32_t) const;
+        ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
         bool operator== (const PrimitiveArray&) const;
     };
 
@@ -302,6 +304,7 @@ private:
     explicit Type (MainType);
     explicit Type (MainType vectorElementType, uint32_t);
     void deleteAllocatedObjects() noexcept;
+    ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
 };
 
 //==============================================================================
@@ -433,6 +436,12 @@ public:
         Throws an error exception if the object is not a vector or the index is out of range.
     */
     ValueView operator[] (uint32_t index) const;
+
+    /** If this object is an array or vector, and the index and length do not exceed its bounds, this
+        will return a view onto a range of its elements.
+        Throws an error exception if the object is not a vector or the range is invalid.
+    */
+    ValueView getElementRange (uint32_t startIndex, uint32_t length) const;
 
     //==============================================================================
     struct Iterator;
@@ -648,6 +657,12 @@ public:
     */
     ValueView operator[] (uint32_t index) const                         { return value[index]; }
 
+    /** If this object is an array or vector, and the index and length do not exceed its bounds, this
+        will return a view onto a range of its elements.
+        Throws an error exception if the object is not a vector or the range is invalid.
+    */
+    ValueView getElementRange (uint32_t startIndex, uint32_t length) const      { return value.getElementRange (startIndex, length); }
+
     //==============================================================================
     /** Iterating a Value is only valid for an array, vector or object. */
     ValueView::Iterator begin() const;
@@ -847,8 +862,13 @@ inline size_t Type::Vector::getValueDataSize() const  { return getElementSize() 
 inline ElementTypeAndOffset Type::Vector::getElementInfo (uint32_t index) const
 {
     check (index < numElements, "Index out of range");
-    auto size = getElementSize();
-    return { Type (elementType), size * index };
+    return { Type (elementType), getElementSize() * index };
+}
+
+inline ElementTypeAndOffset Type::Vector::getElementRangeInfo (uint32_t start, uint32_t length) const
+{
+    check (start < numElements && start + length <= numElements, "Illegal element range");
+    return { Type (elementType, length), getElementSize() * start };
 }
 
 inline bool Type::Vector::operator== (const Vector& other) const  { return elementType == other.elementType && numElements == other.numElements; }
@@ -856,6 +876,20 @@ inline bool Type::Vector::operator== (const Vector& other) const  { return eleme
 inline size_t Type::PrimitiveArray::getElementSize() const   { auto sz = getPrimitiveSize (elementType); if (numVectorElements != 0) sz *= numVectorElements; return sz; }
 inline size_t Type::PrimitiveArray::getValueDataSize() const { return getElementSize() * numElements; }
 inline Type Type::PrimitiveArray::getElementType() const     { return numVectorElements != 0 ? Type (elementType, numVectorElements) : Type (elementType); }
+
+inline ElementTypeAndOffset Type::PrimitiveArray::getElementRangeInfo (uint32_t start, uint32_t length) const
+{
+    check (start < numElements && start + length <= numElements, "Illegal element range");
+
+    ElementTypeAndOffset info { Type (MainType::primitiveArray), 0 };
+    info.elementType.content.primitiveArray.elementType = elementType;
+    info.elementType.content.primitiveArray.numElements = length;
+    info.elementType.content.primitiveArray.numVectorElements = numVectorElements;
+
+    info.offset = start * getPrimitiveSize (elementType) * (numVectorElements != 0 ? numVectorElements : 1);
+
+    return info;
+}
 
 inline ElementTypeAndOffset Type::PrimitiveArray::getElementInfo (uint32_t index) const
 {
@@ -898,6 +932,44 @@ struct Type::ComplexArray
         }
 
         throwError ("Index out of range");
+    }
+
+    ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const
+    {
+        ElementTypeAndOffset info { Type (MainType::complexArray), 0 };
+        info.elementType.content.complexArray = new ComplexArray();
+        auto& destGroups = info.elementType.content.complexArray->groups;
+
+        for (auto& g : groups)
+        {
+            auto groupLen = g.repetitions;
+
+            if (start >= groupLen)
+            {
+                start -= groupLen;
+                info.offset += g.repetitions * g.elementType.getValueDataSize();
+                continue;
+            }
+
+            if (start > 0)
+            {
+                groupLen -= start;
+                info.offset += start * g.elementType.getValueDataSize();
+                start = 0;
+            }
+
+            if (length <= groupLen)
+            {
+                destGroups.push_back ({ length, g.elementType });
+                return info;
+            }
+
+            destGroups.push_back ({ groupLen, g.elementType });
+            length -= groupLen;
+        }
+
+        check (start == 0 && length == 0, "Illegal element range");
+        return info;
     }
 
     size_t getValueDataSize() const
@@ -1320,6 +1392,15 @@ inline ElementTypeAndOffset Type::getElementTypeAndOffset (uint32_t index) const
     throwError ("Invalid type");
 }
 
+inline ElementTypeAndOffset Type::getElementRangeInfo (uint32_t start, uint32_t length) const
+{
+    if (isType (MainType::vector))          return content.vector.getElementRangeInfo (start, length);
+    if (isType (MainType::primitiveArray))  return content.primitiveArray.getElementRangeInfo (start, length);
+    if (isType (MainType::complexArray))    return content.complexArray->getElementRangeInfo (start, length);
+
+    throwError ("Invalid type");
+}
+
 //==============================================================================
 struct Type::SerialisationHelpers
 {
@@ -1708,9 +1789,13 @@ inline uint32_t ValueView::size() const             { return type.getNumElements
 
 inline ValueView ValueView::operator[] (uint32_t index) const
 {
-    check (isVector() || isArray() || isObject(), "This object is not an array or vector");
-
     auto info = type.getElementTypeAndOffset (index);
+    return ValueView (std::move (info.elementType), data + info.offset, stringDictionary);
+}
+
+inline ValueView ValueView::getElementRange (uint32_t startIndex, uint32_t length) const
+{
+    auto info = type.getElementRangeInfo (startIndex, length);
     return ValueView (std::move (info.elementType), data + info.offset, stringDictionary);
 }
 
