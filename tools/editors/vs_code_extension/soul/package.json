@@ -20,6 +20,10 @@
             "language": "soul",
             "scopeName": "source.soul",
             "path": "./syntaxes/soul.tmLanguage.json"
+        }],
+        "snippets": [{
+            "language": "soul",
+            "path": "./snippets/soul.json"
         }]
     }
 }

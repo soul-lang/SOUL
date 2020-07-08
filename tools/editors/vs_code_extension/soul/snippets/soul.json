@@ -1,0 +1,98 @@
+{
+    "Stereo I/O Pair": {
+        "prefix": ["strio"],
+        "body": [
+            "input stream float<2> audioIn;",
+            "output stream float<2> audioOut;"
+        ],
+        "description": "Stereo I/O stream pair."
+    },
+    "Mono Out Processor": {
+        "prefix": ["processor", "prm"],
+        "body": [
+            "processor ${1:Name}",
+            "{",
+            "\toutput stream float audioOut;",
+            "",
+            "\tvoid run()",
+            "\t{",
+            "\t\tloop",
+            "\t\t{",
+            "\t\t\t$2",
+            "\t\t}",
+            "\t}",
+            "}"
+        ],
+        "description": "Simplest processor."
+    },
+    "Stereo I/O Processor": {
+        "prefix": ["processors", "prs"],
+        "body": [
+            "processor ${1:Name}",
+            "{",
+            "\tinput stream float<2> audioIn;",
+            "\toutput stream float<2> audioOut;",
+            "",
+            "\tvoid run()",
+            "\t{",
+            "\t\tloop",
+            "\t\t{",
+            "\t\t\t$2",
+            "\t\t}",
+            "\t}",
+            "}"
+        ],
+        "description": "Stereo in/out processor."
+    },
+    "Mono Out Graph": {
+        "prefix": ["graph", "grm"],
+        "body": [
+            "graph ${1:Name}",
+            "{",
+            "\toutput stream float audioOut;",
+            "",
+            "\tlet",
+            "\t{",
+            "\t\t$2",
+            "\t}",
+            "",
+            "\tconnection",
+            "\t{",
+            "\t\t$3",
+            "\t}",
+            "}"
+        ],
+        "description": "Simplest Graph."
+    },
+    "Stereo I/O Graph": {
+        "prefix": ["graphs", "grs"],
+        "body": [
+            "graph ${1:Name}",
+            "{",
+            "\tinput stream float<2> audioOut;",
+            "\toutput stream float<2> audioOut;",
+            "",
+            "\tlet",
+            "\t{",
+            "\t\t$2",
+            "\t}",
+            "",
+            "\tconnection",
+            "\t{",
+            "\t\t$3",
+            "\t}",
+            "}"
+        ],
+        "description": "Simplest Graph."
+    },
+    "Namespace": {
+        "prefix": ["namespace", "nmsp"],
+        "body": [
+            "namespace ${1:Name}",
+            "{",
+            "\t$2",
+            "}"
+        ],
+        "description": "Namespace skeleton."
+    }
+}

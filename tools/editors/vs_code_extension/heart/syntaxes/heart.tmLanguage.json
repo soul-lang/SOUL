@@ -1,0 +1,241 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "HEART",
+	"scopeName": "source.heart",
+	"patterns": [
+		{
+			"name": "keyword.control.heart",
+			"match": "\\b(branch_if|branch|return)\\b"
+		},
+		{
+			"name": "storage.type.heart",
+			"match": "\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b"
+		},
+		{
+			"name": "storage.class.heart",
+			"match": "\\b(event|stream|value|node)(?=[\\s+|\n|{])\\b"
+		},
+		{
+			"name": "storage.modifier.core.heart",
+			"match": "\\b(const|fixed|external)\\b"
+		},
+		{
+			"name": "entity.name.type.heart",
+			"match": "\\b(let|var|input|output|connection|import)\\b"
+		},
+		{
+			"name": "entity.name.tag.heart",
+			"match": "\\b(none|latch|linear|sinc|fast|best)\\b"
+		},
+		{
+			"name": "entity.name.function.heart",
+			"match": "\\b(read|write|advance|cast|call)\\b"
+		},
+		{
+			"name": "entity.name.section.heart",
+			"match": "[@]\\w+\\b"
+		},
+		{
+			"name": "variable.other.heart",
+			"match": "[$]\\w+\\b"
+		},
+		{
+			"name": "invalid.illegal.heart",
+			"match": "\\b(try|catch|throw|class|default|operator|switch|case)\\b"
+		},
+		{
+			"name": "comment.line.number-sign.heart",
+			"begin": "#",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.comment.cpp"
+				}
+			},
+			"end": "(?=\\n)",
+			"patterns": [
+				{
+					"match": "(\\\\)\\n"
+				}
+			]
+		},
+		{
+			"match": "->|<-",
+			"name": "keyword.other.heart"
+		},
+		{
+			"match": "<<|>>",
+			"name": "keyword.other.heart"
+		},
+		{
+			"match": "\\.|::",
+			"name": "punctuation.separator.heart"
+		},
+		{
+			"match": ";",
+			"name": "punctuation.terminator.heart"
+		},
+		{
+			"match": "=",
+			"name": "keyword.operator.assignment.heart"
+		},
+		{
+			"match": "%|\\*|/|-|\\+",
+			"name": "keyword.operator.heart"
+		},
+		{
+			"match": "\\b(true|false)\\b",
+			"name": "constant.language.heart"
+		},
+		{
+			"match": "\\b(processor(?=[.]))\\b",
+			"name": "support.constant.core.heart"
+		},
+		{
+			"match": "\\b[0-9]+[.]([0-9]+)?[f]?([e][+-]?[0-9]+)?[f]?\\b",
+			"name": "constant.numeric.float.heart"
+		},
+		{
+			"match": "\\b[0-9]+(L)?\\b",
+			"name": "constant.numeric.integer.decimal.heart"
+		},
+		{
+			"match": "\\b0x[a-fA-F0-9]+(L)?\\b",
+			"name": "constant.numeric.integer.hexadecimal.heart"
+		},
+		{
+			"match": "\\b0o[0-7]+(L)?\\b",
+			"name": "constant.numeric.integer.octal.heart"
+		},
+		{
+			"match": "\\b0b[01]+(L)?\\b",
+			"name": "constant.numeric.integer.binary.heart"
+		},
+		{
+			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.heart"
+				}
+			}
+		},
+		{
+			"match": "\\b(function)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "storage.type.heart"
+				},
+				"2": {
+					"name": "entity.name.function.heart"
+				}
+			}
+		},
+		{
+			"comment": "Module declaration",
+			"match": "\\b(graph|processor|namespace)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_(::)]+)\\b",
+			"captures": {
+				"1": {
+					"name": "storage.type.heart"
+				},
+				"2": {
+					"name": "entity.name.type.heart"
+				}
+			}
+		},
+		{
+			"comment": "Type declaration",
+			"begin": "\\b(enum|struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+			"end": "[\\{\\(]",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.heart"
+				},
+				"2": {
+					"name": "entity.name.type.heart"
+				}
+			},
+			"patterns": [
+				{
+					"match": "\\b(enum|struct)\\b",
+					"name": "keyword.other.type-decl.heart"
+				}
+			]
+		},
+		{
+			"begin": "\\(",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.section.parens.begin.bracket.round.heart"
+				}
+			},
+			"end": "\\)|(?=//)|(?=/\\*(?!.*\\\\\\s*\\n))|(?<!\\\\)(?=\\n)",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.section.parens.end.bracket.round.heart"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#preprocessor-rule-conditional-line"
+				}
+			]
+		},
+		{
+			"begin": "{",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.section.block.begin.bracket.curly.heart"
+				}
+			},
+			"end": "}",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.section.block.end.bracket.curly.heart"
+				}
+			},
+			"name": "meta.block.c",
+			"patterns": [
+				{
+					"include": "#block_innards"
+				}
+			]
+		},
+		{
+			"match": "(\\[)|(\\])",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.begin.bracket.square.heart"
+				},
+				"2": {
+					"name": "punctuation.definition.end.bracket.square.heart"
+				}
+			}
+		},
+		{
+			"match": "(\\[\\[)|(\\]\\])",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.block.begin.bracket.square.heart"
+				},
+				"2": {
+					"name": "punctuation.definition.block.end.bracket.square.heart"
+				}
+			}
+		},
+		{
+			"name": "string.quoted.double.heart",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.heart",
+					"match": "\\\\."
+				}
+			]
+		},
+		{
+			"name": "keyword.control.directive.heart",
+			"begin": "^##",
+			"end": "(?=\\n)"
+		}
+	]
+}

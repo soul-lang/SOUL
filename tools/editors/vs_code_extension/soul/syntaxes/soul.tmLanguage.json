@@ -8,12 +8,20 @@
 			"match": "\\b(if|else|do|while|for|loop|break|continue|return)\\b"
 		},
 		{
-			"name": "storage.type.soul",
-			"match": "\\b(const|void|int|int32|int64|float|float32|float64|fixed|bool|string|event|wrap|clamp|external)\\b"
+			"name": "storage.type.core.soul",
+			"match": "\\b(void|int|int32|int64|float|float32|float64|bool|string|(wrap|clamp)(?=\\s*<))\\b"
+		},
+		{
+			"name": "storage.class.soul",
+			"match": "\\b(event|stream|value)(?=[\\s+|\n|{])\\b"
+		},
+		{
+			"name": "storage.modifier.core.soul",
+			"match": "\\b(const|fixed|external)\\b"
 		},
 		{
 			"name": "entity.name.type.soul",
-			"match": "\\b(let|var|graph|processor|namespace|struct|using|enum|input|output|connection|import)\\b"
+			"match": "\\b(let|var|input|output|connection|import)\\b"
 		},
 		{
 			"name": "invalid.illegal.soul",
@@ -102,7 +110,7 @@
 			"name": "keyword.operator.assignment.soul"
 		},
 		{
-			"match": "%|\\*|/|-|\\+",
+			"match": "%|\\*|/|-|\\+|\\?|\\:",
 			"name": "keyword.operator.soul"
 		},
 		{
@@ -110,8 +118,79 @@
 			"name": "constant.language.soul"
 		},
 		{
-			"match": "\\b((0(x|X)[0-9a-fA-F]([0-9a-fA-F']*[0-9a-fA-F])?)|(0(b|B)[01]([01']*[01])?)|(([0-9]([0-9']*[0-9])?\\.?[0-9]*([0-9']*[0-9])?)|(\\.[0-9]([0-9']*[0-9])?))((e|E)(\\+|-)?[0-9]([0-9']*[0-9])?)?)(F|f)?\\b",
-			"name": "constant.numeric.soul"
+			"match": "\\b(processor(?=[.]))\\b",
+			"name": "support.constant.core.soul"
+		},
+		{
+			"match": "\\b[0-9]+[.]([0-9]+)?[_]?([f](32|64)?)?([e][+-]?[0-9]+)?[_]?([f](32|64)?)?\\b",
+			"name": "constant.numeric.float.soul"
+		},
+		{
+			"match": "\\b[0-9]+(_)?(([i](32|64))|L)?\\b",
+			"name": "constant.numeric.integer.decimal.soul"
+		},
+		{
+			"match": "\\b0x[a-fA-F0-9]+(_)?(([i](32|64))|L)?\\b",
+			"name": "constant.numeric.integer.hexadecimal.soul"
+		},
+		{
+			"match": "\\b0o[0-7]+(_)?(([i](32|64))|L)?\\b",
+			"name": "constant.numeric.integer.octal.soul"
+		},
+		{
+			"match": "\\b0b[01]+(_)?(([i](32|64))|L)?\\b",
+			"name": "constant.numeric.integer.binary.soul"
+		},
+		{
+			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.soul"
+				}
+			}
+		},
+		{
+			"comment": "Module declaration",
+			"match": "\\b(graph|processor|namespace)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\b",
+			"captures": {
+				"1": {
+					"name": "storage.type.soul"
+				},
+				"2": {
+					"name": "entity.name.type.soul"
+				}
+			}
+		},
+		{
+			"comment": "Type declaration",
+			"begin": "\\b(enum|struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+			"end": "[\\{\\(]",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.soul"
+				},
+				"2": {
+					"name": "entity.name.type.soul"
+				}
+			},
+			"patterns": [
+				{
+					"match": "\\b(enum|struct)\\b",
+					"name": "keyword.other.type-decl.soul"
+				}
+			]
+		},
+		{
+			"comment": "Type alias",
+			"match": "\\b(using)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+			"captures": {
+				"1": {
+					"name": "storage.type.soul"
+				},
+				"2": {
+					"name": "entity.name.type.soul"
+				}
+			}
 		},
 		{
 			"begin": "\\(",
