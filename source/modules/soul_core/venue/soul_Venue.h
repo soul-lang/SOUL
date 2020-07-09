@@ -142,21 +142,12 @@ public:
         */
         virtual bool isEndpointActive (const EndpointID&) = 0;
 
-        /** Represents the overall status of a Venue. */
-        enum class State
-        {
-            empty,
-            loaded,
-            linked,
-            running
-        };
-
         /** Contains various indicators of what the venue is currently doing.
             @see getStatus
         */
         struct Status
         {
-            State state;
+            SessionState state;
             float cpu;
             uint32_t xruns;
             double sampleRate;
@@ -174,7 +165,7 @@ public:
         /** A callback function to indicate that the venue's state has changed.
             @see setStateChangeCallback
         */
-        using StateChangeCallbackFn = std::function<void(State)>;
+        using StateChangeCallbackFn = std::function<void(SessionState)>;
 
         /** A callback function which gives a client the chance to fill an input endpoint when it becomes
             starved or has data ready.
@@ -189,6 +180,9 @@ public:
 
         /** Allows client code to get a callback when the amount of data in an endpoint's FIFO changes. */
         virtual bool setOutputEndpointServiceCallback (EndpointID, EndpointServiceFn) = 0;
+
+        virtual bool connectSessionInputEndpoint  (EndpointID inputID, EndpointID venueSourceID) = 0;
+        virtual bool connectSessionOutputEndpoint (EndpointID outputID, EndpointID venueSinkID) = 0;
     };
 
     //==============================================================================
@@ -197,9 +191,6 @@ public:
 
     virtual std::vector<EndpointDetails> getSourceEndpoints() = 0;
     virtual std::vector<EndpointDetails> getSinkEndpoints() = 0;
-
-    virtual bool connectSessionInputEndpoint  (Session&, EndpointID inputID, EndpointID venueSourceID) = 0;
-    virtual bool connectSessionOutputEndpoint (Session&, EndpointID outputID, EndpointID venueSinkID) = 0;
 };
 
 /// Create a standard threaded venue where a separate render thread renders the performer

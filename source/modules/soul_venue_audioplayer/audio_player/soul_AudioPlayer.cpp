@@ -49,24 +49,6 @@ public:
     std::vector<EndpointDetails> getSourceEndpoints() override    { return convertEndpointList (sourceEndpoints); }
     std::vector<EndpointDetails> getSinkEndpoints() override      { return convertEndpointList (sinkEndpoints); }
 
-    bool connectSessionInputEndpoint (Session& session, EndpointID inputID, EndpointID venueSourceID) override
-    {
-        if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
-            if (auto venueEndpoint = findEndpoint (sourceEndpoints, venueSourceID))
-                return audioSession->connectInputEndpoint (*venueEndpoint, inputID);
-
-        return false;
-    }
-
-    bool connectSessionOutputEndpoint (Session& session, EndpointID outputID, EndpointID venueSinkID) override
-    {
-        if (auto audioSession = dynamic_cast<AudioPlayerSession*> (&session))
-            if (auto venueEndpoint = findEndpoint (sinkEndpoints, venueSinkID))
-                return audioSession->connectOutputEndpoint (*venueEndpoint, outputID);
-
-        return false;
-    }
-
     //==============================================================================
     struct EndpointInfo
     {
@@ -99,7 +81,7 @@ public:
 
             if (performer->load (messageList, p))
             {
-                setState (State::loaded);
+                setState (SessionState::loaded);
                 return true;
             }
 
@@ -148,9 +130,9 @@ public:
             maxBlockSize = settings.maxBlockSize;
             buildOperationList();
 
-            if (state == State::loaded && performer->link (messageList, settings, {}))
+            if (state == SessionState::loaded && performer->link (messageList, settings, {}))
             {
-                setState (State::linked);
+                setState (SessionState::linked);
                 return true;
             }
 
@@ -159,17 +141,17 @@ public:
 
         bool isRunning() override
         {
-            return state == State::running;
+            return state == SessionState::running;
         }
 
         bool start() override
         {
-            if (state == State::linked)
+            if (state == SessionState::linked)
             {
                 SOUL_ASSERT (performer->isLinked());
 
                 if (venue.startSession (this))
-                    setState (State::running);
+                    setState (SessionState::running);
             }
 
             return isRunning();
@@ -180,7 +162,7 @@ public:
             if (isRunning())
             {
                 venue.stopSession (this);
-                setState (State::linked);
+                setState (SessionState::linked);
                 totalFramesRendered = 0;
             }
         }
@@ -194,7 +176,7 @@ public:
             inputCallbacks.clear();
             outputCallbacks.clear();
             connections.clear();
-            setState (State::empty);
+            setState (SessionState::empty);
         }
 
         Status getStatus() override
@@ -214,7 +196,7 @@ public:
             return s;
         }
 
-        void setState (State newState)
+        void setState (SessionState newState)
         {
             if (state != newState)
             {
@@ -228,6 +210,22 @@ public:
         void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
 
         uint64_t getTotalFramesRendered() const override                   { return totalFramesRendered; }
+
+        bool connectSessionInputEndpoint (EndpointID inputID, EndpointID venueSourceID) override
+        {
+            if (auto venueEndpoint = venue.findEndpoint (venue.sourceEndpoints, venueSourceID))
+                return connectInputEndpoint (*venueEndpoint, inputID);
+
+            return false;
+        }
+
+        bool connectSessionOutputEndpoint (EndpointID outputID, EndpointID venueSinkID) override
+        {
+            if (auto venueEndpoint = venue.findEndpoint (venue.sinkEndpoints, venueSinkID))
+                return connectOutputEndpoint (*venueEndpoint, outputID);
+
+            return false;
+        }
 
         bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
         {
@@ -419,7 +417,7 @@ public:
         std::vector<std::function<void(RenderContext&)>> preRenderOperations;
         std::vector<std::function<void(RenderContext&)>> postRenderOperations;
 
-        State state = State::empty;
+        SessionState state = SessionState::empty;
     };
 
     //==============================================================================

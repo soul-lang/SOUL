@@ -39,16 +39,6 @@ struct ThreadedVenue  : public soul::Venue
     std::vector<EndpointDetails> getSourceEndpoints() override    { return {}; }
     std::vector<EndpointDetails> getSinkEndpoints() override      { return {}; }
 
-    bool connectSessionInputEndpoint (Venue::Session&, EndpointID, EndpointID) override
-    {
-        return false;
-    }
-
-    bool connectSessionOutputEndpoint (Venue::Session&, EndpointID, EndpointID) override
-    {
-        return false;
-    }
-
     //==============================================================================
     struct ThreadedVenueSession    : public Venue::Session
     {
@@ -72,7 +62,7 @@ struct ThreadedVenue  : public soul::Venue
 
                 if (performer->load (messageList, p))
                 {
-                    setState (State::loaded);
+                    setState (SessionState::loaded);
                     return true;
                 }
             }
@@ -85,12 +75,12 @@ struct ThreadedVenue  : public soul::Venue
             stop();
             waitForThreadToFinish();
             performer->unload();
-            setState (State::empty);
+            setState (SessionState::empty);
         }
 
         bool start() override
         {
-            if (state != State::linked)
+            if (state != SessionState::linked)
                 return false;
 
             SOUL_ASSERT (performer->isLinked());
@@ -98,13 +88,13 @@ struct ThreadedVenue  : public soul::Venue
             shouldStop = false;
             loadMeasurer.reset();
             renderThread = std::thread ([this] { run(); });
-            setState (State::running);
+            setState (SessionState::running);
             return true;
         }
 
         bool isRunning() override
         {
-            return state == State::running;
+            return state == SessionState::running;
         }
 
         void stop() override
@@ -119,6 +109,9 @@ struct ThreadedVenue  : public soul::Venue
                 totalFramesRendered = 0;
             }
         }
+
+        bool connectSessionInputEndpoint (EndpointID, EndpointID) override        { return false; }
+        bool connectSessionOutputEndpoint (EndpointID, EndpointID) override       { return false; }
 
         ArrayView<const EndpointDetails> getInputEndpoints() override   { return performer->getInputEndpoints(); }
         ArrayView<const EndpointDetails> getOutputEndpoints() override  { return performer->getOutputEndpoints(); }
@@ -162,10 +155,10 @@ struct ThreadedVenue  : public soul::Venue
 
         bool link (CompileMessageList& messageList, const BuildSettings& settings) override
         {
-            if (state == State::loaded && performer->link (messageList, settings, {}))
+            if (state == SessionState::loaded && performer->link (messageList, settings, {}))
             {
                 blockSize = performer->getBlockSize();
-                setState (State::linked);
+                setState (SessionState::linked);
                 return true;
             }
 
@@ -209,7 +202,7 @@ struct ThreadedVenue  : public soul::Venue
         std::thread renderThread;
         CPULoadMeasurer loadMeasurer;
         StateChangeCallbackFn stateChangeCallback;
-        std::atomic<State> state { State::empty };
+        std::atomic<SessionState> state { SessionState::empty };
         std::atomic<bool> shouldStop { false };
         std::atomic<uint64_t> totalFramesRendered { 0 };
         uint32_t blockSize = 0;
@@ -233,7 +226,7 @@ struct ThreadedVenue  : public soul::Venue
             }
         }
 
-        void setState (State newState)
+        void setState (SessionState newState)
         {
             if (state != newState)
             {
@@ -278,7 +271,7 @@ struct ThreadedVenue  : public soul::Venue
                 handleError ("Uncaught exception");
             }
 
-            setState (State::linked);
+            setState (SessionState::linked);
         }
     };
 
