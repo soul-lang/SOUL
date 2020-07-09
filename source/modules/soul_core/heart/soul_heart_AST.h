@@ -77,7 +77,7 @@ struct heart
 
     static constexpr const char* getRunFunctionName()               { return "run"; }
     static constexpr const char* getUserInitFunctionName()          { return "init"; }
-    static constexpr const char* getSystemInitFunctionName()        { return "_soul_init"; }
+    static constexpr const char* getSystemInitFunctionName()        { return "_init"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
 
     static std::string getEventFunctionName (const std::string& endpointName, const Type& t)
