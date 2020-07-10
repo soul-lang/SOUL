@@ -325,6 +325,23 @@ namespace BinaryOp
         if (op == Op::equals)              { lhs = Value (lhs == rhs); return true; }
         if (op == Op::notEquals)           { lhs = Value (lhs != rhs); return true; }
 
+        if (lhs.getType().isVector())
+        {
+            auto size = lhs.getType().getVectorSize();
+
+            for (size_t i = 0; i < size; ++i)
+            {
+                auto e = lhs.getSubElement (i);
+
+                if (! apply (e, rhs.getSubElement (i), op, handleError))
+                    return false;
+
+                lhs.modifySubElementInPlace (i, e);
+            }
+
+            return true;
+        }
+
         if (lhs.getType().isFloat64() || rhs.getType().isFloat64())
         {
             auto a = lhs.getAsDouble();
