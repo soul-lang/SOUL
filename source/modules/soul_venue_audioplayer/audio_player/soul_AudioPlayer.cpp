@@ -88,7 +88,7 @@ public:
             return false;
         }
 
-        EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
+        void setEndpointActive (const EndpointID& endpointID) override      { performer->getEndpointHandle (endpointID); }
 
         void setNextInputStreamFrames (EndpointHandle handle, const choc::value::ValueView& frameArray) override
         {

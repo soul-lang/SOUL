@@ -91,7 +91,7 @@ public:
             an input or output endpoint.
             Will return a null handle if the ID is not found.
         */
-        virtual EndpointHandle getEndpointHandle (const EndpointID&) = 0;
+        virtual void setEndpointActive (const EndpointID&) = 0;
 
         /** Pushes a block of samples to an input endpoint.
             This should be called to provide the next block of samples for an input stream.

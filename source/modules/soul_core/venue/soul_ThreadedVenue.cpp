@@ -116,7 +116,7 @@ struct ThreadedVenue  : public soul::Venue
         ArrayView<const EndpointDetails> getInputEndpoints() override   { return performer->getInputEndpoints(); }
         ArrayView<const EndpointDetails> getOutputEndpoints() override  { return performer->getOutputEndpoints(); }
 
-        EndpointHandle getEndpointHandle (const EndpointID& endpointID) override  { return performer->getEndpointHandle (endpointID); }
+        void setEndpointActive (const EndpointID& endpointID) override  { performer->getEndpointHandle (endpointID); }
 
         void setNextInputStreamFrames (EndpointHandle handle, const choc::value::ValueView& frameArray) override
         {
