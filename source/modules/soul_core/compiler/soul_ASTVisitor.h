@@ -300,13 +300,13 @@ struct ASTVisitor
 
     virtual void visit (AST::EndpointDeclaration& e)
     {
-        if (e.details != nullptr)
+        if (auto details = e.details.get())
         {
-            for (auto& type : e.details->dataTypes)
+            for (auto& type : details->dataTypes)
                 visitObject (type);
 
-            if (e.details->arraySize != nullptr)
-                visitObject (*e.details->arraySize);
+            if (details->arraySize != nullptr)
+                visitObject (*details->arraySize);
         }
 
         if (e.childPath != nullptr)
@@ -739,12 +739,12 @@ struct RewritingASTVisitor
 
     virtual AST::ASTObject& visit (AST::EndpointDeclaration& e)
     {
-        if (e.details != nullptr)
+        if (auto details = e.details.get())
         {
-            for (auto& type : e.details->dataTypes)
+            for (auto& type : details->dataTypes)
                 replaceExpression (type);
 
-            replaceExpression (e.details->arraySize);
+            replaceExpression (details->arraySize);
         }
 
         if (e.childPath != nullptr)

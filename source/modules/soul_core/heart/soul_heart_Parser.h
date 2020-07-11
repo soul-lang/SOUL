@@ -1001,7 +1001,7 @@ private:
         if (src == nullptr)
             throwError (Errors::cannotFindInput (name));
 
-        if (! (state.function.functionType.isRun()))
+        if (! state.function.functionType.isRun())
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
         builder.addReadStream (location, *target.create (state, builder, src->getSingleDataType()), *src);

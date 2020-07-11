@@ -717,17 +717,15 @@ private:
 
     void parseEndpoint (AST::ProcessorBase& p, bool isInput, EndpointType endpointType)
     {
-        auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput);
-        first.details = std::make_unique<AST::EndpointDetails> (endpointType);
-        first.details->dataTypes = parseEndpointTypeList (endpointType);
+        auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput, endpointType);
+        first.getDetails().dataTypes = parseEndpointTypeList (endpointType);
         parseInputOrOutputName (first);
         p.endpoints.push_back (first);
 
         while (matchIf (Operator::comma))
         {
-            auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
-            e.details = std::make_unique<AST::EndpointDetails> (endpointType);
-            e.details->dataTypes = first.details->dataTypes;
+            auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput, endpointType);
+            e.getDetails().dataTypes = first.getDetails().dataTypes;
             parseInputOrOutputName (e);
             p.endpoints.push_back (e);
         }
@@ -741,7 +739,7 @@ private:
 
         if (matchIf (Operator::openBracket))
         {
-            e.details->arraySize = parseExpression();
+            e.getDetails().arraySize = parseExpression();
             expect (Operator::closeBracket);
         }
 
@@ -754,7 +752,7 @@ private:
         {
             auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput);
             p.endpoints.push_back (e);
-            e.childPath = std::make_unique<AST::ChildEndpointPath>();
+            e.childPath = allocate<AST::ChildEndpointPath>();
             bool canParseName = true;
 
             for (;;)

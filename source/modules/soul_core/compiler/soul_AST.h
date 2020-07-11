@@ -1089,12 +1089,18 @@ struct AST
         EndpointDeclaration (const Context& c, bool isInputEndpoint)
             : ASTObject (ObjectType::EndpointDeclaration, c), isInput (isInputEndpoint) {}
 
+        EndpointDeclaration (const Context& c, bool isInputEndpoint, EndpointType type)
+            : ASTObject (ObjectType::EndpointDeclaration, c), isInput (isInputEndpoint),
+                         details (std::make_unique<EndpointDetails> (type)) {}
+
         bool isResolved() const         { return details != nullptr && details->isResolved(); }
+
+        EndpointDetails& getDetails()   { SOUL_ASSERT (details != nullptr); return *details; }
 
         const bool isInput;
         Identifier name;
         std::unique_ptr<EndpointDetails> details;
-        std::unique_ptr<ChildEndpointPath> childPath;
+        pool_ptr<ChildEndpointPath> childPath;
         Annotation annotation;
         bool needsToBeExposedInParent = false;
 
@@ -1106,7 +1112,8 @@ struct AST
     struct InputEndpointRef  : public Expression
     {
         InputEndpointRef (const Context& c, EndpointDeclaration& i)
-            : Expression (ObjectType::InputEndpointRef, c, ExpressionKind::value), input (i)
+            : Expression (ObjectType::InputEndpointRef, c,
+                          isEvent (i.getDetails()) ? ExpressionKind::endpoint : ExpressionKind::value), input (i)
         {
         }
 
@@ -1114,7 +1121,7 @@ struct AST
 
         Type getResultType() const override
         {
-            auto& details = *input->details;
+            auto& details = input->getDetails();
 
             if (isEvent (details))
                 return (details.arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (details.getArraySize()));

@@ -126,9 +126,8 @@ struct ASTUtilities
         if (auto e = processor->findEndpoint (getConsoleEndpointInternalName(), false))
             return allocator.allocate<AST::OutputEndpointRef> (name.context, *e);
 
-        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
+        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false, EndpointType::event);
         newDebugEndpoint.name = allocator.get (getConsoleEndpointInternalName());
-        newDebugEndpoint.details = std::make_unique<AST::EndpointDetails> (EndpointType::event);
         newDebugEndpoint.needsToBeExposedInParent = true;
         processor->endpoints.push_back (newDebugEndpoint);
 
@@ -145,11 +144,11 @@ struct ASTUtilities
         if (type.isReference() || type.isConst())
             return ensureEventEndpointSupportsType (allocator, endpoint, type.withConstAndRefFlags (false, false));
 
-        for (auto& t : endpoint.details->getResolvedDataTypes())
+        for (auto& t : endpoint.getDetails().getResolvedDataTypes())
             if (t.isEqual (type, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
                 return;
 
-        endpoint.details->dataTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
+        endpoint.getDetails().dataTypes.push_back (allocator.allocate<AST::ConcreteType> (AST::Context(), type));
     }
 
     static void connectAnyChildEndpointsNeedingToBeExposed (AST::Allocator& allocator, AST::ProcessorBase& processor)
@@ -310,7 +309,7 @@ private:
             if (childEndpoint.details == nullptr)
                 resolveEndpoint (allocator, *childGraph, childEndpoint, childEndpoint.childPath->sections);
 
-            if (childEndpoint.details->arraySize != nullptr)
+            if (childEndpoint.getDetails().arraySize != nullptr)
                 nameContext.throwError (Errors::notYetImplemented ("Exposing child endpoint arrays"));
 
             if (path.back().index != nullptr)
@@ -369,7 +368,7 @@ private:
 
                         if (parentEndpoint != nullptr)
                         {
-                            for (auto& t : childEndpoint->details->getResolvedDataTypes())
+                            for (auto& t : childEndpoint->getDetails().getResolvedDataTypes())
                                 ensureEventEndpointSupportsType (allocator, *parentEndpoint, t);
                         }
                         else

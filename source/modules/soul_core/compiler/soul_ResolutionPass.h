@@ -1678,7 +1678,7 @@ private:
                     if (i->input->details == nullptr)
                         array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
-                    endpointArraySize = i->input->details->arraySize;
+                    endpointArraySize = i->input->getDetails().arraySize;
                 }
 
                 if (auto o = cast<AST::OutputEndpointRef> (array))
@@ -1686,7 +1686,7 @@ private:
                     if (o->output->details == nullptr)
                         array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
-                    endpointArraySize = o->output->details->arraySize;
+                    endpointArraySize = o->output->getDetails().arraySize;
                 }
 
                 Type::BoundedIntSize arraySize = 0;
@@ -2171,12 +2171,10 @@ private:
         static Type getDataTypeOfEndpoint (AST::Expression& e)
         {
             if (auto outRef = cast<AST::OutputEndpointRef> (e))
-                if (auto* details = outRef->output->details.get())
-                    return details->getSampleArrayTypes().front();
+                return outRef->output->getDetails().getSampleArrayTypes().front();
 
             if (auto inRef = cast<AST::InputEndpointRef> (e))
-                if (auto* details = inRef->input->details.get())
-                    return details->getSampleArrayTypes().front();
+                return inRef->input->getDetails().getSampleArrayTypes().front();
 
             SOUL_ASSERT_FALSE;
             return {};
@@ -2287,12 +2285,10 @@ private:
             // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
             if (auto outputEndpoint = cast<AST::OutputEndpointRef> (topLevelWrite.target))
             {
-                SOUL_ASSERT (outputEndpoint->output->details != nullptr);
-
                 if (ASTUtilities::isConsoleEndpoint (outputEndpoint->output))
                     ASTUtilities::ensureEventEndpointSupportsType (allocator, outputEndpoint->output, w.value->getResultType());
 
-                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getSampleArrayTypes(), w.value);
+                SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getSampleArrayTypes(), w.value);
                 return w;
             }
 
@@ -2300,8 +2296,7 @@ private:
             {
                 if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
                 {
-                    SOUL_ASSERT (outputEndpoint->output->details != nullptr);
-                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->details->getResolvedDataTypes(), w.value);
+                    SanityCheckPass::expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getResolvedDataTypes(), w.value);
                     return w;
                 }
             }

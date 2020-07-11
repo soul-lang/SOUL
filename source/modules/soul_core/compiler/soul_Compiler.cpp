@@ -382,7 +382,7 @@ pool_ref<AST::ProcessorBase> Compiler::createSpecialisedInstance (AST::Graph& gr
             }
 
             if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
-                arg.context.throwError (Errors::expectedConstant());
+                arg.context.throwError (Errors::expectedValue());
 
             SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
 

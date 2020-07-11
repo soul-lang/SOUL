@@ -82,6 +82,10 @@ struct SanityCheckPass  final
             if (is_type<AST::OutputEndpointRef> (e))
                 e.context.throwError (Errors::cannotReadFromOutput());
 
+            if (auto input = cast<AST::InputEndpointRef> (e))
+                if (isEvent (input->input->getDetails()))
+                    e.context.throwError (Errors::cannotReadFromEventInput());
+
             if (is_type<AST::ProcessorRef> (e))
                 e.context.throwError (Errors::cannotUseProcessorAsOutput());
 
@@ -284,7 +288,7 @@ private:
             {
                 // If the processor has non-event I/O then we need a run processor
                 for (auto e : processorOrGraph.getEndpoints())
-                    if (e->details != nullptr && ! isEvent (*(e->details)))
+                    if (e->details != nullptr && ! isEvent (e->getDetails()))
                         processor->context.throwError (Errors::processorNeedsRunFunction());
             }
 
@@ -321,21 +325,21 @@ private:
                         if (e->isInput && e->name == f->name)
                         {
                             nameFound = true;
-                            SOUL_ASSERT (e->details != nullptr);
+                            const auto& details = e->getDetails();
 
-                            if (e->details->arraySize == nullptr && f->parameters.size() == 1)
+                            if (details.arraySize == nullptr && f->parameters.size() == 1)
                             {
                                 auto eventType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
-                                auto types = e->details->getResolvedDataTypes();
+                                auto types = details.getResolvedDataTypes();
 
                                 if (! eventType.isPresentIn (types))
                                     f->context.throwError (Errors::eventFunctionInvalidType (f->name, eventType.getDescription()));
                             }
-                            else if (e->details->arraySize != nullptr && f->parameters.size() == 2)
+                            else if (details.arraySize != nullptr && f->parameters.size() == 2)
                             {
                                 auto indexType = f->parameters.front()->getType().removeConstIfPresent().removeReferenceIfPresent();
                                 auto eventType = f->parameters.back()->getType().removeConstIfPresent().removeReferenceIfPresent();
-                                auto types = e->details->getResolvedDataTypes();
+                                auto types = details.getResolvedDataTypes();
 
                                 if (! indexType.isInteger())
                                     f->context.throwError (Errors::eventFunctionIndexInvalid());
@@ -473,8 +477,7 @@ private:
             checkForDuplicateFunctions (p.functions);
 
             for (auto input : p.endpoints)
-                if (input->details != nullptr)
-                    input->details->checkDataTypesValid (input->context);
+                input->getDetails().checkDataTypesValid (input->context);
 
             for (auto& v : p.stateVariables)
                 if (v->initialValue != nullptr && ! v->initialValue->isCompileTimeConstant())
@@ -486,8 +489,7 @@ private:
             super::visit (g);
 
             for (auto input : g.endpoints)
-                if (input->details != nullptr)
-                    input->details->checkDataTypesValid (input->context);
+                input->getDetails().checkDataTypesValid (input->context);
 
             AST::Graph::RecursiveGraphDetector::check (g);
             AST::Graph::CycleDetector (g).check();
@@ -538,9 +540,7 @@ private:
         void visit (AST::EndpointDeclaration& e) override
         {
             super::visit (e);
-
-            if (e.details != nullptr)
-                checkArraySize (e.details->arraySize, AST::maxEndpointArraySize);
+            checkArraySize (e.getDetails().arraySize, AST::maxEndpointArraySize);
         }
 
         void visit (AST::ProcessorInstance& i) override
