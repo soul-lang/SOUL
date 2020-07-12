@@ -239,10 +239,13 @@ public:
     Type& allocate (Args&&... args)
     {
         static_assert (sizeof (Type) + itemHeaderSize <= sizeof (Pool::space), "Can't allocate a pool object bigger than the pool block size");
-        // NB: the constructor may throw, so we have to be careful not to register its destructor until we know it was successful
-        auto address = prepareSpaceForObject (sizeof (Type));
-        auto newObject = new (address) Type (std::forward<Args> (args)...);
-        currentPool->registerNewObject (sizeof (Type), [] (void* t) { static_cast<Type*> (t)->~Type(); });
+        auto& newItem = allocateSpaceForObject (sizeof (Type));
+        auto newObject = new (std::addressof (newItem.item)) Type (std::forward<Args> (args)...);
+
+        // NB: the constructor may throw, so we have to be careful not to register its destructor until afterwards
+        if constexpr (! std::is_trivially_destructible<Type>::value)
+            newItem.destructor = [] (void* t) { static_cast<Type*> (t)->~Type(); };
+
         return *newObject;
     }
 
@@ -271,7 +274,10 @@ private:
             for (size_t i = 0; i < nextSlot;)
             {
                 auto item = getItem (i);
-                item->destructor (&item->item);
+
+                if (item->destructor != nullptr)
+                    item->destructor (&item->item);
+
                 i += item->size;
             }
         }
@@ -287,13 +293,14 @@ private:
             return &item->item;
         }
 
-        void registerNewObject (size_t size, DestructorFn d)
+        PoolItem& createItem (size_t size)
         {
             size = getAlignedSize<poolItemAlignment> (size + itemHeaderSize);
             auto item = getItem (nextSlot);
             item->size = size;
-            item->destructor = d;
+            item->destructor = nullptr;
             nextSlot += size;
+            return *item;
         }
 
         PoolItem* getItem (size_t byteOffset) noexcept  { return reinterpret_cast<PoolItem*> (space.data() + byteOffset); }
@@ -311,7 +318,7 @@ private:
         pools.emplace_back (currentPool);
     }
 
-    void* prepareSpaceForObject (size_t size)
+    PoolItem& allocateSpaceForObject (size_t size)
     {
         if (! currentPool->hasSpaceFor (size))
         {
@@ -319,7 +326,7 @@ private:
             SOUL_ASSERT (currentPool->hasSpaceFor (size));
         }
 
-        return currentPool->getNextAddress();
+        return currentPool->createItem (size);
     }
 };
 
