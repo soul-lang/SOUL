@@ -288,7 +288,7 @@ private:
             {
                 // If the processor has non-event I/O then we need a run processor
                 for (auto e : processorOrGraph.getEndpoints())
-                    if (e->details != nullptr && ! isEvent (e->getDetails()))
+                    if (! (e->isUnresolvedChildReference() || isEvent (e->getDetails())))
                         processor->context.throwError (Errors::processorNeedsRunFunction());
             }
 

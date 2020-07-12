@@ -126,7 +126,7 @@ struct ASTUtilities
         if (auto e = processor->findEndpoint (getConsoleEndpointInternalName(), false))
             return allocator.allocate<AST::OutputEndpointRef> (name.context, *e);
 
-        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false, EndpointType::event);
+        auto& newDebugEndpoint = allocator.allocate<AST::EndpointDeclaration> (allocator, AST::Context(), false, EndpointType::event);
         newDebugEndpoint.name = allocator.get (getConsoleEndpointInternalName());
         newDebugEndpoint.needsToBeExposedInParent = true;
         processor->endpoints.push_back (newDebugEndpoint);
@@ -256,7 +256,7 @@ private:
                                                    AST::ProcessorInstance& childProcessor,
                                                    AST::EndpointDeclaration& childEndpoint)
     {
-        parentEndpoint.details = std::make_unique<AST::EndpointDetails> (*childEndpoint.details);
+        parentEndpoint.details = allocator.allocate<AST::EndpointDetails> (childEndpoint.getDetails());
         parentEndpoint.annotation.setProperties (childEndpoint.annotation);
         parentEndpoint.childPath.reset();
 
@@ -306,7 +306,7 @@ private:
         {
             auto& childEndpoint = findEndpoint (childProcessor, *path.back().name, hoistedEndpoint.isInput);
 
-            if (childEndpoint.details == nullptr)
+            if (childEndpoint.isUnresolvedChildReference())
                 resolveEndpoint (allocator, *childGraph, childEndpoint, childEndpoint.childPath->sections);
 
             if (childEndpoint.getDetails().arraySize != nullptr)
@@ -336,7 +336,7 @@ private:
         {
             auto& e = g.endpoints[i];
 
-            if (e->details == nullptr)
+            if (e->isUnresolvedChildReference())
             {
                 resolveEndpoint (allocator, g, e, e->childPath->sections);
                 return true;
@@ -375,7 +375,7 @@ private:
                         {
                             parentEndpoint = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), false);
                             parentEndpoint->name = allocator.get (childEndpoint->name);
-                            parentEndpoint->details = std::make_unique<AST::EndpointDetails> (*childEndpoint->details);
+                            parentEndpoint->details = allocator.allocate<AST::EndpointDetails> (childEndpoint->getDetails());
                             parentEndpoint->needsToBeExposedInParent = true;
                             graph.endpoints.push_back (*parentEndpoint);
                         }

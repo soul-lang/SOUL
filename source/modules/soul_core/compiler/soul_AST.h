@@ -959,9 +959,10 @@ struct AST
     {
         EndpointDetails (EndpointType t) : endpointType (t) {}
         EndpointDetails (const EndpointDetails&) = default;
+        ~EndpointDetails() = default;
 
         const EndpointType endpointType;
-        std::vector<pool_ref<Expression>> dataTypes;
+        ArrayWithPreallocation<pool_ref<Expression>, 2> dataTypes;
         pool_ptr<Expression> arraySize;
 
         void checkDataTypesValid (const Context& context)
@@ -1089,17 +1090,17 @@ struct AST
         EndpointDeclaration (const Context& c, bool isInputEndpoint)
             : ASTObject (ObjectType::EndpointDeclaration, c), isInput (isInputEndpoint) {}
 
-        EndpointDeclaration (const Context& c, bool isInputEndpoint, EndpointType type)
+        EndpointDeclaration (Allocator& a, const Context& c, bool isInputEndpoint, EndpointType type)
             : ASTObject (ObjectType::EndpointDeclaration, c), isInput (isInputEndpoint),
-                         details (std::make_unique<EndpointDetails> (type)) {}
+                         details (a.allocate<EndpointDetails> (type)) {}
 
-        bool isResolved() const         { return details != nullptr && details->isResolved(); }
-
-        EndpointDetails& getDetails()   { SOUL_ASSERT (details != nullptr); return *details; }
+        bool isResolved() const                     { return details != nullptr && details->isResolved(); }
+        bool isUnresolvedChildReference() const     { return details == nullptr; }
+        EndpointDetails& getDetails()               { return *details; }
 
         const bool isInput;
         Identifier name;
-        std::unique_ptr<EndpointDetails> details;
+        pool_ptr<EndpointDetails> details;
         pool_ptr<ChildEndpointPath> childPath;
         Annotation annotation;
         bool needsToBeExposedInParent = false;
@@ -1121,7 +1122,7 @@ struct AST
 
         Type getResultType() const override
         {
-            auto& details = input->getDetails();
+            const auto& details = input->getDetails();
 
             if (isEvent (details))
                 return (details.arraySize == nullptr) ? Type() : Type().createArray (static_cast<uint32_t> (details.getArraySize()));

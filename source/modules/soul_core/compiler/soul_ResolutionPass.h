@@ -1675,7 +1675,7 @@ private:
 
                 if (auto i = cast<AST::InputEndpointRef> (array))
                 {
-                    if (i->input->details == nullptr)
+                    if (i->input->isUnresolvedChildReference())
                         array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = i->input->getDetails().arraySize;
@@ -1683,7 +1683,7 @@ private:
 
                 if (auto o = cast<AST::OutputEndpointRef> (array))
                 {
-                    if (o->output->details == nullptr)
+                    if (o->output->isUnresolvedChildReference())
                         array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
                     endpointArraySize = o->output->getDetails().arraySize;

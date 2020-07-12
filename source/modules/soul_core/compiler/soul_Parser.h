@@ -717,14 +717,14 @@ private:
 
     void parseEndpoint (AST::ProcessorBase& p, bool isInput, EndpointType endpointType)
     {
-        auto& first = allocate<AST::EndpointDeclaration> (getContext(), isInput, endpointType);
+        auto& first = allocate<AST::EndpointDeclaration> (allocator, getContext(), isInput, endpointType);
         first.getDetails().dataTypes = parseEndpointTypeList (endpointType);
         parseInputOrOutputName (first);
         p.endpoints.push_back (first);
 
         while (matchIf (Operator::comma))
         {
-            auto& e = allocate<AST::EndpointDeclaration> (getContext(), isInput, endpointType);
+            auto& e = allocate<AST::EndpointDeclaration> (allocator, getContext(), isInput, endpointType);
             e.getDetails().dataTypes = first.getDetails().dataTypes;
             parseInputOrOutputName (e);
             p.endpoints.push_back (e);
@@ -1729,9 +1729,9 @@ private:
         return *type;
     }
 
-    std::vector<pool_ref<AST::Expression>> parseEndpointTypeList (EndpointType endpointType)
+    decltype (AST::EndpointDetails::dataTypes) parseEndpointTypeList (EndpointType endpointType)
     {
-        std::vector<pool_ref<AST::Expression>> result;
+        decltype (AST::EndpointDetails::dataTypes) result;
         auto loc = location;
 
         if (matchIf (Operator::openParen))
