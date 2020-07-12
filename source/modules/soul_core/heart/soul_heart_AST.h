@@ -152,23 +152,15 @@ struct heart
                     errorLocation.throwError (Errors::voidCannotBeUsedForEndpoint());
             }
 
-            // Ensure all of the types are unique
-            {
-                std::vector<Type> processedTypes;
+            for (auto& dataType : dataTypes)
+                if (dataType.isVoid())
+                    errorLocation.throwError (Errors::voidCannotBeUsedForEndpoint());
 
-                for (auto& dataType : dataTypes)
-                {
-                    if (dataType.isVoid())
-                        errorLocation.throwError (Errors::voidCannotBeUsedForEndpoint());
-
-                    for (auto& processedType : processedTypes)
-                        if (processedType.isEqual (dataType, Type::ignoreVectorSize1))
-                            errorLocation.throwError (Errors::duplicateTypesInList (processedType.getDescription(),
-                                                                                    dataType.getDescription()));
-
-                    processedTypes.push_back (dataType);
-                }
-            }
+            for (size_t i = 1; i < dataTypes.size(); ++i)
+                for (size_t j = 0; j < i; ++j)
+                    if (dataTypes[i].isEqual (dataTypes[j], Type::ignoreVectorSize1))
+                        errorLocation.throwError (Errors::duplicateTypesInList (dataTypes[j].getDescription(),
+                                                                                dataTypes[i].getDescription()));
         }
 
         bool canHandleType (const Type& t) const

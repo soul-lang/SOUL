@@ -976,19 +976,15 @@ struct AST
                     context.throwError (Errors::illegalTypeForEndpoint());
             }
 
-            // Ensure all of the types are unique
+            if (dataTypes.size() > 1)
             {
-                std::vector<Type> processedTypes;
+                auto types = getResolvedDataTypes();
 
-                for (auto& dataType : getResolvedDataTypes())
-                {
-                    for (auto& processedType : processedTypes)
-                        if (processedType.isEqual (dataType, Type::ignoreVectorSize1))
-                            context.throwError (Errors::duplicateTypesInList (processedType.getDescription(),
-                                                                              dataType.getDescription()));
-
-                    processedTypes.push_back (dataType);
-                }
+                for (size_t i = 1; i < types.size(); ++i)
+                    for (size_t j = 0; j < i; ++j)
+                        if (types[i].isEqual (types[j], Type::ignoreVectorSize1))
+                            context.throwError (Errors::duplicateTypesInList (types[j].getDescription(),
+                                                                              types[i].getDescription()));
             }
         }
 
