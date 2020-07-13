@@ -189,8 +189,8 @@ struct heart::Checker
                 }
 
                 if (f->functionType.isUserInit())
-                    if (auto w = heart::Utilities::findFirstWrite (f))
-                        w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
+                    if (auto rw = heart::Utilities::findFirstStreamAccess (f))
+                        rw->location.throwError (Errors::streamsCannotBeUsedDuringInit());
             }
         }
     }

@@ -811,6 +811,9 @@ private:
 
     static InlineResult inlineAllCallsToFunction (Program& program, heart::Function& parentFunction, heart::Function& functionToInline)
     {
+        if (functionToInline.isExported || ! functionToInline.functionType.isNormal())
+            return InlineResult::failed;
+
         bool anyChanged = false;
 
         for (;;)

@@ -151,6 +151,7 @@ namespace soul
     X(advanceCannotBeCalledHere,            "The advance() function cannot be called inside this function") \
     X(streamsCanOnlyBeUsedInRun,            "Streams can only be read or written inside the run() function") \
     X(streamsCannotBeUsedDuringInit,        "Streams are not available during init()") \
+    X(streamsCannotBeUsedInEventCallbacks,  "Streams cannot be used in event callback functions") \
     X(noSuchInputEvent,                     "The event $Q0$ does not match an event input") \
     X(variableCannotBeVoid,                 "A variable type cannot be 'void'") \
     X(parameterCannotBeVoid,                "Function parameters cannot be void") \

@@ -128,23 +128,20 @@ struct heart::Utilities
     };
 
     //==============================================================================
-    static pool_ptr<WriteStream> findFirstWrite (Function& f)
+    static pool_ptr<Statement> findFirstStreamAccess (Function& f)
     {
         for (auto& b : f.blocks)
+        {
             for (auto s : b->statements)
-                if (auto w = cast<WriteStream> (*s))
-                    return w;
-
-        return {};
-    }
-
-    static pool_ptr<WriteStream> findFirstStreamWrite (Function& f)
-    {
-        for (auto& b : f.blocks)
-            for (auto s : b->statements)
+            {
                 if (auto w = cast<WriteStream> (*s))
                     if (w->target->isStreamEndpoint())
                         return w;
+
+                if (auto r = cast<ReadStream> (*s))
+                    return r;
+            }
+        }
 
         return {};
     }
@@ -196,21 +193,29 @@ struct heart::Utilities
             {
                 if (! f->functionType.isRun())
                 {
-                    auto w = findFirstStreamWrite (f);
+                    auto s = findFirstStreamAccess (f);
                     auto a = findFirstAdvanceCall (f);
 
-                    if (w != nullptr || a != nullptr)
+                    if (s != nullptr || a != nullptr)
                     {
+                        if (f->functionType.isUserInit() || f->functionType.isEvent())
+                        {
+                            if (a != nullptr)
+                                a->location.throwError (Errors::advanceCannotBeCalledHere());
+
+                            if (f->functionType.isUserInit())
+                                s->location.throwError (Errors::streamsCannotBeUsedDuringInit());
+                            else
+                                s->location.throwError (Errors::streamsCannotBeUsedInEventCallbacks());
+                        }
+
                         if (OptimiserClass::inlineAllCallsToFunction (program, f))
                             return true;
 
                         if (a != nullptr)
                             a->location.throwError (Errors::advanceCannotBeCalledHere());
 
-                        if (f->functionType.isUserInit())
-                            w->location.throwError (Errors::streamsCannotBeUsedDuringInit());
-
-                        w->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
+                        s->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
                     }
                 }
             }
