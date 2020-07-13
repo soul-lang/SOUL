@@ -33,7 +33,7 @@
 
 #include "soul_core.h"
 
-#include "../../3rdParty/choc/text/choc_JSON.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_JSON.h"
 
 #if SOUL_INTEL
  #include <xmmintrin.h>

@@ -17,8 +17,8 @@
 
 #include <string>
 #include <vector>
-#include "../../3rdParty/choc/containers/choc_Value.h"
-#include "../../3rdParty/choc/audio/choc_MIDI.h"
+#include "../3rdParty/choc/containers/choc_Value.h"
+#include "../3rdParty/choc/audio/choc_MIDI.h"
 
 namespace soul
 {

@@ -13,8 +13,8 @@
  #error "this header is designed to be included in JUCE projects that contain the juce_audio_processors module"
 #endif
 
-#include "../API/soul_patch.h"
-#include "../../soul_venue/soul_ProgramDefinitions.h"
+#include "../../soul_patch.h"
+#include "../../common/soul_ProgramDefinitions.h"
 
 namespace soul
 {

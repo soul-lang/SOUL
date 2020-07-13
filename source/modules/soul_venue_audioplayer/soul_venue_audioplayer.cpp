@@ -30,7 +30,7 @@
 #include "soul_venue_audioplayer.h"
 
 #include <thread>
-#include "../../3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
+#include "../../../include/soul/3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #include <soul_core/soul_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>

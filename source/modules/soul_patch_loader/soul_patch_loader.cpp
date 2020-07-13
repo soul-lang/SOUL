@@ -18,10 +18,10 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include "../../API/soul_patch/API/soul_patch.h"
+#include "../../../include/soul/soul_patch.h"
 #include "JuceHeader.h"
 
-#include "../../API/soul_patch/helper_classes/soul_patch_Utilities.h"
+#include "../../../include/soul/patch/helper_classes/soul_patch_Utilities.h"
 
 #include "classes/soul_patch_helpers.h"
 #include "classes/soul_patch_FileList.h"

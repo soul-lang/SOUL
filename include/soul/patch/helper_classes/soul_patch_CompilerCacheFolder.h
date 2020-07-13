@@ -13,7 +13,7 @@
  #error "this header is designed to be included in JUCE projects that contain the juce_core module"
 #endif
 
-#include "../API/soul_patch.h"
+#include "../../soul_patch.h"
 
 #if __clang__
  #pragma clang diagnostic push

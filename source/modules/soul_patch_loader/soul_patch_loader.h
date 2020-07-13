@@ -37,10 +37,9 @@
 #pragma once
 #define SOUL_PATCH_LOADER_H_INCLUDED 1
 
-//#include <soul_core/soul_core.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
-#include "../../API/soul_patch/API/soul_patch.h"
+#include "../../../include/soul/soul_patch.h"
 
 /**
     This module contains a set of classes which implement the SOUL Patch

@@ -67,13 +67,13 @@
 
 #define CHOC_ASSERT(x)  SOUL_ASSERT(x)
 
-#include "../../3rdParty/choc/containers/choc_Value.h"
-#include "../../3rdParty/choc/text/choc_StringUtilities.h"
-#include "../../3rdParty/choc/text/choc_FloatToString.h"
-#include "../../3rdParty/choc/math/choc_MathHelpers.h"
-#include "../../3rdParty/choc/audio/choc_SampleBuffers.h"
-#include "../../3rdParty/choc/text/choc_CodePrinter.h"
-#include "../../API/soul_venue/soul_ProgramDefinitions.h"
+#include "../../../include/soul/3rdParty/choc/containers/choc_Value.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_StringUtilities.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_FloatToString.h"
+#include "../../../include/soul/3rdParty/choc/math/choc_MathHelpers.h"
+#include "../../../include/soul/3rdParty/choc/audio/choc_SampleBuffers.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_CodePrinter.h"
+#include "../../../include/soul/common/soul_ProgramDefinitions.h"
 
 #include "utilities/soul_MiscUtilities.h"
 

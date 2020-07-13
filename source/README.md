@@ -12,9 +12,11 @@ The low-level C++ source code for various compiler tasks is arranged as JUCE mod
 - `modules/soul_venue_audioplayer` - this small module is a simple example of an implementation of a `soul::Venue` which uses the standard JUCE audio device classes to directly play the content
 - `modules/soul_patch_loader` - this module implements a lot of the glue logic required to turn a `soul::Performer` into a set of COM classes which implement the SOUL Patch API
 
-- `API/soul_patch/API` - This contains the completely dependency-free C++ header-only COM base classes which define the SOUL Patch API
-- `API/soul_patch/helper_classes` - A set of header-only C++ utilities providing various client-side helpers for dealing with the SOUL Patch API. This includes classes to load patches as a `juce::AudioPluginInstance`
+##### SOUL Patch APIs
+
+- `include/soul/soul_patch.h` - This includes everything needed to use the COM-based classes which can load and run with the SOUL Patch DLL
+- `include/soul/patch/helper_classes` - A set of header-only C++ utilities providing various client-side helpers for dealing with the SOUL Patch API. Some of these require JUCE, e.g there's a utility to load a patch as a `juce::AudioPluginInstance`.
 
 ### Current Project Status
 
-Please note! This public set of source files are far from being a complete snapshot of the entire SOUL codebase! The highly complex logic which transforms a HEART program into something actually playable and runs the LLVM JIT backend is still closed-source for the moment (although we'll be providing binary DLLs with EULAs that allow everyone to freely create SOUL hardware or other playback systems). But as the project moves forward, we'll be constantly revising and adding to the open source repository.
+Please note! This set of source files is far from being a complete snapshot of the entire SOUL codebase! The highly complex logic which transforms a HEART program into something actually playable and runs the LLVM JIT backend is still closed-source for the moment (although we'll be providing binary DLLs with EULAs that allow everyone to freely create SOUL hardware or other playback systems). But as the project moves forward, we'll be constantly revising and adding to the open source repository.
