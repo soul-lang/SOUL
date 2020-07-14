@@ -951,6 +951,9 @@ private:
         {
             if (matchIf (HEARTOperator::semicolon))
             {
+                if (! state.function.returnType.isVoid())
+                    location.throwError (Errors::expectedExpressionOfType (getTypeDescription (state.function.returnType)));
+
                 builder.addReturn();
                 return true;
             }
