@@ -4,30 +4,70 @@
               jucerFormatVersion="1">
   <MAINGROUP id="uJnotN" name="SOULPatchHostDemo">
     <GROUP id="{61855D96-DDCD-96D9-B7FD-5AE623E9A261}" name="Source">
-      <GROUP id="{AD4BFB33-082C-EEB4-7A1C-C89C4FAF536A}" name="API">
-        <FILE id="ZyAQPF" name="soul_patch.h" compile="0" resource="0" file="../../source/API/soul_patch/API/soul_patch.h"/>
-        <FILE id="y6ArDX" name="soul_patch_Instance.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/API/soul_patch_Instance.h"/>
-        <FILE id="tpajVA" name="soul_patch_Library.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/API/soul_patch_Library.h"/>
-        <FILE id="XDIno7" name="soul_patch_Player.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/API/soul_patch_Player.h"/>
-        <FILE id="NQ6DzP" name="soul_patch_VirtualFile.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/API/soul_patch_VirtualFile.h"/>
-      </GROUP>
-      <GROUP id="{C8245316-B1B8-10FE-FC53-3B41036F74F3}" name="helper_classes">
-        <FILE id="HqD7ji" name="soul_patch_AudioPluginFormat.h" compile="0"
-              resource="0" file="../../source/API/soul_patch/helper_classes/soul_patch_AudioPluginFormat.h"/>
-        <FILE id="yc7Vq4" name="soul_patch_AudioProcessor.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/helper_classes/soul_patch_AudioProcessor.h"/>
-        <FILE id="vbCNJF" name="soul_patch_CompilerCacheFolder.h" compile="0"
-              resource="0" file="../../source/API/soul_patch/helper_classes/soul_patch_CompilerCacheFolder.h"/>
-        <FILE id="f8Kb2a" name="soul_patch_Utilities.h" compile="0" resource="0"
-              file="../../source/API/soul_patch/helper_classes/soul_patch_Utilities.h"/>
-      </GROUP>
       <FILE id="tXLIq5" name="PatchLoaderComponent.h" compile="0" resource="0"
             file="Source/PatchLoaderComponent.h"/>
       <FILE id="XMVaPq" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <GROUP id="{668DCD8A-A0C3-53AC-238E-BA829673BBEF}" name="soul">
+        <GROUP id="{F812C9E5-C21F-A0DA-AF5E-BA10F3BD1AA5}" name="3rdParty">
+          <GROUP id="{D80213CB-9475-0828-01C3-782EF2F7BC99}" name="choc">
+            <GROUP id="{E5C2B274-F5E7-EC3A-1164-C4F1940F1B81}" name="audio">
+              <FILE id="zNS5ZZ" name="choc_MIDI.h" compile="0" resource="0" file="../../include/soul/3rdParty/choc/audio/choc_MIDI.h"/>
+              <FILE id="xOi6ye" name="choc_SampleBuffers.h" compile="0" resource="0"
+                    file="../../include/soul/3rdParty/choc/audio/choc_SampleBuffers.h"/>
+            </GROUP>
+            <GROUP id="{224AA805-7747-3FDE-AF0D-EDA6C11B7D3B}" name="containers">
+              <FILE id="pxi2s8" name="choc_SingleReaderSingleWriterFIFO.h" compile="0"
+                    resource="0" file="../../include/soul/3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"/>
+              <FILE id="xHRaKZ" name="choc_Value.h" compile="0" resource="0" file="../../include/soul/3rdParty/choc/containers/choc_Value.h"/>
+            </GROUP>
+            <GROUP id="{4C5320E8-25DB-2460-B42A-F1466F6F9D4D}" name="math">
+              <FILE id="VwGUWi" name="choc_MathHelpers.h" compile="0" resource="0"
+                    file="../../include/soul/3rdParty/choc/math/choc_MathHelpers.h"/>
+            </GROUP>
+            <GROUP id="{5963EA69-0CA4-CE1C-4CEC-FFD2A622C519}" name="platform"/>
+            <GROUP id="{24B59D73-6506-7B8B-D1BB-EA2C908ED6AE}" name="text">
+              <FILE id="LU6Au5" name="choc_CodePrinter.h" compile="0" resource="0"
+                    file="../../include/soul/3rdParty/choc/text/choc_CodePrinter.h"/>
+              <FILE id="ZJu1YS" name="choc_FloatToString.h" compile="0" resource="0"
+                    file="../../include/soul/3rdParty/choc/text/choc_FloatToString.h"/>
+              <FILE id="HV8agt" name="choc_JSON.h" compile="0" resource="0" file="../../include/soul/3rdParty/choc/text/choc_JSON.h"/>
+              <FILE id="x3rXIb" name="choc_StringUtilities.h" compile="0" resource="0"
+                    file="../../include/soul/3rdParty/choc/text/choc_StringUtilities.h"/>
+              <FILE id="HBWw6s" name="choc_UTF8.h" compile="0" resource="0" file="../../include/soul/3rdParty/choc/text/choc_UTF8.h"/>
+            </GROUP>
+            <FILE id="DkaymK" name="CONTRIBUTING.md" compile="0" resource="1" file="../../include/soul/3rdParty/choc/CONTRIBUTING.md"/>
+            <FILE id="ZKXFsY" name="LICENSE.md" compile="0" resource="1" file="../../include/soul/3rdParty/choc/LICENSE.md"/>
+            <FILE id="BRJu9o" name="README.md" compile="0" resource="1" file="../../include/soul/3rdParty/choc/README.md"/>
+          </GROUP>
+        </GROUP>
+        <GROUP id="{61508D51-BDE9-A1FB-E002-08C0BDFF0060}" name="common">
+          <FILE id="kjFKwm" name="soul_ProgramDefinitions.h" compile="0" resource="0"
+                file="../../include/soul/common/soul_ProgramDefinitions.h"/>
+        </GROUP>
+        <GROUP id="{9232A203-94FF-F4C2-4FD3-1F18A6B7DDA3}" name="patch">
+          <GROUP id="{13CF34E1-7D18-26CA-DFA6-A33A7A861626}" name="helper_classes">
+            <FILE id="uIJP4Z" name="soul_patch_AudioPluginFormat.h" compile="0"
+                  resource="0" file="../../include/soul/patch/helper_classes/soul_patch_AudioPluginFormat.h"/>
+            <FILE id="OnCtha" name="soul_patch_AudioProcessor.h" compile="0" resource="0"
+                  file="../../include/soul/patch/helper_classes/soul_patch_AudioProcessor.h"/>
+            <FILE id="xyCkl5" name="soul_patch_CompilerCacheFolder.h" compile="0"
+                  resource="0" file="../../include/soul/patch/helper_classes/soul_patch_CompilerCacheFolder.h"/>
+            <FILE id="s7XEHj" name="soul_patch_Utilities.h" compile="0" resource="0"
+                  file="../../include/soul/patch/helper_classes/soul_patch_Utilities.h"/>
+          </GROUP>
+          <FILE id="wjw3Jp" name="soul_patch_Instance.h" compile="0" resource="0"
+                file="../../include/soul/patch/soul_patch_Instance.h"/>
+          <FILE id="XgfDrv" name="soul_patch_Library.h" compile="0" resource="0"
+                file="../../include/soul/patch/soul_patch_Library.h"/>
+          <FILE id="lAyt9o" name="soul_patch_ObjectModel.h" compile="0" resource="0"
+                file="../../include/soul/patch/soul_patch_ObjectModel.h"/>
+          <FILE id="UIXouG" name="soul_patch_Player.h" compile="0" resource="0"
+                file="../../include/soul/patch/soul_patch_Player.h"/>
+          <FILE id="vp99Bf" name="soul_patch_VirtualFile.h" compile="0" resource="0"
+                file="../../include/soul/patch/soul_patch_VirtualFile.h"/>
+        </GROUP>
+        <FILE id="UeqpBk" name="soul_patch.h" compile="0" resource="0" file="../../include/soul/soul_patch.h"/>
+      </GROUP>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
