@@ -421,17 +421,14 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     void changeProgramName (int, const juce::String&) override  {}
 
     //==============================================================================
-    void getStateInformation (juce::MemoryBlock& data) override
+    juce::ValueTree& getUpdatedState()
     {
         updateLastState();
-        juce::MemoryOutputStream out (data, false);
-        lastValidState.writeToStream (out);
+        return lastValidState;
     }
 
-    void setStateInformation (const void* data, int size) override
+    void applyNewState (juce::ValueTree newState)
     {
-        auto newState = juce::ValueTree::readFromData (data, (size_t) size);
-
         if (isMatchingStateType (newState))
         {
             lastValidState = std::move (newState);
@@ -439,6 +436,17 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             if (player != nullptr)
                 applyLastStateToPlayer (*player);
         }
+    }
+
+    void getStateInformation (juce::MemoryBlock& data) override
+    {
+        juce::MemoryOutputStream out (data, false);
+        getUpdatedState().writeToStream (out);
+    }
+
+    void setStateInformation (const void* data, int size) override
+    {
+        applyNewState (juce::ValueTree::readFromData (data, (size_t) size));
     }
 
     //==============================================================================
