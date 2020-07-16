@@ -108,12 +108,6 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         if (performer == nullptr)
             return messageList.addError ("Failed to initialise JIT engine", {});
 
-        messageList.onMessage = [] (const soul::CompileMessage& message)
-        {
-            if (message.isError())
-                throwPatchLoadError (message.getFullDescription() + "\n" + message.getAnnotatedSourceLine());
-        };
-
         auto program = compileSources (messageList, settings, preprocessor);
 
         if (program.isEmpty())
@@ -127,7 +121,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         resolveExternalVariables (externalDataProvider);
 
         if (! performer->link (messageList, settings, CacheConverter::create (cache).get()))
-            return messageList.addError ("Failed to link", {});
+            if (! messageList.hasErrors())
+                messageList.addError ("Failed to link", {});
     }
 
     void compile (const BuildSettings& settings,

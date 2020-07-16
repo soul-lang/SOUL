@@ -366,14 +366,14 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
     juce::AudioProcessorEditor* createEditor() override
     {
-        if (player != nullptr)
-        {
-            if (! player->isPlayable())
-                return new ErrorDisplayEditor (*this);
+        if (player == nullptr)
+            return new BusyLoadingEditor (*this);
 
-            if (getParameters().size() != 0 || showMIDIKeyboard)
-                return new ParameterEditor (*this);
-        }
+        if (! player->isPlayable())
+            return new ErrorDisplayEditor (*this);
+
+        if (getParameters().size() != 0 || showMIDIKeyboard)
+            return new ParameterEditor (*this);
 
         return new EditorBase (*this);
     }
@@ -862,19 +862,47 @@ private:
 
         void paint (juce::Graphics& g) override
         {
-            auto background = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
-            g.fillAll (background);
-
-            if (getNumChildComponents() == 0)
-            {
-                g.setColour (background.contrasting());
-                g.setFont (16.0f);
-                g.drawFittedText (patch.getName(), getLocalBounds().reduced (6), juce::Justification::centred, 2);
-            }
+            g.fillAll (getBackgroundColour());
         }
+
+        juce::Colour getBackgroundColour() const { return getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId); }
 
         SOULPatchAudioProcessor& patch;
         juce::LookAndFeel_V4 lookAndFeel;
+    };
+
+    //==============================================================================
+    struct BusyLoadingEditor  : public EditorBase,
+                                private juce::Timer
+    {
+        BusyLoadingEditor (SOULPatchAudioProcessor& p) : EditorBase (p)
+        {
+            if (p.patch != nullptr)
+                if (auto desc = soul::patch::Description::Ptr (p.patch->getDescription()))
+                    setName (desc->name);
+
+            startTimerHz (50);
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            auto colour = getBackgroundColour().contrasting();
+
+            auto spinner = getSpinnerArea();
+            getLookAndFeel().drawSpinningWaitAnimation (g, colour, spinner.getX(), spinner.getY(), spinner.getWidth(), spinner.getHeight());
+
+            g.setFont (16.0f);
+            g.setColour (colour);
+            g.drawFittedText (getName(), getLocalBounds().withTrimmedTop (spinner.getBottom()).reduced (10),
+                              juce::Justification::centredTop, 2);
+        }
+
+        void timerCallback() override
+        {
+            repaint (getSpinnerArea());
+        }
+
+        juce::Rectangle<int> getSpinnerArea() const     { return getLocalBounds().withSizeKeepingCentre (30, 30); }
     };
 
     //==============================================================================

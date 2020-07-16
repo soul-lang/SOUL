@@ -78,7 +78,7 @@ Span<Type> makeSpan (std::vector<Type>& v)
 inline std::string loadVirtualFileAsMemoryBlock (VirtualFile& f, std::string& error)
 {
     auto fileSize = f.getSize();
-    size_t blockSize = 13;//fileSize > 0 ? static_cast<size_t> (fileSize) : 8192;
+    size_t blockSize = fileSize > 0 ? static_cast<size_t> (fileSize) : 8192;
     std::string buffer;
     buffer.resize (blockSize);
     std::ostringstream result;

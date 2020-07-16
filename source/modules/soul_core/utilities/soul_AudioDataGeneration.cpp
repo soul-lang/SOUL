@@ -191,58 +191,59 @@ choc::value::Value convertAudioDataToObject (choc::buffer::ChannelArrayView<cons
 
 choc::value::Value coerceAudioFileObjectToTargetType (const Type& targetType, const choc::value::ValueView& sourceValue)
 {
-    SOUL_ASSERT (sourceValue.isObject()); // this is only designed for use on objects which contain members for the frames + rate
-
-    auto isFrameArray = [] (const choc::value::ValueView& member)
+    if (sourceValue.isObject())
     {
-        if (member.isArray())
+        auto isFrameArray = [] (const choc::value::ValueView& member)
         {
-            auto isAudioSample = [] (const choc::value::ValueView& c) { return c.isInt32() || c.isFloat32() || c.isFloat64(); };
+            if (member.isArray())
+            {
+                auto isAudioSample = [] (const choc::value::ValueView& c) { return c.isInt32() || c.isFloat32() || c.isFloat64(); };
 
-            auto first = member[0];
+                auto first = member[0];
 
-            return (first.isPrimitive() && isAudioSample (first))
-                     || (first.isVector() && isAudioSample (first[0]));
+                return (first.isPrimitive() && isAudioSample (first))
+                         || (first.isVector() && isAudioSample (first[0]));
+            }
+
+            return false;
+        };
+
+        auto isRateName = [] (const std::string& s)
+        {
+            return s == "rate" || s == "sampleRate" || s == "frequency";
+        };
+
+        choc::value::Value sourceFrameArray, sourceRate;
+
+        for (uint32_t i = 0; i < sourceValue.size(); ++i)
+        {
+            auto member = sourceValue.getObjectMemberAt (i);
+
+            if (isFrameArray (member.value))
+                sourceFrameArray = member.value;
+            else if (isRateName (member.name))
+                sourceRate = member.value;
         }
 
-        return false;
-    };
+        SOUL_ASSERT (! (sourceFrameArray.isVoid() || sourceRate.isVoid()));
 
-    auto isRateName = [] (const std::string& s)
-    {
-        return s == "rate" || s == "sampleRate" || s == "frequency";
-    };
+        if (targetType.isArray())
+            return sourceFrameArray;
 
-    choc::value::Value sourceFrameArray, sourceRate;
-
-    for (uint32_t i = 0; i < sourceValue.size(); ++i)
-    {
-        auto member = sourceValue.getObjectMemberAt (i);
-
-        if (isFrameArray (member.value))
-            sourceFrameArray = member.value;
-        else if (isRateName (member.name))
-            sourceRate = member.value;
-    }
-
-    SOUL_ASSERT (! (sourceFrameArray.isVoid() || sourceRate.isVoid()));
-
-    if (targetType.isArray())
-        return sourceFrameArray;
-
-    if (targetType.isStruct())
-    {
-        auto o = choc::value::createObject ("soul::AudioSample");
-
-        for (auto& m : targetType.getStructRef().getMembers())
+        if (targetType.isStruct())
         {
-            if (m.type.isArray() && m.type.getArrayElementType().isPrimitiveOrVector())
-                o.addMember (m.name, sourceFrameArray);
-            else if ((m.type.isFloatingPoint() || m.type.isPrimitiveInteger()) && isRateName (m.name))
-                o.addMember (m.name, sourceRate);
-        }
+            auto o = choc::value::createObject ("soul::AudioSample");
 
-        return o;
+            for (auto& m : targetType.getStructRef().getMembers())
+            {
+                if (m.type.isArray() && m.type.getArrayElementType().isPrimitiveOrVector())
+                    o.addMember (m.name, sourceFrameArray);
+                else if ((m.type.isFloatingPoint() || m.type.isPrimitiveInteger()) && isRateName (m.name))
+                    o.addMember (m.name, sourceRate);
+            }
+
+            return o;
+        }
     }
 
     return choc::value::Value (sourceValue);
