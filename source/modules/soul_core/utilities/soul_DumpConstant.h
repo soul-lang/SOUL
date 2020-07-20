@@ -53,6 +53,7 @@ inline std::string dump (const choc::value::ValueView& c)
     if (c.isFloat64())  return printFloat64 (c.getFloat64());
     if (c.isBool())     return c.getBool() ? "true" : "false";
     if (c.isString())   return std::string (c.getString());
+    if (c.isVoid())     return "void";
 
     if (c.isVector())
     {
