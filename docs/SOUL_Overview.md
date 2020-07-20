@@ -156,15 +156,15 @@ A developer can build a SOUL host which either compiles and runs SOUL synchronou
 
 #### Code-generation tools
 
-The SOUL command-line tools will provide various conversion utilities for translating SOUL into C++ or WASM to be incorporated manually into a legacy codebases.
+The SOUL command-line tools will provide various conversion utilities for translating SOUL into C++ or WASM to be incorporated manually into a legacy codebases. For more information about the WASM generator, see [this document](./SOUL_WASM.md).
 
 ### Tools for developing SOUL code
 
 For end-users, we expect to see several environments in which they can write and test SOUL:
 
 - In a browser playground: at [soul.dev](https://soul.dev/lab), where the code is compiled and run in a browser as WASM/Web-audio.
-- In a DAW which supports SOUL patches, such as Tracktion Waveform (v10 or later)
-- Running the SOUL command-line tool to compile and play a particular file or patch
+- In a DAW which supports SOUL patches, such as [Tracktion Waveform](https://www.tracktion.com/products/waveform-free) (v10 or later)
+- Running the [SOUL command-line tool](./SOUL_Command.md) to compile and play a particular file or patch
 
 Most of these environments support live-reloading of the code when it is modified and re-saved in a text editor.
 
