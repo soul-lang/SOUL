@@ -48,6 +48,8 @@ bool Module::isProcessor() const        { return moduleType == ModuleType::proce
 bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
 bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
 
+bool Module::isSystemModule() const     { return startsWith (originalFullName, "soul::"); }
+
 pool_ptr<heart::Function> Module::findRunFunction() const
 {
     for (auto& f : functions)

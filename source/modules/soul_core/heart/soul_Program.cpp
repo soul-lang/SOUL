@@ -102,12 +102,12 @@ struct Program::ProgramImpl  : public RefCountedObject
     pool_ptr<Module> getMainProcessor() const
     {
         for (auto& m : modules)
-            if (m->isProcessor() || m->isGraph())
+            if (! m->isSystemModule() && (m->isProcessor() || m->isGraph()))
                 if (m->annotation.getBool ("main"))
                     return m;
 
         for (auto& m : modules)
-            if (m->isProcessor() || m->isGraph())
+            if (! m->isSystemModule() && (m->isProcessor() || m->isGraph()))
                 if (! m->annotation.hasValue ("main"))
                     return m;
 

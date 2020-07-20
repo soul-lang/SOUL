@@ -61,6 +61,8 @@ public:
     Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
     //==============================================================================
+    bool isSystemModule() const;
+
     pool_ptr<heart::Function> findRunFunction() const;
     heart::Function& getRunFunction() const;
     heart::Function& getFunction (const std::string& name) const;
