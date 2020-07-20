@@ -6,7 +6,7 @@ This folder contains builds of the command (find it in the `soul_command` folder
 
 
 ```
-   _____ _____ _____ __ 
+   _____ _____ _____ __
   |   __|     |  |  |  |     SOUL toolkit
   |__   |  |  |  |  |  |__   (C)2019 ROLI Ltd.
   |_____|_____|_____|_____|
@@ -32,17 +32,19 @@ Usage:
 ```
 ### `soul play`
 
-To play some sound, probably the best start is to point it at the example `.soul` or `.soulpatch` files in the examples folder. 
+To play some sound, probably the best start is to point it at the example `.soulpatch` files in the examples folder.
 
 ..and then you can either run one like this:
 
-`soul play ~/mystuff/SOUL/examples/ClassicRingtone.soul`
+`soul play ~/mystuff/SOUL/examples/patches/ClassicRingtone.soulpatch`
 
 or leave it watching the entire folder for changes like this:
 
-`soul play ~/mystuff/SOUL/examples`
+`soul play ~/mystuff/SOUL/examples/patches`
 
 ..which means that as soon as you save a change to one of the files in there, it'll re-compile and play it, so you can tinker around with changes to the code. This is how we've been using it for things like our public demos.
+
+Note that if you want to compile a specific `.soul` file on its own, rather than as part of a `.soulpatch` bundle, you must add the `--nopatch` argument to the command. This helps to avoid confusion when people see a folder containing both `.soulpatch` and `.soul` files, and get unexpected results when the try to play one of the `.soul` files which were intended only to be used as path of a patch.
 
 ### `soul generate`
 
