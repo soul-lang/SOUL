@@ -28,11 +28,24 @@ namespace patch
     This is a juce::AudioProcessor which can told to dynamically load and run different
     patches. The purpose is that you can build a native (VST/AU/etc) plugin with this
     class which can then load (and hot-reload) any SOUL patch at runtime.
+
+    On startup, the plugin will also check in its folder for any sibling .soulpatch files,
+    and if it finds exactly one, it'll load it automatically.
+
+    The PatchLibrary template is a mechanism for providing different JIT engines.
+    The PatchLibraryDLL is an example of a class that could be used for this parameter.
 */
+template <typename PatchLibrary>
 class SOULPatchLoaderPlugin  : public juce::AudioProcessor
 {
 public:
-    SOULPatchLoaderPlugin() = default;
+    SOULPatchLoaderPlugin (PatchLibrary&& library)
+        : patchLibrary (std::move (library))
+    {
+        enableAllBuses();
+        updatePatchName();
+        checkForSiblingPatch();
+    }
 
     ~SOULPatchLoaderPlugin() override
     {
@@ -40,15 +53,17 @@ public:
         patchInstance = nullptr;
     }
 
-    /** To allow this utility class to be used with either the patch DLL or a static build,
-        this virtual method abstracts away the loading of a patch.
-    */
-    virtual soul::patch::PatchInstance::Ptr createPatchInstance (const std::string& url) = 0;
-
-    /** This allows a sub-class to provide an error message to be shown in the editor if
-        it needs to report a problem.
-    */
-    virtual std::string getErrorMessage() = 0;
+    //==============================================================================
+    /** Sets a new .soulpatch file or URL for the plugin to load. */
+    void setPatchURL (const std::string& newFileOrURL)
+    {
+        if (newFileOrURL != state.getProperty (ids.patchURL).toString().toStdString())
+        {
+            state = juce::ValueTree (ids.SOULPatchPlugin);
+            state.setProperty (ids.patchURL, newFileOrURL.c_str(), nullptr);
+            updatePatchState();
+        }
+    }
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override
@@ -78,8 +93,7 @@ public:
     }
 
     //==============================================================================
-    const juce::String getName() const override                 { return "SOUL Patch Loader"; }
-
+    const juce::String getName() const override                 { return patchName; }
     juce::AudioProcessorEditor* createEditor() override         { return new Editor (*this); }
     bool hasEditor() const override                             { return true; }
 
@@ -143,7 +157,7 @@ public:
         }
 
         if (patchInstance == nullptr)
-            patchInstance = createPatchInstance (stateURL);
+            patchInstance = patchLibrary.createPatchInstance (stateURL);
 
         if (patchInstance != nullptr)
         {
@@ -160,13 +174,13 @@ public:
                     if (plugin == nullptr)
                     {
                         auto newPlugin = std::make_unique<soul::patch::SOULPatchAudioProcessor> (patchInstance, getCompilerCache());
-                        newPlugin->askHostToReinitialise = [this] { this->childChanged(); };
+                        newPlugin->askHostToReinitialise = [this] { this->reinitialiseSourcePlugin(); };
 
                         if (state.getNumChildren() != 0)
                             newPlugin->applyNewState (state.getChild (0));
 
                         newPlugin->setBusesLayout (getBusesLayout());
-                        newPlugin->prepareToPlay (getSampleRate(), getBlockSize());
+                        preparePluginToPlayIfPossible (*newPlugin);
                         replaceCurrentPlugin (std::move (newPlugin));
                     }
                     else
@@ -177,50 +191,8 @@ public:
                 }
             }
         }
-    }
 
-    void setPatchURL (const std::string& newURL)
-    {
-        if (newURL != state.getProperty (ids.patchURL).toString().toStdString())
-        {
-            state = juce::ValueTree (ids.SOULPatchPlugin);
-            state.setProperty (ids.patchURL, newURL.c_str(), nullptr);
-            updatePatchState();
-        }
-    }
-
-    void childChanged()
-    {
-        suspendProcessing (true);
-
-        if (plugin != nullptr)
-        {
-            plugin->setBusesLayout (getBusesLayout());
-            plugin->reinitialise();
-            plugin->prepareToPlay (getSampleRate(), getBlockSize());
-        }
-
-        updateHostDisplay();
-        suspendProcessing (false);
-
-        if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
-            ed->refreshContent();
-    }
-
-    void replaceCurrentPlugin (std::unique_ptr<soul::patch::SOULPatchAudioProcessor> newPlugin)
-    {
-        if (newPlugin.get() != plugin.get())
-        {
-            if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
-                ed->clearContent();
-
-            suspendProcessing (true);
-            std::swap (plugin, newPlugin);
-            suspendProcessing (false);
-
-            if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
-                ed->refreshContent();
-        }
+        updatePatchName();
     }
 
     //==============================================================================
@@ -276,7 +248,7 @@ public:
 
             if (pluginEditor == nullptr)
             {
-                auto message = owner.getErrorMessage();
+                auto message = owner.patchLibrary.getErrorMessage();
 
                 if (message.empty())
                     message = "Drag-and-drop a .soulpatch file here to load it";
@@ -322,6 +294,8 @@ public:
 
 private:
     //==============================================================================
+    PatchLibrary patchLibrary;
+    juce::String patchName;
     soul::patch::PatchInstance::Ptr patchInstance;
     std::unique_ptr<soul::patch::SOULPatchAudioProcessor> plugin;
     juce::ValueTree state;
@@ -357,7 +331,164 @@ private:
         return compilerCache;
     }
 
+    void preparePluginToPlayIfPossible (soul::patch::SOULPatchAudioProcessor& p)
+    {
+        auto rate = getSampleRate();
+        auto size = getBlockSize();
+
+        if (rate > 0 && size > 0)
+            p.prepareToPlay (rate, size);
+    }
+
+    void reinitialiseSourcePlugin()
+    {
+        suspendProcessing (true);
+
+        if (plugin != nullptr)
+        {
+            plugin->setBusesLayout (getBusesLayout());
+            plugin->reinitialise();
+            preparePluginToPlayIfPossible (*plugin);
+        }
+
+        updateHostDisplay();
+        suspendProcessing (false);
+
+        if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
+            ed->refreshContent();
+    }
+
+    void replaceCurrentPlugin (std::unique_ptr<soul::patch::SOULPatchAudioProcessor> newPlugin)
+    {
+        if (newPlugin.get() != plugin.get())
+        {
+            if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
+                ed->clearContent();
+
+            suspendProcessing (true);
+            std::swap (plugin, newPlugin);
+            suspendProcessing (false);
+
+            if (auto ed = dynamic_cast<Editor*> (getActiveEditor()))
+                ed->refreshContent();
+        }
+    }
+
+    void checkForSiblingPatch()
+    {
+        auto pluginDLL = juce::File::getSpecialLocation (juce::File::SpecialLocationType::currentApplicationFile);
+        auto siblingPatches = pluginDLL.getParentDirectory().findChildFiles (juce::File::findFiles, false, "*.soulpatch");
+
+        if (siblingPatches.size() == 1)
+            setPatchURL (siblingPatches.getFirst().getFullPathName().toStdString());
+    }
+
+    void updatePatchName()
+    {
+        if (patchInstance != nullptr)
+        {
+            if (auto desc = soul::patch::Description::Ptr (patchInstance->getDescription()))
+            {
+                if (std::string_view (desc->name).empty())
+                {
+                    patchName = desc->name;
+                    return;
+                }
+            }
+        }
+
+        patchName = "SOUL Patch Loader";
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SOULPatchLoaderPlugin)
+};
+
+
+//==============================================================================
+/** This helper class can be used as the template class for SOULPatchLoaderPlugin to make it
+    find and load the SOUL_PatchLoader DLL as its JIT engine.
+*/
+struct PatchLibraryDLL
+{
+    PatchLibraryDLL()
+    {
+        library->ensureLibraryLoaded (lookForSOULPatchDLL().toStdString());
+    }
+
+    std::string getErrorMessage()
+    {
+        if (library->library == nullptr)
+            return std::string ("Couldn't find or load ") + soul::patch::SOULPatchLibrary::getLibraryFileName();
+
+        return {};
+    }
+
+    soul::patch::PatchInstance::Ptr createPatchInstance (const std::string& url)
+    {
+        if (library->library != nullptr)
+            return soul::patch::PatchInstance::Ptr (library->library->createPatchFromFileBundle (url.c_str()));
+
+        return {};
+    }
+
+private:
+    //==============================================================================
+    static juce::String lookForSOULPatchDLL()
+    {
+        auto dllName = soul::patch::SOULPatchLibrary::getLibraryFileName();
+
+        auto pluginDLL = juce::File::getSpecialLocation (juce::File::SpecialLocationType::currentApplicationFile);
+        auto pluginSibling = pluginDLL.getSiblingFile (dllName);
+
+        if (pluginSibling.exists())
+            return pluginSibling.getFullPathName();
+
+       #if JUCE_MAC
+        auto insideBundle = pluginDLL.getChildFile ("Contents/Resources").getChildFile (dllName);
+
+        if (insideBundle.exists())
+            return insideBundle.getFullPathName();
+       #endif
+
+        auto inAppData = juce::File::getSpecialLocation (juce::File::SpecialLocationType::userApplicationDataDirectory)
+                            .getChildFile ("SOUL").getChildFile (dllName);
+
+        if (inAppData.exists())
+            return inAppData.getFullPathName();
+
+        return dllName;
+    }
+
+    struct SharedPatchLibraryHolder
+    {
+        SharedPatchLibraryHolder() = default;
+
+        void ensureLibraryLoaded (const std::string& patchLoaderLibraryPath)
+        {
+            if (library == nullptr)
+            {
+                library = std::make_unique<soul::patch::SOULPatchLibrary> (patchLoaderLibraryPath.c_str());
+
+                if (library->loadedSuccessfully())
+                    loadedPath = patchLoaderLibraryPath;
+                else
+                    library.reset();
+            }
+            else
+            {
+                // This class isn't sophisticated enough to be able to load multiple
+                // DLLs from different locations at the same time
+                jassert (loadedPath == patchLoaderLibraryPath);
+            }
+        }
+
+        std::unique_ptr<soul::patch::SOULPatchLibrary> library;
+        std::string loadedPath;
+
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SharedPatchLibraryHolder)
+    };
+
+    juce::SharedResourcePointer<SharedPatchLibraryHolder> library;
 };
 
 
