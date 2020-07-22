@@ -171,7 +171,6 @@ private:
         super::visit (p);
         parsingStateVariables = false;
 
-//        createInitFunction();
         generateFunctions (p.functions);
     }
 
@@ -384,26 +383,6 @@ private:
     {
         for (auto& s : structs)
             module.structs.push_back (s->getStruct());
-    }
-
-    void createInitFunction()
-    {
-        auto& af = module.allocate<heart::Function>();
-
-        af.name = module.allocator.get (heart::getSystemInitFunctionName());
-        af.functionType = heart::FunctionType::systemInit();
-        af.returnType = soul::Type (soul::PrimitiveType::void_);
-
-        module.functions.push_back (af);
-
-        builder.beginFunction (af);
-        addStateVariableInitialisationCode();
-
-        if (auto userInitFn = module.findFunction (heart::getUserInitFunctionName()))
-            builder.addFunctionCall (*userInitFn, {});
-
-        builder.endFunction();
-        builder.checkFunctionBlocksForTermination();
     }
 
     void generateFunctions (ArrayView<pool_ref<AST::Function>> functions)
