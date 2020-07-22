@@ -167,6 +167,7 @@ namespace soul
     X(wrongTypeForUnary,                    "Illegal type for unary operator") \
     X(typeTooBig,                           "Type size ($0$) exceeds the maximum permitted ($1$)") \
     X(nonConstInNamespace,                  "Only constant variables can be declared inside a namespace") \
+    X(nonConstInGraph,                      "Only constant variables can be declared inside a graph") \
     X(comparisonAlwaysTrue,                 "Comparison with bounded integer type is always true") \
     X(comparisonAlwaysFalse,                "Comparison with bounded integer type is always false") \
     X(illegalArraySize,                     "Illegal array size") \

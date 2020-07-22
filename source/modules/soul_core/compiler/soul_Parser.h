@@ -628,6 +628,10 @@ private:
         graph.processorInstances.push_back (u);
 
         expect (Operator::assign);
+
+        if (! matches (Token::identifier))
+            throwError (Errors::expectedProcessorName());
+
         u.targetProcessor = parseQualifiedIdentifier();
 
         // Array of processors

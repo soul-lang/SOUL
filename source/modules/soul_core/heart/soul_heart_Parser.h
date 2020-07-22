@@ -268,15 +268,14 @@ private:
             if (matchIf ("struct"))      return scanStruct (item);
             if (matchIf ("function"))    return scanFunction (item, false);
             if (matchIf ("var"))         return scanStateVariable (item, false);
-            if (matchIf ("let"))         return scanStateVariable (item, true);
+
+            if (module->isProcessor())
+                if (matchIf ("event"))
+                    return scanFunction (item, true);
         }
 
-        if (module->isProcessor())
-        {
-            if (matchIf ("var"))         return scanStateVariable (item, false);
-            if (matchIf ("let"))         return scanStateVariable (item, true);
-            if (matchIf ("event"))       return scanFunction (item, true);
-        }
+        if (matchIf ("let"))
+            return scanStateVariable (item, true);
 
         throwError (Errors::expectedTopLevelDecl());
     }
@@ -554,7 +553,7 @@ private:
         skipPastNextOccurrenceOf (HEARTOperator::semicolon);
     }
 
-    void parseStateVariable ()
+    void parseStateVariable()
     {
         bool isExternal = matchIf ("external");
         auto type = readValueType();

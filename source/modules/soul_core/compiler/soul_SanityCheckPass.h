@@ -610,6 +610,10 @@ private:
             for (auto input : g.endpoints)
                 input->getDetails().checkDataTypesValid (input->context);
 
+            for (auto& v : g.constants)
+                if (! v->isCompileTimeConstant())
+                    v->context.throwError (Errors::nonConstInGraph());
+
             RecursiveGraphDetector::check (g);
             CycleDetector (g).check();
         }

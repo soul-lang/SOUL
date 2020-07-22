@@ -92,7 +92,7 @@ struct ASTUtilities
         removeIf (ns.subModules, [=] (AST::ModuleBase& m)
         {
             if (auto graph = cast<AST::Graph> (m))
-                return ! contains (graphsToKeep, graph);
+                return graph->constants.empty() && ! contains (graphsToKeep, graph);
 
             return false;
         });

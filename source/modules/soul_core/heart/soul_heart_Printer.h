@@ -212,7 +212,9 @@ private:
             {
                 for (auto& v : type.variables)
                 {
-                    out << (v->isConstant() ? "let " : "var ") << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << ' ';
+                    out << (v->isExternal() ? "let external " : (v->isConstant() ? "let " : "var "))
+                        << getTypeDescription (type.type) << ' ';
+
                     printVarWithPrefix (v->name);
 
                     if (v->initialValue != nullptr)

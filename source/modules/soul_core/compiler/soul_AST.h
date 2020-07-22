@@ -743,7 +743,7 @@ struct AST
 
         std::vector<pool_ref<StructDeclaration>>* getStructList() override                   { return {}; }
         std::vector<pool_ref<UsingDeclaration>>* getUsingList() override                     { return {}; }
-        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override          { return {}; }
+        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override          { return &constants; }
         std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
 
         std::vector<pool_ref<ProcessorInstance>> processorInstances;
