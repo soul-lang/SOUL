@@ -141,7 +141,7 @@ public:
         The EndpointHandle is obtained by calling getEndpointHandle().
     */
     virtual void setSparseInputStreamTarget (EndpointHandle, const choc::value::ValueView& targetFrameValue,
-                                             uint32_t numFramesToReachValue, float curveShape) noexcept = 0;
+                                             uint32_t numFramesToReachValue) noexcept = 0;
 
     /** Sets a new value for a value input.
         After a successful call to prepare(), and before a call to advance(), this may be called

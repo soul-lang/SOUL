@@ -95,9 +95,9 @@ public:
             performer->setNextInputStreamFrames (handle, frameArray);
         }
 
-        void setSparseInputStreamTarget (EndpointHandle handle, const choc::value::ValueView& targetFrameValue, uint32_t numFramesToReachValue, float curveShape) override
+        void setSparseInputStreamTarget (EndpointHandle handle, const choc::value::ValueView& targetFrameValue, uint32_t numFramesToReachValue) override
         {
-            performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue, curveShape);
+            performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue);
         }
 
         void setInputValue (EndpointHandle handle, const choc::value::ValueView& newValue) override

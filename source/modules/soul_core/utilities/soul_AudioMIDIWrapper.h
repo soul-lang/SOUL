@@ -102,7 +102,7 @@ struct AudioMIDIWrapper
                                 if (auto newValue = getNewValueForParamIfChanged())
                                 {
                                     floatValue.getViewReference().set (*newValue);
-                                    perf.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames, 0.0f);
+                                    perf.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames);
                                 }
                             });
                         }

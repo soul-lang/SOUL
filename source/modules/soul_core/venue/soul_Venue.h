@@ -105,7 +105,7 @@ public:
             using the endpoint handle that was provided as an argument to that callback.
         */
         virtual void setSparseInputStreamTarget (EndpointHandle, const choc::value::ValueView& targetFrameValue,
-                                                 uint32_t numFramesToReachValue, float curveShape) = 0;
+                                                 uint32_t numFramesToReachValue) = 0;
 
         /** Sets a new value for a value input.
             This method may only be called during a callback attached to setInputEndpointServiceCallback(),
