@@ -62,6 +62,7 @@ namespace soul
     X(namespaceMustBeInsideNamespace,       "A namespace can only be defined inside a namespace") \
     X(processorMustBeInsideNamespace,       "A processor can only be defined inside a namespace") \
     X(graphMustBeInsideNamespace,           "A graph can only be defined inside a namespace") \
+    X(graphCannotContainFunctions,          "Functions can only be declared inside a processor or namespace") \
     X(namespaceCannotContainEndpoints,      "A namespace cannot contain endpoint declarations") \
     X(structDeclNotAllowed,                 "A struct can only be declared inside a processor or namespace") \
     X(usingDeclNotAllowed,                  "A using declaration can only be within a processor or namespace") \

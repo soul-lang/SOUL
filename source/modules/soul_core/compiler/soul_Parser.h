@@ -260,32 +260,28 @@ private:
 
     void parseTopLevelDeclContent()
     {
-        if (auto p = cast<AST::ProcessorBase> (module))
+        auto processor = cast<AST::ProcessorBase> (module);
+
+        if (processor != nullptr)
         {
-            parseSpecialisationParameters (*p);
-            parseAnnotation (p->annotation);
-            expect (Operator::openBrace);
+            parseSpecialisationParameters (*processor);
+            parseAnnotation (processor->annotation);
+        }
 
-            if (auto g = cast<AST::Graph> (p))
-            {
-                while (parseEndpoint (*g)
-                        || parseProcessorInstanceList (*g)
-                        || parseConnectionList (*g))
-                {}
+        expect (Operator::openBrace);
 
-                expect (Operator::closeBrace);
-                return;
-            }
+        auto graph = cast<AST::Graph> (module);
+        auto ns = cast<AST::Namespace> (module);
 
-            while (parseEndpoint (*p))
+        if (processor != nullptr)
+        {
+            while (parseEndpoint (*processor)
+                    || (graph != nullptr && (parseProcessorInstanceList (*graph)
+                                              || parseConnectionList (*graph))))
             {}
         }
-        else
-        {
-            expect (Operator::openBrace);
-        }
 
-        if (auto ns = cast<AST::Namespace> (module))
+        if (ns != nullptr)
             parseImports (*ns);
 
         while (! matchIf (Operator::closeBrace))
@@ -300,24 +296,24 @@ private:
             }
             else if (matchIf (Keyword::namespace_))
             {
-                if (auto ns = cast<AST::Namespace> (module))
-                    parseNamespaceDecl (*ns);
-                else
+                if (ns == nullptr)
                     throwError (Errors::namespaceMustBeInsideNamespace());
+
+                parseNamespaceDecl (*ns);
             }
             else if (matchIf (Keyword::processor))
             {
-                if (auto ns = cast<AST::Namespace> (module))
-                    parseProcessorDecl (*ns);
-                else
+                if (ns == nullptr)
                     throwError (Errors::processorMustBeInsideNamespace());
+
+                parseProcessorDecl (*ns);
             }
             else if (matchIf (Keyword::graph))
             {
-                if (auto ns = cast<AST::Namespace> (module))
-                    parseGraphDecl (*ns);
-                else
+                if (ns == nullptr)
                     throwError (Errors::graphMustBeInsideNamespace());
+
+                parseGraphDecl (*ns);
             }
             else if (matchIf (Keyword::let))
             {
@@ -333,10 +329,8 @@ private:
             }
             else if (matchesAny (Keyword::input, Keyword::output))
             {
-                if (module->isNamespace())
-                    throwError (Errors::namespaceCannotContainEndpoints());
-                else
-                    throwError (Errors::endpointDeclsMustBeFirst());
+                throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()
+                                          : Errors::endpointDeclsMustBeFirst());
             }
             else if (matches (Keyword::import))
             {
@@ -362,7 +356,8 @@ private:
         auto type = tryParsingType (ParseTypeContext::variableType);
 
         if (type == nullptr)
-            declarationContext.throwError (Errors::expectedFunctionOrVariable());
+            declarationContext.throwError (module->isGraph() ? Errors::expectedFunctionOrVariable()
+                                                             : Errors::expectedFunctionOrVariable());
 
         auto context = getContext();
         auto name = parseIdentifier();
@@ -380,7 +375,8 @@ private:
             if (auto functions = module->getFunctionList())
                 functions->push_back (parseFunctionDeclaration (declarationContext, *type, name, context, genericWildcards));
             else
-                declarationContext.throwError (Errors::noFunctionInThisScope());
+                declarationContext.throwError (module->isGraph() ? Errors::graphCannotContainFunctions()
+                                                                 : Errors::noFunctionInThisScope());
         }
         else
         {
