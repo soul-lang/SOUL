@@ -734,10 +734,7 @@ struct AST
             specialisationParams.push_back (alias);
         }
 
-        void addSpecialisationParameter (UsingDeclaration&) override
-        {
-            SOUL_ASSERT_FALSE;
-        }
+        void addSpecialisationParameter (UsingDeclaration&) override                         { SOUL_ASSERT_FALSE; }
 
         bool isGraph() const override                                                        { return true; }
 
@@ -763,125 +760,6 @@ struct AST
 
             return {};
         }
-
-        //==============================================================================
-        struct RecursiveGraphDetector
-        {
-            static void check (Graph& g, const RecursiveGraphDetector* stack = nullptr)
-            {
-                for (auto s = stack; s != nullptr; s = s->previous)
-                    if (s->graph == std::addressof (g))
-                        g.context.throwError (Errors::recursiveTypes (g.getFullyQualifiedPath()));
-
-                const RecursiveGraphDetector newStack { stack, std::addressof (g) };
-
-                for (auto& p : g.processorInstances)
-                {
-                    // avoid using findSingleMatchingSubModule() as we don't want an error thrown if
-                    // a processor specialisation alias has not yet been resolved
-
-                    pool_ptr<Graph> sub;
-
-                    if (auto pr = cast<ProcessorRef> (p->targetProcessor))
-                    {
-                        sub = cast<Graph> (pr->processor);
-                    }
-                    else if (auto name = cast<QualifiedIdentifier> (p->targetProcessor))
-                    {
-                        auto modulesFound = g.getMatchingSubModules (name->path);
-
-                        if (modulesFound.size() == 1)
-                            sub = cast<Graph> (modulesFound.front());
-                    }
-
-                    if (sub != nullptr)
-                        return check (*sub, std::addressof (newStack));
-                }
-            }
-
-            const RecursiveGraphDetector* previous = nullptr;
-            const Graph* graph = nullptr;
-        };
-
-        //==============================================================================
-        struct CycleDetector
-        {
-            CycleDetector (Graph& g)
-            {
-                for (auto& n : g.processorInstances)
-                    nodes.push_back ({ n });
-
-                for (auto& c : g.connections)
-                    if (c->delayLength == nullptr)
-                        if (auto src = findNode (*c->source.processorName))
-                            if (auto dst = findNode (*c->dest.processorName))
-                                dst->sources.push_back ({ src, c });
-            }
-
-            void check()
-            {
-                for (auto& n : nodes)
-                    check (n, nullptr, {});
-            }
-
-        private:
-            struct Node
-            {
-                struct Source
-                {
-                    Node* node;
-                    pool_ref<Connection> connection;
-                };
-
-                pool_ref<ProcessorInstance> processor;
-                ArrayWithPreallocation<Source, 4> sources;
-            };
-
-            std::vector<Node> nodes;
-
-            Node* findNode (const QualifiedIdentifier& nodeName)
-            {
-                if (nodeName.path.empty())
-                    return {};
-
-                for (auto& n : nodes)
-                    if (nodeName == *n.processor->instanceName)
-                        return std::addressof (n);
-
-                nodeName.context.throwError (Errors::cannotFindProcessor (nodeName.path));
-                return {};
-            }
-
-            struct VisitedStack
-            {
-                const VisitedStack* previous = nullptr;
-                const Node* node = nullptr;
-            };
-
-            void check (Node& node, const VisitedStack* stack, const Context& errorContext)
-            {
-                for (auto s = stack; s != nullptr; s = s->previous)
-                    if (s->node == std::addressof (node))
-                        throwCycleError (stack, errorContext);
-
-                const VisitedStack newStack { stack, std::addressof (node) };
-
-                for (auto& source : node.sources)
-                    check (*source.node, std::addressof (newStack), source.connection->context);
-            }
-
-            void throwCycleError (const VisitedStack* stack, const Context& errorContext)
-            {
-                std::vector<std::string> nodesInCycle;
-
-                for (auto node = stack; node != nullptr; node = node->previous)
-                    nodesInCycle.push_back (node->node->processor->instanceName->path.toString());
-
-                nodesInCycle.push_back (nodesInCycle.front());
-
-                errorContext.throwError (Errors::feedbackInGraph (joinStrings (nodesInCycle, " -> ")));
-            }
-        };
     };
 
     //==============================================================================

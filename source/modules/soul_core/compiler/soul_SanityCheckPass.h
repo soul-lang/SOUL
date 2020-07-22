@@ -249,6 +249,125 @@ struct SanityCheckPass  final
         }
     }
 
+    //==============================================================================
+    struct RecursiveGraphDetector
+    {
+        static void check (AST::Graph& g, const RecursiveGraphDetector* stack = nullptr)
+        {
+            for (auto s = stack; s != nullptr; s = s->previous)
+                if (s->graph == std::addressof (g))
+                    g.context.throwError (Errors::recursiveTypes (g.getFullyQualifiedPath()));
+
+            const RecursiveGraphDetector newStack { stack, std::addressof (g) };
+
+            for (auto& p : g.processorInstances)
+            {
+                // avoid using findSingleMatchingSubModule() as we don't want an error thrown if
+                // a processor specialisation alias has not yet been resolved
+
+                pool_ptr<AST::Graph> sub;
+
+                if (auto pr = cast<AST::ProcessorRef> (p->targetProcessor))
+                {
+                    sub = cast<AST::Graph> (pr->processor);
+                }
+                else if (auto name = cast<AST::QualifiedIdentifier> (p->targetProcessor))
+                {
+                    auto modulesFound = g.getMatchingSubModules (name->path);
+
+                    if (modulesFound.size() == 1)
+                        sub = cast<AST::Graph> (modulesFound.front());
+                }
+
+                if (sub != nullptr)
+                    return check (*sub, std::addressof (newStack));
+            }
+        }
+
+        const RecursiveGraphDetector* previous = nullptr;
+        const AST::Graph* graph = nullptr;
+    };
+
+    //==============================================================================
+    struct CycleDetector
+    {
+        CycleDetector (AST::Graph& g)
+        {
+            for (auto& n : g.processorInstances)
+                nodes.push_back ({ n });
+
+            for (auto& c : g.connections)
+                if (c->delayLength == nullptr)
+                    if (auto src = findNode (*c->source.processorName))
+                        if (auto dst = findNode (*c->dest.processorName))
+                            dst->sources.push_back ({ src, c });
+        }
+
+        void check()
+        {
+            for (auto& n : nodes)
+                check (n, nullptr, {});
+        }
+
+    private:
+        struct Node
+        {
+            struct Source
+            {
+                Node* node;
+                pool_ref<AST::Connection> connection;
+            };
+
+            pool_ref<AST::ProcessorInstance> processor;
+            ArrayWithPreallocation<Source, 4> sources;
+        };
+
+        std::vector<Node> nodes;
+
+        Node* findNode (const AST::QualifiedIdentifier& nodeName)
+        {
+            if (nodeName.path.empty())
+                return {};
+
+            for (auto& n : nodes)
+                if (nodeName == *n.processor->instanceName)
+                    return std::addressof (n);
+
+            nodeName.context.throwError (Errors::cannotFindProcessor (nodeName.path));
+            return {};
+        }
+
+        struct VisitedStack
+        {
+            const VisitedStack* previous = nullptr;
+            const Node* node = nullptr;
+        };
+
+        void check (Node& node, const VisitedStack* stack, const AST::Context& errorContext)
+        {
+            for (auto s = stack; s != nullptr; s = s->previous)
+                if (s->node == std::addressof (node))
+                    throwCycleError (stack, errorContext);
+
+            const VisitedStack newStack { stack, std::addressof (node) };
+
+            for (auto& source : node.sources)
+                check (*source.node, std::addressof (newStack), source.connection->context);
+        }
+
+        void throwCycleError (const VisitedStack* stack, const AST::Context& errorContext)
+        {
+            std::vector<std::string> nodesInCycle;
+
+            for (auto node = stack; node != nullptr; node = node->previous)
+                nodesInCycle.push_back (node->node->processor->instanceName->path.toString());
+
+            nodesInCycle.push_back (nodesInCycle.front());
+
+            errorContext.throwError (Errors::feedbackInGraph (joinStrings (nodesInCycle, " -> ")));
+        }
+    };
+
 private:
     //==============================================================================
     static void checkOverallStructure (AST::ModuleBase& module)
@@ -491,8 +610,8 @@ private:
             for (auto input : g.endpoints)
                 input->getDetails().checkDataTypesValid (input->context);
 
-            AST::Graph::RecursiveGraphDetector::check (g);
-            AST::Graph::CycleDetector (g).check();
+            RecursiveGraphDetector::check (g);
+            CycleDetector (g).check();
         }
 
         void visit (AST::Namespace& n) override

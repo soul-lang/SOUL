@@ -440,7 +440,7 @@ struct heart
         {
             auto parentValue = parent->getAsConstant();
 
-            if (parentValue.isValid())
+            if (parentValue.isValid() && ! parentValue.getType().isUnsizedArray())
             {
                 if (isSlice())
                     return parentValue.getSlice (fixedStartIndex, fixedEndIndex);

@@ -241,7 +241,7 @@ void Compiler::recursivelyResolveProcessorInstances (pool_ref<AST::ProcessorBase
 
     if (auto graph = cast<AST::Graph> (processor))
     {
-        AST::Graph::RecursiveGraphDetector::check (*graph);
+        SanityCheckPass::RecursiveGraphDetector::check (*graph);
 
         {
             DuplicateNameChecker duplicateNameChecker;
