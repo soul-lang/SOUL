@@ -344,6 +344,7 @@ struct heart
         Role role;
         Annotation annotation;
         ConstantTable::Handle externalHandle = {};
+        pool_ptr<Expression> initialValue;
 
         const Type& getType() const override           { return type; }
         pool_ptr<Variable> getRootVariable() override  { return *this; }

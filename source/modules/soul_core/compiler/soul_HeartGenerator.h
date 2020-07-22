@@ -107,6 +107,17 @@ private:
         auto& av = module.allocate<heart::Variable> (v.context.location, v.getType(),
                                                      convertIdentifier (v.name), role);
         v.generatedVariable = av;
+
+        if (role == heart::Variable::Role::state && v.initialValue != nullptr)
+        {
+            if (auto c = v.initialValue->getAsConstant())
+                av.initialValue = module.allocator.allocate<heart::Constant> (c->context.location, c->value);
+            else if (auto vr = cast<AST::VariableRef> (*v.initialValue))
+                av.initialValue = evaluateAsExpression (*vr);
+            else
+                v.initialValue->context.throwError (Errors::expectedConstant());
+        }
+
         av.annotation = v.annotation.toPlainAnnotation (module.program.getStringDictionary());
         return av;
     }
@@ -160,7 +171,7 @@ private:
         super::visit (p);
         parsingStateVariables = false;
 
-        createInitFunction();
+//        createInitFunction();
         generateFunctions (p.functions);
     }
 

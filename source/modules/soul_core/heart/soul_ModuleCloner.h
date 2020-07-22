@@ -273,6 +273,10 @@ struct ModuleCloner
                                                        newModule.allocator.get (old.name),
                                                        old.role);
         v.externalHandle = old.externalHandle;
+
+        if (old.initialValue != nullptr)
+            v.initialValue = cloneExpression (*old.initialValue);
+        
         v.annotation = old.annotation;
         mapping = v;
         return v;

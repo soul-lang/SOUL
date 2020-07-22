@@ -80,7 +80,31 @@ namespace HEARTOperator
     };
 }
 
+
 //==============================================================================
+struct FunctionParseState
+{
+    FunctionParseState (heart::Function& f) : function (f) {}
+
+    struct BlockCode
+    {
+        heart::Block& block;
+        UTF8Reader code;
+    };
+
+    void setCurrentBlock (BlockCode& b)
+    {
+        currentBlock = &b;
+    }
+
+    heart::Function& function;
+    std::vector<BlockCode> blocks;
+    std::vector<pool_ref<heart::Variable>> variables;
+    BlockCode* currentBlock = nullptr;
+
+};
+
+    //==============================================================================
 struct heart::Parser   : public Tokeniser<DummyKeywordMatcher,
                                           HEARTOperator::Matcher,
                                           IdentifierMatcher>
@@ -197,10 +221,13 @@ private:
     {
         prepareToRescan (item);
 
-        for (auto& g : item.stateVariableDecls)
+        if (! item.stateVariableDecls.empty())
         {
-            resetPosition (g);
-            parseStateVariable();
+            for (auto& g : item.stateVariableDecls)
+            {
+                resetPosition (g);
+                parseStateVariable();
+            }
         }
 
         module.reset();
@@ -240,12 +267,14 @@ private:
         {
             if (matchIf ("struct"))      return scanStruct (item);
             if (matchIf ("function"))    return scanFunction (item, false);
-            if (matchIf ("var"))         return scanStateVariable (item);
+            if (matchIf ("var"))         return scanStateVariable (item, false);
+            if (matchIf ("let"))         return scanStateVariable (item, true);
         }
 
         if (module->isProcessor())
         {
-            if (matchIf ("var"))         return scanStateVariable (item);
+            if (matchIf ("var"))         return scanStateVariable (item, false);
+            if (matchIf ("let"))         return scanStateVariable (item, true);
             if (matchIf ("event"))       return scanFunction (item, true);
         }
 
@@ -517,13 +546,15 @@ private:
         return result;
     }
 
-    void scanStateVariable (ScannedTopLevelItem& item)
+    void scanStateVariable (ScannedTopLevelItem& item, bool isConstant)
     {
+        ignoreUnused (isConstant);
+
         item.stateVariableDecls.push_back (getCurrentTokeniserPosition());
         skipPastNextOccurrenceOf (HEARTOperator::semicolon);
     }
 
-    void parseStateVariable()
+    void parseStateVariable ()
     {
         bool isExternal = matchIf ("external");
         auto type = readValueType();
@@ -536,6 +567,14 @@ private:
         auto& v = module->allocate<heart::Variable> (location, type, name,
                                                      isExternal ? heart::Variable::Role::external
                                                                 : heart::Variable::Role::state);
+
+        if (matchIf (HEARTOperator::assign))
+        {
+            FunctionParseState parseState (module->allocate<heart::Function>());
+
+            v.initialValue = parseExpression (parseState);
+        }
+
         parseAnnotation (v.annotation);
         module->stateVariables.push_back (v);
         expectSemicolon();
@@ -618,31 +657,9 @@ private:
         module->functions.push_back (fn);
     }
 
-    struct FunctionParseState
-    {
-        FunctionParseState (heart::Function& f) : function (f) {}
-
-        struct BlockCode
-        {
-            heart::Block& block;
-            UTF8Reader code;
-        };
-
-        void setCurrentBlock (BlockCode& b)
-        {
-            currentBlock = &b;
-        }
-
-        heart::Function& function;
-        std::vector<BlockCode> blocks;
-        std::vector<pool_ref<heart::Variable>> variables;
-        BlockCode* currentBlock = nullptr;
-
-    };
 
     void parseFunctionParams (heart::Function& f)
     {
-        FunctionBuilder builder (*module);
         FunctionParseState state (f);
 
         if (! matchIf (HEARTOperator::closeParen))

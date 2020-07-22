@@ -794,79 +794,7 @@ private:
                 return createConstant (c.context, Value::zeroInitialiser (c.targetType));
 
             if (auto list = cast<AST::CommaSeparatedList> (c.source))
-            {
-                auto numArgs = TypeRules::checkArraySizeAndThrowErrorIfIllegal (c.context, list->items.size());
-
-                ArrayWithPreallocation<pool_ref<AST::Constant>, 8> constants;
-                constants.reserve (numArgs);
-
-                for (auto& v : list->items)
-                {
-                    if (auto cv = v->getAsConstant())
-                        constants.push_back (*cv);
-                    else
-                        return c;
-                }
-
-                if (numArgs == 1 && TypeRules::canCastTo (c.targetType, constants.front()->value.getType()))
-                    return allocator.allocate<AST::Constant> (c.context, constants.front()->value.castToTypeExpectingSuccess (c.targetType));
-
-                if (c.targetType.isArrayOrVector())
-                {
-                    auto elementType = c.targetType.getElementType();
-
-                    ArrayWithPreallocation<Value, 8> elementValues;
-                    elementValues.reserve (numArgs);
-
-                    for (auto& cv : constants)
-                    {
-                        if (TypeRules::canCastTo (elementType, cv->value.getType()))
-                            elementValues.push_back (cv->value.castToTypeExpectingSuccess (elementType));
-                        else
-                            return c;
-                    }
-
-                    if (c.targetType.isUnsizedArray())
-                        return allocator.allocate<AST::Constant> (c.context, Value::createArrayOrVector (c.targetType.createCopyWithNewArraySize (numArgs),
-                                                                                                         elementValues));
-
-                    if (numArgs > 1)
-                        SanityCheckPass::throwErrorIfWrongNumberOfElements (c.context, c.targetType, numArgs);
-
-                    return allocator.allocate<AST::Constant> (c.context, Value::createArrayOrVector (c.targetType, elementValues));
-                }
-
-                if (c.targetType.isStruct())
-                {
-                    auto& s = c.targetType.getStructRef();
-
-                    if (numArgs > 1)
-                        SanityCheckPass::throwErrorIfWrongNumberOfElements (c.context, c.targetType, numArgs);
-
-                    ArrayWithPreallocation<Value, 8> memberValues;
-                    memberValues.reserve (s.getNumMembers());
-
-                    for (size_t i = 0; i < constants.size(); ++i)
-                    {
-                        auto memberType = s.getMemberType (i);
-                        auto& cv = constants[i]->value;
-
-                        if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))
-                            memberValues.push_back (cv.castToTypeExpectingSuccess (memberType));
-                        else if (! ignoreErrors)
-                            SanityCheckPass::expectSilentCastPossible (constants[i]->context, memberType, constants[i]);
-                        else
-                            return c;
-                    }
-
-                    return allocator.allocate<AST::Constant> (c.context, Value::createStruct (s, memberValues));
-                }
-
-                if (numArgs > 1)
-                    c.context.throwError (Errors::wrongTypeForInitialiseList());
-
-                return c;
-            }
+                return convertExpressionListToConstant (c, c.targetType, *list);
 
             if (AST::isResolvedAsValue (c.source.get()) && c.source->getResultType().isIdentical (c.targetType))
                 return c.source;
@@ -935,6 +863,94 @@ private:
 
             return b;
         }
+
+        AST::Expression& convertExpressionListToConstant (AST::Expression& expr, soul::Type& targetType, AST::CommaSeparatedList& list) const
+        {
+            auto numArgs = TypeRules::checkArraySizeAndThrowErrorIfIllegal (expr.context, list.items.size());
+
+            if (targetType.isStruct())
+            {
+                SanityCheckPass::throwErrorIfWrongNumberOfElements (expr.context, targetType, numArgs);
+
+                auto& s = targetType.getStructRef();
+
+                ArrayWithPreallocation<Value, 8> memberValues;
+                memberValues.reserve (s.getNumMembers());
+
+                for (size_t i = 0; i < numArgs; i++)
+                {
+                    auto memberType = s.getMemberType (i);
+
+                    if (auto constant = list.items[i]->getAsConstant())
+                    {
+                        auto& cv = constant->value;
+
+                        if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))
+                            memberValues.push_back (cv.castToTypeExpectingSuccess (memberType));
+                        else if (! ignoreErrors)
+                            SanityCheckPass::expectSilentCastPossible (constant->context, memberType, *constant);
+                        else
+                            return expr;
+                    }
+                    else
+                        return expr;
+                }
+
+                return allocator.allocate<AST::Constant> (expr.context, Value::createStruct (s, memberValues));
+            }
+            else if (targetType.isArrayOrVector())
+            {
+                SanityCheckPass::throwErrorIfWrongNumberOfElements (expr.context, targetType, numArgs);
+
+                auto elementType = targetType.getElementType();
+
+                ArrayWithPreallocation<Value, 8> elementValues;
+                elementValues.reserve (numArgs);
+
+                for (size_t i = 0; i < numArgs; i++)
+                {
+                    if (auto itemList = cast<AST::CommaSeparatedList> (list.items[i]))
+                    {
+                        auto& e = convertExpressionListToConstant (list.items[i], elementType, *itemList);
+
+                        if (auto constant = cast<AST::Constant> (e))
+                        {
+                            elementValues.push_back (constant->value.castToTypeExpectingSuccess (elementType));
+                        }
+                        else
+                            return expr;
+                    }
+                    else if (auto constant = list.items[i]->getAsConstant())
+                    {
+                        if (TypeRules::canCastTo (elementType, constant->value.getType()))
+                            elementValues.push_back (constant->value.castToTypeExpectingSuccess (elementType));
+                        else
+                            return expr;
+                    }
+                    else
+                        return expr;
+                }
+
+                if (targetType.isUnsizedArray())
+                    return allocator.allocate<AST::Constant> (expr.context, Value::createArrayOrVector (targetType.createCopyWithNewArraySize (numArgs),
+                                                                                                     elementValues));
+
+                if (numArgs > 1)
+                    SanityCheckPass::throwErrorIfWrongNumberOfElements (expr.context, targetType, numArgs);
+
+                return allocator.allocate<AST::Constant> (expr.context, Value::createArrayOrVector (targetType, elementValues));
+            }
+
+            if (numArgs > 1)
+                expr.context.throwError (Errors::wrongTypeForInitialiseList());
+
+            if (auto constant = list.items.front()->getAsConstant())
+                if (TypeRules::canCastTo (targetType, constant->value.getType()))
+                    return allocator.allocate<AST::Constant> (expr.context, constant->value.castToTypeExpectingSuccess (targetType));
+
+            return expr;
+        }
+
     };
 
     //==============================================================================

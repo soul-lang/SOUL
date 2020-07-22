@@ -212,8 +212,15 @@ private:
             {
                 for (auto& v : type.variables)
                 {
-                    out << "var " << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << ' ';
+                    out << (v->isConstant() ? "let " : "var ") << (v->isExternal() ? "external " : "") << getTypeDescription (type.type) << ' ';
                     printVarWithPrefix (v->name);
+
+                    if (v->initialValue != nullptr)
+                    {
+                        out << " = ";
+                        printExpression (*v->initialValue);
+                    }
+
                     printDescription (v->annotation);
                     out << ';' << newLine;
                 }
