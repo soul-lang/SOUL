@@ -109,14 +109,7 @@ private:
         v.generatedVariable = av;
 
         if (role == heart::Variable::Role::state && v.initialValue != nullptr)
-        {
-            if (auto c = v.initialValue->getAsConstant())
-                av.initialValue = module.allocator.allocate<heart::Constant> (c->context.location, c->value);
-            else if (auto vr = cast<AST::VariableRef> (*v.initialValue))
-                av.initialValue = evaluateAsExpression (*vr);
-            else
-                v.initialValue->context.throwError (Errors::expectedConstant());
-        }
+            av.initialValue = evaluateAsConstantExpression (*v.initialValue);
 
         av.annotation = v.annotation.toPlainAnnotation (module.program.getStringDictionary());
         return av;
@@ -503,6 +496,64 @@ private:
         auto& local = builder.createMutableLocalVariable (e.getResultType().removeConstIfPresent());
         visitWithDestination (local, e);
         return local;
+    }
+
+    heart::Expression& evaluateAsConstantExpression (AST::Expression& e)
+    {
+        if (auto c = e.getAsConstant())
+            return module.allocator.allocate<heart::Constant> (c->context.location, c->value);
+
+        if (auto v = cast<AST::VariableRef> (e))
+        {
+            if (v->variable->isAssignable())
+                if (v->variable->getParentScope()->findModule() != e.getParentScope()->findModule())
+                    v->context.throwError (Errors::cannotReferenceOtherProcessorVar());
+
+            if (auto a = v->variable->generatedVariable)
+                return *a;
+
+            if (auto initial = v->variable->initialValue)
+                return evaluateAsConstantExpression (*initial);
+        }
+
+        if (auto op = cast<AST::BinaryOperator> (e))
+        {
+            auto operandType = op->getOperandType();
+
+            // (putting these into locals to make sure we evaluate everything in left-to-right order)
+            auto& lhs = builder.createCastIfNeeded (evaluateAsConstantExpression (op->lhs), operandType);
+            auto& rhs = builder.createCastIfNeeded (evaluateAsConstantExpression (op->rhs), operandType);
+
+            return builder.createCastIfNeeded (builder.createBinaryOp (op->context.location, lhs, rhs, op->operation),
+                                               op->getResultType());
+        }
+
+        if (auto op = cast<AST::UnaryOperator> (e))
+        {
+            auto sourceType = op->getResultType();
+            auto& source = builder.createCastIfNeeded (evaluateAsConstantExpression (op->source), sourceType);
+
+            return builder.createUnaryOp (op->context.location, source, op->operation);
+        }
+
+        if (auto pp = cast<AST::ProcessorProperty> (e))
+        {
+            if (module.isNamespace())
+                pp->context.throwError (Errors::processorPropertyUsedOutsideDecl());
+
+            return module.allocator.allocate<heart::ProcessorProperty> (pp->context.location, pp->property);
+        }
+
+        if (auto c = cast<AST::TypeCast> (e))
+        {
+            auto& sourceExp = evaluateAsConstantExpression (c->source);
+            const auto& sourceType = sourceExp.getType();
+
+            if (TypeRules::canCastTo (c->targetType, sourceType))
+                return builder.createCastIfNeeded (sourceExp, c->targetType);
+        }
+
+        e.context.throwError (Errors::expectedConstant());
     }
 
     heart::Expression& evaluateAsExpression (AST::Expression& e)
