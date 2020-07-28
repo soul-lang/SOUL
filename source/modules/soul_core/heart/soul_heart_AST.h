@@ -287,6 +287,9 @@ struct heart
         std::string sourceEndpoint, destEndpoint;
         std::optional<size_t> sourceEndpointIndex, destEndpointIndex;
         int64_t delayLength = 0;
+
+        pool_ptr<heart::IODeclaration> source;
+        pool_ptr<heart::IODeclaration> destination;
     };
 
     template <typename Thrower>

@@ -99,8 +99,8 @@ struct heart::Checker
                         destInput = m->findOutput (conn->destEndpoint);
                     }
 
-                    if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindOutput (sourceDescription));
-                    if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindInput (destDescription));
+                    if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindSource (sourceDescription));
+                    if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindDestination (destDescription));
 
                     if (conn->sourceEndpointIndex && sourceOutput->arraySize <= conn->sourceEndpointIndex)
                         conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());

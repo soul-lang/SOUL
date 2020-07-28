@@ -83,6 +83,8 @@ namespace soul
     X(cannotFind,                           "Cannot find $Q0$") \
     X(unresolvedSymbol,                     "Cannot find symbol $Q0$") \
     X(unresolvedType,                       "Cannot find type $Q0$") \
+    X(cannotFindSource,                     "Cannot find source $Q0$") \
+    X(cannotFindDestination,                "Cannot find destination $Q0$") \
     X(cannotFindInput,                      "Cannot find input $Q0$") \
     X(cannotFindOutput,                     "Cannot find output $Q0$") \
     X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
