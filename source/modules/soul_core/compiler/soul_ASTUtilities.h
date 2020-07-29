@@ -376,8 +376,8 @@ private:
                             graph.endpoints.push_back (*parentEndpoint);
                         }
 
-                        auto& parent = createEndpointRef (allocator, AST::Context(), *parentEndpoint);
-                        auto& child  = createEndpointRef (allocator, AST::Context(), childEndpoint);
+                        auto& parent = createEndpointRef (allocator, {}, *parentEndpoint);
+                        auto& child  = createEndpointRef (allocator, {}, childEndpoint);
 
                         graph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none,
                                                                                           child, parent, nullptr));

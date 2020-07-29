@@ -556,9 +556,9 @@ private:
 
             if (! targetFunction.returnType.isVoid())
             {
-                returnValueVar = module.allocate<heart::Variable> (CodeLocation(), targetFunction.returnType,
-                                                                   module.allocator.get (inlinedFnName + "_retval"),
-                                                                   heart::Variable::Role::mutableLocal);
+                returnValueVar = BlockBuilder::createVariable (module, targetFunction.returnType,
+                                                               module.allocator.get (inlinedFnName + "_retval"),
+                                                               heart::Variable::Role::mutableLocal);
 
                 postBlock.statements.insertFront (module.allocate<heart::AssignFromValue> (call.location, *call.target, *returnValueVar));
             }

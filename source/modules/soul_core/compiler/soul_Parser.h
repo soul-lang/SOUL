@@ -525,7 +525,7 @@ private:
         for (;;)
         {
             auto errorPos = getContext();
-    
+
             if (auto e = tryToParseExpressionIgnoringErrors())
                 dests.push_back (*e);
             else

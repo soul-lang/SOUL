@@ -209,18 +209,13 @@ Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& pro
                   [&] { return program.toHEART(); });
 
         heart::Checker::testHEARTRoundTrip (program);
-        optimise (program);
+        Optimisations::optimiseFunctionBlocks (program);
+        Optimisations::removeUnusedVariables (program);
         return program;
     }
     catch (AbortCompilationException) {}
 
     return {};
-}
-
-void Compiler::optimise (Program& program)
-{
-    Optimisations::optimiseFunctionBlocks (program);
-    Optimisations::removeUnusedVariables (program);
 }
 
 static Module& createHEARTModule (Program& p, pool_ptr<AST::ModuleBase> module, bool isMainProcessor)
@@ -241,6 +236,7 @@ void Compiler::compileAllModules (const AST::Namespace& parentNamespace, Program
     ASTUtilities::findAllModulesToCompile (parentNamespace, soulModules);
 
     std::vector<pool_ref<Module>> heartModules;
+    heartModules.reserve (soulModules.size());
 
     for (auto& m : soulModules)
         heartModules.push_back (createHEARTModule (program, m, m == processorToRun));

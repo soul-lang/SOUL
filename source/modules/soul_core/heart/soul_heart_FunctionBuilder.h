@@ -51,9 +51,15 @@ struct BlockBuilder
     heart::Constant& createZeroInitialiser (const Type& type)   { return module.allocator.allocateZeroInitialiser (type); }
 
     template <typename StringType>
+    static heart::Variable& createVariable (Module& m, Type type, StringType&& name, heart::Variable::Role role)
+    {
+        return m.allocate<heart::Variable> (CodeLocation(), std::move (type), m.allocator.get (name), role);
+    }
+
+    template <typename StringType>
     heart::Variable& createVariable (Type type, StringType&& name, heart::Variable::Role role)
     {
-        return module.allocate<heart::Variable> (CodeLocation(), std::move (type), createIdentifier (name), role);
+        return createVariable (module, std::move (type), std::move (name), role);
     }
 
     heart::Variable& createRegisterVariable (Type type)
@@ -443,8 +449,7 @@ struct FunctionBuilder  : public BlockBuilder
 
     heart::Variable& addParameter (const std::string& name, const Type& type)
     {
-        auto& v = module.allocate<heart::Variable> (CodeLocation(), type, module.allocator.get (name),
-                                                    heart::Variable::Role::parameter);
+        auto& v = createVariable (module, type, name, heart::Variable::Role::parameter);
         addParameter (v);
         return v;
     }
@@ -466,7 +471,7 @@ struct FunctionBuilder  : public BlockBuilder
         return createBlock (createIdentifier (prefix, index));
     }
 
-    [[nodiscard]] heart::Block& createBlock (const char* name)
+    [[nodiscard]] heart::Block& createBlock (std::string_view name)
     {
         return createBlock (module.allocator.get (name));
     }

@@ -276,7 +276,7 @@ struct ModuleCloner
 
         if (old.initialValue != nullptr)
             v.initialValue = cloneExpression (*old.initialValue);
-        
+
         v.annotation = old.annotation;
         mapping = v;
         return v;

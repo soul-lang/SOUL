@@ -42,17 +42,11 @@ struct Identifier  final
     //==============================================================================
     struct Pool  final
     {
-        Pool() {}
+        Pool() = default;
         Pool (const Pool&) = delete;
         Pool (Pool&&) = default;
 
-        Identifier get (const char* newString)
-        {
-            SOUL_ASSERT (newString != nullptr);
-            return get (std::string (newString));
-        }
-
-        Identifier get (const std::string& newString)
+        Identifier get (std::string_view newString)
         {
             SOUL_ASSERT (! newString.empty());
 

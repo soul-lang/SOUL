@@ -69,7 +69,6 @@ private:
     AST::ProcessorBase& findMainProcessor (const BuildSettings&);
 
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, AST::ProcessorBase& processorToRun);
-    void optimise (Program&);
 };
 
 } // namespace soul

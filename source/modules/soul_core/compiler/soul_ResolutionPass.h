@@ -944,7 +944,7 @@ private:
                 ArrayWithPreallocation<Value, 8> memberValues;
                 memberValues.reserve (s.getNumMembers());
 
-                for (size_t i = 0; i < numArgs; i++)
+                for (size_t i = 0; i < numArgs; ++i)
                 {
                     auto memberType = s.getMemberType (i);
 
@@ -953,14 +953,16 @@ private:
                         auto& cv = constant->value;
 
                         if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))
+                        {
                             memberValues.push_back (cv.castToTypeExpectingSuccess (memberType));
-                        else if (! ignoreErrors)
+                            continue;
+                        }
+
+                        if (! ignoreErrors)
                             SanityCheckPass::expectSilentCastPossible (constant->context, memberType, *constant);
-                        else
-                            return expr;
                     }
-                    else
-                        return expr;
+
+                    return expr;
                 }
 
                 return allocator.allocate<AST::Constant> (expr.context, Value::createStruct (s, memberValues));
@@ -974,7 +976,7 @@ private:
                 ArrayWithPreallocation<Value, 8> elementValues;
                 elementValues.reserve (numArgs);
 
-                for (size_t i = 0; i < numArgs; i++)
+                for (size_t i = 0; i < numArgs; ++i)
                 {
                     if (auto itemList = cast<AST::CommaSeparatedList> (list.items[i]))
                     {
@@ -983,19 +985,20 @@ private:
                         if (auto constant = cast<AST::Constant> (e))
                         {
                             elementValues.push_back (constant->value.castToTypeExpectingSuccess (elementType));
+                            continue;
                         }
-                        else
-                            return expr;
                     }
-                    else if (auto constant = list.items[i]->getAsConstant())
+
+                    if (auto constant = list.items[i]->getAsConstant())
                     {
                         if (TypeRules::canCastTo (elementType, constant->value.getType()))
+                        {
                             elementValues.push_back (constant->value.castToTypeExpectingSuccess (elementType));
-                        else
-                            return expr;
+                            continue;
+                        }
                     }
-                    else
-                        return expr;
+
+                    return expr;
                 }
 
                 if (targetType.isUnsizedArray())
