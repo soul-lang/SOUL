@@ -55,7 +55,9 @@ struct AST
         X(VariableRef) \
         X(InputEndpointRef) \
         X(OutputEndpointRef) \
+        X(ConnectionEndpointRef) \
         X(ProcessorRef) \
+        X(ProcessorInstanceRef) \
         X(CommaSeparatedList) \
         X(ProcessorProperty) \
         X(WriteToEndpoint) \
@@ -126,13 +128,15 @@ struct AST
     static bool isResolvedAsType (Expression& e)                 { return e.isResolved() && e.kind == ExpressionKind::type; }
     static bool isResolvedAsValue (Expression& e)                { return e.isResolved() && e.kind == ExpressionKind::value; }
     static bool isResolvedAsConstant (Expression& e)             { return isResolvedAsValue (e) && e.getAsConstant() != nullptr; }
-    static bool isResolvedAsEndpoint (Expression& e)             { return e.isResolved() && e.isOutputEndpoint(); }
+    static bool isResolvedAsEndpoint (Expression& e)             { return e.isResolved() && e.kind == ExpressionKind::endpoint; }
+    static bool isResolvedAsOutput (Expression& e)               { return e.isResolved() && e.isOutputEndpoint(); }
     static bool isResolvedAsProcessor (Expression& e)            { return e.isResolved() && e.kind == ExpressionKind::processor; }
 
     static bool isResolvedAsType (pool_ptr<Expression> e)        { return e != nullptr && isResolvedAsType (*e); }
     static bool isResolvedAsValue (pool_ptr<Expression> e)       { return e != nullptr && isResolvedAsValue (*e); }
     static bool isResolvedAsConstant (pool_ptr<Expression> e)    { return e != nullptr && isResolvedAsConstant (*e); }
     static bool isResolvedAsEndpoint (pool_ptr<Expression> e)    { return e != nullptr && isResolvedAsEndpoint (*e); }
+    static bool isResolvedAsOutput (pool_ptr<Expression> e)      { return e != nullptr && isResolvedAsOutput (*e); }
     static bool isResolvedAsProcessor (pool_ptr<Expression> e)   { return e != nullptr && isResolvedAsProcessor (*e); }
 
     enum class Constness  { definitelyConst, notConst, unknown };
@@ -369,7 +373,8 @@ struct AST
             bool stopAtFirstScopeWithResults = false;
             int requiredNumFunctionArgs = -1;
             bool findVariables = true, findTypes = true, findFunctions = true,
-                 findProcessorsAndNamespaces = true, findEndpoints = true,
+                 findProcessorsAndNamespaces = true, findProcessorInstances = false,
+                 findEndpoints = true,
                  onlyFindLocalVariables = false;
 
             void addResult (ASTObject& o)
@@ -661,10 +666,14 @@ struct AST
         virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
         virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
 
+        bool isSpecialisedInstance() const      { return owningInstance != nullptr; }
+
         std::vector<pool_ref<EndpointDeclaration>> endpoints;
         std::vector<pool_ref<ASTObject>> specialisationParams;
 
         Annotation annotation;
+
+        pool_ptr<ProcessorInstance> owningInstance;
     };
 
     //==============================================================================
@@ -750,6 +759,27 @@ struct AST
         std::vector<pool_ref<Connection>> connections;
         std::vector<pool_ref<VariableDeclaration>> constants;
         std::vector<pool_ref<ProcessorAliasDeclaration>> processorAliases;
+
+        void addProcessorInstance (AST::ProcessorInstance& newInstance)
+        {
+            if (! newInstance.instanceName->path.isUnqualified())
+                newInstance.instanceName->context.throwError (Errors::expectedUnqualifiedName());
+
+            for (auto& i : processorInstances)
+                if (*i->instanceName == *newInstance.instanceName)
+                    newInstance.instanceName->context.throwError (Errors::nameInUse (newInstance.instanceName->path));
+
+            processorInstances.push_back (newInstance);
+        }
+
+        void performLocalNameSearch (NameSearch& search, const Statement* s) const override
+        {
+            ProcessorBase::performLocalNameSearch (search, s);
+
+            if (search.findProcessorInstances)
+                if (auto i = findChildProcessor (search.partiallyQualifiedPath.getLastPart()))
+                    search.addResult (*i);
+        }
 
         template <typename StringType>
         pool_ptr<ProcessorInstance> findChildProcessor (const StringType& processorInstanceName) const
@@ -1021,24 +1051,83 @@ struct AST
         pool_ref<EndpointDeclaration> output;
     };
 
+    struct ConnectionEndpointRef  : public Expression
+    {
+        ConnectionEndpointRef (const Context& c, pool_ptr<ProcessorInstanceRef> p, QualifiedIdentifier& endpoint)
+            : Expression (ObjectType::ConnectionEndpointRef, c, ExpressionKind::endpoint),
+              parentProcessorInstance (p), endpointName (endpoint)
+        {
+            SOUL_ASSERT (endpointName.path.isUnqualified());
+        }
+
+        bool isResolved() const override            { return true; }
+
+        pool_ptr<ProcessorInstanceRef> parentProcessorInstance;
+        QualifiedIdentifier& endpointName;
+    };
+
     //==============================================================================
     struct Connection  : public ASTObject
     {
-        struct NameAndEndpoint
-        {
-            pool_ptr<QualifiedIdentifier>  processorName;
-            pool_ptr<Expression>           processorIndex;
-            Identifier                     endpoint;
-            pool_ptr<Expression>           endpointIndex;
-        };
-
         Connection (const Context& c, InterpolationType interpolation,
-                    NameAndEndpoint src, NameAndEndpoint dst, pool_ptr<Expression> delay)
+                    Expression& src, Expression& dst, pool_ptr<Expression> delay)
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
+        struct ProcessorAndEndpoint
+        {
+            pool_ref<ProcessorRef>         processor;
+            pool_ref<EndpointDeclaration>  endpoint;
+            pool_ptr<Expression>           endpointIndex;
+        };
+
+        pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessor (source); }
+        pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessor (dest); }
+
+        std::string getSourceEndpointName()                     { return getEndpointName (source); }
+        std::string getDestEndpointName()                       { return getEndpointName (dest); }
+
+        std::optional<size_t> getSourceEndpointIndex()          { return getEndpointIndex (source); }
+        std::optional<size_t> getDestEndpointIndex()            { return getEndpointIndex (dest); }
+
+        static std::string getEndpointName (Expression& e)
+        {
+            if (auto i = cast<InputEndpointRef> (e))         return i->input->name;
+            if (auto o = cast<OutputEndpointRef> (e))        return o->output->name;
+            if (auto er = cast<ConnectionEndpointRef> (e))   return er->endpointName.toString();
+            if (auto ar = cast<ArrayElementRef> (e))         return getEndpointName (*ar->object);
+            if (auto dot = cast<DotOperator> (e))            return dot->rhs.toString();
+
+            SOUL_ASSERT_FALSE;
+        }
+
+        static pool_ptr<ProcessorInstance> getProcessor (Expression& e)
+        {
+            if (auto pr = cast<ProcessorInstanceRef> (e))    return pr->processorInstance;
+            if (auto er = cast<ConnectionEndpointRef> (e))   return er->parentProcessorInstance != nullptr ? getProcessor (*er->parentProcessorInstance) : nullptr;
+            if (auto ar = cast<ArrayElementRef> (e))         return getProcessor (*ar->object);
+            if (auto dot = cast<DotOperator> (e))            return getProcessor (dot->lhs);
+
+            return {};
+        }
+
+        static std::optional<size_t> getEndpointIndex (Expression& e)
+        {
+            if (auto sub = cast<ArrayElementRef> (e))
+            {
+                SOUL_ASSERT (! sub->isSlice);
+
+                if (auto c = sub->startIndex->getAsConstant())
+                    return c->value.getAsInt64();
+
+                e.context.throwError (Errors::endpointIndexMustBeConstant());
+            }
+
+            return {};
+        }
+
         InterpolationType interpolationType;
-        NameAndEndpoint source, dest;
+        pool_ref<Expression> source, dest;
         pool_ptr<Expression> delayLength;
     };
 
@@ -1252,7 +1341,21 @@ struct AST
         bool isCompileTimeConstant() const override                { return true; }
         pool_ptr<ProcessorBase> getAsProcessor() const override    { return processor; }
 
-        pool_ref<ProcessorBase> processor;
+        ProcessorBase& processor;
+    };
+
+    struct ProcessorInstanceRef   : public Expression
+    {
+        ProcessorInstanceRef (const Context& c, ProcessorInstance& p)
+           : Expression (ObjectType::ProcessorInstanceRef, c, ExpressionKind::processor), processorInstance (p)
+        {
+        }
+
+        bool isResolved() const override                           { return true; }
+        bool isCompileTimeConstant() const override                { return true; }
+        pool_ptr<ProcessorBase> getAsProcessor() const override    { return processorInstance.targetProcessor->getAsProcessor(); }
+
+        ProcessorInstance& processorInstance;
     };
 
     //==============================================================================

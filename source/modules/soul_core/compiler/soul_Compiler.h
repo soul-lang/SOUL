@@ -66,15 +66,8 @@ private:
     void addDefaultBuiltInLibrary();
     void compile (CodeLocation);
     Program link (CompileMessageList&, AST::ProcessorBase& processorToRun);
-    void resolveProcessorInstances (AST::ProcessorBase&);
     AST::ProcessorBase& findMainProcessor (const BuildSettings&);
 
-    void recursivelyResolveProcessorInstances (pool_ref<AST::ProcessorBase>, std::vector<pool_ref<AST::ProcessorBase>>& usedProcessorInstances);
-    void createImplicitProcessorInstanceIfNeeded (AST::Graph&, AST::QualifiedIdentifier& path);
-    void createImplicitProcessorInstances (AST::ModuleBase&);
-    pool_ref<AST::ProcessorBase> createSpecialisedInstance (AST::Graph&, AST::ProcessorInstance&, AST::ProcessorBase& target, bool mustCreateClone);
-
-    pool_ref<AST::ProcessorBase> addClone (const AST::ProcessorBase&, const std::string& nameRoot);
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, AST::ProcessorBase& processorToRun);
     void optimise (Program&);
 };

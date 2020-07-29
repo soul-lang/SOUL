@@ -69,6 +69,13 @@ struct ASTVisitor
         }
     }
 
+    template <typename PointerType>
+    void visitObjectIfNotNull (PointerType& p)
+    {
+        if (p != nullptr)
+            visitObject (*p);
+    }
+
     template <typename ArrayType>
     void visitArray (ArrayType& array)
     {
@@ -135,12 +142,8 @@ struct ASTVisitor
 
     virtual void visit (AST::VariableDeclaration& v)
     {
-        if (v.declaredType != nullptr)
-            visitObject (*v.declaredType);
-
-        if (v.initialValue != nullptr)
-            visitObject (*v.initialValue);
-
+        visitObjectIfNotNull (v.declaredType);
+        visitObjectIfNotNull (v.initialValue);
         visit (v.annotation);
     }
 
@@ -156,16 +159,13 @@ struct ASTVisitor
 
     virtual void visit (AST::CallOrCast& c)
     {
-        if (c.arguments != nullptr)
-            visitObject (*c.arguments);
-
+        visitObjectIfNotNull (c.arguments);
         visitObject (*c.nameOrType);
     }
 
     virtual void visit (AST::FunctionCall& c)
     {
-        if (c.arguments != nullptr)
-            visitObject (*c.arguments);
+        visitObjectIfNotNull (c.arguments);
     }
 
     virtual void visit (AST::TypeCast& c)
@@ -177,9 +177,7 @@ struct ASTVisitor
     {
         visitObject (*s.object);
         visitObject (*s.startIndex);
-
-        if (s.endIndex != nullptr)
-            visitObject (*s.endIndex);
+        visitObjectIfNotNull (s.endIndex);
     }
 
     virtual void visit (AST::StructMemberRef& s)
@@ -194,8 +192,7 @@ struct ASTVisitor
 
     virtual void visit (AST::ReturnStatement& r)
     {
-        if (r.returnValue != nullptr)
-            visitObject (*r.returnValue);
+        visitObjectIfNotNull (r.returnValue);
     }
 
     virtual void visit (AST::TernaryOp& o)
@@ -209,9 +206,7 @@ struct ASTVisitor
     {
         visitObject (i.condition);
         visitObject (i.trueBranch);
-
-        if (i.falseBranch != nullptr)
-            visitObject (*i.falseBranch);
+        visitObjectIfNotNull (i.falseBranch);
     }
 
     virtual void visit (AST::BreakStatement&)
@@ -224,10 +219,10 @@ struct ASTVisitor
 
     virtual void visit (AST::LoopStatement& l)
     {
-        if (l.iterator != nullptr)      visitObject (*l.iterator);
-        if (l.body != nullptr)          visitObject (*l.body);
-        if (l.condition != nullptr)     visitObject (*l.condition);
-        if (l.numIterations != nullptr) visitObject (*l.numIterations);
+        visitObjectIfNotNull (l.iterator);
+        visitObjectIfNotNull (l.body);
+        visitObjectIfNotNull (l.condition);
+        visitObjectIfNotNull (l.numIterations);
     }
 
     virtual void visit (AST::NoopStatement&)
@@ -255,8 +250,7 @@ struct ASTVisitor
         for (auto& v : f.parameters)
             visitObject (v);
 
-        if (f.block != nullptr)
-            visitObject (*f.block);
+        visitObjectIfNotNull (f.block);
     }
 
     virtual void visit (AST::ConcreteType&)
@@ -271,16 +265,13 @@ struct ASTVisitor
 
     virtual void visit (AST::UsingDeclaration& u)
     {
-        if (u.targetType != nullptr)
-            visitObject (*u.targetType);
+        visitObjectIfNotNull (u.targetType);
     }
 
     virtual void visit (AST::SubscriptWithBrackets& s)
     {
         visitObject (s.lhs);
-
-        if (s.rhs != nullptr)
-            visitObject (*s.rhs);
+        visitObjectIfNotNull (s.rhs);
     }
 
     virtual void visit (AST::SubscriptWithChevrons& s)
@@ -305,14 +296,12 @@ struct ASTVisitor
             for (auto& type : details->dataTypes)
                 visitObject (type);
 
-            if (details->arraySize != nullptr)
-                visitObject (*details->arraySize);
+            visitObjectIfNotNull (details->arraySize);
         }
 
         if (e.childPath != nullptr)
             for (auto& p : e.childPath->sections)
-                if (p.index != nullptr)
-                    visitObject (*p.index);
+                visitObjectIfNotNull (p.index);
 
         visit (e.annotation);
     }
@@ -325,10 +314,15 @@ struct ASTVisitor
     {
     }
 
+    virtual void visit (AST::ConnectionEndpointRef&)
+    {
+    }
+
     virtual void visit (AST::Connection& c)
     {
-        if (c.delayLength != nullptr)
-            visitObject (*c.delayLength);
+        visitObject (c.source);
+        visitObject (c.dest);
+        visitObjectIfNotNull (c.delayLength);
     }
 
     virtual void visit (AST::ProcessorInstance& i)
@@ -338,14 +332,15 @@ struct ASTVisitor
         for (auto& a : i.specialisationArgs)
             visitObject (a);
 
-        if (i.clockMultiplierRatio != nullptr)
-            visitObject (*i.clockMultiplierRatio);
-
-        if (i.clockDividerRatio != nullptr)
-            visitObject (*i.clockDividerRatio);
+        visitObjectIfNotNull (i.clockMultiplierRatio);
+        visitObjectIfNotNull (i.clockDividerRatio);
     }
 
     virtual void visit (AST::ProcessorRef&)
+    {
+    }
+
+    virtual void visit (AST::ProcessorInstanceRef&)
     {
     }
 
@@ -765,8 +760,15 @@ struct RewritingASTVisitor
         return e;
     }
 
+    virtual AST::ConnectionEndpointRef& visit (AST::ConnectionEndpointRef& e)
+    {
+        return e;
+    }
+
     virtual AST::Connection& visit (AST::Connection& c)
     {
+        replaceExpression (c.source);
+        replaceExpression (c.dest);
         replaceExpression (c.delayLength);
         return c;
     }
@@ -790,6 +792,11 @@ struct RewritingASTVisitor
     virtual AST::ProcessorRef& visit (AST::ProcessorRef& pr)
     {
         return pr;
+    }
+
+    virtual AST::ProcessorInstanceRef& visit (AST::ProcessorInstanceRef& i)
+    {
+        return i;
     }
 
     virtual AST::Expression& visit (AST::CommaSeparatedList& l)

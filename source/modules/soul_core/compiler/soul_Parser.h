@@ -275,9 +275,7 @@ private:
 
         if (processor != nullptr)
         {
-            while (parseEndpoint (*processor)
-                    || (graph != nullptr && (parseProcessorInstanceList (*graph)
-                                              || parseConnectionList (*graph))))
+            while (parseEndpoint (*processor))
             {}
         }
 
@@ -286,60 +284,56 @@ private:
 
         while (! matchIf (Operator::closeBrace))
         {
-            if (matchIf (Keyword::struct_))
+            if (graph != nullptr)
             {
-                parseStructDeclaration();
-            }
-            else if (matchIf (Keyword::using_))
-            {
-                parseUsingDeclaration();
-            }
-            else if (matchIf (Keyword::namespace_))
-            {
-                if (ns == nullptr)
-                    throwError (Errors::namespaceMustBeInsideNamespace());
-
-                parseNamespaceDecl (*ns);
-            }
-            else if (matchIf (Keyword::processor))
-            {
-                if (ns == nullptr)
-                    throwError (Errors::processorMustBeInsideNamespace());
-
-                parseProcessorDecl (*ns);
-            }
-            else if (matchIf (Keyword::graph))
-            {
-                if (ns == nullptr)
-                    throwError (Errors::graphMustBeInsideNamespace());
-
-                parseGraphDecl (*ns);
-            }
-            else if (matchIf (Keyword::let))
-            {
-                parseTopLevelLetOrVar (true);
-            }
-            else if (matchIf (Keyword::var))
-            {
-                parseTopLevelLetOrVar (false);
-            }
-            else if (matchIf (Keyword::event))
-            {
-                parseEventFunction();
-            }
-            else if (matchesAny (Keyword::input, Keyword::output))
-            {
-                throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()
-                                          : Errors::endpointDeclsMustBeFirst());
-            }
-            else if (matches (Keyword::import))
-            {
-                throwError (Errors::importsMustBeAtStart());
+                if (parseProcessorInstanceList (*graph)) continue;
+                if (parseConnectionList (*graph))        continue;
             }
             else
             {
-                parseFunctionOrStateVariable();
+                if (matchIf (Keyword::struct_))         { parseStructDeclaration();  continue; }
+                if (matchIf (Keyword::using_))          { parseUsingDeclaration();   continue; }
+
+                if (matchIf (Keyword::namespace_))
+                {
+                    if (ns == nullptr)
+                        throwError (Errors::namespaceMustBeInsideNamespace());
+
+                    parseNamespaceDecl (*ns);
+                    continue;
+                }
+
+                if (matchIf (Keyword::processor))
+                {
+                    if (ns == nullptr)
+                        throwError (Errors::processorMustBeInsideNamespace());
+
+                    parseProcessorDecl (*ns);
+                    continue;
+                }
+
+                if (matchIf (Keyword::graph))
+                {
+                    if (ns == nullptr)
+                        throwError (Errors::graphMustBeInsideNamespace());
+
+                    parseGraphDecl (*ns);
+                    continue;
+                }
             }
+
+            if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);   continue; }
+            if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);  continue; }
+            if (matchIf (Keyword::event))           { parseEventFunction();           continue; }
+
+            if (matchesAny (Keyword::input, Keyword::output))
+                throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()
+                                          : Errors::endpointDeclsMustBeFirst());
+
+            if (matches (Keyword::import))
+                throwError (Errors::importsMustBeAtStart());
+
+            parseFunctionOrStateVariable();
         }
 
         giveErrorOnSemicolon();
@@ -512,12 +506,12 @@ private:
     {
         auto interpolationType = parseOptionalInterpolationType();
         auto context = getContext();
-        ArrayWithPreallocation<AST::Connection::NameAndEndpoint, 8> sources, dests;
+        ArrayWithPreallocation<pool_ref<AST::Expression>, 8> sources, dests;
         pool_ptr<AST::Expression> delayLength;
 
         for (;;)
         {
-            sources.push_back (parseConnectionIdentifier());
+            sources.push_back (parseExpression());
 
             if (matchIf (Operator::comma))
                 continue;
@@ -530,7 +524,12 @@ private:
 
         for (;;)
         {
-            dests.push_back (parseConnectionIdentifier());
+            auto errorPos = getContext();
+    
+            if (auto e = tryToParseExpressionIgnoringErrors())
+                dests.push_back (*e);
+            else
+                errorPos.throwError (Errors::expectedProcessorOrEndpoint());
 
             if (matchIf (Operator::comma))
                 continue;
@@ -570,62 +569,11 @@ private:
         return {};
     }
 
-    AST::Connection::NameAndEndpoint parseConnectionIdentifier()
-    {
-        if (! matches (Token::identifier))
-            getContext().throwError (Errors::expectedProcessorOrEndpoint());
-
-        AST::Connection::NameAndEndpoint result;
-        result.processorName = parseQualifiedIdentifier();
-
-        if (matchIf (Operator::openBracket))
-        {
-            result.processorIndex = parseExpression();
-            expect (Operator::closeBracket);
-        }
-
-        if (matchIf (Operator::dot))
-        {
-            if (result.processorIndex)
-                throwError (Errors::notYetImplemented ("Processor indexes"));
-
-            result.endpoint = parseIdentifier();
-
-            if (matchIf (Operator::openBracket))
-            {
-                result.endpointIndex = parseExpression();
-                expect (Operator::closeBracket);
-            }
-        }
-        else
-        {
-            if (! result.processorName->path.isUnqualified())
-                result.processorName->context.throwError (Errors::expectedUnqualifiedName());
-
-            result.endpoint = result.processorName->path.getFirstPart();
-            result.endpointIndex = result.processorIndex;
-
-            result.processorName->path = {};
-            result.processorIndex = {};
-        }
-
-        return result;
-    }
-
     void parseProcessorInstance (AST::Graph& graph)
     {
         auto& u = allocate<AST::ProcessorInstance> (getContext());
-        auto nameLocation = getContext();
         u.instanceName = parseQualifiedIdentifier();
-
-        if (! u.instanceName->path.isUnqualified())
-            u.instanceName->context.throwError (Errors::expectedUnqualifiedName());
-
-        for (auto& i : graph.processorInstances)
-            if (*i->instanceName == *u.instanceName)
-                nameLocation.throwError (Errors::nameInUse (u.instanceName->path));
-
-        graph.processorInstances.push_back (u);
+        graph.addProcessorInstance (u);
 
         expect (Operator::assign);
 

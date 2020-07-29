@@ -86,7 +86,7 @@ struct SanityCheckPass  final
                 if (isEvent (input->input->getDetails()))
                     e.context.throwError (Errors::cannotReadFromEventInput());
 
-            if (is_type<AST::ProcessorRef> (e))
+            if (is_type<AST::ProcessorRef> (e) || is_type<AST::ProcessorInstanceRef> (e))
                 e.context.throwError (Errors::cannotUseProcessorAsOutput());
 
             e.context.throwError (Errors::expectedValue());
@@ -204,7 +204,7 @@ struct SanityCheckPass  final
 
     static void checkArraySubscript (AST::ArrayElementRef& s)
     {
-        if (! s.object->isOutputEndpoint())
+        if (! AST::isResolvedAsEndpoint (s.object))
             throwErrorIfNotArrayOrVector (*s.object);
     }
 
@@ -298,8 +298,8 @@ struct SanityCheckPass  final
 
             for (auto& c : g.connections)
                 if (c->delayLength == nullptr)
-                    if (auto src = findNode (*c->source.processorName))
-                        if (auto dst = findNode (*c->dest.processorName))
+                    if (auto src = findNode (c->getSourceProcessor()))
+                        if (auto dst = findNode (c->getDestProcessor()))
                             dst->sources.push_back ({ src, c });
         }
 
@@ -324,16 +324,19 @@ struct SanityCheckPass  final
 
         std::vector<Node> nodes;
 
-        Node* findNode (const AST::QualifiedIdentifier& nodeName)
+        Node* findNode (pool_ptr<AST::ProcessorInstance> p)
         {
-            if (nodeName.path.empty())
-                return {};
+            if (p != nullptr)
+            {
+                auto& nodeName = p->instanceName->path;
 
-            for (auto& n : nodes)
-                if (nodeName == *n.processor->instanceName)
-                    return std::addressof (n);
+                for (auto& n : nodes)
+                    if (nodeName == n.processor->instanceName->path)
+                        return std::addressof (n);
 
-            nodeName.context.throwError (Errors::cannotFindProcessor (nodeName.path));
+                SOUL_ASSERT_FALSE;
+            }
+
             return {};
         }
 

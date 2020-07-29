@@ -231,12 +231,12 @@ private:
         auto& c = module.allocate<heart::Connection> (conn.context.location);
         module.connections.push_back (c);
 
-        c.sourceProcessor     = getOrAddProcessorInstance (*conn.source.processorName);
-        c.destProcessor       = getOrAddProcessorInstance (*conn.dest.processorName);
-        c.sourceEndpoint      = conn.source.endpoint;
-        c.sourceEndpointIndex = getEndpointIndex (conn.source.endpointIndex);
-        c.destEndpoint        = conn.dest.endpoint;
-        c.destEndpointIndex   = getEndpointIndex (conn.dest.endpointIndex);
+        c.sourceProcessor     = getOrAddProcessorInstance (conn.getSourceProcessor());
+        c.destProcessor       = getOrAddProcessorInstance (conn.getDestProcessor());
+        c.sourceEndpoint      = conn.getSourceEndpointName();
+        c.sourceEndpointIndex = conn.getSourceEndpointIndex();
+        c.destEndpoint        = conn.getDestEndpointName();
+        c.destEndpointIndex   = conn.getDestEndpointIndex();
         c.interpolationType   = conn.interpolationType;
         c.delayLength         = getDelayLength (conn.delayLength);
     }
@@ -288,25 +288,27 @@ private:
         return {};
     }
 
-    pool_ptr<heart::ProcessorInstance> getOrAddProcessorInstance (const AST::QualifiedIdentifier& processorName)
+    pool_ptr<heart::ProcessorInstance> getOrAddProcessorInstance (pool_ptr<AST::ProcessorInstance> instance)
     {
-        if (processorName.path.empty())
+        if (instance == nullptr)
             return {};
 
+        auto instanceName = instance->instanceName->toString();
+
         for (auto i : module.processorInstances)
-            if (processorName.path.toString() == i->instanceName)
+            if (instanceName == i->instanceName)
                 return i;
 
         SOUL_ASSERT (sourceGraph != nullptr);
 
         for (auto& i : sourceGraph->processorInstances)
         {
-            if (processorName == *i->instanceName)
+            if (i->instanceName->path == instanceName)
             {
                 auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (i);
 
                 auto& p = module.allocate<heart::ProcessorInstance>();
-                p.instanceName = processorName.path.toString();
+                p.instanceName = instanceName;
                 p.sourceName = targetProcessor.getFullyQualifiedPath().toString();
                 p.arraySize = getProcessorArraySize (i->arraySize).value_or (1);
 

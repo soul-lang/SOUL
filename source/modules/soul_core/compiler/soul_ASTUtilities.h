@@ -51,7 +51,7 @@ struct ASTUtilities
         {
             auto p1 = cast<AST::ProcessorBase> (m);
 
-            if (p1 != nullptr && ! p1->annotation.findProperty ("main"))
+            if (p1 != nullptr && ! p1->isSpecialisedInstance() && p1->annotation.findProperty ("main") == nullptr)
                 lastProcessor = p1;
             else if (auto p2 = scanForProcessorToUseAsMain (m))
                 lastProcessor = p2;
@@ -81,21 +81,6 @@ struct ASTUtilities
 
         removeIf (ns.subModules,
                   [] (pool_ref<AST::ModuleBase>& m) { return ! m->getSpecialisationParameters().empty(); });
-    }
-
-    static void removeUnusedGraphs (AST::Namespace& ns, ArrayView<pool_ref<AST::ProcessorBase>> graphsToKeep)
-    {
-        for (auto& m : ns.subModules)
-            if (auto subNamespace = cast<AST::Namespace> (m))
-                removeUnusedGraphs (*subNamespace, graphsToKeep);
-
-        removeIf (ns.subModules, [=] (AST::ModuleBase& m)
-        {
-            if (auto graph = cast<AST::Graph> (m))
-                return graph->constants.empty() && ! contains (graphsToKeep, graph);
-
-            return false;
-        });
     }
 
     static void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
@@ -158,6 +143,14 @@ struct ASTUtilities
             while (exposeChildEndpoints (allocator, *g))
             {}
         }
+    }
+
+    static AST::Expression& createEndpointRef (AST::Allocator& allocator, const AST::Context& c, AST::EndpointDeclaration& e)
+    {
+        if (e.isInput)
+            return allocator.allocate<AST::InputEndpointRef> (c, e);
+
+        return allocator.allocate<AST::OutputEndpointRef> (c, e);
     }
 
 private:
@@ -250,27 +243,30 @@ private:
     }
 
     //==============================================================================
+    static AST::ConnectionEndpointRef& createConnectionEndpoint (AST::Allocator& allocator, const AST::Context& c,
+                                                                 pool_ptr<AST::ProcessorInstance> processor, const AST::EndpointDeclaration& endpoint)
+    {
+        pool_ptr<AST::ProcessorInstanceRef> processorRef;
+
+        if (processor != nullptr)
+            processorRef = allocator.allocate<AST::ProcessorInstanceRef> (c, *processor);
+
+        auto& name = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (endpoint.name));
+        return allocator.allocate<AST::ConnectionEndpointRef> (c, processorRef, name);
+    }
+
     static void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
                                                    AST::Graph& parentGraph,
                                                    AST::EndpointDeclaration& parentEndpoint,
-                                                   AST::ProcessorInstance& childProcessor,
+                                                   AST::ProcessorInstance& childProcessorInstance,
                                                    AST::EndpointDeclaration& childEndpoint)
     {
         parentEndpoint.details = allocator.allocate<AST::EndpointDetails> (childEndpoint.getDetails());
         parentEndpoint.annotation.setProperties (childEndpoint.annotation);
         parentEndpoint.childPath.reset();
 
-        AST::Connection::NameAndEndpoint parent, child;
-
-        parent.processorName = allocator.allocate<AST::QualifiedIdentifier> (AST::Context(), IdentifierPath());
-        parent.processorIndex = {};
-        parent.endpoint = parentEndpoint.name;
-        parent.endpointIndex = {};
-
-        child.processorName = childProcessor.instanceName;
-        child.processorIndex = {};
-        child.endpoint = childEndpoint.name;
-        child.endpointIndex = {};
+        auto& parent = createConnectionEndpoint (allocator, {}, {}, parentEndpoint);
+        auto& child  = createConnectionEndpoint (allocator, {}, childProcessorInstance, childEndpoint);
 
         if (parentEndpoint.isInput)
             parentGraph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none, parent, child, nullptr));
@@ -278,10 +274,10 @@ private:
             parentGraph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none, child, parent, nullptr));
     }
 
-    static  void resolveEndpoint (AST::Allocator& allocator,
-                                  AST::Graph& parentGraph,
-                                  AST::EndpointDeclaration& hoistedEndpoint,
-                                  ArrayView<AST::ChildEndpointPath::PathSection> path)
+    static void resolveEndpoint (AST::Allocator& allocator,
+                                 AST::Graph& parentGraph,
+                                 AST::EndpointDeclaration& hoistedEndpoint,
+                                 ArrayView<AST::ChildEndpointPath::PathSection> path)
     {
         SOUL_ASSERT (path.size() > 1);
 
@@ -380,17 +376,8 @@ private:
                             graph.endpoints.push_back (*parentEndpoint);
                         }
 
-                        AST::Connection::NameAndEndpoint parent, child;
-
-                        parent.processorName = allocator.allocate<AST::QualifiedIdentifier> (AST::Context(), IdentifierPath());
-                        parent.processorIndex = {};
-                        parent.endpoint = parentEndpoint->name;
-                        parent.endpointIndex = {};
-
-                        child.processorName = i->instanceName;
-                        child.processorIndex = {};
-                        child.endpoint = allocator.get (childEndpoint->name);
-                        child.endpointIndex = {};
+                        auto& parent = createEndpointRef (allocator, AST::Context(), *parentEndpoint);
+                        auto& child  = createEndpointRef (allocator, AST::Context(), childEndpoint);
 
                         graph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none,
                                                                                           child, parent, nullptr));

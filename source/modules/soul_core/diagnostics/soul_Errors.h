@@ -87,6 +87,7 @@ namespace soul
     X(cannotFindDestination,                "Cannot find destination $Q0$") \
     X(cannotFindInput,                      "Cannot find input $Q0$") \
     X(cannotFindOutput,                     "Cannot find output $Q0$") \
+    X(cannotFindEndpoint,                   "Cannot find endpoint $Q0$") \
     X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
     X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \

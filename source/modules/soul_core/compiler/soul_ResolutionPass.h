@@ -73,6 +73,7 @@ private:
 
             tryPass<QualifiedIdentifierResolver> (runStats, true);
             tryPass<TypeResolver> (runStats, true);
+            tryPass<ProcessorInstanceResolver> (runStats, true);
             tryPass<ConvertStreamOperations> (runStats, true);
             rebuildVariableUseCounts (module);
             tryPass<FunctionResolver> (runStats, true);
@@ -80,16 +81,12 @@ private:
             rebuildVariableUseCounts (module);
 
             if (runStats.numReplaced == 0)
-            {
                 tryPass<GenericFunctionResolver> (runStats, true);
-            }
 
-            // Parse sub-modules too
-            for (auto& subModule : module.getSubModules())
-            {
-                ResolutionPass resolutionPass (allocator, subModule);
-                runStats.add (resolutionPass.run (ignoreTypeAndConstantErrors));
-            }
+            // Can't use a range-based-for here because the array will change during the loop
+            for (size_t i = 0; i < module.getSubModules().size(); ++i)
+                runStats.add (ResolutionPass (allocator, module.getSubModules()[i])
+                                .run (ignoreTypeAndConstantErrors));
 
             if (runStats.numFailures == 0)
                 break;
@@ -103,6 +100,7 @@ private:
                 tryPass<FunctionResolver> (runStats, false);
                 tryPass<QualifiedIdentifierResolver> (runStats, false);
                 tryPass<TypeResolver> (runStats, false);
+                tryPass<ProcessorInstanceResolver> (runStats, false);
                 tryPass<ConvertStreamOperations> (runStats, false);
                 tryPass<GenericFunctionResolver> (runStats, false);
                 break;
@@ -371,6 +369,7 @@ private:
             search.findTypes = true;
             search.findFunctions = false;
             search.findProcessorsAndNamespaces = true;
+            search.findProcessorInstances = parsingProcessorInstance == 0;
             search.findEndpoints = true;
 
             if (auto scope = qi.getParentScope())
@@ -389,20 +388,23 @@ private:
                     return allocator.allocate<AST::VariableRef> (qi.context, *v);
                 }
 
-                if (auto p = cast<AST::Processor> (item))
+                if (auto p = cast<AST::ProcessorBase> (item))
+                {
+                    if (currentConnection != nullptr)
+                        return getOrCreateImplicitProcessorInstance (qi.context, *p);
+
                     return allocator.allocate<AST::ProcessorRef> (qi.context, *p);
+                }
+
+                if (auto p = cast<AST::ProcessorInstance> (item))
+                    return allocator.allocate<AST::ProcessorInstanceRef> (qi.context, *p);
 
                 if (auto pa = cast<AST::ProcessorAliasDeclaration> (item))
                     if (pa->targetProcessor != nullptr)
                         return allocator.allocate<AST::ProcessorRef> (qi.context, *pa->targetProcessor);
 
                 if (auto e = cast<AST::EndpointDeclaration> (item))
-                {
-                    if (e->isInput)
-                        return allocator.allocate<AST::InputEndpointRef> (qi.context, *e);
-
-                    return allocator.allocate<AST::OutputEndpointRef> (qi.context, *e);
-                }
+                    return ASTUtilities::createEndpointRef (allocator, qi.context, *e);
             }
 
             if (auto builtInConstant = getBuiltInConstant (qi))
@@ -529,12 +531,45 @@ private:
             return {};
         }
 
+        AST::Connection& visit (AST::Connection& c) override
+        {
+            auto oldParentConn = currentConnection;
+            currentConnection = c;
+            super::visit (c);
+            currentConnection = oldParentConn;
+            return c;
+        }
+
         AST::Expression& visit (AST::DotOperator& d) override
         {
             auto& result = super::visit (d);
 
             if (std::addressof (result) != std::addressof (d))
                 return result;
+
+            if (currentConnection != nullptr)
+            {
+                if (auto processorInstance = cast<AST::ProcessorInstanceRef> (d.lhs))
+                {
+                    if (auto processor = processorInstance->getAsProcessor())
+                    {
+                        AST::Scope::NameSearch search;
+                        search.partiallyQualifiedPath = d.rhs.path;
+                        search.stopAtFirstScopeWithResults = true;
+                        search.findVariables = false;
+                        search.findTypes = false;
+                        search.findFunctions = false;
+                        search.findProcessorsAndNamespaces = false;
+                        search.findEndpoints = true;
+
+                        processor->performFullNameSearch (search, nullptr);
+
+                        if (search.itemsFound.size() == 1)
+                            if (is_type<AST::EndpointDeclaration> (search.itemsFound.front()))
+                                return allocator.allocate<AST::ConnectionEndpointRef> (d.context, processorInstance, d.rhs);
+                    }
+                }
+            }
 
             if (AST::isResolvedAsType (d.lhs.get()))
             {
@@ -564,10 +599,16 @@ private:
             }
             else if (d.lhs->isOutputEndpoint())
             {
+                if (currentConnection != nullptr)
+                    return d;
+
                 d.context.throwError (Errors::noSuchOperationOnEndpoint());
             }
             else if (AST::isResolvedAsProcessor (d.lhs.get()))
             {
+                if (currentConnection != nullptr)
+                    return d;
+
                 d.context.throwError (Errors::noSuchOperationOnProcessor());
             }
 
@@ -593,7 +634,40 @@ private:
             return result;
         }
 
+        AST::ProcessorInstanceRef& getOrCreateImplicitProcessorInstance (const AST::Context& c, AST::ProcessorBase& processor)
+        {
+            auto& graph = *cast<AST::Graph> (currentConnection->context.parentScope->findProcessor());
+
+            for (auto i : graph.processorInstances)
+            {
+                if (i->targetProcessor->getAsProcessor() == processor)
+                {
+                    if (! i->wasCreatedImplicitly)
+                        c.throwError (Errors::cannotUseProcessorInLet (processor.name));
+
+                    return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
+                }
+            }
+
+            auto& i = allocator.allocate<AST::ProcessorInstance> (c);
+            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (processor.name));
+            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (c, processor);
+            i.wasCreatedImplicitly = true;
+            graph.addProcessorInstance (i);
+            return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
+        }
+
+        AST::ProcessorInstance& visit (AST::ProcessorInstance& i) override
+        {
+            ++parsingProcessorInstance;
+            auto& result = super::visit (i);
+            --parsingProcessorInstance;
+            return result;
+        }
+
         pool_ptr<AST::Statement> currentStatement;
+        pool_ptr<AST::Connection> currentConnection;
+        int parsingProcessorInstance = 0;
         uint32_t numVariablesResolved = 0;
     };
 
@@ -632,12 +706,8 @@ private:
                     return e;
 
                 if (auto c = e->getAsConstant())
-                {
                     if (c != e)
                         return createConstant (e->context, c->value);
-
-                    return *c;
-                }
 
                 return e;
             }
@@ -658,22 +728,19 @@ private:
                 if (failIfNotResolved (*v.variable->initialValue))
                     return e;
 
-                if (v.variable->initialValue != nullptr)
+                if (auto c = visitExpression (*v.variable->initialValue)->getAsConstant())
                 {
-                    if (auto c = visitExpression (*v.variable->initialValue)->getAsConstant())
+                    auto t = c->getResultType();
+
+                    if (! t.isArray())   // arrays don't work as constants in LLVM
                     {
-                        auto t = c->getResultType();
+                        auto variableResolvedType = v.getResultType();
 
-                        if (! t.isArray())   // arrays don't work as constants in LLVM
-                        {
-                            auto variableResolvedType = v.getResultType();
+                        if (t.isIdentical (variableResolvedType))
+                            return createConstant (v.context, c->value);
 
-                            if (t.isIdentical (variableResolvedType))
-                                return createConstant (v.context, c->value);
-
-                            if (c->canSilentlyCastTo (variableResolvedType))
-                                return createConstant (v.context, c->value.castToTypeExpectingSuccess (variableResolvedType));
-                        }
+                        if (c->canSilentlyCastTo (variableResolvedType))
+                            return createConstant (v.context, c->value.castToTypeExpectingSuccess (variableResolvedType));
                     }
                 }
             }
@@ -950,7 +1017,6 @@ private:
 
             return expr;
         }
-
     };
 
     //==============================================================================
@@ -1032,6 +1098,9 @@ private:
 
             if (AST::isResolvedAsEndpoint (s.lhs.get()))
                 return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
+
+            if (AST::isResolvedAsProcessor (s.lhs.get()))
+                s.context.throwError (Errors::notYetImplemented ("Processor Indexes!"));
 
             if (ignoreErrors)
                 ++numFails;
@@ -1175,6 +1244,15 @@ private:
             return e;
         }
 
+        AST::Connection& visit (AST::Connection& c) override
+        {
+            auto oldParentConn = currentConnection;
+            currentConnection = c;
+            super::visit (c);
+            currentConnection = oldParentConn;
+            return c;
+        }
+
         AST::Statement& visit (AST::VariableDeclaration& v) override
         {
             super::visit (v);
@@ -1294,6 +1372,114 @@ private:
         }
 
         SanityCheckPass::RecursiveTypeDeclVisitStack recursiveTypeDeclVisitStack;
+        pool_ptr<AST::Connection> currentConnection;
+    };
+
+    //==============================================================================
+    struct ProcessorInstanceResolver  : public ErrorIgnoringRewritingASTVisitor
+    {
+        static inline constexpr const char* getPassName()  { return "ProcessorInstanceResolver"; }
+        using super::visit;
+
+        ProcessorInstanceResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
+            : super (rp, shouldIgnoreErrors) {}
+
+        AST::Graph& visit (AST::Graph& g) override          { return g.getSpecialisationParameters().empty() ? super::visit (g) : g; }
+        AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
+
+        AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
+        {
+            super::visit (instance);
+
+            if (auto p = instance.targetProcessor->getAsProcessor())
+            {
+                if (p->owningInstance == instance)
+                    return instance;
+
+                auto target = pool_ref<AST::ProcessorBase> (*p);
+                auto numParams = instance.specialisationArgs.size();
+                auto specialisationParams = target->getSpecialisationParameters();
+
+                if (specialisationParams.size() != numParams)
+                    instance.context.throwError (Errors::wrongNumArgsForProcessor (target->getFullyQualifiedPath()));
+
+                auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
+                SanityCheckPass::RecursiveGraphDetector::check (graph);
+
+                if (! instance.wasCreatedImplicitly)
+                    if (! graph.getMatchingSubModules (instance.instanceName->path).empty())
+                        instance.context.throwError (Errors::alreadyProcessorWithName (instance.instanceName->path));
+
+                if (target->owningInstance != nullptr || numParams != 0)
+                {
+                    auto nameRoot = target->name.toString();
+
+                    if (numParams != 0)
+                        nameRoot = TokenisedPathString::join (nameRoot,
+                                                              "_for_" + makeSafeIdentifierName (replaceSubString (graph.getFullyQualifiedPath().toString(), ":", "_")
+                                                                  + "_" + instance.instanceName->toString()));
+                    auto& ns = target->getNamespace();
+                    target = *StructuralParser::cloneProcessorWithNewName (allocator, ns, target, ns.makeUniqueName (nameRoot));
+                    specialisationParams = target->getSpecialisationParameters();
+                }
+
+                if (numParams != 0)
+                {
+                    for (size_t i = 0; i < numParams; ++i)
+                    {
+                        auto& arg = instance.specialisationArgs[i].get();
+                        auto& param = specialisationParams[i];
+
+                        if (auto u = cast<AST::UsingDeclaration> (param))
+                        {
+                            if (! AST::isResolvedAsType (arg))
+                                arg.context.throwError (Errors::expectedType());
+
+                            u->targetType = arg;
+                            continue;
+                        }
+
+                        if (auto pa = cast<AST::ProcessorAliasDeclaration> (param))
+                        {
+                            if (auto pr = arg.getAsProcessor())
+                                pa->targetProcessor = *pr;
+                            else
+                                arg.context.throwError (Errors::expectedProcessorName());
+
+                            continue;
+                        }
+
+                        if (auto v = cast<AST::VariableDeclaration> (param))
+                        {
+                            if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
+                                arg.context.throwError (Errors::expectedValue());
+
+                            SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
+                            v->initialValue = arg;
+                            continue;
+                        }
+
+                        SOUL_ASSERT_FALSE;
+                    }
+
+                    target->specialisationParams.clear();
+                }
+
+                target->owningInstance = instance;
+                instance.targetProcessor = allocator.allocate<AST::ProcessorRef> (instance.context, target);
+                instance.specialisationArgs.clear();
+                ++itemsReplaced;
+            }
+            else
+            {
+                if (! ignoreErrors)
+                    instance.targetProcessor->context.throwError (Errors::expectedProcessorName());
+
+                ++numFails;
+            }
+
+            return instance;
+        }
     };
 
     //==============================================================================
@@ -1686,7 +1872,7 @@ private:
 
             if (array.kind == AST::ExpressionKind::endpoint)
             {
-                SOUL_ASSERT (AST::isResolvedAsEndpoint (array));
+                SOUL_ASSERT (AST::isResolvedAsOutput (array));
                 pool_ptr<AST::Expression> endpointArraySize;
 
                 if (auto i = cast<AST::InputEndpointRef> (array))
@@ -2184,15 +2370,26 @@ private:
             return p;
         }
 
-        static Type getDataTypeOfEndpoint (AST::Expression& e)
+        static Type getDataTypeOfArrayRefLHS (AST::ASTObject& o)
         {
-            if (auto outRef = cast<AST::OutputEndpointRef> (e))
+            if (auto er = cast<AST::ConnectionEndpointRef> (o))
+                if (er->parentProcessorInstance != nullptr)
+                    if (auto p = er->parentProcessorInstance->getAsProcessor())
+                        if (auto endpoint = p->findEndpoint (er->endpointName.toString()))
+                            return getDataTypeOfArrayRefLHS (*endpoint);
+
+            if (auto outRef = cast<AST::OutputEndpointRef> (o))
                 return outRef->output->getDetails().getSampleArrayTypes().front();
 
-            if (auto inRef = cast<AST::InputEndpointRef> (e))
+            if (auto inRef = cast<AST::InputEndpointRef> (o))
                 return inRef->input->getDetails().getSampleArrayTypes().front();
 
-            SOUL_ASSERT_FALSE;
+            if (auto e = cast<AST::Expression> (o))
+                return e->getResultType();
+
+            if (auto e = cast<AST::EndpointDeclaration> (o))
+                return e->getDetails().getSampleArrayTypes().front();
+
             return {};
         }
 
@@ -2200,16 +2397,11 @@ private:
         {
             super::visit (s);
 
-            Type lhsType;
-
-            if (AST::isResolvedAsEndpoint (s.object))
-                lhsType = getDataTypeOfEndpoint (*s.object);
-            else
-                lhsType = s.object->getResultType();
+            auto lhsType = getDataTypeOfArrayRefLHS (*s.object);
 
             if (! lhsType.isArrayOrVector())
             {
-                if (AST::isResolvedAsEndpoint (s.object) || is_type<AST::InputEndpointRef> (s.object))
+                if (AST::isResolvedAsEndpoint (s.object))
                     s.object->context.throwError (Errors::cannotUseBracketOnEndpoint());
 
                 s.object->context.throwError (Errors::expectedArrayOrVectorForBracketOp());
