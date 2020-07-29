@@ -227,24 +227,28 @@ struct FileList
             URL           = "";
         }
 
-        DescriptionImpl (const FileList& fl)
-            : DescriptionImpl (fl.manifest.file,
-                               fl.manifestJSON["description"].getWithDefault<std::string> ({}))
+        DescriptionImpl (VirtualFile::Ptr m, const choc::value::ValueView& json)
+            : DescriptionImpl (std::move (m), std::string())
         {
-            stringUID            = fl.manifestJSON["ID"].getWithDefault<std::string> ({});
-            stringVersion        = fl.manifestJSON["version"].getWithDefault<std::string> ({});
-            stringName           = fl.manifestJSON["name"].getWithDefault<std::string> ({});
-            stringCategory       = fl.manifestJSON["category"].getWithDefault<std::string> ({});
-            stringManufacturer   = fl.manifestJSON["manufacturer"].getWithDefault<std::string> ({});
-            stringURL            = fl.manifestJSON["URL"].getWithDefault<std::string> ({});
-            isInstrument         = fl.manifestJSON["isInstrument"].getWithDefault<bool> (false);
+            if (json.isObject())
+            {
+                stringDescription    = json["description"].getWithDefault<std::string> ({});
+                stringUID            = json["ID"].getWithDefault<std::string> ({});
+                stringVersion        = json["version"].getWithDefault<std::string> ({});
+                stringName           = json["name"].getWithDefault<std::string> ({});
+                stringCategory       = json["category"].getWithDefault<std::string> ({});
+                stringManufacturer   = json["manufacturer"].getWithDefault<std::string> ({});
+                stringURL            = json["URL"].getWithDefault<std::string> ({});
+                isInstrument         = json["isInstrument"].getWithDefault<bool> (false);
 
-            UID           = stringUID.c_str();
-            version       = stringVersion.c_str();
-            name          = stringName.c_str();
-            category      = stringCategory.c_str();
-            manufacturer  = stringManufacturer.c_str();
-            URL           = stringURL.c_str();
+                description   = stringDescription.c_str();
+                UID           = stringUID.c_str();
+                version       = stringVersion.c_str();
+                name          = stringName.c_str();
+                category      = stringCategory.c_str();
+                manufacturer  = stringManufacturer.c_str();
+                URL           = stringURL.c_str();
+            }
         }
 
         VirtualFile::Ptr manifestHolder;
@@ -253,7 +257,7 @@ struct FileList
 
     Description* createDescription() const
     {
-        return new DescriptionImpl (*this);
+        return new DescriptionImpl (manifest.file, manifestJSON);
     }
 };
 
