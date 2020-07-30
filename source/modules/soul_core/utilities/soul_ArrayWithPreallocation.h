@@ -179,11 +179,11 @@ struct ArrayWithPreallocation
     void push_back (Item&& item)                            { reserve (numActive + 1); new (items + numActive) Item (std::move (item)); ++numActive; }
 
     template <typename... OtherItems>
-    void push_back (const Item& first, OtherItems... otherItems)
+    void push_back (const Item& first, OtherItems&&... otherItems)
     {
         reserve (numActive + 1 + sizeof... (otherItems));
         push_back (first);
-        push_back (otherItems...);
+        push_back (std::forward<OtherItems> (otherItems)...);
     }
 
     template <typename... Args>

@@ -724,7 +724,7 @@ struct heart
     {
         Type returnType;
         Identifier name;
-        std::vector<pool_ref<Variable>> parameters;
+        ArrayWithPreallocation<pool_ref<Variable>, 4> parameters;
         std::vector<pool_ref<Block>> blocks;
         Annotation annotation;
         IntrinsicType intrinsicType = IntrinsicType::none;
@@ -766,7 +766,7 @@ struct heart
             ioParameter = param;
 
             if (hasStateParameter())
-                parameters.insert (++parameters.begin(), param);
+                parameters.insert (parameters.begin() + 1, param);
             else
                 parameters.insert (parameters.begin(), param);
         }
@@ -1079,7 +1079,8 @@ struct heart
     {
         FunctionCall (CodeLocation l, pool_ptr<Expression> dest, pool_ptr<Function> f)
             : Assignment (std::move (l), dest), function (f)
-        {}
+        {
+        }
 
         bool readsVariable (Variable& v) const override
         {
@@ -1151,7 +1152,7 @@ struct heart
         }
 
         Function& function;
-        std::vector<pool_ref<Expression>> arguments;
+        ArrayWithPreallocation<pool_ref<Expression>, 4> arguments;
     };
 
     //==============================================================================

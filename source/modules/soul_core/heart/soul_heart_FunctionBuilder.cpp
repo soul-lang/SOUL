@@ -57,8 +57,7 @@ heart::PureFunctionCall& BlockBuilder::createMinInt32 (heart::Expression& a, hea
     });
 
     auto& call = module.allocate<heart::PureFunctionCall> (a.location, function);
-    call.arguments.push_back (a);
-    call.arguments.push_back (b);
+    call.arguments.push_back (a, b);
     return call;
 }
 
@@ -98,8 +97,7 @@ heart::PureFunctionCall& BlockBuilder::createWrapInt32 (Module& module, heart::E
     });
 
     auto& call = module.allocate<heart::PureFunctionCall> (value.location, function);
-    call.arguments.push_back (value);
-    call.arguments.push_back (rangeLimit);
+    call.arguments.push_back (value, rangeLimit);
     return call;
 }
 

@@ -241,7 +241,7 @@ private:
                 printFunction (f);
         }
 
-        void printParameters (const std::vector<pool_ref<Variable>>& parameters)
+        void printParameters (ArrayView<pool_ref<Variable>> parameters)
         {
             if (parameters.empty())
             {

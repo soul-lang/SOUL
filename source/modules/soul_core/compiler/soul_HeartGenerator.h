@@ -899,12 +899,14 @@ private:
 
     void createFunctionCall (const AST::FunctionCall& call, pool_ptr<heart::Variable> targetVariable)
     {
+        auto numArgs = call.getNumArguments();
         SOUL_ASSERT (call.targetFunction.generatedFunction != nullptr);
+        SOUL_ASSERT (call.targetFunction.parameters.size() == numArgs);
 
         auto& fc = module.allocate<heart::FunctionCall> (call.context.location, targetVariable,
                                                          call.targetFunction.generatedFunction);
 
-        for (size_t i = 0; i < call.getNumArguments(); ++i)
+        for (size_t i = 0; i < numArgs; ++i)
         {
             auto paramType = call.targetFunction.parameters[i]->getType();
             auto& arg = call.arguments->items[i].get();
