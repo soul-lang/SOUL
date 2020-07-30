@@ -176,8 +176,8 @@ struct heart::Utilities
              || targetFunction.hasNoBody)
             return false;
 
-        auto destModule   = program.getModuleContainingFunction (parentFunction);
-        auto sourceModule = program.getModuleContainingFunction (targetFunction);
+        auto destModule   = program.findModuleContainingFunction (parentFunction);
+        auto sourceModule = program.findModuleContainingFunction (targetFunction);
         SOUL_ASSERT (destModule != nullptr && sourceModule != nullptr);
 
         // NB: cross-processor inlining is not allowed, to avoid confusion over endpoints, advances, etc

@@ -38,7 +38,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     uint32_t nextModuleID = 1;
 
-    pool_ptr<Module> getModuleWithName (const std::string& name) const
+    pool_ptr<Module> findModuleWithName (const std::string& name) const
     {
         for (auto& m : modules)
             if (m->fullName == name)
@@ -47,7 +47,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         return {};
     }
 
-    pool_ptr<Module> getModuleContainingFunction (const heart::Function& f) const
+    pool_ptr<Module> findModuleContainingFunction (const heart::Function& f) const
     {
         for (auto& m : modules)
             if (contains (m->functions, f))
@@ -63,7 +63,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     Module& getOrCreateNamespace (const std::string& name)
     {
-        if (auto m = getModuleWithName (name))
+        if (auto m = findModuleWithName (name))
             return *m;
 
         Program p (*this, false);
@@ -75,31 +75,31 @@ struct Program::ProgramImpl  : public RefCountedObject
         return newModule;
     }
 
-    pool_ptr<heart::Variable> getVariableWithName (const std::string& name)
+    pool_ptr<heart::Variable> findVariableWithName (const std::string& name)
     {
         TokenisedPathString path (name);
         auto parentPath = path.getParentPath();
         auto variableName = path.getLastPart();
 
-        if (auto m = getModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
+        if (auto m = findModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
             return m->findStateVariable (variableName);
 
         return {};
     }
 
-    pool_ptr<heart::Function> getFunctionWithName (const std::string& name)
+    pool_ptr<heart::Function> findFunctionWithName (const std::string& name)
     {
         TokenisedPathString path (name);
         auto parentPath = path.getParentPath();
         auto functionName = path.getLastPart();
 
-        if (auto m = getModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
+        if (auto m = findModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
             return m->findFunction (functionName);
 
         return {};
     }
 
-    pool_ptr<Module> getMainProcessor() const
+    pool_ptr<Module> findMainProcessor() const
     {
         for (auto& m : modules)
             if (! m->isSystemModule() && (m->isProcessor() || m->isGraph()))
@@ -201,7 +201,7 @@ struct Program::ProgramImpl  : public RefCountedObject
 
     std::string getFunctionNameWithQualificationIfNeeded (const Module& context, const heart::Function& f) const
     {
-        if (auto m = getModuleContainingFunction (f))
+        if (auto m = findModuleContainingFunction (f))
         {
             if (m == std::addressof (context))
                 return f.name.toString();
@@ -294,17 +294,18 @@ std::string Program::toHEART() const                                            
 const std::vector<pool_ref<Module>>& Program::getModules() const                        { return pimpl->modules; }
 void Program::removeModule (Module& module)                                             { return pimpl->removeModule (module); }
 
-pool_ptr<Module> Program::getModuleWithName (const std::string& name) const             { return pimpl->getModuleWithName (name); }
-pool_ptr<Module> Program::getModuleContainingFunction (const heart::Function& f) const  { return pimpl->getModuleContainingFunction (f); }
+pool_ptr<Module> Program::findModuleWithName (const std::string& name) const            { return pimpl->findModuleWithName (name); }
+Module& Program::getModuleWithName (const std::string& name) const                      { return *pimpl->findModuleWithName (name); }
+pool_ptr<Module> Program::findModuleContainingFunction (const heart::Function& f) const { return pimpl->findModuleContainingFunction (f); }
+Module& Program::getModuleContainingFunction (const heart::Function& f) const           { return *pimpl->findModuleContainingFunction (f); }
 Module& Program::getOrCreateNamespace (const std::string& name)                         { return pimpl->getOrCreateNamespace (name); }
-pool_ptr<heart::Function> Program::getFunctionWithName (const std::string& name) const  { return pimpl->getFunctionWithName (name); }
-pool_ptr<heart::Variable> Program::getVariableWithName (const std::string& name) const  { return pimpl->getVariableWithName (name); }
+pool_ptr<heart::Variable> Program::findVariableWithName (const std::string& name) const  { return pimpl->findVariableWithName (name); }
 
 heart::Allocator& Program::getAllocator()                                               { return pimpl->allocator; }
 Module& Program::addGraph (int index)                                                   { return pimpl->insert (index, Module::createGraph     (*this)); }
 Module& Program::addProcessor (int index)                                               { return pimpl->insert (index, Module::createProcessor (*this)); }
 Module& Program::addNamespace (int index)                                               { return pimpl->insert (index, Module::createNamespace (*this)); }
-pool_ptr<Module> Program::getMainProcessor() const                                      { return pimpl->getMainProcessor(); }
+pool_ptr<Module> Program::findMainProcessor() const                                      { return pimpl->findMainProcessor(); }
 StringDictionary& Program::getStringDictionary()                                        { return pimpl->stringDictionary; }
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }
 ConstantTable& Program::getConstantTable()                                              { return pimpl->constantTable; }
@@ -323,9 +324,9 @@ std::string Program::getHash() const
     return hash.toString();
 }
 
-Module& Program::getMainProcessorOrThrowError() const
+Module& Program::getMainProcessor() const
 {
-    auto main = getMainProcessor();
+    auto main = findMainProcessor();
 
     if (main == nullptr)
         CodeLocation().throwError (Errors::cannotFindMainProcessor());

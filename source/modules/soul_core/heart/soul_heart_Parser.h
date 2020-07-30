@@ -1103,7 +1103,7 @@ private:
             SOUL_ASSERT (name[0] == '$');
             TokenisedPathString path (name.substr (1));
             auto variableName = path.getLastPart();
-            return program.getVariableWithName (TokenisedPathString::join (path.getParentPath(), "$" + variableName));
+            return program.findVariableWithName (TokenisedPathString::join (path.getParentPath(), "$" + variableName));
         }
 
         for (auto& v : state.variables)
@@ -1126,7 +1126,7 @@ private:
                     return blockParameter;
         }
 
-        return program.getVariableWithName (name);
+        return program.findVariableWithName (name);
     }
 
     heart::Expression& parseArraySlice (const FunctionParseState& state, heart::Expression& lhs, int64_t start, int64_t end)

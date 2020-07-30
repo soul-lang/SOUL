@@ -205,7 +205,7 @@ Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& pro
         heart::Checker::sanityCheck (program);
         reset();
 
-        SOUL_LOG (program.getMainProcessorOrThrowError().originalFullName + ": linked HEART",
+        SOUL_LOG (program.getMainProcessor().originalFullName + ": linked HEART",
                   [&] { return program.toHEART(); });
 
         heart::Checker::testHEARTRoundTrip (program);

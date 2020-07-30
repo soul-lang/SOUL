@@ -71,25 +71,26 @@ public:
     /** Returns the module that should be used as the main entry point of the program, or nullptr
         if no suitable module exists.
     */
-    pool_ptr<Module> getMainProcessor() const;
+    pool_ptr<Module> findMainProcessor() const;
 
     /** Returns the main processor, or fails with an error if no suitable module exists. */
-    Module& getMainProcessorOrThrowError() const;
+    Module& getMainProcessor() const;
 
     /** Looks for a given module by name. */
-    pool_ptr<Module> getModuleWithName (const std::string& name) const;
+    pool_ptr<Module> findModuleWithName (const std::string& name) const;
+
+    /** Looks for a given module by name. */
+    Module& getModuleWithName (const std::string& name) const;
 
     /** Looks for a module that contains the specified function. */
-    pool_ptr<Module> getModuleContainingFunction (const heart::Function&) const;
+    pool_ptr<Module> findModuleContainingFunction (const heart::Function&) const;
+    Module& getModuleContainingFunction (const heart::Function&) const;
 
     /** Returns the namespace with this name, or creates one if it's not there. */
     Module& getOrCreateNamespace (const std::string& name);
 
-    /** Looks for a function with a (fully-qualified) name. */
-    pool_ptr<heart::Function> getFunctionWithName (const std::string& name) const;
-
     /** Looks for a variable with a (fully-qualified) name. */
-    pool_ptr<heart::Variable> getVariableWithName (const std::string& name) const;
+    pool_ptr<heart::Variable> findVariableWithName (const std::string& name) const;
 
     /** Generates a repeatable hash code for the complete state of this program. */
     std::string getHash() const;

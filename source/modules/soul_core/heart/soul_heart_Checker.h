@@ -25,7 +25,7 @@ struct heart::Checker
 {
     static void sanityCheck (Program& program)
     {
-        program.getMainProcessorOrThrowError();
+        program.getMainProcessor();
         sanityCheckInputsAndOutputs (program);
         sanityCheckAdvanceAndStreamCalls (program);
         checkConnections (program);
@@ -36,7 +36,7 @@ struct heart::Checker
 
     static void sanityCheckInputsAndOutputs (Program& program)
     {
-        auto& mainProcessor = program.getMainProcessorOrThrowError();
+        auto& mainProcessor = program.getMainProcessor();
 
         for (auto& input : mainProcessor.inputs)
         {
@@ -69,7 +69,7 @@ struct heart::Checker
 
                     if (conn->sourceProcessor != nullptr)
                     {
-                        auto sourceModule = program.getModuleWithName (conn->sourceProcessor->sourceName);
+                        auto sourceModule = program.findModuleWithName (conn->sourceProcessor->sourceName);
 
                         if (sourceModule == nullptr)
                             conn->location.throwError (Errors::cannotFindProcessor (conn->sourceProcessor->sourceName));
@@ -85,7 +85,7 @@ struct heart::Checker
 
                     if (conn->destProcessor != nullptr)
                     {
-                        auto destModule = program.getModuleWithName (conn->destProcessor->sourceName);
+                        auto destModule = program.findModuleWithName (conn->destProcessor->sourceName);
 
                         if (destModule == nullptr)
                             conn->location.throwError (Errors::cannotFindProcessor (conn->destProcessor->sourceName));

@@ -177,7 +177,7 @@ struct Optimisations
         SOUL_ASSERT (heart::Utilities::canFunctionBeInlined (program, parentFunction, call));
         SOUL_ASSERT (contains (parentFunction.blocks[blockIndex]->statements, std::addressof (call)));
 
-        Inliner (*program.getModuleContainingFunction (call.getFunction()),
+        Inliner (program.getModuleContainingFunction (call.getFunction()),
                  parentFunction, blockIndex, call, call.getFunction()).perform();
     }
 
@@ -202,7 +202,7 @@ struct Optimisations
         if (! anyChanged)
             return false;
 
-        removeItem (program.getModuleContainingFunction (functionToInline)->functions, functionToInline);
+        removeItem (program.getModuleContainingFunction (functionToInline).functions, functionToInline);
         return true;
     }
 
