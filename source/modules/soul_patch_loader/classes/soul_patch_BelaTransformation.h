@@ -34,7 +34,7 @@ namespace soul::patch
 
         std::string buildWrapper()
         {
-            auto& mainProcessor = program.getMainProcessorOrThrowError();
+            auto& mainProcessor = program.getMainProcessor();
 
             parameters << "wrappedModule = " << Program::stripRootNamespaceFromQualifiedPath (mainProcessor.fullName) << ";" << newLine;
 
@@ -157,7 +157,7 @@ namespace soul::patch
             auto type = input.getSingleDataType();
 
             if (type.isStruct())
-                return program.getStructNameWithQualificationIfNeeded (program.getMainProcessorOrThrowError(), *type.getStruct());
+                return program.getStructNameWithQualificationIfNeeded (program.getMainProcessor(), *type.getStruct());
 
             return type.getDescription();
         }
@@ -169,7 +169,7 @@ namespace soul::patch
 
         bool useBelaParameterNumbers()
         {
-            auto& mainProcessor = program.getMainProcessorOrThrowError();
+            auto& mainProcessor = program.getMainProcessor();
 
             for (auto& input : mainProcessor.inputs)
                 if (input->annotation.hasValue ("belaControl"))
