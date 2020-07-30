@@ -87,18 +87,6 @@ struct ModuleCloner
     std::unordered_map<pool_ref<const heart::Block>, pool_ptr<heart::Block>> blockMappings;
     std::unordered_map<pool_ref<const heart::ProcessorInstance>, pool_ptr<heart::ProcessorInstance>> processorInstanceMappings;
 
-    heart::Block& getRemappedBlock (heart::Block& old)
-    {
-        auto& b = blockMappings[old];
-        SOUL_ASSERT (b != nullptr);
-        return *b;
-    }
-
-    Value getRemappedValue (Value v)
-    {
-        return v.cloneWithEquivalentType (cloneType (v.getType()));
-    }
-
     heart::Expression& cloneExpression (heart::Expression& old)
     {
         if (auto c = cast<heart::Constant> (old))
@@ -129,7 +117,6 @@ struct ModuleCloner
             return cloneStructElement (*s);
 
         auto pp = cast<heart::ProcessorProperty> (old);
-        SOUL_ASSERT (pp != nullptr);
         return newModule.allocate<heart::ProcessorProperty> (pp->location, pp->property);
     }
 
@@ -147,35 +134,17 @@ struct ModuleCloner
         return v == nullptr ? cloneVariable (old) : *v;
     }
 
-    heart::Function& getRemappedFunction (heart::Function& old)
-    {
-        auto f = functionMappings[old];
-        SOUL_ASSERT (f != nullptr);
-        return *f;
-    }
-
-    heart::InputDeclaration& getRemappedInput (heart::InputDeclaration& old)
-    {
-        auto io = inputMappings[old];
-        SOUL_ASSERT (io != nullptr);
-        return *io;
-    }
-
-    heart::OutputDeclaration& getRemappedOutput (heart::OutputDeclaration& old)
-    {
-        auto io = outputMappings[old];
-        SOUL_ASSERT (io != nullptr);
-        return *io;
-    }
+    Value getRemappedValue (Value v)                                            { return v.cloneWithEquivalentType (cloneType (v.getType())); }
+    heart::Block& getRemappedBlock (heart::Block& old)                          { return *blockMappings[old]; }
+    heart::Function& getRemappedFunction (heart::Function& old)                 { return *functionMappings[old]; }
+    heart::InputDeclaration& getRemappedInput (heart::InputDeclaration& old)    { return *inputMappings[old]; }
+    heart::OutputDeclaration& getRemappedOutput (heart::OutputDeclaration& old) { return *outputMappings[old]; }
 
     static Type cloneType (StructMappings& structMappings, const Type& t)
     {
         if (t.isStruct())
-        {
-            auto s = structMappings[t.getStruct().get()];
-            SOUL_ASSERT (s != nullptr);
-            return Type::createStruct (*s).withConstAndRefFlags (t.isConst(), t.isReference());
-        }
+            return Type::createStruct (*structMappings[t.getStruct().get()])
+                     .withConstAndRefFlags (t.isConst(), t.isReference());
 
         if (t.isArray())
             return t.createCopyWithNewArrayElementType (cloneType (structMappings, t.getArrayElementType()));
@@ -304,10 +273,7 @@ struct ModuleCloner
 
     void populateClonedStruct (const Structure& old)
     {
-        auto s = structMappings[&old];
-        SOUL_ASSERT (s != nullptr);
-
-        for (auto& m : s->getMembers())
+        for (auto& m : structMappings[std::addressof (old)]->getMembers())
             m.type = cloneType (m.type);
     }
 

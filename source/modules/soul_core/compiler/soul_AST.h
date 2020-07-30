@@ -325,11 +325,12 @@ struct AST
         }
 
         virtual Scope* getParentScope() const = 0;
-        virtual ModuleBase* getAsModule()               { return nullptr; }
-        virtual ProcessorBase* getAsProcessor()         { return nullptr; }
-        virtual Namespace* getAsNamespace()             { return nullptr; }
-        virtual Function* getAsFunction()               { return nullptr; }
-        virtual Block* getAsBlock()                     { return nullptr; }
+        virtual ModuleBase* getAsModule()                   { return nullptr; }
+        virtual ProcessorBase* getAsProcessor()             { return nullptr; }
+        virtual Namespace* getAsNamespace()                 { return nullptr; }
+        virtual Function* getAsFunction()                   { return nullptr; }
+        virtual Block* getAsBlock()                         { return nullptr; }
+        virtual const Statement* getAsStatement() const     { return nullptr; }
 
         virtual pool_ptr<Function> getParentFunction() const
         {
@@ -364,8 +365,7 @@ struct AST
         virtual ArrayView<pool_ref<ModuleBase>>                 getSubModules() const           { return {}; }
         virtual ArrayView<pool_ref<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
 
-        virtual const Statement* getAsStatement() const      { return nullptr; }
-
+        //==============================================================================
         struct NameSearch
         {
             ArrayWithPreallocation<pool_ref<ASTObject>, 8> itemsFound;
@@ -496,7 +496,6 @@ struct AST
 
         ProcessorBase& findSingleMatchingProcessor (const ProcessorInstance& i) const
         {
-            SOUL_ASSERT (i.targetProcessor != nullptr);
             auto p = i.targetProcessor->getAsProcessor();
 
             if (p == nullptr)
@@ -1198,7 +1197,6 @@ struct AST
 
         heart::Function& getGeneratedFunction() const
         {
-            SOUL_ASSERT (generatedFunction != nullptr);
             return *generatedFunction;
         }
 
@@ -1875,6 +1873,11 @@ struct AST
             return isConstant && (initialValue == nullptr || initialValue->isCompileTimeConstant());
         }
 
+        heart::Variable& getGeneratedVariable() const
+        {
+            return *generatedVariable;
+        }
+
         Identifier name;
         pool_ptr<Expression> declaredType, initialValue;
         Annotation annotation;
@@ -1882,12 +1885,6 @@ struct AST
         bool isConstant = false;
         bool isExternal = false;
         size_t numReads = 0, numWrites = 0;
-
-        heart::Variable& getGeneratedVariable() const
-        {
-            SOUL_ASSERT (generatedVariable != nullptr);
-            return *generatedVariable;
-        }
 
         pool_ptr<heart::Variable> generatedVariable;
     };
@@ -1969,10 +1966,9 @@ struct AST
         CallOrCast (Expression& nameOrTargetType, pool_ptr<CommaSeparatedList> args, bool isMethod)
             : CallOrCastBase (ObjectType::CallOrCast, nameOrTargetType.context, args, isMethod), nameOrType (nameOrTargetType)
         {
-            SOUL_ASSERT (nameOrType != nullptr);
         }
 
-        pool_ptr<Expression> nameOrType;
+        pool_ref<Expression> nameOrType;
     };
 
     struct FunctionCall  : public CallOrCastBase

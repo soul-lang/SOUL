@@ -1092,13 +1092,13 @@ struct heart
 
         void visitExpressions (ExpressionVisitorFn fn) override
         {
-            SOUL_ASSERT (function != nullptr);
             Assignment::visitExpressions (fn);
+            auto& f = *function;
 
             for (size_t i = 0; i < arguments.size(); ++i)
             {
-                auto mode = getFunction().parameters[i]->type.isReference() ? AccessType::readWrite
-                                                                            : AccessType::read;
+                auto mode = f.parameters[i]->type.isReference() ? AccessType::readWrite
+                                                                : AccessType::read;
                 arguments[i]->visitExpressions (fn, mode);
                 fn (arguments[i], mode);
             }
@@ -1111,7 +1111,6 @@ struct heart
 
         Function& getFunction() const
         {
-            SOUL_ASSERT (function != nullptr);
             return *function;
         }
 

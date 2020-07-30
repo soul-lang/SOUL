@@ -446,7 +446,7 @@ private:
 
             if (call.areAllArgumentsResolved())
             {
-                if (AST::isResolvedAsType (call.nameOrType))
+                if (AST::isResolvedAsType (call.nameOrType.get()))
                     return convertToCast (allocator, call, call.nameOrType->resolveAsType());
 
                 if (auto name = cast<AST::QualifiedIdentifier> (call.nameOrType))
@@ -1352,7 +1352,7 @@ private:
 
                 if (auto call = cast<AST::CallOrCast> (value))
                 {
-                    if (AST::isResolvedAsType (call->nameOrType))
+                    if (AST::isResolvedAsType (call->nameOrType.get()))
                     {
                         auto type = call->nameOrType->resolveAsType();
 
@@ -1498,7 +1498,7 @@ private:
         {
             super::visit (call);
 
-            if (AST::isResolvedAsType (call.nameOrType))
+            if (AST::isResolvedAsType (call.nameOrType.get()))
                 return convertToCast (allocator, call, call.nameOrType->resolveAsType());
 
             if (call.areAllArgumentsResolved())

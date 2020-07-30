@@ -265,10 +265,7 @@ private:
                     return false;
 
                 for (auto pred : b.predecessors)
-                {
-                    SOUL_ASSERT (pred->terminator != nullptr);
                     heart::Utilities::replaceBlockDestination (pred, b, destinations.front());
-                }
 
                 return true;
             }
@@ -718,7 +715,6 @@ private:
                 return cloneStructElement (*s);
 
             auto pp = cast<heart::ProcessorProperty> (old);
-            SOUL_ASSERT (pp != nullptr);
             return module.allocate<heart::ProcessorProperty> (pp->location, pp->property);
         }
 

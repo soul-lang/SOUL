@@ -783,12 +783,9 @@ private:
             {
                 SOUL_ASSERT (variablesModified != nullptr);
 
-                if (variablesModified != nullptr)
-                {
-                    throwIfVariableFound (*variablesReferenced, *v);
-                    variablesModified->push_back (v->variable);
-                    variablesReferenced->push_back (v->variable);
-                }
+                throwIfVariableFound (*variablesReferenced, *v);
+                variablesModified->push_back (v->variable);
+                variablesReferenced->push_back (v->variable);
             }
             else
             {

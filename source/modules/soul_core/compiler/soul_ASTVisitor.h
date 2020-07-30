@@ -160,7 +160,7 @@ struct ASTVisitor
     virtual void visit (AST::CallOrCast& c)
     {
         visitObjectIfNotNull (c.arguments);
-        visitObject (*c.nameOrType);
+        visitObject (c.nameOrType);
     }
 
     virtual void visit (AST::FunctionCall& c)

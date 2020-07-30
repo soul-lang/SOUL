@@ -299,8 +299,6 @@ private:
             if (instanceName == i->instanceName)
                 return i;
 
-        SOUL_ASSERT (sourceGraph != nullptr);
-
         for (auto& i : sourceGraph->processorInstances)
         {
             if (i->instanceName->path == instanceName)
@@ -429,8 +427,6 @@ private:
 
     void addStateVariableInitialisationCode()
     {
-        SOUL_ASSERT (sourceProcessor != nullptr);
-
         for (auto& v : sourceProcessor->stateVariables)
         {
             if (v->generatedVariable != nullptr)
@@ -751,7 +747,6 @@ private:
         if (l.isDoLoop)
         {
             SOUL_ASSERT (l.iterator == nullptr);
-            SOUL_ASSERT (l.condition != nullptr);
             builder.beginBlock (continueBlock);
             visitAsStatement (l.body);
             addBranchIf (*l.condition, continueBlock, breakBlock, breakBlock);
