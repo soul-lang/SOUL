@@ -124,4 +124,4 @@ If you'd like an input to be treated by a host as a parameter rather than an aud
 
 ### API Resources
 
-The SOUL Patch API interfaces and helper classes are found [here](../source/API/soul_patch).
+The SOUL Patch API interfaces and helper classes are found [here](../include/soul/patch).
