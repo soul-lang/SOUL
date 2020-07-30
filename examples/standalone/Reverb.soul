@@ -55,13 +55,13 @@ graph Reverb  [[ main ]]
         Sum.audioSum                       -> reverbChannelLeft.audioIn;
         dampingParameterRamp.parameterOut  -> reverbChannelLeft.damping;
         feedbackParameterRamp.parameterOut -> reverbChannelLeft.feedback;
-        reverbChannelLeft.audioOut         -> Mixer.audioInLeftWet;
+        reverbChannelLeft                  -> Mixer.audioInLeftWet;
 
         // Right channel
         Sum.audioSum                       -> reverbChannelRight.audioIn;
         dampingParameterRamp.parameterOut  -> reverbChannelRight.damping;
         feedbackParameterRamp.parameterOut -> reverbChannelRight.feedback;
-        reverbChannelRight.audioOut        -> Mixer.audioInRightWet;
+        reverbChannelRight                 -> Mixer.audioInRightWet;
 
         // Mix parameters to the mixer
         dryGainParameterRamp.parameterOut  -> Mixer.dryIn;
@@ -69,7 +69,7 @@ graph Reverb  [[ main ]]
         wetGain2ParameterRamp.parameterOut -> Mixer.wet2In;
 
         // Write the mixed values to the output
-        Mixer.audioOut -> audioOut;
+        Mixer -> audioOut;
     }
 }
 
@@ -248,20 +248,20 @@ processor ReverbParameterProcessorParam
 
     void onUpdate()
     {
-            // Various tuning factors for the reverb
-            let wetScaleFactor  = 3.0f;
-            let dryScaleFactor  = 2.0f;
+        // Various tuning factors for the reverb
+        let wetScaleFactor  = 3.0f;
+        let dryScaleFactor  = 2.0f;
 
-            let roomScaleFactor = 0.28f;
-            let roomOffset      = 0.7f;
-            let dampScaleFactor = 0.4f;
+        let roomScaleFactor = 0.28f;
+        let roomOffset      = 0.7f;
+        let dampScaleFactor = 0.4f;
 
-            // Write updated values
-            dryGainOut  << dryLevel_ * dryScaleFactor;
-            wetGain1Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f + width_));
-            wetGain2Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f - width_));
-            dampingOut  << damping_ * dampScaleFactor;
-            feedbackOut << roomSize_ * roomScaleFactor + roomOffset;
+        // Write updated values
+        dryGainOut  << dryLevel_ * dryScaleFactor;
+        wetGain1Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f + width_));
+        wetGain2Out << (0.5f * wetLevel_ * wetScaleFactor * (1.0f - width_));
+        dampingOut  << damping_ * dampScaleFactor;
+        feedbackOut << roomSize_ * roomScaleFactor + roomOffset;
     }
 
     void run()
@@ -326,18 +326,13 @@ graph ReverbChannel (int offset)
                    comb_7.audioIn,
                    comb_8.audioIn;
 
-        comb_1.audioOut,
-        comb_2.audioOut,
-        comb_3.audioOut,
-        comb_4.audioOut,
-        comb_5.audioOut,
-        comb_6.audioOut,
-        comb_7.audioOut,
-        comb_8.audioOut  -> allpass_1.audioIn;
-
-        allpass_1.audioOut -> allpass_2.audioIn;
-        allpass_2.audioOut -> allpass_3.audioIn;
-        allpass_3.audioOut -> allpass_4.audioIn;
-        allpass_4.audioOut -> audioOut;
+        comb_1,
+        comb_2,
+        comb_3,
+        comb_4,
+        comb_5,
+        comb_6,
+        comb_7,
+        comb_8  -> allpass_1 -> allpass_2 -> allpass_3 -> allpass_4 -> audioOut;
     }
 }

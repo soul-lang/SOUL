@@ -88,6 +88,10 @@ namespace soul
     X(cannotFindInput,                      "Cannot find input $Q0$") \
     X(cannotFindOutput,                     "Cannot find output $Q0$") \
     X(cannotFindEndpoint,                   "Cannot find endpoint $Q0$") \
+    X(mustBeOnlyOneEndpoint,                "This processor has multiple endpoints, so the required one must be specified") \
+    X(processorHasNoSuitableInputs,         "This processor has no suitable input endpoints") \
+    X(processorHasNoSuitableOutputs,        "This processor has no suitable output endpoints") \
+    X(cannotChainConnectionWithMultiple,     "Cannot create a chained sequence of connections when multiple endpoints are specified") \
     X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
     X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \

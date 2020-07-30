@@ -480,26 +480,48 @@ private:
     }
 
     template <typename TokenName, typename ParserFn>
-    bool parseOptionallyBracedList (TokenName type, ParserFn&& parserFn)
+    bool parseOptionallyBracedList (TokenName type, bool allowCommaSeparator, ParserFn&& parserFn)
     {
         if (! matchIf (type))
             return false;
 
         if (matchIf (Operator::openBrace))
         {
-            while (! matchIf (Operator::closeBrace))
+            if (matchIf (Operator::closeBrace))
+                return true;
+
+            for (;;)
+            {
                 parserFn();
+
+                if (allowCommaSeparator && matchIf (Operator::comma))
+                    continue;
+
+                expect (Operator::semicolon);
+
+                if (matchIf (Operator::closeBrace))
+                    break;
+            }
         }
         else
         {
-            parserFn();
+            for (;;)
+            {
+                parserFn();
+
+                if (allowCommaSeparator && matchIf (Operator::comma))
+                    continue;
+
+                expect (Operator::semicolon);
+                break;
+            }
         }
 
         return true;
     }
 
-    bool parseConnectionList (AST::Graph& g)        { return parseOptionallyBracedList (Keyword::connection, [this, &g] { parseConnection (g); }); }
-    bool parseProcessorInstanceList (AST::Graph& g) { return parseOptionallyBracedList (Keyword::let,        [this, &g] { parseProcessorInstance (g); }); }
+    bool parseConnectionList (AST::Graph& g)        { return parseOptionallyBracedList (Keyword::connection, false, [this, &g] { parseConnection (g); }); }
+    bool parseProcessorInstanceList (AST::Graph& g) { return parseOptionallyBracedList (Keyword::let,        true,  [this, &g] { parseProcessorInstance (g); }); }
 
     //==============================================================================
     void parseConnection (AST::Graph& graph)
@@ -513,37 +535,48 @@ private:
         {
             sources.push_back (parseExpression());
 
-            if (matchIf (Operator::comma))
-                continue;
-
-            context = getContext();
-            expect (Operator::rightArrow);
-            delayLength = parseDelayLength();
-            break;
+            if (! matchIf (Operator::comma))
+                break;
         }
 
         for (;;)
         {
-            auto errorPos = getContext();
+            context = getContext();
+            expect (Operator::rightArrow);
+            delayLength = parseDelayLength();
 
-            if (auto e = tryToParseExpressionIgnoringErrors())
-                dests.push_back (*e);
-            else
-                errorPos.throwError (Errors::expectedProcessorOrEndpoint());
+            for (;;)
+            {
+                auto errorPos = getContext();
 
-            if (matchIf (Operator::comma))
+                if (auto e = tryToParseExpressionIgnoringErrors())
+                    dests.push_back (*e);
+                else
+                    errorPos.throwError (Errors::expectedProcessorOrEndpoint());
+
+                if (! matchIf (Operator::comma))
+                    break;
+            }
+
+            if (sources.size() > 1 && dests.size() > 1)
+                context.throwError (Errors::notYetImplemented ("Many-to-many connections are not currently supported"));
+
+            for (auto& source : sources)
+                for (auto& dest : dests)
+                    graph.connections.push_back (allocate<AST::Connection> (context, interpolationType, source, dest, delayLength));
+
+            if (matches (Operator::rightArrow))
+            {
+                if (dests.size() != 1)
+                    dests.back()->context.throwError (Errors::cannotChainConnectionWithMultiple());
+
+                sources = dests;
+                dests.clear();
                 continue;
+            }
 
-            expect (Operator::semicolon);
             break;
         }
-
-        if (sources.size() > 1 && dests.size() > 1)
-            context.throwError (Errors::notYetImplemented ("Many-to-many connections are not currently supported"));
-
-        for (auto& source : sources)
-            for (auto& dest : dests)
-                graph.connections.push_back (allocate<AST::Connection> (context, interpolationType, source, dest, delayLength));
     }
 
     InterpolationType parseOptionalInterpolationType()
@@ -612,8 +645,6 @@ private:
             u.clockMultiplierRatio = parseExpression();
         else if (matchIf (Operator::divide))
             u.clockDividerRatio = parseExpression();
-
-        expect (Operator::semicolon);
     }
 
     AST::Expression& parseProcessorSpecialisationValueOrType()

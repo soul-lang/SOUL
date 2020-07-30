@@ -71,10 +71,10 @@ graph PadSynth  [[main]]
         filterCutoffTrack    -> oscillators.filterCutoffTrack;
 
         oscillators.audioOut -> delay.audioIn;
-        delay.audioOut       -> Reverb.audioIn;
+        delay.audioOut       -> Reverb;
 
         oscillators.audioOut -> dryWetMixer.in1;
-        Reverb.audioOut      -> dryWetMixer.in2;
+        Reverb               -> dryWetMixer.in2;
         dryWetMixer.out      -> audioOut;
     }
 }
@@ -674,8 +674,8 @@ graph Voice
         voiceController.note1_active       -> amplitudeEnvelope.triggerLevel,
                                               cutoffEnvelope.triggerLevel;
 
-        osc1.audioOut                -> voiceOscillatorMix.in1;
-        osc2.audioOut                -> voiceOscillatorMix.in2;
+        osc1                         -> voiceOscillatorMix.in1;
+        osc2                         -> voiceOscillatorMix.in2;
         oscillatorMixParam.audioOut  -> voiceOscillatorMix.mix;
 
         cutoff.audioOut                     -> voiceCutoffHandler.cutoffIn;
@@ -731,19 +731,14 @@ graph Reverb
                    comb_1617.audioIn,
                    dryWetMixer.in1;
 
-        comb_1116.audioOut,
-        comb_1188.audioOut,
-        comb_1277.audioOut,
-        comb_1356.audioOut,
-        comb_1422.audioOut,
-        comb_1491.audioOut,
-        comb_1557.audioOut,
-        comb_1617.audioOut  -> allPass_225.audioIn;
-
-        allPass_225.audioOut -> allPass_341.audioIn;
-        allPass_341.audioOut -> allPass_441.audioIn;
-        allPass_441.audioOut -> allPass_556.audioIn;
-        allPass_556.audioOut -> dryWetMixer.in2;
+        comb_1116,
+        comb_1188,
+        comb_1277,
+        comb_1356,
+        comb_1422,
+        comb_1491,
+        comb_1557,
+        comb_1617  -> allPass_225 -> allPass_341 -> allPass_441 -> allPass_556 -> dryWetMixer.in2;
     }
 }
 

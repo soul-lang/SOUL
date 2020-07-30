@@ -1084,21 +1084,44 @@ struct AST
         pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessor (source); }
         pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessor (dest); }
 
-        std::string getSourceEndpointName()                     { return getEndpointName (source); }
-        std::string getDestEndpointName()                       { return getEndpointName (dest); }
+        std::string getSourceEndpointName()                     { return getEndpointName (source, true); }
+        std::string getDestEndpointName()                       { return getEndpointName (dest, false); }
 
         std::optional<size_t> getSourceEndpointIndex()          { return getEndpointIndex (source); }
         std::optional<size_t> getDestEndpointIndex()            { return getEndpointIndex (dest); }
 
-        static std::string getEndpointName (Expression& e)
+        static std::string getEndpointName (Expression& e, bool isSource)
         {
             if (auto i = cast<InputEndpointRef> (e))         return i->input->name;
             if (auto o = cast<OutputEndpointRef> (e))        return o->output->name;
             if (auto er = cast<ConnectionEndpointRef> (e))   return er->endpointName.toString();
-            if (auto ar = cast<ArrayElementRef> (e))         return getEndpointName (*ar->object);
+            if (auto ar = cast<ArrayElementRef> (e))         return getEndpointName (*ar->object, isSource);
             if (auto dot = cast<DotOperator> (e))            return dot->rhs.toString();
+            if (auto p = e.getAsProcessor())                 return getDefaultEndpointName (e.context, *p, ! isSource);
 
-            SOUL_ASSERT_FALSE;
+            e.context.throwError (Errors::expectedProcessorOrEndpoint());
+        }
+
+        static std::string getDefaultEndpointName (const AST::Context& errorContext, AST::ProcessorBase& p, bool wantInput)
+        {
+            pool_ptr<AST::EndpointDeclaration> found;
+
+            for (auto& e : p.getEndpoints())
+            {
+                if (e->isInput == wantInput)
+                {
+                    if (found != nullptr)
+                        errorContext.throwError (Errors::mustBeOnlyOneEndpoint());
+
+                    found = e;
+                }
+            }
+
+            if (found == nullptr)
+                errorContext.throwError (wantInput ? Errors::processorHasNoSuitableInputs()
+                                                   : Errors::processorHasNoSuitableOutputs());
+
+            return found->name.toString();
         }
 
         static pool_ptr<ProcessorInstance> getProcessor (Expression& e)

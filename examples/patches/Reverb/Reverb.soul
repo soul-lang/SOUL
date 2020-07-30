@@ -61,7 +61,7 @@ graph Reverb  [[ main ]]
         wetGain2ParameterRamp.parameterOut -> Mixer.wet2In;
 
         // Write the mixed values to the output
-        Mixer.audioOut -> audioOut;
+        Mixer -> audioOut;
     }
 }
 
@@ -284,18 +284,13 @@ graph ReverbChannel (int offset)
                    comb_7.audioIn,
                    comb_8.audioIn;
 
-        comb_1.audioOut,
-        comb_2.audioOut,
-        comb_3.audioOut,
-        comb_4.audioOut,
-        comb_5.audioOut,
-        comb_6.audioOut,
-        comb_7.audioOut,
-        comb_8.audioOut  -> allpass_1.audioIn;
-
-        allpass_1.audioOut -> allpass_2.audioIn;
-        allpass_2.audioOut -> allpass_3.audioIn;
-        allpass_3.audioOut -> allpass_4.audioIn;
-        allpass_4.audioOut -> audioOut;
+        comb_1,
+        comb_2,
+        comb_3,
+        comb_4,
+        comb_5,
+        comb_6,
+        comb_7,
+        comb_8  -> allpass_1 -> allpass_2 -> allpass_3 -> allpass_4 -> audioOut;
     }
 }

@@ -34,9 +34,9 @@ graph SineSynth  [[ main ]]
                                         voices.pitchBend;
 
         // Sum the voices audio out to the output
-        voices.audioOut -> gainProcessor.in;
-        smoothedGain.gain -> gainProcessor.gain;
-        gainProcessor.out -> audioOut;
+        voices -> gainProcessor.in;
+        smoothedGain -> gainProcessor.gain;
+        gainProcessor -> audioOut;
     }
 }
 
@@ -114,6 +114,6 @@ graph Voice
 
         osc.audioOut                -> attenuator.in;
         amplitudeEnvelope.levelOut  -> attenuator.gain;
-        attenuator.out              -> audioOut;
+        attenuator                  -> audioOut;
     }
 }

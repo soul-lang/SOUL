@@ -46,7 +46,7 @@ The `.soulpatch` file is JSON, and contains details about this particular patch,
 
     "source":           [ "AwesomeSound34.soul", "SomeSharedLibraryCode.soul" ],
 
-    "externals": { 
+    "externals": {
       "SampleSet::kickdrum": "sounds/kick1.ogg",
       "SampleSet::hihat":    "sounds/hihat.flac",
       "SampleSet::bass":     "sounds/bass.wav",
@@ -73,7 +73,7 @@ The set of inputs and outputs declared in the main SOUL processor are used by a 
 processor MySynth
 {
     input event midi::Message midiIn;  // a MIDI input channel
-    
+
     input event float cutoff    [[ name: "Cutoff",    min: 0, max: 127, init: 80, unit: "semi", step: 0.1 ]];
     input event float resonance [[ name: "Resonance", min: 0, max: 100, init: 20, unit: "%",    step: 1   ]];
 
@@ -124,4 +124,4 @@ If you'd like an input to be treated by a host as a parameter rather than an aud
 
 ### API Resources
 
-The SOUL Patch API interfaces and helper classes are found [here](../source/API/soul_patch).
+The SOUL Patch API interfaces and helper classes are found [here](../include/soul/patch).
