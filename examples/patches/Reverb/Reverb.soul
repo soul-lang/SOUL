@@ -47,7 +47,7 @@ graph Reverb  [[ main ]]
         audioIn                            -> reverbChannelLeft.audioIn;
         dampingParameterRamp.parameterOut  -> reverbChannelLeft.damping;
         feedbackParameterRamp.parameterOut -> reverbChannelLeft.feedback;
-        reverbChannelLeft.audioOut         -> Mixer.audioInLeftWet;
+        reverbChannelLeft                  -> Mixer.audioInLeftWet;
 
         // Right channel
         audioIn                            -> reverbChannelRight.audioIn;

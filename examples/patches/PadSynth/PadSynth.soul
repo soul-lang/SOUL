@@ -46,14 +46,14 @@ graph PadSynth  [[main]]
 
     connection
     {
-        midiIn               -> oscillators.midiIn;
+        midiIn -> oscillators.midiIn;
 
-        oscillators.audioOut -> delay.audioIn;
-        delay.audioOut       -> Reverb.audioIn;
+        oscillators -> delay -> Reverb.audioIn;
 
-        oscillators.audioOut -> dryWetMixer.in1;
-        Reverb.audioOut      -> dryWetMixer.in2;
-        dryWetMixer.out      -> audioOut;
+        oscillators -> dryWetMixer.in1;
+        Reverb      -> dryWetMixer.in2;
+
+        dryWetMixer -> audioOut;
     }
 }
 
@@ -593,13 +593,27 @@ graph Voice
                  soul::note_events::Pressure,
                  soul::note_events::Slide) eventIn;
 
-    input event float cutoffParam, resonanceParam,
-                      ampAttack, ampDecay, ampSustain, ampRelease, ampSensitivity,
-                      osc1waveshape, osc1detuneSemitones, osc1detune,
-                      osc2waveshape, osc2detuneSemitones, osc2detune,
-                      filterAttack, filterDecay, filterSustain, filterRelease, filterSensitivity,
-                      oscillatorMix,
-                      filterEnvMod, filterCutoffTrack;
+    input cutoff.parameterUpdate              cutoffParam;
+    input resonance.parameterUpdate           resonanceParam;
+    input amplitudeEnvelope.attack            ampAttack;
+    input amplitudeEnvelope.decay             ampDecay;
+    input amplitudeEnvelope.sustain           ampSustain;
+    input amplitudeEnvelope.release           ampRelease;
+    input amplitudeEnvelope.sensitivity       ampSensitivity;
+    input osc1.waveshape                      osc1waveshape;
+    input osc1.detuneSemitones                osc1detuneSemitones;
+    input osc1.detune                         osc1detune;
+    input osc2.waveshape                      osc2waveshape;
+    input osc2.detuneSemitones                osc2detuneSemitones;
+    input osc2.detune                         osc2detune;
+    input cutoffEnvelope.attack               filterAttack;
+    input cutoffEnvelope.decay                filterDecay;
+    input cutoffEnvelope.sustain              filterSustain;
+    input cutoffEnvelope.release              filterRelease;
+    input cutoffEnvelope.sensitivity          filterSensitivity;
+    input oscillatorMixParam.parameterUpdate  oscillatorMix;
+    input cutoffEnvMod.parameterUpdate        filterEnvMod;
+    input cutoffKeytrackMod.parameterUpdate   filterCutoffTrack;
 
     output stream float audioOut;
 
@@ -623,28 +637,6 @@ graph Voice
 
     connection
     {
-        cutoffParam         -> cutoff.parameterUpdate;
-        resonanceParam      -> resonance.parameterUpdate;
-        ampAttack           -> amplitudeEnvelope.attack;
-        ampDecay            -> amplitudeEnvelope.decay;
-        ampSustain          -> amplitudeEnvelope.sustain;
-        ampRelease          -> amplitudeEnvelope.release;
-        ampSensitivity      -> amplitudeEnvelope.sensitivity;
-        osc1waveshape       -> osc1.waveshape;
-        osc1detuneSemitones -> osc1.detuneSemitones;
-        osc1detune          -> osc1.detune;
-        osc2waveshape       -> osc2.waveshape;
-        osc2detuneSemitones -> osc2.detuneSemitones;
-        osc2detune          -> osc2.detune;
-        filterAttack        -> cutoffEnvelope.attack;
-        filterDecay         -> cutoffEnvelope.decay;
-        filterSustain       -> cutoffEnvelope.sustain;
-        filterRelease       -> cutoffEnvelope.release;
-        filterSensitivity   -> cutoffEnvelope.sensitivity;
-        oscillatorMix       -> oscillatorMixParam.parameterUpdate;
-        filterEnvMod        -> cutoffEnvMod.parameterUpdate;
-        filterCutoffTrack   -> cutoffKeytrackMod.parameterUpdate;
-
         eventIn -> voiceController.eventIn;
 
         voiceController.note1_frequencyOut -> osc1.frequencyIn;
@@ -652,9 +644,9 @@ graph Voice
         voiceController.note1_active       -> amplitudeEnvelope.triggerLevel,
                                               cutoffEnvelope.triggerLevel;
 
-        osc1                         -> voiceOscillatorMix.in1;
-        osc2                         -> voiceOscillatorMix.in2;
-        oscillatorMixParam.audioOut  -> voiceOscillatorMix.mix;
+        osc1                 -> voiceOscillatorMix.in1;
+        osc2                 -> voiceOscillatorMix.in2;
+        oscillatorMixParam   -> voiceOscillatorMix.mix;
 
         cutoff.audioOut                     -> voiceCutoffHandler.cutoffIn;
         cutoffEnvelope.envelopeLevel        -> voiceCutoffHandler.envelopeIn;
@@ -663,10 +655,10 @@ graph Voice
         voiceController.note1_noteOut       -> voiceCutoffHandler.noteIn;
         voiceController.note1_slide         -> voiceCutoffHandler.modIn;
 
-        voiceOscillatorMix.out          -> voiceLowPassFilter.audioIn;
-        voiceCutoffHandler.cutoffOut    -> voiceLowPassFilter.cutoffIn;
-        resonance.audioOut              -> voiceLowPassFilter.resonanceIn;
-        amplitudeEnvelope.envelopeLevel -> voiceLowPassFilter.gainIn;
+        voiceOscillatorMix  -> voiceLowPassFilter.audioIn;
+        voiceCutoffHandler  -> voiceLowPassFilter.cutoffIn;
+        resonance           -> voiceLowPassFilter.resonanceIn;
+        amplitudeEnvelope   -> voiceLowPassFilter.gainIn;
 
         voiceLowPassFilter -> audioOut;
     }
@@ -841,13 +833,8 @@ graph Oscillators
         filterEnvMod        -> voices.filterEnvMod;
         filterCutoffTrack   -> voices.filterCutoffTrack;
 
-        // Pass the events to the voice allocator
-        midiParser -> voiceAllocator;
+        midiParser -> voiceAllocator -> voices.eventIn;
 
-        // Pass the allocated events to the voice bank
-        voiceAllocator -> voices.eventIn;
-
-        // Now pass through reverb
         voices -> audioOut;
     }
 }

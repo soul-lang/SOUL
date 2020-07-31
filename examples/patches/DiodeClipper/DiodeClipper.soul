@@ -25,7 +25,7 @@ graph Diode  [[ main ]]
         cutoffFrequency -> diodeClipper.cutoffFrequencyIn;
         gaindB          -> diodeClipper.gaindBIn;
 
-        diodeClipper.audioOut -> audioOut;
+        diodeClipper -> audioOut;
     }
 }
 

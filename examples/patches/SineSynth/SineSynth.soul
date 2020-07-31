@@ -13,8 +13,6 @@ graph SineSynth  [[ main ]]
 
     let
     {
-        midiParser = soul::midi::MPEParser;
-
         voices = Voice[8];
         voiceAllocator = soul::voice_allocators::Basic(8);
 
@@ -24,9 +22,7 @@ graph SineSynth  [[ main ]]
 
     connection
     {
-        midiIn -> midiParser.parseMIDI;
-
-        midiParser.eventOut -> voiceAllocator.eventIn;
+        midiIn -> soul::midi::MPEParser -> voiceAllocator;
 
         // Plumb the voice allocator to the voices array
         voiceAllocator.voiceEventOut -> voices.noteOn,
@@ -34,7 +30,7 @@ graph SineSynth  [[ main ]]
                                         voices.pitchBend;
 
         // Sum the voices audio out to the output
-        voices -> gainProcessor.in;
+        voices       -> gainProcessor.in;
         smoothedGain -> gainProcessor.gain;
         gainProcessor -> audioOut;
     }

@@ -20,18 +20,13 @@ graph LatelyBass  [[ main ]]
     let
     {
         voices         = LatelyBassVoice[8];
-        midiParser     = soul::midi::MPEParser;
         filter         = TX81Z::OutputFilter;
         voiceAllocator = TX81Z::PolyVoiceAllocator (-12, 8);
     }
 
     connection
     {
-        midiIn                  -> midiParser.parseMIDI;
-        midiParser.eventOut     -> voiceAllocator.eventIn;
-        voiceAllocator.eventOut -> voices.eventIn;
-        voices.audioOut         -> filter.audioIn;
-        filter.audioOut         -> audioOut;
+        midiIn -> soul::midi::MPEParser -> voiceAllocator -> voices -> filter -> audioOut;
     }
 }
 
@@ -65,19 +60,19 @@ graph LatelyBassVoice
                     osc2.eventIn,
                     osc3.eventIn,
                     osc4.eventIn,
-                    amplitudeEnvelope1.eventIn,
-                    amplitudeEnvelope2.eventIn,
-                    amplitudeEnvelope3.eventIn,
-                    amplitudeEnvelope4.eventIn;
+                    amplitudeEnvelope1,
+                    amplitudeEnvelope2,
+                    amplitudeEnvelope3,
+                    amplitudeEnvelope4;
 
-        amplitudeEnvelope1.audioOut -> osc1.amplitudeIn;
-        amplitudeEnvelope2.audioOut -> osc2.amplitudeIn;
-        amplitudeEnvelope3.audioOut -> osc3.amplitudeIn;
-        amplitudeEnvelope4.audioOut -> osc4.amplitudeIn;
+        amplitudeEnvelope1 -> osc1.amplitudeIn;
+        amplitudeEnvelope2 -> osc2.amplitudeIn;
+        amplitudeEnvelope3 -> osc3.amplitudeIn;
+        amplitudeEnvelope4 -> osc4.amplitudeIn;
 
-        osc4.audioOut -> osc2.modulatorIn;
-        osc3.audioOut -> osc2.modulatorIn;
-        osc2.audioOut -> osc1.modulatorIn;
-        osc1.audioOut -> audioOut;
+        osc4 -> osc2.modulatorIn;
+        osc3 -> osc2.modulatorIn;
+        osc2 -> osc1.modulatorIn;
+        osc1 -> audioOut;
     }
 }

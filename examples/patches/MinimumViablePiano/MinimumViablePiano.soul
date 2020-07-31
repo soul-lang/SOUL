@@ -19,27 +19,17 @@ graph Piano  [[ main ]]
 
     let
     {
-        midiParser      = soul::midi::MPEParser;
         voices          = Voice[8];
         voiceAllocator  = soul::voice_allocators::Basic(8);
-        gainParameter   = GainParameterRamp (1.0f);
+        gainSmoother    = GainParameterRamp (1.0f);
         masterVolume    = soul::gain::DynamicGain (float);
     }
 
     connection
     {
-        midiIn -> midiParser.parseMIDI;
-        volume -> gainParameter.gainDb;
-
-        midiParser.eventOut -> voiceAllocator.eventIn;
-
-        // Plumb the voice allocator to the voices array
-        voiceAllocator.voiceEventOut -> voices.eventIn;
-
-        // Sum the voices audio out to the output
-        voices.audioOut -> masterVolume.in;
-        gainParameter.parameterOut -> masterVolume.gain;
-        masterVolume.out -> audioOut;
+        midiIn -> soul::midi::MPEParser -> voiceAllocator -> voices -> masterVolume.in;
+        volume -> gainSmoother -> masterVolume.gain;
+        masterVolume -> audioOut;
     }
 }
 
@@ -150,7 +140,7 @@ graph Voice
         samplePlayer.audioOut  -> attenuator.in;
         envelope.levelOut      -> attenuator.gain;
 
-        attenuator.out -> audioOut;
+        attenuator -> audioOut;
     }
 }
 
