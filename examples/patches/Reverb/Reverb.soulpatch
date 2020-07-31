@@ -1,5 +1,5 @@
 {
-    "soulPatchV1": 
+    "soulPatchV1":
     {
         "ID":               "dev.soul.examples.reverb",
         "version":          "1.0",
@@ -8,7 +8,7 @@
         "category":         "fx",
         "manufacturer":     "soul.dev",
         "isInstrument":     false,
-        
+
         "source":           "Reverb.soul",
         "view":             "Reverb.faceplate"
     }

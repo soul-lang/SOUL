@@ -1,5 +1,5 @@
 {
-    "soulPatchV1": 
+    "soulPatchV1":
     {
         "ID":               "dev.soul.examples.SOUL909",
         "version":          "1.0",
@@ -11,8 +11,8 @@
 
         "source":           "SOUL909.soul",
 
-        "externals": 
-        { 
+        "externals":
+        {
             "DrumHitPlayer::drumkit": "drumkit.ogg",
 
             "DrumHitPlayer::drumhits": [
@@ -34,7 +34,7 @@
                 { "startNote": 61,  "endNote": 61,  "gaindB":  -3.0,  "pan":  0.40,  "startTimeSeconds": 5.85193,  "lengthSeconds": 0.89500 },
                 { "startNote": 62,  "endNote": 62,  "gaindB":   0.0,  "pan":  0.63,  "startTimeSeconds": 4.07084,  "lengthSeconds": 0.23869 },
                 { "startNote": 64,  "endNote": 64,  "gaindB": -2.97,  "pan":  0.38,  "startTimeSeconds": 6.76535,  "lengthSeconds": 0.79232 },
-                { "startNote": 67,  "endNote": 67,  "gaindB": -2.95,  "pan": -0.31,  "startTimeSeconds": 5.30207,  "lengthSeconds": 0.53749 } 
+                { "startNote": 67,  "endNote": 67,  "gaindB": -2.95,  "pan": -0.31,  "startTimeSeconds": 5.30207,  "lengthSeconds": 0.53749 }
             ]
         }
     }

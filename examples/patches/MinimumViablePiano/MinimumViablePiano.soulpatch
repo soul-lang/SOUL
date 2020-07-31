@@ -1,5 +1,5 @@
 {
-    "soulPatchV1": 
+    "soulPatchV1":
     {
         "ID":               "dev.soul.examples.MinimumViablePiano",
         "version":          "1.0",
@@ -11,8 +11,8 @@
 
         "source":           "MinimumViablePiano.soul",
 
-        "externals": 
-        { 
+        "externals":
+        {
             "PianoSamplePlayer::piano_C5": "piano-C5.ogg",
             "PianoSamplePlayer::piano_G5": "piano-G5.ogg",
             "PianoSamplePlayer::piano_C6": "piano-C6.ogg",
