@@ -54,8 +54,10 @@ struct ThreadedVenue  : public soul::Venue
             venue.sessionDeleted (this);
         }
 
-        bool load (CompileMessageList& messageList, const Program& p) override
+        bool load (CompileMessageList& messageList, const BuildBundle& build) override
         {
+            auto p = Compiler::build (messageList, build);
+
             if (! p.isEmpty())
             {
                 unload();
