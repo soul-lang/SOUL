@@ -111,7 +111,12 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         auto program = compileSources (messageList, settings, preprocessor);
 
         if (program.isEmpty())
-            return messageList.addError ("Empty program", {});
+        {
+            if (! messageList.hasErrors())
+                messageList.addError ("Empty program", {});
+
+            return;
+        }
 
         if (! performer->load (messageList, program))
             return messageList.addError ("Failed to load program", {});
@@ -139,7 +144,13 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         for (auto& m : messageList.messages)
         {
             CompilationMessage cm;
-            cm.fullMessage = makeString (m.getFullDescription());
+            auto sourceLine = m.getAnnotatedSourceLine();
+
+            if (sourceLine.empty())
+                cm.fullMessage = makeString (m.getFullDescription());
+            else
+                cm.fullMessage = makeString (m.getFullDescription() + "\n" + sourceLine);
+
             cm.filename = makeString (m.location.getFilename());
             cm.description = makeString (m.description);
             auto lc = m.location.getLineAndColumn();

@@ -172,7 +172,7 @@ inline choc::value::Value parseManifestFile (VirtualFile& manifestFile, std::str
     catch (choc::json::ParseError error)
     {
         errorMessage = String::Ptr (manifestFile.getAbsolutePath()).toString<std::string>()
-                        + ":" + std::to_string (error.line) + ":" + std::to_string (error.column) + ": " + error.message;
+                        + ":" + std::to_string (error.line) + ":" + std::to_string (error.column) + ": error: " + error.message;
     }
 
     return {};
