@@ -599,7 +599,7 @@ private:
             }
             else if (d.lhs->isOutputEndpoint())
             {
-                if (currentConnection != nullptr)
+                if (currentConnection != nullptr || d.rhs.path == "type")
                     return d;
 
                 d.context.throwError (Errors::noSuchOperationOnEndpoint());
@@ -1326,6 +1326,26 @@ private:
             return b;
         }
 
+        AST::Expression& visit (AST::DotOperator& d) override
+        {
+            super::visit (d);
+
+            if (d.rhs.path == "type")
+            {
+                if (auto endpoint = d.lhs->getAsEndpoint())
+                {
+                    auto types = endpoint->getDetails().getResolvedDataTypes();
+
+                    if (types.size() == 1)
+                        return allocator.allocate<AST::ConcreteType> (d.context, types.front());
+
+                    d.context.throwError (Errors::endpointHasMultipleTypes());
+                }
+            }
+
+            return d;
+        }
+
         Type::ArraySize findSizeOfArray (pool_ptr<AST::Expression> value)
         {
             if (value != nullptr)
@@ -1878,20 +1898,12 @@ private:
                 SOUL_ASSERT (AST::isResolvedAsOutput (array));
                 pool_ptr<AST::Expression> endpointArraySize;
 
-                if (auto i = cast<AST::InputEndpointRef> (array))
+                if (auto endpoint = array.getAsEndpoint())
                 {
-                    if (i->input->isUnresolvedChildReference())
+                    if (endpoint->isUnresolvedChildReference())
                         array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
 
-                    endpointArraySize = i->input->getDetails().arraySize;
-                }
-
-                if (auto o = cast<AST::OutputEndpointRef> (array))
-                {
-                    if (o->output->isUnresolvedChildReference())
-                        array.context.throwError (Errors::cannotResolveSourceOfAtMethod());
-
-                    endpointArraySize = o->output->getDetails().arraySize;
+                    endpointArraySize = endpoint->getDetails().arraySize;
                 }
 
                 Type::BoundedIntSize arraySize = 0;
@@ -2375,23 +2387,16 @@ private:
 
         static Type getDataTypeOfArrayRefLHS (AST::ASTObject& o)
         {
-            if (auto er = cast<AST::ConnectionEndpointRef> (o))
-                if (er->parentProcessorInstance != nullptr)
-                    if (auto p = er->parentProcessorInstance->getAsProcessor())
-                        if (auto endpoint = p->findEndpoint (er->endpointName.toString()))
-                            return getDataTypeOfArrayRefLHS (*endpoint);
-
-            if (auto outRef = cast<AST::OutputEndpointRef> (o))
-                return outRef->output->getDetails().getSampleArrayTypes().front();
-
-            if (auto inRef = cast<AST::InputEndpointRef> (o))
-                return inRef->input->getDetails().getSampleArrayTypes().front();
-
-            if (auto e = cast<AST::Expression> (o))
-                return e->getResultType();
-
             if (auto e = cast<AST::EndpointDeclaration> (o))
                 return e->getDetails().getSampleArrayTypes().front();
+
+            if (auto e = cast<AST::Expression> (o))
+            {
+                if (auto endpoint = e->getAsEndpoint())
+                    return endpoint->getDetails().getSampleArrayTypes().front();
+
+                return e->getResultType();
+            }
 
             return {};
         }

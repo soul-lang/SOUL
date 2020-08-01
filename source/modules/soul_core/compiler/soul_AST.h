@@ -842,16 +842,17 @@ struct AST
 
         virtual bool isResolved() const = 0;
 
-        virtual Type getResultType() const                     { SOUL_ASSERT_FALSE; return {}; }
-        virtual Type resolveAsType() const                     { SOUL_ASSERT_FALSE; return {}; }
-        virtual pool_ptr<ProcessorBase> getAsProcessor() const { return {}; }
-        virtual bool isOutputEndpoint() const                  { return false; }
-        virtual Constness getConstness() const                 { return Constness::unknown; }
-        virtual const Type* getConcreteType() const            { return {}; }
-        virtual pool_ptr<StructDeclaration> getAsStruct()      { return {}; }
-        virtual pool_ptr<Constant> getAsConstant()             { return {}; }
-        virtual bool isCompileTimeConstant() const             { return false; }
-        virtual bool isAssignable() const                      { return false; }
+        virtual Type getResultType() const                            { SOUL_ASSERT_FALSE; return {}; }
+        virtual Type resolveAsType() const                            { SOUL_ASSERT_FALSE; return {}; }
+        virtual pool_ptr<ProcessorBase> getAsProcessor() const        { return {}; }
+        virtual pool_ptr<EndpointDeclaration> getAsEndpoint() const   { return {}; }
+        virtual bool isOutputEndpoint() const                         { return false; }
+        virtual Constness getConstness() const                        { return Constness::unknown; }
+        virtual const Type* getConcreteType() const                   { return {}; }
+        virtual pool_ptr<StructDeclaration> getAsStruct()             { return {}; }
+        virtual pool_ptr<Constant> getAsConstant()                    { return {}; }
+        virtual bool isCompileTimeConstant() const                    { return false; }
+        virtual bool isAssignable() const                             { return false; }
 
         virtual bool canSilentlyCastTo (const Type& targetType) const
         {
@@ -1021,7 +1022,8 @@ struct AST
         {
         }
 
-        bool isResolved() const override            { return input->isResolved(); }
+        bool isResolved() const override                               { return input->isResolved(); }
+        pool_ptr<EndpointDeclaration> getAsEndpoint() const override   { return input; }
 
         Type getResultType() const override
         {
@@ -1044,8 +1046,9 @@ struct AST
         {
         }
 
-        bool isOutputEndpoint() const override      { return true; }
-        bool isResolved() const override            { return output->isResolved(); }
+        bool isOutputEndpoint() const override                         { return true; }
+        bool isResolved() const override                               { return output->isResolved(); }
+        pool_ptr<EndpointDeclaration> getAsEndpoint() const override   { return output; }
 
         pool_ref<EndpointDeclaration> output;
     };
@@ -1059,7 +1062,16 @@ struct AST
             SOUL_ASSERT (endpointName.path.isUnqualified());
         }
 
-        bool isResolved() const override            { return true; }
+        bool isResolved() const override                { return true; }
+
+        pool_ptr<EndpointDeclaration> getAsEndpoint() const override
+        {
+            if (parentProcessorInstance != nullptr)
+                if (auto p = parentProcessorInstance->getAsProcessor())
+                    return p->findEndpoint (endpointName.toString());
+
+            return {};
+        }
 
         pool_ptr<ProcessorInstanceRef> parentProcessorInstance;
         QualifiedIdentifier& endpointName;
@@ -1091,8 +1103,7 @@ struct AST
 
         static std::string getEndpointName (Expression& e, bool isSource)
         {
-            if (auto i = cast<InputEndpointRef> (e))         return i->input->name;
-            if (auto o = cast<OutputEndpointRef> (e))        return o->output->name;
+            if (auto endpoint = e.getAsEndpoint())           return endpoint->name;
             if (auto er = cast<ConnectionEndpointRef> (e))   return er->endpointName.toString();
             if (auto ar = cast<ArrayElementRef> (e))         return getEndpointName (*ar->object, isSource);
             if (auto dot = cast<DotOperator> (e))            return dot->rhs.toString();

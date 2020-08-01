@@ -111,7 +111,8 @@ namespace soul
     X(unresolvedAnnotation,                 "Cannot resolve constant value in annotation") \
     X(illegalTypeForEndpoint,               "Only primitives or vectors supported by this endpoint type") \
     X(voidCannotBeUsedForEndpoint,          "void is not a valid endpoint type") \
-    X(noMultipleTypesOnEndpoint,            "Multiple data types not supported by this endoint type") \
+    X(noMultipleTypesOnEndpoint,            "Multiple data types not supported by this endpoint type") \
+    X(endpointHasMultipleTypes,             "This endpoint has more than one type") \
     X(incompatibleRatesOnEndpoints,         "Endpoints have incompatible sample rates: $0$ and $1$") \
     X(noSampleRateForEndpoint,              "No endpoint specifies a valid sample rate") \
     X(onlyOneTypeInTopLevelInputs,          "Top level input endpoints can only declare one type") \
