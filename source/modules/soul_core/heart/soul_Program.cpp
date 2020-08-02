@@ -271,15 +271,13 @@ Program::Program (Program&&) = default;
 Program& Program::operator= (const Program&) = default;
 Program& Program::operator= (Program&&) = default;
 
-Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation asmCode)
+Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation heartCode)
 {
     try
     {
         CompileMessageHandler handler (messageList);
-        auto program = heart::Parser::parse (std::move (asmCode));
-
+        auto program = heart::Parser::parse (std::move (heartCode));
         heart::Checker::sanityCheck (program);
-
         return program;
     }
     catch (AbortCompilationException) {}
@@ -299,13 +297,13 @@ Module& Program::getModuleWithName (const std::string& name) const              
 pool_ptr<Module> Program::findModuleContainingFunction (const heart::Function& f) const { return pimpl->findModuleContainingFunction (f); }
 Module& Program::getModuleContainingFunction (const heart::Function& f) const           { return *pimpl->findModuleContainingFunction (f); }
 Module& Program::getOrCreateNamespace (const std::string& name)                         { return pimpl->getOrCreateNamespace (name); }
-pool_ptr<heart::Variable> Program::findVariableWithName (const std::string& name) const  { return pimpl->findVariableWithName (name); }
+pool_ptr<heart::Variable> Program::findVariableWithName (const std::string& name) const { return pimpl->findVariableWithName (name); }
 
 heart::Allocator& Program::getAllocator()                                               { return pimpl->allocator; }
 Module& Program::addGraph (int index)                                                   { return pimpl->insert (index, Module::createGraph     (*this)); }
 Module& Program::addProcessor (int index)                                               { return pimpl->insert (index, Module::createProcessor (*this)); }
 Module& Program::addNamespace (int index)                                               { return pimpl->insert (index, Module::createNamespace (*this)); }
-pool_ptr<Module> Program::findMainProcessor() const                                      { return pimpl->findMainProcessor(); }
+pool_ptr<Module> Program::findMainProcessor() const                                     { return pimpl->findMainProcessor(); }
 StringDictionary& Program::getStringDictionary()                                        { return pimpl->stringDictionary; }
 const StringDictionary& Program::getStringDictionary() const                            { return pimpl->stringDictionary; }
 ConstantTable& Program::getConstantTable()                                              { return pimpl->constantTable; }

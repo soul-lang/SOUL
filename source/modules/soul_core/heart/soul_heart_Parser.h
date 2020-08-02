@@ -104,7 +104,7 @@ struct FunctionParseState
 
 };
 
-    //==============================================================================
+//==============================================================================
 struct heart::Parser   : public Tokeniser<DummyKeywordMatcher,
                                           HEARTOperator::Matcher,
                                           IdentifierMatcher>
@@ -1570,16 +1570,21 @@ private:
 
     void checkVersionDeclaration()
     {
+        auto errorContext = location;
         expect (HEARTOperator::hash);
         expect (getHEARTFormatVersionPrefix());
 
+        if (! matches (Token::literalInt32))
+            errorContext.throwError (Errors::expectedVersionNumber());
+
+        errorContext = location;
         auto version = parseLiteralInt();
 
         if (version <= 0)
-            throwError (Errors::expectedVersionNumber());
+            errorContext.throwError (Errors::expectedVersionNumber());
 
         if (version > getHEARTFormatVersion())
-            throwError (Errors::wrongAPIVersion());
+            errorContext.throwError (Errors::wrongAPIVersion());
     }
 
     uint32_t parseVersionElement()

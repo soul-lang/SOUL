@@ -56,7 +56,7 @@ namespace soul
     X(expectedVariableDecl,                 "Expected a variable declaration") \
     X(expectedInterpolationType,            "Expected an interpolation type") \
     X(expectedStreamType,                   "Expected a stream type specifier") \
-    X(expectedVersionNumber,                "Expected a valid version number") \
+    X(expectedVersionNumber,                "Expected a valid version number after the #SOUL directive") \
     X(expectedModule,                       "Expected a module identifier") \
     X(importsMustBeAtStart,                 "Import statements can only be declared at the start of a namespace") \
     X(namespaceMustBeInsideNamespace,       "A namespace can only be defined inside a namespace") \
@@ -106,6 +106,7 @@ namespace soul
     X(cannotFindMainProcessorWithName,      "Cannot find a main processor matching the name $Q0$") \
     X(cannotFindMainProcessor,              "Cannot find a main processor or graph to use") \
     X(multipleProcessorsMarkedAsMain,       "Multiple processors were marked as 'main'") \
+    X(onlyOneHeartFileAllowed,              "When compiling HEART code, only a single module must be provided") \
     X(cannotUseProcessorInLet,              "The processor $Q0$ cannot be used in a 'let' statement if it is also used directly in a connection") \
     X(duplicateTypesInList,                 "Duplicate types found in type list: $0$ and $1$") \
     X(unresolvedAnnotation,                 "Cannot resolve constant value in annotation") \

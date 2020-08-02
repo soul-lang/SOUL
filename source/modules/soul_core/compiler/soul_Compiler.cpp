@@ -97,10 +97,51 @@ static void sanityCheckBuildSettings (const BuildSettings& settings,
         CodeLocation().throwError (Errors::unsupportedOptimisationLevel());
 }
 
+static ArrayWithPreallocation<CodeLocation, 4> getHEARTFiles (const BuildBundle& bundle)
+{
+    ArrayWithPreallocation<CodeLocation, 4> result;
+
+    for (auto& file : bundle.sourceFiles)
+    {
+        auto code = CodeLocation::createFromSourceFile (file);
+
+        if (code.location.findEndOfWhitespace().startsWith ("#SOUL"))
+            result.push_back (code);
+    }
+
+    return result;
+}
+
+static Program buildHEART (CompileMessageList& messageList, CodeLocation code)
+{
+    try
+    {
+        CompileMessageHandler handler (messageList);
+        auto program = heart::Parser::parse (code);
+        heart::Checker::sanityCheck (program);
+        return program;
+    }
+    catch (AbortCompilationException) {}
+
+    return {};
+}
+
+
 //==============================================================================
 Program Compiler::build (CompileMessageList& messageList, const BuildBundle& bundle)
 {
     sanityCheckBuildSettings (bundle.settings);
+
+    auto heartFiles = getHEARTFiles (bundle);
+
+    if (! heartFiles.empty())
+    {
+        if (heartFiles.size() > 1 || heartFiles.size() < bundle.sourceFiles.size())
+            CodeLocation().throwError (Errors::onlyOneHeartFileAllowed());
+
+        return buildHEART (messageList, heartFiles.front());
+    }
+
     Compiler c;
 
     for (auto& file : bundle.sourceFiles)
