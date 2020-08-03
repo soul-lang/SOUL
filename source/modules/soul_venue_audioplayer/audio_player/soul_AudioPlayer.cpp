@@ -75,10 +75,8 @@ public:
         soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() override             { return performer->getInputEndpoints(); }
         soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() override            { return performer->getOutputEndpoints(); }
 
-        bool load (CompileMessageList& messageList, const BuildBundle& build) override
+        bool load (CompileMessageList& messageList, const Program& program) override
         {
-            auto program = soul::Compiler::build (messageList, build);
-
             if (program.isEmpty())
                 return false;
 
