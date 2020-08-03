@@ -195,7 +195,7 @@ struct heart
         {
             for (auto& sampleType : dataTypes)
                 if (TypeRules::canPassAsArgumentTo (isElementAccess ? sampleType : getSampleArrayType (sampleType), t, true))
-                    return getSampleArrayType (sampleType);
+                    return sampleType;
 
             SOUL_ASSERT_FALSE;
             return {};
