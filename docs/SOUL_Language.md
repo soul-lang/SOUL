@@ -739,6 +739,29 @@ graph ExampleGraph
 }
 ```
 
+###### Default endpoints and connection chaining
+
+When you have a processor with only a single input or output endpoint, you can omit the name of the endpoint, e.g.
+
+```C++
+connection  audioIn -> Reverb; // this is OK as long as the Reverb processor only has a single input
+```
+
+Connections may also be written as a chain, as long as any processors in the middle of the chain don't have more than one input or output, e.g.
+
+```C++
+connection  audioIn -> Delay -> Chorus -> Reverb -> audioOut;
+```
+
+###### Fan-in/out
+
+If you want to connect multiple sources to a single destination, or send a single source to multiple destinations, a more concise way to write all those connections is to use a comma-separated list, e.g.
+
+```C++
+connection   filter1, filter2, filter3 -> audioOut; // all 3 processors are summed into the audioOut
+connection   audioIn -> filter1, filter2, filter3; // each value from audioIn is copied to 3 destinations
+```
+
 ##### Delay Lines
 
 A connection may be used to introduce a delay into the signal chain. To add a delay to a connection, just add a bracketed value to indicate the number of samples to introduce:
