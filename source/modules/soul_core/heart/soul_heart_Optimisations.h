@@ -472,9 +472,9 @@ private:
         removeIf (module.connections,
                   [&] (heart::Connection& connection)
                   {
-                      if (connection.sourceProcessor == nullptr)
+                      if (connection.source.processor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection.sourceEndpoint == i->name.toString())
+                              if (connection.source.endpointName == i->name.toString())
                                   return true;
 
                       return false;
@@ -506,9 +506,9 @@ private:
         removeIf (module.connections,
                   [&] (heart::Connection& connection)
                   {
-                      if (connection.destProcessor == nullptr)
+                      if (connection.dest.processor == nullptr)
                           for (auto& i : toRemove)
-                              if (connection.destEndpoint == i->name.toString())
+                              if (connection.dest.endpointName == i->name.toString())
                                   return true;
 
                       return false;

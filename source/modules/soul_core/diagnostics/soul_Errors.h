@@ -171,6 +171,10 @@ namespace soul
     X(processorParamsCannotBeReference,     "Processor parameter types cannot be references") \
     X(externalNeedsInitialiser,             "External variables cannot be given an initialiser value") \
     X(externalNotAllowedInFunction,         "External constants cannot be declared inside a function") \
+    X(latencyMustBeConst,                   "The latency value must be declared as a constant") \
+    X(latencyMustBeInteger,                 "The latency value must be declared as an integer") \
+    X(latencyOutOfRange,                    "This latency value is out of range") \
+    X(latencyOnlyForProcessor,              "The internal latency can only be delcared in a processor") \
     X(cannotReferenceOtherProcessorVar,     "Cannot reference a mutable variable belonging to another processor") \
     X(externalOnlyAllowedOnStateVars,       "The 'external' flag can only be applied to state variables") \
     X(wrongTypeForUnary,                    "Illegal type for unary operator") \

@@ -231,14 +231,14 @@ private:
         auto& c = module.allocate<heart::Connection> (conn.context.location);
         module.connections.push_back (c);
 
-        c.sourceProcessor     = getOrAddProcessorInstance (conn.getSourceProcessor());
-        c.destProcessor       = getOrAddProcessorInstance (conn.getDestProcessor());
-        c.sourceEndpoint      = conn.getSourceEndpointName();
-        c.sourceEndpointIndex = conn.getSourceEndpointIndex();
-        c.destEndpoint        = conn.getDestEndpointName();
-        c.destEndpointIndex   = conn.getDestEndpointIndex();
-        c.interpolationType   = conn.interpolationType;
-        c.delayLength         = getDelayLength (conn.delayLength);
+        c.source.processor      = getOrAddProcessorInstance (conn.getSourceProcessor());
+        c.dest.processor        = getOrAddProcessorInstance (conn.getDestProcessor());
+        c.source.endpointName   = conn.getSourceEndpointName();
+        c.source.endpointIndex  = conn.getSourceEndpointIndex();
+        c.dest.endpointName     = conn.getDestEndpointName();
+        c.dest.endpointIndex    = conn.getDestEndpointIndex();
+        c.interpolationType     = conn.interpolationType;
+        c.delayLength           = getDelayLength (conn.delayLength);
     }
 
     static std::optional<size_t> getEndpointIndex (pool_ptr<AST::Expression> index)

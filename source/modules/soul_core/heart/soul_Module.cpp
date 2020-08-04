@@ -25,7 +25,8 @@
 namespace soul
 {
 
-Module::Module (Program& p, ModuleType type) : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
+Module::Module (Program& p, ModuleType type)
+  : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
 {
 }
 
@@ -119,6 +120,15 @@ Structure& Module::addStructCopy (Structure& s)
     return *structs.back();
 }
 
+StructurePtr Module::findStruct (std::string_view name) const noexcept
+{
+    for (auto& s : structs)
+        if (name == s->getName())
+            return s;
+
+    return {};
+}
+
 Structure& Module::findOrAddStruct (std::string name)
 {
     if (auto s = findStruct (name))
@@ -140,6 +150,11 @@ void Module::rebuildVariableUseCounts()
 
     for (auto& f : functions)
         f->rebuildVariableUseCounts();
+}
+
+uint32_t Module::getLatencySamples() const
+{
+    return heart::Checker::checkAndReturnInternalLatencyValue (*this);
 }
 
 } // namespace soul

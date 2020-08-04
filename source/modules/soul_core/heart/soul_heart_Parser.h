@@ -466,9 +466,9 @@ private:
 
         c.interpolationType = parseInterpolationType (*this);
         auto src = readProcessorAndChannel();
-        c.sourceProcessor = src.processor;
-        c.sourceEndpoint = src.endpoint;
-        c.sourceEndpointIndex = src.endpointIndex;
+        c.source.processor = src.processor;
+        c.source.endpointName = src.endpoint;
+        c.source.endpointIndex = src.endpointIndex;
         expect (HEARTOperator::rightArrow);
 
         if (matchIf (HEARTOperator::openBracket))
@@ -486,9 +486,9 @@ private:
         }
 
         auto dst = readProcessorAndChannel();
-        c.destProcessor = dst.processor;
-        c.destEndpoint = dst.endpoint;
-        c.destEndpointIndex = dst.endpointIndex;
+        c.dest.processor = dst.processor;
+        c.dest.endpointName = dst.endpoint;
+        c.dest.endpointIndex = dst.endpointIndex;
 
         expectSemicolon();
     }

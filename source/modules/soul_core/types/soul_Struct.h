@@ -43,7 +43,7 @@ public:
     };
 
     bool empty() const                                              { return members.empty(); }
-    const std::string& getName() const                              { return name; }
+    const std::string& getName() const noexcept                     { return name; }
     size_t getNumMembers() const                                    { return members.size(); }
 
     ArrayWithPreallocation<Member, 8>& getMembers()                 { return members; }

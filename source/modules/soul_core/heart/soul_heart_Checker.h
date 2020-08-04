@@ -23,18 +23,19 @@ namespace soul
 
 struct heart::Checker
 {
-    static void sanityCheck (Program& program)
+    static void sanityCheck (const Program& program)
     {
-        program.getMainProcessor();
+        ignoreUnused (program.getMainProcessor());
         sanityCheckInputsAndOutputs (program);
         sanityCheckAdvanceAndStreamCalls (program);
         checkConnections (program);
         checkForRecursiveFunctions (program);
         checkForInfiniteLoops (program);
         checkBlockParameters (program);
+        checkLatencies (program);
     }
 
-    static void sanityCheckInputsAndOutputs (Program& program)
+    static void sanityCheckInputsAndOutputs (const Program& program)
     {
         auto& mainProcessor = program.getMainProcessor();
 
@@ -48,13 +49,11 @@ struct heart::Checker
         }
 
         for (auto& output : mainProcessor.outputs)
-        {
             if (output->arraySize.has_value())
                 output->location.throwError (Errors::notYetImplemented ("top-level arrays of outputs"));
-        }
     }
 
-    static void checkConnections (Program& program)
+    static void checkConnections (const Program& program)
     {
         for (auto& m : program.getModules())
         {
@@ -64,48 +63,48 @@ struct heart::Checker
                 {
                     pool_ptr<heart::IODeclaration> sourceOutput, destInput;
                     size_t sourceInstanceArraySize = 1, destInstanceArraySize = 1;
-                    auto sourceDescription = conn->sourceEndpoint;
-                    auto destDescription   = conn->destEndpoint;
+                    auto sourceDescription = conn->source.endpointName;
+                    auto destDescription   = conn->dest.endpointName;
 
-                    if (conn->sourceProcessor != nullptr)
+                    if (auto sourceProcessor = conn->source.processor)
                     {
-                        auto sourceModule = program.findModuleWithName (conn->sourceProcessor->sourceName);
+                        auto sourceModule = program.findModuleWithName (sourceProcessor->sourceName);
 
                         if (sourceModule == nullptr)
-                            conn->location.throwError (Errors::cannotFindProcessor (conn->sourceProcessor->sourceName));
+                            conn->location.throwError (Errors::cannotFindProcessor (sourceProcessor->sourceName));
 
-                        sourceOutput = sourceModule->findOutput (conn->sourceEndpoint);
-                        sourceInstanceArraySize = conn->sourceEndpointIndex.has_value() ? conn->sourceProcessor->arraySize : 1;
-                        sourceDescription = conn->sourceProcessor->instanceName + "." + sourceDescription;
+                        sourceOutput = sourceModule->findOutput (conn->source.endpointName);
+                        sourceInstanceArraySize = conn->source.endpointIndex.has_value() ? sourceProcessor->arraySize : 1;
+                        sourceDescription = sourceProcessor->instanceName + "." + sourceDescription;
                     }
                     else
                     {
-                        sourceOutput = m->findInput (conn->sourceEndpoint);
+                        sourceOutput = m->findInput (conn->source.endpointName);
                     }
 
-                    if (conn->destProcessor != nullptr)
+                    if (auto destProcessor = conn->dest.processor)
                     {
-                        auto destModule = program.findModuleWithName (conn->destProcessor->sourceName);
+                        auto destModule = program.findModuleWithName (destProcessor->sourceName);
 
                         if (destModule == nullptr)
-                            conn->location.throwError (Errors::cannotFindProcessor (conn->destProcessor->sourceName));
+                            conn->location.throwError (Errors::cannotFindProcessor (destProcessor->sourceName));
 
-                        destInput = destModule->findInput (conn->destEndpoint);
-                        destInstanceArraySize = conn->destEndpointIndex.has_value() ? conn->destProcessor->arraySize : 1;
-                        destDescription = conn->destProcessor->instanceName + "." + destDescription;
+                        destInput = destModule->findInput (conn->dest.endpointName);
+                        destInstanceArraySize = conn->dest.endpointIndex.has_value() ? destProcessor->arraySize : 1;
+                        destDescription = destProcessor->instanceName + "." + destDescription;
                     }
                     else
                     {
-                        destInput = m->findOutput (conn->destEndpoint);
+                        destInput = m->findOutput (conn->dest.endpointName);
                     }
 
                     if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindSource (sourceDescription));
                     if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindDestination (destDescription));
 
-                    if (conn->sourceEndpointIndex && sourceOutput->arraySize <= conn->sourceEndpointIndex)
+                    if (conn->source.endpointIndex && sourceOutput->arraySize <= conn->source.endpointIndex)
                         conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());
 
-                    if (conn->destEndpointIndex && destInput->arraySize <= conn->destEndpointIndex)
+                    if (conn->dest.endpointIndex && destInput->arraySize <= conn->dest.endpointIndex)
                         conn->location.throwError (Errors::destinationEndpointIndexOutOfRange());
 
                     if (sourceOutput->endpointType != destInput->endpointType)
@@ -162,8 +161,7 @@ struct heart::Checker
         return false;
     }
 
-
-    static void sanityCheckAdvanceAndStreamCalls (Program& program)
+    static void sanityCheckAdvanceAndStreamCalls (const Program& program)
     {
         for (auto& m : program.getModules())
         {
@@ -195,11 +193,36 @@ struct heart::Checker
         }
     }
 
+    static uint32_t checkAndReturnInternalLatencyValue (const Module& module)
+    {
+        static constexpr int64_t maxInternalLatency = 20 * 48000;
 
+        if (auto latencyVar = module.findStateVariable (heart::getInternalDelayVariableName()))
+        {
+            if (! module.isProcessor())
+                latencyVar->location.throwError (Errors::latencyOnlyForProcessor());
 
+            if (latencyVar->isAssignable() || latencyVar->initialValue == nullptr)
+                latencyVar->location.throwError (Errors::latencyMustBeConst());
+
+            auto value = latencyVar->initialValue->getAsConstant();
+
+            if (! value.getType().isPrimitiveInteger())
+                latencyVar->initialValue->location.throwError (Errors::latencyMustBeInteger());
+
+            auto latency = value.getAsInt64();
+
+            if (latency < 0 || latency > maxInternalLatency)
+                latencyVar->initialValue->location.throwError (Errors::latencyOutOfRange());
+
+            return static_cast<uint32_t> (latency);
+        }
+
+        return 0;
+    }
 
     //==============================================================================
-    static void checkForInfiniteLoops (Program& program)
+    static void checkForInfiniteLoops (const Program& program)
     {
         for (auto& m : program.getModules())
             for (auto& f : m->functions)
@@ -207,7 +230,7 @@ struct heart::Checker
                     f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
 
-    static void checkForRecursiveFunctions (Program& program)
+    static void checkForRecursiveFunctions (const Program& program)
     {
         auto callSequenceCheckResult = CallFlowGraph::checkFunctionCallSequences (program);
 
@@ -226,8 +249,7 @@ struct heart::Checker
         }
     }
 
-    //==============================================================================
-    static void checkBlockParameters (Program& program)
+    static void checkBlockParameters (const Program& program)
     {
         for (auto& m : program.getModules())
         {
@@ -273,6 +295,11 @@ struct heart::Checker
         }
     }
 
+    static void checkLatencies (const Program& program)
+    {
+        for (auto& m : program.getModules())
+            ignoreUnused (checkAndReturnInternalLatencyValue (m));
+    }
 
     static void testHEARTRoundTrip (const Program& program)
     {

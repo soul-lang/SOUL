@@ -79,6 +79,7 @@ struct heart
     static constexpr const char* getUserInitFunctionName()          { return "init"; }
     static constexpr const char* getSystemInitFunctionName()        { return "_initialise"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
+    static constexpr const char* getInternalDelayVariableName()     { return "internalDelay"; }
 
     static std::string getEventFunctionName (const std::string& endpointName, const Type& t)
     {
@@ -119,7 +120,7 @@ struct heart
     };
 
     //==============================================================================
-    struct IODeclaration : public Object
+    struct IODeclaration  : public Object
     {
         IODeclaration (CodeLocation l) : Object (std::move (l)) {}
 
@@ -278,18 +279,21 @@ struct heart
         double getClockRatio() const       { return static_cast<double> (clockMultiplier) / static_cast<double> (clockDivider); }
     };
 
+    struct EndpointReference
+    {
+        pool_ptr<ProcessorInstance> processor;
+        std::string endpointName;
+        std::optional<size_t> endpointIndex;
+        void* temporaryData = nullptr; // a general-purpose slot, used for temporary storage by algorithms
+    };
+
     struct Connection  : public Object
     {
         Connection (CodeLocation l) : Object (std::move (l)) {}
 
+        EndpointReference source, dest;
         InterpolationType interpolationType = InterpolationType::none;
-        pool_ptr<ProcessorInstance> sourceProcessor, destProcessor;
-        std::string sourceEndpoint, destEndpoint;
-        std::optional<size_t> sourceEndpointIndex, destEndpointIndex;
         int64_t delayLength = 0;
-
-        pool_ptr<heart::IODeclaration> source;
-        pool_ptr<heart::IODeclaration> destination;
     };
 
     template <typename Thrower>
@@ -923,7 +927,7 @@ struct heart
 
         std::vector<pool_ref<Block>> predecessors;
         bool doNotOptimiseAway = false;
-        void* temporaryData; // a general-purpose slot, used for temporary storage by algorithms
+        void* temporaryData = nullptr; // a general-purpose slot, used for temporary storage by algorithms
     };
 
     struct Statement  : public Object

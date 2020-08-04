@@ -73,7 +73,7 @@ struct CallFlowGraph
     /** Iterates all function call seqeunces to calculate stack usage and also to spot
         recursive call sequences.
     */
-    static CallSequenceCheckResults checkFunctionCallSequences (Program& program)
+    static CallSequenceCheckResults checkFunctionCallSequences (const Program& program)
     {
         for (auto& m : program.getModules())
             for (auto& f : m->functions)

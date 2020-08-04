@@ -55,13 +55,8 @@ public:
     double sampleRate = 0;
 
     //==============================================================================
-    heart::Allocator& allocator;
-
-    template <typename Type, typename... Args>
-    Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
-
-    //==============================================================================
     bool isSystemModule() const;
+    uint32_t getLatencySamples() const;
 
     pool_ptr<heart::Function> findRunFunction() const;
     heart::Function& getRunFunction() const;
@@ -77,22 +72,21 @@ public:
     Structure& addStruct (std::string name);
     Structure& addStructCopy (Structure&);
     Structure& findOrAddStruct (std::string name);
-
-    template <typename StringOrIdentifier>
-    StructurePtr findStruct (const StringOrIdentifier& name) const noexcept
-    {
-        for (auto& s : structs)
-            if (name == s->getName())
-                return s;
-
-        return {};
-    }
+    StructurePtr findStruct (std::string_view name) const noexcept;
 
     //==============================================================================
     void rebuildBlockPredecessors();
     void rebuildVariableUseCounts();
 
+    //==============================================================================
+    heart::Allocator& allocator;
+
+    template <typename Type, typename... Args>
+    Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
+
+
 private:
+    //==============================================================================
     friend class Program;
 
     uint32_t moduleID = 0;
