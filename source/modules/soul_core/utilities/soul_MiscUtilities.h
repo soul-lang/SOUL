@@ -141,6 +141,18 @@ private:
 };
 
 //==============================================================================
+// Used as a member in some classes to provide algorithms with a handy place to stash temporary working data
+struct TemporaryDataHolder
+{
+    uint64_t space[2];
+
+    template <typename Type> void set (Type n)   { static_assert (sizeof (Type) <= sizeof (space)); writeUnaligned (space, n); }
+    template <typename Type> Type get() const    { static_assert (sizeof (Type) <= sizeof (space)); return readUnaligned<Type> (space); }
+    void clear() noexcept                        { for (auto& i : space) i = {}; }
+};
+
+
+//==============================================================================
 struct ScopedDisableDenormals
 {
     ScopedDisableDenormals() noexcept;

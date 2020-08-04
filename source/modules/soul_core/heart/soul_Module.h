@@ -56,7 +56,6 @@ public:
 
     //==============================================================================
     bool isSystemModule() const;
-    uint32_t getLatencySamples() const;
 
     pool_ptr<heart::Function> findRunFunction() const;
     heart::Function& getRunFunction() const;

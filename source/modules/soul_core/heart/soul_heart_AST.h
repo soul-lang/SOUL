@@ -273,6 +273,7 @@ struct heart
         int64_t clockMultiplier = 1;
         int64_t clockDivider = 1;
         uint32_t arraySize = 1;
+        TemporaryDataHolder tempData;
 
         bool hasClockMultiplier() const    { return clockMultiplier != 1; }
         bool hasClockDivider() const       { return clockDivider != 1; }
@@ -284,7 +285,7 @@ struct heart
         pool_ptr<ProcessorInstance> processor;
         std::string endpointName;
         std::optional<size_t> endpointIndex;
-        void* temporaryData = nullptr; // a general-purpose slot, used for temporary storage by algorithms
+        TemporaryDataHolder tempData;
     };
 
     struct Connection  : public Object
@@ -927,7 +928,7 @@ struct heart
 
         std::vector<pool_ref<Block>> predecessors;
         bool doNotOptimiseAway = false;
-        void* temporaryData = nullptr; // a general-purpose slot, used for temporary storage by algorithms
+        TemporaryDataHolder tempData;
     };
 
     struct Statement  : public Object

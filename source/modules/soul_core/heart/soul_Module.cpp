@@ -26,18 +26,18 @@ namespace soul
 {
 
 Module::Module (Program& p, ModuleType type)
-  : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
+   : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
 {
 }
 
 Module::Module (Program& p, const Module& toClone)
-    : program (*p.pimpl, false),
-      shortName (toClone.shortName),
-      fullName (toClone.fullName),
-      originalFullName (toClone.originalFullName),
-      annotation (toClone.annotation),
-      allocator (p.getAllocator()),
-      moduleType (toClone.moduleType)
+   : program (*p.pimpl, false),
+     shortName (toClone.shortName),
+     fullName (toClone.fullName),
+     originalFullName (toClone.originalFullName),
+     annotation (toClone.annotation),
+     allocator (p.getAllocator()),
+     moduleType (toClone.moduleType)
 {
 }
 
@@ -150,11 +150,6 @@ void Module::rebuildVariableUseCounts()
 
     for (auto& f : functions)
         f->rebuildVariableUseCounts();
-}
-
-uint32_t Module::getLatencySamples() const
-{
-    return heart::Checker::checkAndReturnInternalLatencyValue (*this);
 }
 
 } // namespace soul

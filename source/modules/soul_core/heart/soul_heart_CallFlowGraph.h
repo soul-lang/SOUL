@@ -93,19 +93,19 @@ private:
     static void resetVisitedFlags (const heart::Function& f)
     {
         for (auto& b : f.blocks)
-            b->temporaryData = {};
+            b->tempData.clear();
     }
 
     static bool visitDownstreamBlocks (heart::Block& start, std::function<bool(heart::Block&)> visitor)
     {
         for (auto b : start.terminator->getDestinationBlocks())
         {
-            if (b->temporaryData == nullptr)
+            if (! b->tempData.get<bool>())
             {
                 if (! visitor (b))
                     return false;
 
-                b->temporaryData = (void*) 1u;
+                b->tempData.set (true);
 
                 if (! visitDownstreamBlocks (b, visitor))
                     return false;
@@ -119,12 +119,12 @@ private:
     {
         for (auto b : start.predecessors)
         {
-            if (b->temporaryData == nullptr)
+            if (! b->tempData.get<bool>())
             {
                 if (! visitor (b))
                     return false;
 
-                b->temporaryData = (void*) 1u;
+                b->tempData.set (true);
 
                 if (! visitUpstreamBlocks (b, visitor))
                     return false;
@@ -145,7 +145,7 @@ private:
             ArrayWithPreallocation<pool_ref<heart::Variable>, 16> variablesUsedDuringBlock, variablesUnsafeAtEnd;
             bool isFullyResolved = false;
 
-            static BlockState& get (const heart::Block& b)  { return *static_cast<BlockState*> (b.temporaryData); }
+            static BlockState& get (const heart::Block& b)  { return *b.tempData.get<BlockState*>(); }
         };
 
         std::vector<BlockState> states;
@@ -158,7 +158,7 @@ private:
             for (auto& block : f.blocks)
             {
                 auto& state = states[index++];
-                block->temporaryData = std::addressof (state);
+                block->tempData.set (std::addressof (state));
 
                 block->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType)
                 {
