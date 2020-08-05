@@ -354,6 +354,83 @@ struct heart::Utilities
 
         return value;
     }
+
+    //==============================================================================
+    template <typename Subclass, typename ProcessorType, typename ConnectionType, typename ContextType>
+    struct GraphCycleDetector
+    {
+        void addNode (ProcessorType& p)
+        {
+            nodes.push_back ({ p });
+        }
+
+        void addConnection (ProcessorType& source, ProcessorType& dest, ConnectionType& c)
+        {
+            if (auto src = findNode (source))
+                if (auto dst = findNode (dest))
+                    dst->sources.push_back ({ src, c });
+        }
+
+        void check()
+        {
+            for (auto& n : nodes)
+                check (n, nullptr, {});
+        }
+
+    private:
+        struct Node
+        {
+            struct Source
+            {
+                Node* node;
+                ConnectionType& connection;
+            };
+
+            ProcessorType& processor;
+            ArrayWithPreallocation<Source, 4> sources;
+        };
+
+        std::vector<Node> nodes;
+
+        Node* findNode (ProcessorType& p)
+        {
+            for (auto& n : nodes)
+                if (std::addressof (n.processor) == std::addressof (p))
+                    return std::addressof (n);
+
+            SOUL_ASSERT_FALSE;
+        }
+
+        struct VisitedStack
+        {
+            const VisitedStack* previous = nullptr;
+            const Node* node = nullptr;
+        };
+
+        void check (Node& node, const VisitedStack* stack, const ContextType& errorContext)
+        {
+            for (auto s = stack; s != nullptr; s = s->previous)
+                if (s->node == std::addressof (node))
+                    throwCycleError (stack, errorContext);
+
+            const VisitedStack newStack { stack, std::addressof (node) };
+
+            for (auto& source : node.sources)
+                check (*source.node, std::addressof (newStack), Subclass::getContext (source.connection));
+        }
+
+        void throwCycleError (const VisitedStack* stack, const ContextType& errorContext)
+        {
+            std::vector<std::string> nodesInCycle;
+
+            for (auto node = stack; node != nullptr; node = node->previous)
+                nodesInCycle.push_back (Subclass::getProcessorName (node->node->processor));
+
+            nodesInCycle.push_back (nodesInCycle.front());
+
+            errorContext.throwError (Errors::feedbackInGraph (joinStrings (nodesInCycle, " -> ")));
+        }
+    };
 };
 
 }

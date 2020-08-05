@@ -309,88 +309,6 @@ struct SanityCheckPass  final
         const AST::Graph* graph = nullptr;
     };
 
-    //==============================================================================
-    struct CycleDetector
-    {
-        CycleDetector (AST::Graph& g)
-        {
-            for (auto& n : g.processorInstances)
-                nodes.push_back ({ n });
-
-            for (auto& c : g.connections)
-                if (c->delayLength == nullptr)
-                    if (auto src = findNode (c->getSourceProcessor()))
-                        if (auto dst = findNode (c->getDestProcessor()))
-                            dst->sources.push_back ({ src, c });
-        }
-
-        void check()
-        {
-            for (auto& n : nodes)
-                check (n, nullptr, {});
-        }
-
-    private:
-        struct Node
-        {
-            struct Source
-            {
-                Node* node;
-                pool_ref<AST::Connection> connection;
-            };
-
-            pool_ref<AST::ProcessorInstance> processor;
-            ArrayWithPreallocation<Source, 4> sources;
-        };
-
-        std::vector<Node> nodes;
-
-        Node* findNode (pool_ptr<AST::ProcessorInstance> p)
-        {
-            if (p != nullptr)
-            {
-                auto& nodeName = p->instanceName->path;
-
-                for (auto& n : nodes)
-                    if (nodeName == n.processor->instanceName->path)
-                        return std::addressof (n);
-
-                SOUL_ASSERT_FALSE;
-            }
-
-            return {};
-        }
-
-        struct VisitedStack
-        {
-            const VisitedStack* previous = nullptr;
-            const Node* node = nullptr;
-        };
-
-        void check (Node& node, const VisitedStack* stack, const AST::Context& errorContext)
-        {
-            for (auto s = stack; s != nullptr; s = s->previous)
-                if (s->node == std::addressof (node))
-                    throwCycleError (stack, errorContext);
-
-            const VisitedStack newStack { stack, std::addressof (node) };
-
-            for (auto& source : node.sources)
-                check (*source.node, std::addressof (newStack), source.connection->context);
-        }
-
-        void throwCycleError (const VisitedStack* stack, const AST::Context& errorContext)
-        {
-            std::vector<std::string> nodesInCycle;
-
-            for (auto node = stack; node != nullptr; node = node->previous)
-                nodesInCycle.push_back (node->node->processor->instanceName->path.toString());
-
-            nodesInCycle.push_back (nodesInCycle.front());
-
-            errorContext.throwError (Errors::feedbackInGraph (joinStrings (nodesInCycle, " -> ")));
-        }
-    };
 
 private:
     //==============================================================================
@@ -639,6 +557,25 @@ private:
                     v->context.throwError (Errors::nonConstInGraph());
 
             RecursiveGraphDetector::check (g);
+
+            struct CycleDetector  : public heart::Utilities::GraphCycleDetector<CycleDetector, AST::ProcessorInstance, AST::Connection, AST::Context>
+            {
+                CycleDetector (AST::Graph& graph)
+                {
+                    for (auto& p : graph.processorInstances)
+                        addNode (p);
+
+                    for (auto& c : graph.connections)
+                        if (c->delayLength == nullptr)
+                            if (auto src = c->getSourceProcessor())
+                                if (auto dst = c->getDestProcessor())
+                                    addConnection (*src, *dst, c);
+                }
+
+                static std::string getProcessorName (const AST::ProcessorInstance& p)  { return p.instanceName->path.toString(); }
+                static const AST::Context& getContext (const AST::Connection& c)       { return c.context; }
+            };
+
             CycleDetector (g).check();
         }
 
