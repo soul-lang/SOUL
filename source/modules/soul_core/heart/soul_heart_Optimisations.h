@@ -164,13 +164,6 @@ struct Optimisations
         mergeAdjacentBlocks (f);
     }
 
-    template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedEndpoints (Module& module, EndpointConnectionStatusProvider& ecsp)
-    {
-        removeUnconnectedInputs (module, ecsp);
-        removeUnconnectedOutputs (module, ecsp);
-    }
-
     static void makeFunctionCallInline (Program& program, heart::Function& parentFunction,
                                         size_t blockIndex, heart::FunctionCall& call)
     {
@@ -457,79 +450,6 @@ private:
         });
     }
 
-    //==============================================================================
-    template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedInputs (Module& module, EndpointConnectionStatusProvider& ecsp)
-    {
-        std::vector<pool_ref<heart::InputDeclaration>> toRemove;
-
-        for (auto& i : module.inputs)
-            if (! ecsp.isInputConnected (i))
-                toRemove.push_back (i);
-
-        removeFromVector (module.inputs, toRemove);
-
-        removeIf (module.connections,
-                  [&] (heart::Connection& connection)
-                  {
-                      if (connection.source.processor == nullptr)
-                          for (auto& i : toRemove)
-                              if (connection.source.endpointName == i->name.toString())
-                                  return true;
-
-                      return false;
-                  });
-
-        for (auto& f : module.functions)
-        {
-            f->visitExpressions ([&] (pool_ref<heart::Expression>& value, AccessType mode)
-            {
-                if (mode == AccessType::read)
-                    if (auto i = cast<heart::InputDeclaration> (value))
-                        if (contains (toRemove, i))
-                            value = module.allocator.allocateZeroInitialiser (value->getType());
-            });
-        }
-    }
-
-    template <typename EndpointConnectionStatusProvider>
-    static void removeUnconnectedOutputs (Module& module, EndpointConnectionStatusProvider& ecsp)
-    {
-        std::vector<pool_ref<heart::OutputDeclaration>> toRemove;
-
-        for (auto& o : module.outputs)
-            if (! ecsp.isOutputConnected (o))
-                toRemove.push_back (o);
-
-        removeFromVector (module.outputs, toRemove);
-
-        removeIf (module.connections,
-                  [&] (heart::Connection& connection)
-                  {
-                      if (connection.dest.processor == nullptr)
-                          for (auto& i : toRemove)
-                              if (connection.dest.endpointName == i->name.toString())
-                                  return true;
-
-                      return false;
-                  });
-
-        for (auto& f : module.functions)
-        {
-            for (auto& b : f->blocks)
-            {
-                b->statements.removeMatches ([&] (heart::Statement& s)
-                {
-                    if (auto w = cast<heart::WriteStream> (s))
-                        return contains (toRemove, w->target);
-
-                    return false;
-                });
-            }
-        }
-    }
-
-    //==============================================================================
     struct Inliner
     {
         Inliner (Module& m, heart::Function& parentFn, size_t block,
