@@ -1102,6 +1102,7 @@ private:
                 return b.block;
 
         throwError (Errors::cannotFind (name));
+        return state.blocks.front().block;
     }
 
     heart::Block& readBlockNameAndFind (const FunctionParseState& state)
