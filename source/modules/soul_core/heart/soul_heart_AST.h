@@ -741,15 +741,6 @@ struct heart
         bool functionUseTestFlag = false;
         uint64_t localVariableStackSize = 0;
 
-        pool_ptr<Block> findBlockByName (const std::string& blockName) const
-        {
-            for (auto b : blocks)
-                if (b->name == blockName)
-                    return b;
-
-            return {};
-        }
-
         void addStateParameter (Variable& param)
         {
             SOUL_ASSERT (! hasStateParameter());

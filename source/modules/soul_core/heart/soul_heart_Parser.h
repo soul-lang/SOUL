@@ -1095,19 +1095,28 @@ private:
         module->latency = static_cast<uint32_t> (latency);
     }
 
-    heart::Block& findBlock (const FunctionParseState& state, Identifier name)
+    heart::Block& getBlock (const FunctionParseState& state, Identifier name)
+    {
+        auto b = findBlock (state, name);
+
+        if (b == nullptr)
+            throwError (Errors::cannotFind (name));
+
+        return *b;
+    }
+
+    pool_ptr<heart::Block> findBlock (const FunctionParseState& state, Identifier name)
     {
         for (auto& b : state.blocks)
             if (b.block.name == name)
                 return b.block;
 
-        throwError (Errors::cannotFind (name));
-        return state.blocks.front().block;
+        return {};
     }
 
     heart::Block& readBlockNameAndFind (const FunctionParseState& state)
     {
-        return findBlock (state, readBlockName());
+        return getBlock (state, readBlockName());
     }
 
     pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
