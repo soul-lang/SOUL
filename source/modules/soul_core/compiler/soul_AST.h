@@ -103,7 +103,7 @@ struct AST
     static constexpr size_t maxEndpointArraySize = 256;
     static constexpr size_t maxProcessorArraySize = 256;
     static constexpr size_t maxDelayLineLength = 1024 * 256;
-
+    static constexpr int64_t maxInternalLatency = 20 * 48000;
 
     struct ASTObject;
     struct Scope;
@@ -700,6 +700,8 @@ struct AST
         std::vector<pool_ref<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
         std::vector<pool_ref<VariableDeclaration>>*  getStateVariableList() override         { return &stateVariables; }
         std::vector<pool_ref<Function>>*             getFunctionList() override              { return &functions; }
+
+        pool_ptr<Expression> latency;
 
         void addSpecialisationParameter (VariableDeclaration& v) override
         {

@@ -230,6 +230,27 @@ struct SanityCheckPass  final
         return value;
     }
 
+    static uint32_t checkLatency (AST::Expression& latency)
+    {
+        if (AST::isResolvedAsConstant (latency))
+        {
+            if (auto constant = latency.getAsConstant())
+            {
+                if (constant->value.getType().isPrimitiveInteger())
+                {
+                    auto value = constant->value.getAsInt64();
+
+                    if (value < 0 || value > AST::maxInternalLatency)
+                        latency.context.throwError (Errors::latencyOutOfRange());
+
+                    return static_cast<uint32_t> (value);
+                }
+            }
+        }
+
+        latency.context.throwError (Errors::latencyMustBeConstInteger());
+    }
+
     static void checkForDuplicateFunctions (ArrayView<pool_ref<AST::Function>> functions)
     {
         std::vector<std::string> functionSigs;

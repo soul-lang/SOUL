@@ -156,6 +156,10 @@ private:
     void visit (AST::Processor& p) override
     {
         sourceProcessor = p;
+
+        if (p.latency != nullptr)
+            module.latency = SanityCheckPass::checkLatency (*p.latency);
+
         generateStructs (p.structures);
 
         module.annotation = p.annotation.toPlainAnnotation (module.program.getStringDictionary());

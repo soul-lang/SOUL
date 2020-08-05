@@ -82,6 +82,7 @@ private:
                 out << blankLine;
                 printConnections();
                 out << blankLine;
+                printLatency();
                 printStateVariables();
                 out << blankLine;
                 printStructs();
@@ -202,6 +203,12 @@ private:
 
             if (e.endpointIndex)
                 out << "[" << *e.endpointIndex << "]";
+        }
+
+        void printLatency()
+        {
+            if (module.latency != 0)
+                out << "processor.latency = " << module.latency << ";" << newLine;
         }
 
         void printStateVariables()

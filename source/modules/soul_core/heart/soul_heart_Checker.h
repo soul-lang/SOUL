@@ -32,7 +32,6 @@ struct heart::Checker
         checkForRecursiveFunctions (program);
         checkForInfiniteLoops (program);
         checkBlockParameters (program);
-        checkLatencies (program);
     }
 
     static void sanityCheckInputsAndOutputs (const Program& program)
@@ -193,34 +192,6 @@ struct heart::Checker
         }
     }
 
-    static uint32_t checkAndReturnInternalLatencyValue (const Module& module)
-    {
-        static constexpr int64_t maxInternalLatency = 20 * 48000;
-
-        if (auto latencyVar = module.findStateVariable (heart::getInternalDelayVariableName()))
-        {
-            if (! module.isProcessor())
-                latencyVar->location.throwError (Errors::latencyOnlyForProcessor());
-
-            if (latencyVar->isAssignable() || latencyVar->initialValue == nullptr)
-                latencyVar->location.throwError (Errors::latencyMustBeConst());
-
-            auto value = latencyVar->initialValue->getAsConstant();
-
-            if (! value.getType().isPrimitiveInteger())
-                latencyVar->initialValue->location.throwError (Errors::latencyMustBeInteger());
-
-            auto latency = value.getAsInt64();
-
-            if (latency < 0 || latency > maxInternalLatency)
-                latencyVar->initialValue->location.throwError (Errors::latencyOutOfRange());
-
-            return static_cast<uint32_t> (latency);
-        }
-
-        return 0;
-    }
-
     //==============================================================================
     static void checkForInfiniteLoops (const Program& program)
     {
@@ -293,12 +264,6 @@ struct heart::Checker
                 }
             }
         }
-    }
-
-    static void checkLatencies (const Program& program)
-    {
-        for (auto& m : program.getModules())
-            ignoreUnused (checkAndReturnInternalLatencyValue (m));
     }
 
     static void testHEARTRoundTrip (const Program& program)

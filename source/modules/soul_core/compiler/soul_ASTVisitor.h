@@ -92,6 +92,7 @@ struct ASTVisitor
         visitArray (p.structures);
         visitArray (p.usings);
         visitArray (p.stateVariables);
+        visitObjectIfNotNull (p.latency);
         visitArray (p.functions);
     }
 
@@ -492,6 +493,7 @@ struct RewritingASTVisitor
         visitArray (p.structures);
         visitArray (p.stateVariables);
         replaceArray (p.functions);
+        replaceExpression (p.latency);
 
         return p;
     }

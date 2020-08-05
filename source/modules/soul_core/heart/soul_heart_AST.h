@@ -79,7 +79,6 @@ struct heart
     static constexpr const char* getUserInitFunctionName()          { return "init"; }
     static constexpr const char* getSystemInitFunctionName()        { return "_initialise"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
-    static constexpr const char* getInternalDelayVariableName()     { return "internalDelay"; }
 
     static std::string getEventFunctionName (const std::string& endpointName, const Type& t)
     {
@@ -1209,7 +1208,8 @@ struct heart
             period,
             frequency,
             id,
-            session
+            session,
+            latency
         };
 
         ProcessorProperty (CodeLocation l, Property prop)
@@ -1233,6 +1233,7 @@ struct heart
             if (name == "frequency")  return Property::frequency;
             if (name == "id")         return Property::id;
             if (name == "session")    return Property::session;
+            if (name == "latency")    return Property::latency;
 
             return Property::none;
         }
@@ -1243,6 +1244,7 @@ struct heart
             if (p == Property::frequency)  return "frequency";
             if (p == Property::id)         return "id";
             if (p == Property::session)    return "session";
+            if (p == Property::latency)    return "latency";
 
             SOUL_ASSERT_FALSE;
             return "";
@@ -1250,7 +1252,7 @@ struct heart
 
         static Type getPropertyType (Property p)
         {
-            if (p == Property::id || p == Property::session)
+            if (p == Property::id || p == Property::session || p == Property::latency)
                 return PrimitiveType::int32;
 
             return Type::getFrequencyType();

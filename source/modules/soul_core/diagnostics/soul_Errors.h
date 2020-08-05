@@ -171,10 +171,10 @@ namespace soul
     X(processorParamsCannotBeReference,     "Processor parameter types cannot be references") \
     X(externalNeedsInitialiser,             "External variables cannot be given an initialiser value") \
     X(externalNotAllowedInFunction,         "External constants cannot be declared inside a function") \
-    X(latencyMustBeConst,                   "The latency value must be declared as a constant") \
-    X(latencyMustBeInteger,                 "The latency value must be declared as an integer") \
+    X(latencyMustBeConstInteger,            "The processor.latency value must be declared as an integer constant") \
     X(latencyOutOfRange,                    "This latency value is out of range") \
-    X(latencyOnlyForProcessor,              "The internal latency can only be delcared in a processor") \
+    X(latencyOnlyForProcessor,              "The processor.latency value can only be declared in a processor") \
+    X(latencyAlreadyDeclared,               "The processor.latency value must not be set more than once") \
     X(cannotReferenceOtherProcessorVar,     "Cannot reference a mutable variable belonging to another processor") \
     X(externalOnlyAllowedOnStateVars,       "The 'external' flag can only be applied to state variables") \
     X(wrongTypeForUnary,                    "Illegal type for unary operator") \
@@ -202,6 +202,7 @@ namespace soul
     X(cannotPassConstAsNonConstRef,         "Cannot pass a const value as a non-const reference") \
     X(assignmentInsideExpression,           "Assignment is not allowed inside an expression") \
     X(propertiesOutsideProcessor,           "Processor properties are only valid inside a processor declaration") \
+    X(cannotAssignToProcessorProperties,    "Processor properties are constants, and cannot be modified") \
     X(typeReferenceNotAllowed,              "Type references are not allowed in this context") \
     X(processorReferenceNotAllowed,         "Processor references are not allowed in this context") \
     X(cannotResolveSpecialisationValue,     "Cannot resolve value") \

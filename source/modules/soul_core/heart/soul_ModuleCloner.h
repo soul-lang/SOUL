@@ -74,6 +74,8 @@ struct ModuleCloner
 
         for (size_t i = 0; i < oldModule.functions.size(); ++i)
             clone (newModule.functions[i], oldModule.functions[i]);
+
+        newModule.latency = oldModule.latency;
     }
 
     const Module& oldModule;

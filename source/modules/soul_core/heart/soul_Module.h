@@ -53,6 +53,7 @@ public:
 
     Annotation annotation;
     double sampleRate = 0;
+    uint32_t latency = 0;
 
     //==============================================================================
     bool isSystemModule() const;

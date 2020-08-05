@@ -303,15 +303,6 @@ private:
                     continue;
                 }
 
-                if (matchIf (Keyword::processor))
-                {
-                    if (ns == nullptr)
-                        throwError (Errors::processorMustBeInsideNamespace());
-
-                    parseProcessorDecl (*ns);
-                    continue;
-                }
-
                 if (matchIf (Keyword::graph))
                 {
                     if (ns == nullptr)
@@ -322,9 +313,24 @@ private:
                 }
             }
 
-            if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);   continue; }
-            if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);  continue; }
-            if (matchIf (Keyword::event))           { parseEventFunction();           continue; }
+            if (matchIf (Keyword::processor))
+            {
+                if (matches (Operator::dot))
+                {
+                    parseProcessorLatencyDeclaration();
+                    continue;
+                }
+
+                if (ns == nullptr)
+                    throwError (Errors::processorMustBeInsideNamespace());
+
+                parseProcessorDecl (*ns);
+                continue;
+            }
+
+            if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);        continue; }
+            if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);       continue; }
+            if (matchIf (Keyword::event))           { parseEventFunction();                continue; }
 
             if (matchesAny (Keyword::input, Keyword::output))
                 throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()
@@ -350,8 +356,7 @@ private:
         auto type = tryParsingType (ParseTypeContext::variableType);
 
         if (type == nullptr)
-            declarationContext.throwError (module->isGraph() ? Errors::expectedFunctionOrVariable()
-                                                             : Errors::expectedFunctionOrVariable());
+            declarationContext.throwError (Errors::expectedFunctionOrVariable());
 
         auto context = getContext();
         auto name = parseIdentifier();
@@ -1057,6 +1062,7 @@ private:
         if (! matches (Token::identifier))
         {
             giveErrorOnExternalKeyword();
+            giveErrorOnAssignmentToProcessorProperty();
             throwError (Errors::expectedStatement());
         }
 
@@ -1372,7 +1378,7 @@ private:
         return parseSuffixes (lit);
     }
 
-    AST::Expression& parseProcessorProperty()
+    AST::ProcessorProperty& parseProcessorProperty()
     {
         expect (Operator::dot);
         auto context = getContext();
@@ -1831,6 +1837,29 @@ private:
             throwError (Errors::noVariableInThisScope());
     }
 
+    void parseProcessorLatencyDeclaration()
+    {
+        auto& pp = parseProcessorProperty();
+
+        if (pp.property != heart::ProcessorProperty::Property::latency)
+            pp.context.throwError (Errors::expectedFunctionOrVariable());
+
+        expect (Operator::assign);
+        auto& value = parseExpression();
+        expect (Operator::semicolon);
+
+        if (auto p = cast<AST::Processor> (module))
+        {
+            if (p->latency != nullptr)
+                pp.context.throwError (Errors::latencyAlreadyDeclared());
+
+            p->latency = value;
+            return;
+        }
+
+        pp.context.throwError (Errors::latencyOnlyForProcessor());
+    }
+
     AST::Expression& castExpressionToTargetType (AST::Expression& targetType, AST::Expression& source)
     {
         auto list = cast<AST::CommaSeparatedList> (source);
@@ -1953,6 +1982,21 @@ private:
     {
         if (matches (Keyword::external))
             throwError (Errors::externalOnlyAllowedOnStateVars());
+    }
+
+    void giveErrorOnAssignmentToProcessorProperty()
+    {
+        auto context = getContext();
+
+        if (matchIf (Keyword::processor) && matches (Operator::dot))
+        {
+            ignoreUnused (parseProcessorProperty());
+
+            if (matches (Operator::assign))
+                context.throwError (Errors::cannotAssignToProcessorProperties());
+
+            context.throwError (Errors::expectedStatement());
+        }
     }
 };
 

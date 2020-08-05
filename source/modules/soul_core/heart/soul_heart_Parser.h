@@ -125,6 +125,8 @@ struct heart::Parser   : public Tokeniser<DummyKeywordMatcher,
     }
 
 private:
+    using Operator = void; // Prevents anything in this class mistakenly using Operator instead of HEARTOperator
+
     //==============================================================================
     struct ScannedTopLevelItem
     {
@@ -270,8 +272,10 @@ private:
             if (matchIf ("var"))         return scanStateVariable (item, false);
 
             if (module->isProcessor())
-                if (matchIf ("event"))
-                    return scanFunction (item, true);
+            {
+                if (matchIf ("event"))       return scanFunction (item, true);
+                if (matchIf ("processor"))   return parseLatency();
+            }
         }
 
         if (matchIf ("let"))
@@ -656,7 +660,6 @@ private:
         module->functions.push_back (fn);
     }
 
-
     void parseFunctionParams (heart::Function& f)
     {
         FunctionParseState state (f);
@@ -731,6 +734,10 @@ private:
         for (;;)
         {
             auto name = readBlockName();
+
+            for (auto& b : state.blocks)
+                if (b.block.name == name)
+                    throwError (Errors::nameInUse (name));
 
             auto& block = builder.createBlock (name);
 
@@ -1073,22 +1080,28 @@ private:
         return true;
     }
 
+    void parseLatency()
+    {
+        expect (HEARTOperator::dot);
+        expect ("latency");
+        expect (HEARTOperator::assign);
+        auto errorPos = location;
+        auto latency = parseInt32Value().getAsInt64();
+        expectSemicolon();
+
+        if (latency < 0 || latency > AST::maxInternalLatency)
+            errorPos.throwError (Errors::latencyOutOfRange());
+
+        module->latency = static_cast<uint32_t> (latency);
+    }
+
     heart::Block& findBlock (const FunctionParseState& state, Identifier name)
     {
-        const FunctionParseState::BlockCode* blockCode = nullptr;
-
         for (auto& b : state.blocks)
-        {
             if (b.block.name == name)
-            {
-                blockCode = &b;
-            }
-        }
+                return b.block;
 
-        if (blockCode == nullptr)
-            throwError (Errors::cannotFind (name));
-
-        return blockCode->block;
+        throwError (Errors::cannotFind (name));
     }
 
     heart::Block& readBlockNameAndFind (const FunctionParseState& state)
@@ -1178,7 +1191,7 @@ private:
                 if (! constStart.getType().isPrimitiveInteger())
                     throwError (Errors::nonConstArraySize());
 
-                if (matchIf (Operator::closeBracket))
+                if (matchIf (HEARTOperator::closeBracket))
                     return parseArraySlice (state, lhs, constStart.getAsInt64(),
                                             (int64_t) arrayOrVectorType.getArrayOrVectorSize());
 
@@ -1196,7 +1209,7 @@ private:
             if (! (startIndex.getType().isPrimitiveInteger() || startIndex.getType().isBoundedInt()))
                 throwError (Errors::nonIntegerArrayIndex());
 
-            if (matchAndReplaceIf (Operator::closeDoubleBracket, Operator::closeBracket))
+            if (matchAndReplaceIf (HEARTOperator::closeDoubleBracket, HEARTOperator::closeBracket))
                 return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
 
             expect (HEARTOperator::closeBracket);
@@ -1725,9 +1738,9 @@ private:
 
     Type parseBoundedIntType (bool isWrap)
     {
-        expect (Operator::lessThan);
+        expect (HEARTOperator::lessThan);
         auto size = parseLiteralInt();
-        expect (Operator::greaterThan);
+        expect (HEARTOperator::greaterThan);
 
         if (! Type::isLegalBoundedIntSize (size))
             throwError (Errors::illegalSize());
