@@ -287,7 +287,7 @@ struct heart::Checker
                             auto& type = param->getType();
 
                             if (type.isReference() || type.isVoid())
-                                f->location.throwError (Errors::blockParametersInvalid (b->name));
+                                param->location.throwError (Errors::blockParametersInvalid (b->name));
                         }
 
                         if (auto branch = cast<heart::Branch> (b->terminator))
