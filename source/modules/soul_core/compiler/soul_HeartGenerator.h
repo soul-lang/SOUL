@@ -394,6 +394,8 @@ private:
         auto& af = f.getGeneratedFunction();
         af.returnType = f.returnType->resolveAsType();
 
+        ifIndex = 0;
+        loopIndex = 0;
         builder.beginFunction (af);
 
         for (auto p : f.parameters)
