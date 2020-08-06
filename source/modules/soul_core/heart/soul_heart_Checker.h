@@ -317,25 +317,9 @@ struct heart::Checker
 
     static void checkForCyclesInGraphs (const Program& program)
     {
-        struct CycleDetector  : public heart::Utilities::GraphCycleDetector<CycleDetector, heart::ProcessorInstance, heart::Connection, CodeLocation>
-        {
-            CycleDetector (Module& graph)
-            {
-                for (auto& p : graph.processorInstances)
-                    addNode (p);
-
-                for (auto& c : graph.connections)
-                    if (c->delayLength == 0 && c->source.processor != nullptr && c->dest.processor != nullptr)
-                        addConnection (*c->source.processor, *c->dest.processor, c);
-            }
-
-            static std::string getProcessorName (const heart::ProcessorInstance& p)  { return p.instanceName; }
-            static const CodeLocation& getContext (const heart::Connection& c)       { return c.location; }
-        };
-
         for (auto& m : program.getModules())
             if (m->isGraph())
-                CycleDetector (m).check();
+                heart::Utilities::CycleDetector (m).checkAndThrowErrorIfCycleFound();
     }
 
     static void testHEARTRoundTrip (const Program& program)

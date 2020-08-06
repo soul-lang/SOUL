@@ -558,10 +558,12 @@ private:
 
             RecursiveGraphDetector::check (g);
 
-            struct CycleDetector  : public heart::Utilities::GraphCycleDetector<CycleDetector, AST::ProcessorInstance, AST::Connection, AST::Context>
+            struct CycleDetector  : public heart::Utilities::GraphTraversalHelper<CycleDetector, AST::ProcessorInstance, AST::Connection, AST::Context>
             {
                 CycleDetector (AST::Graph& graph)
                 {
+                    reserve (graph.processorInstances.size());
+
                     for (auto& p : graph.processorInstances)
                         addNode (p);
 
@@ -576,7 +578,7 @@ private:
                 static const AST::Context& getContext (const AST::Connection& c)       { return c.context; }
             };
 
-            CycleDetector (g).check();
+            CycleDetector (g).checkAndThrowErrorIfCycleFound();
         }
 
         void visit (AST::Namespace& n) override
