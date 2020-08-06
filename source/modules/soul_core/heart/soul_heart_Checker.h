@@ -33,6 +33,7 @@ struct heart::Checker
         checkForInfiniteLoops (program);
         checkBlockParameters (program);
         checkForCyclesInGraphs (program);
+        checkStreamOperations (program);
     }
 
     static void sanityCheckInputsAndOutputs (const Program& program)
@@ -218,6 +219,53 @@ struct heart::Checker
             if (functionNames.size() == 1)  location.throwError (Errors::functionCallsItselfRecursively (functionNames.front()));
             if (functionNames.size() == 2)  location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
             if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
+        }
+    }
+
+    static void checkStreamOperations (const Program& program)
+    {
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions)
+            {
+                for (auto& b : f->blocks)
+                {
+                    for (auto s : b->statements)
+                    {
+                        if (auto r = cast<heart::ReadStream> (*s))
+                        {
+                            if (r->element)
+                            {
+                                if (! r->source->arraySize.has_value())
+                                    r->location.throwError (Errors::endpointIndexInvalid());
+
+                                if (r->element->getAsConstant().isValid())
+                                    TypeRules::checkAndGetArrayIndex (r->location, r->element->getAsConstant(), r->source->dataTypes.front().createArray (*r->source->arraySize));
+                            }
+                        }
+
+                        if (auto w = cast<heart::WriteStream> (*s))
+                        {
+                            if (! w->element)
+                            {
+                                if (! w->target->canHandleType (w->value->getType()))
+                                    w->location.throwError (Errors::wrongTypeForEndpoint());
+                            }
+                            else
+                            {
+                                if (! w->target->arraySize.has_value())
+                                    w->location.throwError (Errors::endpointIndexInvalid());
+
+                                if (! w->target->canHandleElementType (w->value->getType()))
+                                    w->location.throwError (Errors::wrongTypeForEndpoint());
+
+                                if (w->element->getAsConstant().isValid())
+                                    TypeRules::checkAndGetArrayIndex (w->location, w->element->getAsConstant(), w->target->dataTypes.front().createArray (*w->target->arraySize));
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

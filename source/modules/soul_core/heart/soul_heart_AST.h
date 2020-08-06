@@ -1159,6 +1159,7 @@ struct heart
         bool mayHaveSideEffects() const override     { return true; }
 
         pool_ref<InputDeclaration> source;
+        pool_ptr<Expression> element;
     };
 
     struct WriteStream  : public Statement

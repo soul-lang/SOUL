@@ -121,7 +121,7 @@ namespace soul
     X(cannotWriteTypeToEndpoint,            "Cannot write type $0$ to endpoint which takes $1$") \
     X(incompatibleEndpointType,             "Incompatible endpoint type") \
     X(endpointIndexOutOfRange,              "Endpoint index out of range") \
-    X(endpointIndexInvalid,                 "Endpoint index is not invalid") \
+    X(endpointIndexInvalid,                 "Endpoint index is not valid") \
     X(recursiveTypes,                       "Recursively nested types within $Q0$") \
     X(typeContainsItself,                   "The type $Q0$ cannot contain itself recursively") \
     X(typesReferToEachOther,                "The types $Q0$ and $Q1$ refer to each other recursively") \

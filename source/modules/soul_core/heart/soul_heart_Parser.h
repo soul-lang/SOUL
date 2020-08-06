@@ -1055,23 +1055,8 @@ private:
         }
 
         auto& value = parseExpression (state);
-        const auto& type = value.getType();
 
         // Check that we are using indexes for array types
-        if (index == nullptr)
-        {
-            if (! target->canHandleType (type))
-                throwError (Errors::wrongTypeForEndpoint());
-        }
-        else
-        {
-            if (! target->arraySize.has_value())
-                throwError (Errors::endpointIndexInvalid());
-
-            if (! target->canHandleElementType (type))
-                throwError (Errors::wrongTypeForEndpoint());
-        }
-
         if (! (state.function.functionType.isRun() || target->isEventEndpoint()))
             throwError (Errors::streamsCanOnlyBeUsedInRun());
 
