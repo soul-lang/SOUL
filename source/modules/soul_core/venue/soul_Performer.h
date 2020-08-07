@@ -191,6 +191,9 @@ public:
     */
     virtual bool isEndpointActive (const EndpointID&) noexcept = 0;
 
+    /** Returns the latency, in samples, of the currently loaded program. */
+    virtual uint32_t getLatency() noexcept = 0;
+
     /** Returns the number of over- or under-runs that have happened since the program was linked.
         Underruns can happen when an endpoint callback fails to empty or fill the amount of data
         that it is asked to handle.

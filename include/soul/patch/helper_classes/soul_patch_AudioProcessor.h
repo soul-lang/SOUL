@@ -113,6 +113,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             updateLastState();
             applyLastStateToPlayer (*replacementPlayer);
             player = std::move (replacementPlayer);
+            setLatencySamples (static_cast<int> (player->getLatencySamples()));
             refreshParameterList();
         }
     }

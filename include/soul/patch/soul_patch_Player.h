@@ -155,6 +155,9 @@ public:
     /** Returns a list of patch's parameters. */
     virtual Span<Parameter::Ptr> getParameters() const = 0;
 
+    /** Returns the patch's internal latency. */
+    virtual uint32_t getLatencySamples() const = 0;
+
     //==============================================================================
     /** This will reset the state of the player to its initial state.
         Calls to this method must not be made concurrently with the render() method!

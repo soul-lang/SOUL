@@ -53,6 +53,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     Span<Bus> getInputBuses() const override                    { return inputBusesSpan; }
     Span<Bus> getOutputBuses() const override                   { return outputBusesSpan; }
     Span<Parameter::Ptr> getParameters() const override         { return parameterSpan; }
+    uint32_t getLatencySamples() const override                 { return latency; }
 
     //==============================================================================
     void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
@@ -128,6 +129,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         if (! performer->link (messageList, settings, CacheConverter::create (cache).get()))
             if (! messageList.hasErrors())
                 messageList.addError ("Failed to link", {});
+
+        latency = performer->getLatency();
     }
 
     void compile (const BuildSettings& settings,
@@ -452,6 +455,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
     Span<Bus> inputBusesSpan = {}, outputBusesSpan = {};
     Span<Parameter::Ptr> parameterSpan = {};
+    uint32_t latency = 0;
 
     PatchPlayerConfiguration config;
     std::unique_ptr<soul::Performer> performer;
