@@ -1,10 +1,83 @@
-## SOUL Language Guide
+# SOUL Language Guide
 
 SOUL uses a familiar syntax which shares a lot of syntax and style with many mainstream languages (e.g. C/C++, Java, Javascript, C#, etc). This document covers the basic structure and syntax of the code that is passed into the SOUL compiler.
 
 The intended audience for this guide is people who've at least dabbled with some simple programming using a procedural language.
 
 If nothing in this document seems particularly surprising or unusual, then we've succeeded in our goals for making the language accessible.
+
+<!-- @import "[TOC]" {cmd="toc" depthFrom=2 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [Code format](#code-format)
+    - [Whitespace](#whitespace)
+    - [Comments](#comments)
+    - [Identifiers](#identifiers)
+    - [Semicolons](#semicolons)
+    - [Reserved keywords](#reserved-keywords)
+- [Types](#types)
+    - [Primitive types](#primitive-types)
+    - [Numeric literals](#numeric-literals)
+    - [String literals](#string-literals)
+    - [Structures](#structures)
+    - [Vector types](#vector-types)
+    - [Array types](#array-types)
+    - [Array slicing](#array-slicing)
+    - [Dynamic array slices](#dynamic-array-slices)
+    - ['External' variables](#external-variables)
+      - [Special support for audio data in externals](#special-support-for-audio-data-in-externals)
+      - [External variable annotations](#external-variable-annotations)
+    - [Type aliases](#type-aliases)
+    - [Variables](#variables)
+- [Program structure](#program-structure)
+    - [Namespace declarations](#namespace-declarations)
+    - [Function declarations](#function-declarations)
+    - [Processor declarations](#processor-declarations)
+      - [The `run()` function](#the-run-function)
+      - [The `advance()` function](#the-advance-function)
+      - [Processor state variables](#processor-state-variables)
+    - [Input/Output Endpoint declarations](#inputoutput-endpoint-declarations)
+      - [Exposing child endpoints](#exposing-child-endpoints)
+    - [Endpoint Annotations](#endpoint-annotations)
+    - [Graph declarations](#graph-declarations)
+      - [Processor instance declarations](#processor-instance-declarations)
+      - [Connection declarations](#connection-declarations)
+        - [Default endpoints and connection chaining](#default-endpoints-and-connection-chaining)
+        - [Fan-in/out](#fan-inout)
+      - [Delay Lines](#delay-lines)
+      - [Processor delay compensation (a.k.a. PDC)](#processor-delay-compensation-aka-pdc)
+      - [Feedback loops](#feedback-loops)
+      - [Arrays of Processors](#arrays-of-processors)
+    - [Processor/Graph specialisation parameters](#processorgraph-specialisation-parameters)
+    - [Event endpoints](#event-endpoints)
+    - [Processor oversampling and undersampling](#processor-oversampling-and-undersampling)
+      - [Choosing an oversampling and undersampling strategy](#choosing-an-oversampling-and-undersampling-strategy)
+  - [Functions](#functions)
+    - [Universal function call syntax](#universal-function-call-syntax)
+  - [Generic Functions](#generic-functions)
+  - [Metafunctions for type manipulation](#metafunctions-for-type-manipulation)
+  - [static_assert](#static_assert)
+  - [Compile-time `if`](#compile-time-if)
+  - [References](#references)
+  - [Casts and Numeric Conversions](#casts-and-numeric-conversions)
+  - [Arithmetic operators](#arithmetic-operators)
+  - [Conditionals](#conditionals)
+  - [Loops](#loops)
+  - [Reading and writing to endpoints](#reading-and-writing-to-endpoints)
+  - [Annotations](#annotations)
+- [Linking and resolving modules](#linking-and-resolving-modules)
+    - [Specifying the 'main' processor](#specifying-the-main-processor)
+  - [Built-in intrinsic functions](#built-in-intrinsic-functions)
+      - [Arithmetic](#arithmetic)
+      - [Comparison and ranges](#comparison-and-ranges)
+      - [Trigonometry](#trigonometry)
+    - [Vector intrinsics](#vector-intrinsics)
+  - [Built-in constants](#built-in-constants)
+  - [Built-in library Functions](#built-in-library-functions)
+  - [HEART](#heart)
+
+<!-- /code_chunk_output -->
 
 ## Code format
 
@@ -774,6 +847,30 @@ graph SignalWithEcho
 }
 ```
 
+##### Processor delay compensation (a.k.a. PDC)
+
+Some types of DSP algorithm cannot be implemented without using an internal delay, which means that their output is out-of-sync with their input by a number of samples.
+
+This means that when mixing a source signal with the delayed output of such a processor, it's desirable to compensate for the delay by adding artificial delays to other paths of the graph. This keeps everything in-sync and avoids phasing problems. In the world of DAWs this is known as PDC (Plugin Delay Compensation).
+
+The SOUL compiler will automatically insert delay lines on appropriate connections of a graph if some of the processors in the graph have internal latency. To declare that a processor has a latency, use the syntax:
+
+```C++
+processor MyProcessorWithDelay
+{
+    input stream float in;
+    output stream float out;
+
+    processor.latency = 100; // this means that there's a 100 sample delay
+
+```
+
+This processor property must be set in the main body of the processor, not inside a function, and is a compile-time constant so can't be modified. It can be read if you need to use the value somewhere in the code.
+
+A graph has its latency calculated automatically. For example, a graph containing a sequential chain of 4 processors which each has a 20 sample latency will have 80 sample latency overall.
+
+If you use the ` -> [x] -> ` syntax to add a delay to a connection, this is NOT treated as a delay which should be balanced-out, as it is assumed that you've added such a delay deliberately because you want one, and therefore don't want it to be compensated for.
+
 ##### Feedback loops
 
 Feedback loops within a graph are only permitted if one of the connections in the loop contains a delay.
@@ -1311,133 +1408,28 @@ Within a processor or graph, the special keyword `processor` provides informatio
 
 ### Built-in library Functions
 
-Various utility functions are provided as part of the SOUL standard library. These include:
+Various utility functions are provided as part of the SOUL standard library.
 
-```C++
-/** The root soul namespace contains an assortment of handy helper functions. */
-namespace soul
-{
-    float dBtoGain (float decibels);
-    float gainTodB (float gain);
-    float addModulo2Pi (float value, float increment);
+These namespaces include:
 
-    float noteNumberToFrequency (int note);
-    float noteNumberToFrequency (float note);
-    float frequencyToNoteNumber (float frequency);
-
-    float64 getSpeedRatioForPitchedSample (float64 sourceSampleRate, float32 sourceMIDINote,
-                                           float64 targetSampleRate, float32 targetMIDINote);
-}
-```
-
-```C++
-/**
-    This namespace contains some types which are handy for representing synthesiser
-    note events. They do a similar job to MIDI events, but in a more modern, strongly
-    typed way. Things like the midi::MPEParser class generate them.
-*/
-namespace soul::note_events
-{
-    struct NoteOn
-    {
-        int channel;
-        float note;
-        float velocity;
-    }
-
-    struct NoteOff
-    {
-        int channel;
-        float note;
-        float velocity;
-    }
-
-    struct PitchBend
-    {
-        int channel;
-        float bendSemitones;
-    }
-
-    struct Pressure
-    {
-        int channel;
-        float pressure;
-    }
-
-    struct Slide
-    {
-        int channel;
-        float slide;
-    }
-
-    struct Control
-    {
-        int channel;
-        int control;
-        float value;
-    }
-}
-```
-
-Some MIDI helper classes are provided:
-
-```C++
-namespace soul::midi
-{
-    /** This type is used to represent a packed short MIDI message. When you create
-        an input event endpoint and would like it to receive MIDI, this is the type
-        that you should use for it.
-    */
-    struct Message
-    {
-        int midiBytes;  /**< Format: (byte[0] << 16) | (byte[1] << 8) | byte[2] */
-    }
-
-    int getByte1 (Message m)     { return (m.midiBytes >> 16) & 0xff; }
-    int getByte2 (Message m)     { return (m.midiBytes >> 8) & 0xff; }
-    int getByte3 (Message m)     { return m.midiBytes & 0xff; }
-
-    /** This event processor receives incoming MIDI events, parses them as MPE,
-        and then emits a stream of note events using the types in soul::note_events.
-        A synthesiser can then handle the resulting events without needing to go
-        near any actual MIDI or MPE data.
-    */
-    processor MPEParser  [[ main: false ]]
-    {
-        input event Message parseMIDI;
-
-        output event (soul::note_events::NoteOn,
-                      soul::note_events::NoteOff,
-                      soul::note_events::PitchBend,
-                      soul::note_events::Pressure,
-                      soul::note_events::Slide,
-                      soul::note_events::Control) eventOut;
-    }
-}```
-
-```C++
-/** This namespace contains some handy stuctures to use when declaring external
-    variables which are going to be loaded with data from audio files.
-*/
-namespace soul::audio_samples
-{
-    struct Mono
-    {
-        float[] frames;
-        float64 sampleRate;
-    }
-
-    struct Stereo
-    {
-        float<2>[] frames;
-        float64 sampleRate;
-    }
-}
-```
+- [soul::intrinsics](../source/modules/soul_core/library/soul_library_intrinsics.h)
+- [soul::mixers](../source/modules/soul_core/library/soul_library_mixing.h)
+- [soul::gain](../source/modules/soul_core/library/soul_library_mixing.h)
+- [soul::envelope](../source/modules/soul_core/library/soul_library_mixing.h)
+- [soul::random](../source/modules/soul_core/library/soul_library_noise.h)
+- [soul::noise](../source/modules/soul_core/library/soul_library_noise.h)
+- [soul::oscillator](../source/modules/soul_core/library/soul_library_oscillators.h)
+- [soul::DFT](../source/modules/soul_core/library/soul_library_frequency.h)
+- [soul::note_events](../source/modules/soul_core/library/soul_library_note_events.h)
+- [soul::voice_allocators](../source/modules/soul_core/library/soul_library_note_events.h)
+- [soul::midi](../source/modules/soul_core/library/soul_library.h)
+- [soul::audio_samples](../source/modules/soul_core/library/soul_library_audio_utils.h)
+- [soul::pan_law](../source/modules/soul_core/library/soul_library_audio_utils.h)
+- [soul::delay](../source/modules/soul_core/library/soul_library_audio_utils.h)
 
 ### HEART
 
-"HEART" is the name we've given to SOUL's internal low-level language, which is used as the format in which code is passed to a performer to be run. It's analogous to low level languages like LLVM-IR or WebAssembly.
+"HEART" is the name of SOUL's internal low-level language, which is used as the format in which code is passed to a performer to be run. It's analogous to low level languages like LLVM-IR or WebAssembly.
 
 The front-end SOUL compiler converts SOUL into a HEART program, and then it is passed to something like a JIT compiler or a C++ or WASM code-generator. Since HEART is a much simpler, this makes the process of optimising, manipulating and security-checking the code easier, and it makes it simpler to implement new back-end JIT engines.
 
