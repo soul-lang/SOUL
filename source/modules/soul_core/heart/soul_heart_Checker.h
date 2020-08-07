@@ -234,10 +234,16 @@ struct heart::Checker
                     {
                         if (auto r = cast<heart::ReadStream> (*s))
                         {
+                            if (f->functionType.isUserInit())
+                                s->location.throwError (Errors::streamsCannotBeUsedDuringInit());
+
+                            if (! f->functionType.isRun())
+                                s->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
+
                             if (r->element)
                             {
                                 if (! r->source->arraySize.has_value())
-                                    r->location.throwError (Errors::endpointIndexInvalid());
+                                    s->location.throwError (Errors::endpointIndexInvalid());
 
                                 if (r->element->getAsConstant().isValid())
                                     TypeRules::checkAndGetArrayIndex (r->location, r->element->getAsConstant(), r->source->dataTypes.front().createArray (*r->source->arraySize));
@@ -246,18 +252,24 @@ struct heart::Checker
 
                         if (auto w = cast<heart::WriteStream> (*s))
                         {
+                            if (f->functionType.isUserInit())
+                                s->location.throwError (Errors::streamsCannotBeUsedDuringInit());
+
+                            if (! (f->functionType.isRun() || w->target->isEventEndpoint()))
+                                s->location.throwError (Errors::streamsCanOnlyBeUsedInRun());
+
                             if (! w->element)
                             {
                                 if (! w->target->canHandleType (w->value->getType()))
-                                    w->location.throwError (Errors::wrongTypeForEndpoint());
+                                    s->location.throwError (Errors::wrongTypeForEndpoint());
                             }
                             else
                             {
                                 if (! w->target->arraySize.has_value())
-                                    w->location.throwError (Errors::endpointIndexInvalid());
+                                    s->location.throwError (Errors::endpointIndexInvalid());
 
                                 if (! w->target->canHandleElementType (w->value->getType()))
-                                    w->location.throwError (Errors::wrongTypeForEndpoint());
+                                    s->location.throwError (Errors::wrongTypeForEndpoint());
 
                                 if (w->element->getAsConstant().isValid())
                                     TypeRules::checkAndGetArrayIndex (w->location, w->element->getAsConstant(), w->target->dataTypes.front().createArray (*w->target->arraySize));

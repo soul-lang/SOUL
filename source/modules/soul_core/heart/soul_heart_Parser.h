@@ -1018,17 +1018,11 @@ private:
 
     void parseReadStream (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
-        if (state.function.functionType.isUserInit())
-            throwError (Errors::streamsCannotBeUsedDuringInit());
-
         auto name = parseIdentifier();
         auto src = module->findInput (name);
 
         if (src == nullptr)
             throwError (Errors::cannotFindInput (name));
-
-        if (! state.function.functionType.isRun())
-            throwError (Errors::streamsCanOnlyBeUsedInRun());
 
         builder.addReadStream (location, *target.create (state, builder, src->getSingleDataType()), *src);
         expectSemicolon();
@@ -1042,9 +1036,6 @@ private:
 
         pool_ptr<heart::Expression> index;
 
-        if (state.function.functionType.isUserInit())
-            throwError (Errors::streamsCannotBeUsedDuringInit());
-
         if (target == nullptr)
             throwError (Errors::cannotFindOutput (name));
 
@@ -1055,10 +1046,6 @@ private:
         }
 
         auto& value = parseExpression (state);
-
-        // Check that we are using indexes for array types
-        if (! (state.function.functionType.isRun() || target->isEventEndpoint()))
-            throwError (Errors::streamsCanOnlyBeUsedInRun());
 
         builder.addWriteStream (writeStreamLocation, *target, index, value);
         expectSemicolon();
