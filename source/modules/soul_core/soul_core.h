@@ -133,6 +133,7 @@ namespace soul
 #include "heart/soul_heart_FunctionBuilder.h"
 #include "heart/soul_heart_CallFlowGraph.h"
 #include "heart/soul_heart_Optimisations.h"
+#include "heart/soul_heart_DelayCompensation.h"
 
 #include "compiler/soul_AST.h"
 #include "compiler/soul_Compiler.h"
