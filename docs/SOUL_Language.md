@@ -1412,20 +1412,20 @@ Various utility functions are provided as part of the SOUL standard library.
 
 These namespaces include:
 
-- [soul::intrinsics](../source/modules/soul_core/library/soul_library_intrinsics.h)
-- [soul::mixers](../source/modules/soul_core/library/soul_library_mixing.h)
-- [soul::gain](../source/modules/soul_core/library/soul_library_mixing.h)
-- [soul::envelope](../source/modules/soul_core/library/soul_library_mixing.h)
-- [soul::random](../source/modules/soul_core/library/soul_library_noise.h)
-- [soul::noise](../source/modules/soul_core/library/soul_library_noise.h)
-- [soul::oscillator](../source/modules/soul_core/library/soul_library_oscillators.h)
-- [soul::DFT](../source/modules/soul_core/library/soul_library_frequency.h)
-- [soul::note_events](../source/modules/soul_core/library/soul_library_note_events.h)
-- [soul::voice_allocators](../source/modules/soul_core/library/soul_library_note_events.h)
-- [soul::midi](../source/modules/soul_core/library/soul_library.h)
-- [soul::audio_samples](../source/modules/soul_core/library/soul_library_audio_utils.h)
-- [soul::pan_law](../source/modules/soul_core/library/soul_library_audio_utils.h)
-- [soul::delay](../source/modules/soul_core/library/soul_library_audio_utils.h)
+- [soul::intrinsics](../source/soul_library/soul_library_intrinsics.soul)
+- [soul::mixers](../source/soul_library/soul_library_mixing.soul)
+- [soul::gain](../source/soul_library/soul_library_mixing.soul)
+- [soul::envelope](../source/soul_library/soul_library_mixing.soul)
+- [soul::random](../source/soul_library/soul_library_noise.soul)
+- [soul::noise](../source/soul_library/soul_library_noise.soul)
+- [soul::oscillator](../source/soul_library/soul_library_oscillators.soul)
+- [soul::DFT](../source/soul_library/soul_library_frequency.soul)
+- [soul::note_events](../source/soul_library/soul_library_notes.soul)
+- [soul::voice_allocators](../source/soul_library/soul_library_notes.soul)
+- [soul::midi](../source/soul_library/soul_library_midi.soul)
+- [soul::audio_samples](../source/soul_library/soul_library_audio_utils.soul)
+- [soul::pan_law](../source/soul_library/soul_library_audio_utils.soul)
+- [soul::delay](../source/soul_library/soul_library_audio_utils.soul)
 
 ### HEART
 

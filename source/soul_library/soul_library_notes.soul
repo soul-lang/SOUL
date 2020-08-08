@@ -18,11 +18,6 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/*  The following string literal forms part of a set of SOUL code chunks that form
-    the built-in library. (See the soul::getBuiltInLibraryCode() function)
-*/
-R"library(
-
 /**
     This namespace contains some types which are handy for representing synthesiser
     note events. They do a similar job to MIDI events, but as strongly-typed structs
@@ -209,5 +204,3 @@ namespace soul::voice_allocators
         VoiceInfo[voiceCount] voiceInfo;
     }
 }
-
-)library"

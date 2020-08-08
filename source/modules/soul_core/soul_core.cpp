@@ -71,7 +71,7 @@
 #include "heart/soul_heart_Parser.h"
 #include "heart/soul_heart_Checker.h"
 #include "types/soul_Type.cpp"
-#include "library/soul_library.h"
+#include "compiler/soul_StandardLibrary.h"
 #include "compiler/soul_ASTVisitor.h"
 #include "compiler/soul_SanityCheckPass.h"
 #include "compiler/soul_Parser.h"

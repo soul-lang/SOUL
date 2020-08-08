@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+def embedLibraryCode(file, newLibraryCode):
+    newContent = ""
+    oldContent = ""
+
+    with open (file, 'r') as fin:
+        oldContent = fin.read()
+
+    lines = oldContent.splitlines()
+
+    while (len (lines) > 0 and not lines[-1].rstrip()):
+        lines.pop()
+
+    insideSection = False
+    foundSection = False
+
+    for l in lines:
+        if l.find ("END_INCLUDED_LIBRARY_CODE") != -1:
+            insideSection = False
+
+        if not insideSection:
+            newContent += l.rstrip().replace("\t", "    ") + "\n"
+
+        if l.find ("BEGIN_INCLUDED_LIBRARY_CODE") != -1:
+            insideSection = True
+            foundSection = True
+            newContent += newLibraryCode
+
+    if not foundSection:
+        exit ("Couldn't find embedding guards in file " + file)
+
+    if (newContent != oldContent):
+        print ("Writing " + file)
+        with open (file, "w") as fout:
+           fout.write (newContent)
+
+def createLibraryEntry (name, content):
+    name = "soul." + name[13:-5].replace ("_", ".")
+    print (name)
+    content = content[content.index("*/") + 2:].strip()
+    return "    if (moduleName == \"" + name + "\")  return R\"soul_code(\n" + content + "\n)soul_code\";\n\n"
+
+def embedLibraries(cppFile, libraryCodeFolder):
+    print ("Searching " + libraryCodeFolder)
+
+    libraryCode = ""
+
+    for root, dirs, files in os.walk (libraryCodeFolder):
+        for file in files:
+            if file.startswith ("soul_library_") and file.endswith(".soul"):
+                with open (os.path.join(root, file), 'r') as fin:
+                    libraryCode += createLibraryEntry (file, fin.read())
+
+    if not libraryCode:
+        exit ("Couldn't find any libraries in " + libraryCodeFolder)
+
+    embedLibraryCode (cppFile, libraryCode)
+
+embedLibraries (os.getcwd() + "/../source/modules/soul_core/compiler/soul_StandardLibrary.h",
+                os.getcwd() + "/../source/soul_library")
