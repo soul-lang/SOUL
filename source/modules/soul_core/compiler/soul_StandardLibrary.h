@@ -129,6 +129,9 @@ namespace soul::noise
             loop
             {
                 let white = rng.getNextBipolar();
+)soul_code"
+R"soul_code(
+
                 runningTotal += white;
 
                 if (runningTotal > limit || runningTotal < -limit)
@@ -216,6 +219,9 @@ namespace soul
 */
 namespace soul::audio_samples
 {
+)soul_code"
+R"soul_code(
+
     /** An external variable declared with the type soul::audio_samples::Mono
         can be loaded with monoised data from an audio file.
     */
@@ -295,6 +301,9 @@ namespace soul::delay
         {
             loop
             {
+)soul_code"
+R"soul_code(
+
                 while (queuedEvents > 0 && eventEntries[readPos].dispatchTime == currentTime)
                 {
                     eventOut << eventEntries[readPos].queuedEvent;
@@ -373,6 +382,9 @@ namespace soul::mixers
         {
             loop
             {
+)soul_code"
+R"soul_code(
+
                 out << lerp (in1, in2, mix * (1.0f / mixRange));
                 advance();
             }
@@ -437,6 +449,9 @@ namespace soul::gain
         }
 
         float targetGain, currentGain, increment;
+)soul_code"
+R"soul_code(
+
         int remainingRampSamples;
 
         void run()
@@ -502,6 +517,9 @@ namespace soul::envelope
                 {
                     level = targetLevel;
                 }
+)soul_code"
+R"soul_code(
+
                 else
                 {
                     let attackSamples = int (processor.frequency * attackTimeSeconds);
@@ -564,6 +582,9 @@ namespace soul::intrinsics
     T.removeReference clamp<T>     (T n, T low, T high)    [[intrin: "clamp"]]     { static_assert (T.isScalar, "clamp() only works with scalar types"); return n < low ? low : (n > high ? high : n); }
     /** Performs a negative-number-aware modulo operation to wrap a number to a zero-based range. */
     T.removeReference wrap<T>      (T n, T range)          [[intrin: "wrap"]]      { static_assert (T.isScalar, "wrap() only works with scalar types");  if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
+)soul_code"
+R"soul_code(
+
     /** Performs a negative-number-aware integer modulo operation. */
     int32 wrap                     (int32 n, int32 range)  [[intrin: "wrap"]]      { if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
     /** Performs a C++-compatible floor function on a scalar floating point value. */
@@ -578,6 +599,9 @@ namespace soul::intrinsics
     /** Performs a C++-compatible remainder function on some scalar floating point values. */
     T.removeReference remainder<T> (T x, T y)              [[intrin: "remainder"]] { static_assert (T.isScalar && T.primitiveType.isFloat, "remainder() only works with scalar floating point types"); return x - (y * T (int (0.5f + x / y))); }
     /** Returns the square root of a scalar floating point value. */
+)soul_code"
+R"soul_code(
+
     T.removeReference sqrt<T>      (T n)                   [[intrin: "sqrt"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "sqrt() only works with scalar floating point types");      return T(); }
     /** Raises a scalar floating point value to the given power. */
     T.removeReference pow<T>       (T a, T b)              [[intrin: "pow"]]       { static_assert (T.isScalar && T.primitiveType.isFloat, "pow() only works with scalar floating point types");       return T(); }
@@ -595,6 +619,9 @@ namespace soul::intrinsics
 
     /** Returns true if the floating point argument is a NaN. */
     bool isnan<T> (T n)  [[intrin: "isnan"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isnan() only works with floating point types"); return false; }
+)soul_code"
+R"soul_code(
+
     /** Returns true if the floating point argument is an INF. */
     bool isinf<T> (T n)  [[intrin: "isinf"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isinf() only works with floating point types"); return false; }
 
@@ -661,6 +688,9 @@ namespace soul::intrinsics
             wrap<t.size> i;
 
             loop (t.size - 1)
+)soul_code"
+R"soul_code(
+
                 total += t[++i];
 
             return total;
@@ -742,6 +772,9 @@ namespace soul::intrinsics
     }
 
     /** Reads an element from an array, allowing the index to be any type of floating point type.
+)soul_code"
+R"soul_code(
+
         If a floating point index is used, it will be rounded down to an integer index - for an
         interpolated read operation, see readLinearInterpolated(). Indexes beyond the range of the
         array will be wrapped.
@@ -778,6 +811,9 @@ namespace soul::intrinsics
     }
 
     // NB: this is used internally, not something you'd want to call from user code
+)soul_code"
+R"soul_code(
+
     int get_array_size<Array> (const Array& array) [[intrin: "get_array_size"]];
 
 
@@ -790,6 +826,9 @@ namespace soul::intrinsics
     T cosh<T>  (T n)  [[intrin: "cosh"]]     { static_assert (T.isPrimitive || T.isVector, "cosh() only works with floating point types");  static_assert (T.primitiveType.isFloat, "cosh() only works with floating point types");  return (exp (n) + exp (-n)) / 2; }
     T tanh<T>  (T n)  [[intrin: "tanh"]]     { static_assert (T.isPrimitive || T.isVector, "tanh() only works with floating point types");  static_assert (T.primitiveType.isFloat, "tanh() only works with floating point types");  return sinh (n) / cosh (n); }
     T asinh<T> (T n)  [[intrin: "asinh"]]    { static_assert (T.isPrimitive || T.isVector, "asinh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "asinh() only works with floating point types"); return log (n + sqrt (n * n + 1)); }
+)soul_code"
+R"soul_code(
+
     T acosh<T> (T n)  [[intrin: "acosh"]]    { static_assert (T.isPrimitive || T.isVector, "acosh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "acosh() only works with floating point types"); return log (n + sqrt (n * n - 1)); }
     T atanh<T> (T n)  [[intrin: "atanh"]]    { static_assert (T.isPrimitive || T.isVector, "atanh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "atanh() only works with floating point types"); return 0.5f * log ((1 + n) / (1 - n)); }
     T asin<T>  (T n)  [[intrin: "asin"]]     { static_assert (T.isPrimitive || T.isVector, "asin() only works with floating point types");  static_assert (T.primitiveType.isFloat, "asin() only works with floating point types");  return atan (n / (sqrt (1 - (n * n)))); }
@@ -819,6 +858,9 @@ namespace soul::intrinsics
     }
 
     namespace helpers
+)soul_code"
+R"soul_code(
+
     {
         T atanHelperPositive<T> (T n)
         {
@@ -902,6 +944,9 @@ namespace soul::oscillator
         event frequency (float newFrequency)    { phaseIncrement = float (newFrequency * processor.period); }
         event level (float newLevel)            { gain = newLevel; }
 
+)soul_code"
+R"soul_code(
+
         var phaseIncrement = float (initialFrequency * processor.period);
         var gain = initialOutputLevel;
 
@@ -964,6 +1009,9 @@ namespace soul::oscillator
     {
         output stream SampleType out;
 
+)soul_code"
+R"soul_code(
+
         input event float frequency; /**< Send these events to change the frequency */
         input event float level;     /**< Send these events to change the gain level */
 
@@ -1019,6 +1067,9 @@ namespace soul::oscillator
 
         /** Uses a PolyBLEP (Polynomial Band-Limited Step) to calculate a sawtooth wave.
             This expects the phase to be in the range 0 -> 1
+)soul_code"
+R"soul_code(
+
         */
         Type sawtooth<Type> (Type phase, Type phaseIncrement)
         {
@@ -1077,6 +1128,9 @@ namespace soul::DFT
                                        const SampleBuffer& inputImag,
                                        SampleBuffer& outputReal,
                                        SampleBuffer& outputImag,
+)soul_code"
+R"soul_code(
+
                                        SampleBuffer.elementType scaleFactor)
     {
         let size = SampleBuffer.size;
@@ -1179,6 +1233,9 @@ namespace soul::voice_allocators
             wrap<voiceCount> allocatedVoice = 0;
             var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
 
+)soul_code"
+R"soul_code(
+
             // Find the oldest voice to reuse
             for (int i = 1; i < voiceCount; ++i)
             {
@@ -1237,6 +1294,9 @@ namespace soul::voice_allocators
         {
             // Forward the pitch bend to all notes on this channel
             wrap<voiceCount> voice = 0;
+
+)soul_code"
+R"soul_code(
 
             loop (voiceCount)
             {
@@ -1344,6 +1404,9 @@ namespace soul::midi
 
             if (messageType == 0x80)
             {
+)soul_code"
+R"soul_code(
+
                 eventOut << soul::note_events::NoteOff (channel, float (messageByte2), normaliseValue (messageByte3));
             }
             else if (messageType == 0x90)

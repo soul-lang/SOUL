@@ -38,11 +38,22 @@ def embedLibraryCode(file, newLibraryCode):
         with open (file, "w") as fout:
            fout.write (newContent)
 
+def createStringLiteral (text):
+    maxLen = 2040
+    if len (text) <= maxLen:
+        return "R\"soul_code(\n" + text + "\n)soul_code\""
+
+    splitPos = text[:maxLen].rfind ("\n")
+    if splitPos == -1:
+        splitPos = maxLen
+
+    return createStringLiteral (text[:splitPos]) + "\n" + createStringLiteral (text[splitPos:])
+
 def createLibraryEntry (name, content):
     name = "soul." + name[13:-5].replace ("_", ".")
     print (name)
     content = content[content.index("*/") + 2:].strip()
-    return "    if (moduleName == \"" + name + "\")  return R\"soul_code(\n" + content + "\n)soul_code\";\n\n"
+    return "    if (moduleName == \"" + name + "\")  return " + createStringLiteral (content) + ";\n\n"
 
 def embedLibraries(cppFile, libraryCodeFolder):
     print ("Searching " + libraryCodeFolder)
