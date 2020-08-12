@@ -172,7 +172,7 @@ private:
     {
         ScannedTopLevelItem newItem (newModule);
         module = newModule;
-        newModule.fullName = readQualifiedIdentifier();
+        newModule.fullName = readQualifiedGeneralIdentifier();
         newModule.originalFullName = newModule.fullName;
         newModule.shortName = TokenisedPathString (newModule.fullName).getLastPart();
         parseAnnotation (newModule.annotation);
@@ -320,7 +320,7 @@ private:
     {
         item.inputDecls.push_back (getCurrentTokeniserPosition());
         auto& inputDeclaration = module->allocate<heart::InputDeclaration> (location);
-        inputDeclaration.name = parseIdentifier();
+        inputDeclaration.name = parseGeneralIdentifier();
         inputDeclaration.index = (uint32_t) module->inputs.size();
 
         if (module->findInput (inputDeclaration.name) != nullptr || module->findOutput (inputDeclaration.name) != nullptr)
@@ -334,7 +334,7 @@ private:
     {
         item.outputDecls.push_back (getCurrentTokeniserPosition());
         auto& output = module->allocate<heart::OutputDeclaration> (location);
-        output.name = parseIdentifier();
+        output.name = parseGeneralIdentifier();
 
         if (module->findInput (output.name) != nullptr || module->findOutput (output.name) != nullptr)
             throwError (Errors::nameInUse (output.name));
@@ -356,7 +356,7 @@ private:
 
     void parseInput (heart::InputDeclaration& inputDeclaration)
     {
-        inputDeclaration.name = parseIdentifier();
+        inputDeclaration.name = parseGeneralIdentifier();
 
         if (matchIf (HEARTOperator::openBracket))
         {
@@ -374,7 +374,7 @@ private:
 
     void parseOutput (heart::OutputDeclaration& output)
     {
-        output.name = parseIdentifier();
+        output.name = parseGeneralIdentifier();
 
         if (matchIf (HEARTOperator::openBracket))
         {
@@ -399,7 +399,7 @@ private:
 
             do
             {
-                auto name  = matchIf (Token::literalString) ? currentStringValue : readIdentifier();
+                auto name  = matchIf (Token::literalString) ? currentStringValue : readGeneralIdentifier();
                 auto value = matchIf (HEARTOperator::colon) ? parseAnnotationValue() : Value (true);
 
                 annotation.set (name, value, program.getStringDictionary());
@@ -431,7 +431,7 @@ private:
 
     void parseNode()
     {
-        auto name = readQualifiedIdentifier();
+        auto name = readQualifiedGeneralIdentifier();
 
         for (auto m : module->processorInstances)
             if (m->instanceName == name)
@@ -441,7 +441,7 @@ private:
         module->processorInstances.push_back (mi);
         mi.instanceName = name;
         expect (HEARTOperator::assign);
-        mi.sourceName = readQualifiedIdentifier();
+        mi.sourceName = readQualifiedGeneralIdentifier();
 
         if (matchIf (HEARTOperator::openBracket))
         {
@@ -508,12 +508,12 @@ private:
     {
         ProcessorAndChannel processorAndChannel;
 
-        auto name = readQualifiedIdentifier();
+        auto name = readQualifiedGeneralIdentifier();
 
         if (matchIf (HEARTOperator::dot))
         {
             processorAndChannel.processor = findProcessorInstance (name);
-            processorAndChannel.endpoint   = readIdentifier();
+            processorAndChannel.endpoint   = readGeneralIdentifier();
         }
         else
         {
@@ -561,7 +561,7 @@ private:
     {
         bool isExternal = matchIf ("external");
         auto type = readValueType();
-        auto name = program.getAllocator().get (readIdentifier());
+        auto name = program.getAllocator().get (readVariableIdentifier());
 
         for (auto& v : module->stateVariables)
             if (v->name == name)
@@ -585,7 +585,7 @@ private:
 
     void scanStruct (ScannedTopLevelItem& item)
     {
-        auto name = readQualifiedIdentifier();
+        auto name = readQualifiedGeneralIdentifier();
 
         if (module->findStruct (name) != nullptr)
             throwError (Errors::nameInUse (name));
@@ -601,7 +601,7 @@ private:
         while (! matchIf (HEARTOperator::closeBrace))
         {
             auto type = readValueType();
-            auto name = readIdentifier();
+            auto name = readGeneralIdentifier();
             expectSemicolon();
 
             if (s.hasMemberWithName (name))
@@ -615,7 +615,7 @@ private:
     {
         auto& fn = module->allocate<heart::Function>();
 
-        fn.name = parseIdentifier();
+        fn.name = parseGeneralIdentifier();
 
         if (isEventFunction)                              fn.functionType = FunctionType::event();
         else if (fn.name == getRunFunctionName())         fn.functionType = FunctionType::run();
@@ -670,7 +670,7 @@ private:
             {
                 auto type = readValueOrRefType();
                 auto paramLocation = location;
-                auto name = parseIdentifier();
+                auto name = parseVariableIdentifier();
                 f.parameters.push_back (module->allocate<heart::Variable> (std::move (paramLocation), type, name,
                                                                            heart::Variable::Role::parameter));
 
@@ -749,7 +749,7 @@ private:
                     {
                         auto paramType = readValueOrRefType();
                         auto paramLocation = location;
-                        auto paramName = parseIdentifier();
+                        auto paramName = parseVariableIdentifier();
                         block.parameters.push_back (module->allocate<heart::Variable> (std::move (paramLocation), paramType, paramName, heart::Variable::Role::parameter));
 
                         if (matchIf (HEARTOperator::comma))
@@ -807,7 +807,7 @@ private:
     {
         if (matchIf ("let"))
         {
-            auto name = readIdentifier();
+            auto name = readVariableIdentifier();
 
             if (findVariable (state, name, false) != nullptr)
                 throwError (Errors::nameInUse (name));
@@ -843,7 +843,7 @@ private:
                 return true;
             }
 
-            auto newVariableName = readIdentifier();
+            auto newVariableName = readVariableIdentifier();
             parseVariableAssignment (state, builder, { nullptr, newVariableName, false, false });
             return true;
         }
@@ -898,7 +898,7 @@ private:
     void parseFunctionCall (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
         auto errorLocation = location;
-        auto name = readQualifiedIdentifier();
+        auto name = readQualifiedGeneralIdentifier();
 
         ArrayWithPreallocation<Type, 8> argTypes;
         heart::FunctionCall::ArgListType args;
@@ -1018,7 +1018,7 @@ private:
 
     void parseReadStream (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
-        auto name = parseIdentifier();
+        auto name = parseGeneralIdentifier();
         auto src = module->findInput (name);
 
         if (src == nullptr)
@@ -1031,7 +1031,7 @@ private:
     bool parseWriteStream (FunctionParseState& state, FunctionBuilder& builder)
     {
         auto writeStreamLocation = location;
-        auto name = parseIdentifier();
+        auto name = parseGeneralIdentifier();
         auto target = module->findOutput (name);
 
         pool_ptr<heart::Expression> index;
@@ -1140,7 +1140,7 @@ private:
     {
         if (matchIf (HEARTOperator::dot))
         {
-            auto member = readIdentifier();
+            auto member = readGeneralIdentifier();
 
             if (! lhs.getType().isStruct())
                 throwError (Errors::invalidDotArguments());
@@ -1272,7 +1272,7 @@ private:
             if (currentStringValue[0] == '$')
             {
                 auto errorPos = location;
-                auto name = readQualifiedIdentifier();
+                auto name = readQualifiedVariableIdentifier();
 
                 if (auto v = findVariable (state, name, true))
                     return parseVariableSuffixes (state, *v);
@@ -1351,7 +1351,7 @@ private:
     {
         expect (HEARTOperator::dot);
         auto pos = location;
-        auto property = heart::ProcessorProperty::getPropertyFromName (readIdentifier());
+        auto property = heart::ProcessorProperty::getPropertyFromName (readGeneralIdentifier());
 
         if (property == heart::ProcessorProperty::Property::none)
             pos.throwError (Errors::unknownProperty());
@@ -1541,19 +1541,56 @@ private:
         }
     }
 
-    std::string readQualifiedIdentifier()
+    std::string readQualifiedGeneralIdentifier()
     {
-        auto part1 = readIdentifier();
+        auto part1 = readGeneralIdentifier();
 
         if (matchIf (HEARTOperator::doubleColon))
-            return TokenisedPathString::join (part1, readQualifiedIdentifier());
+            return TokenisedPathString::join (part1, readQualifiedGeneralIdentifier());
 
         return part1;
     }
 
-    Identifier parseIdentifier()
+    std::string readQualifiedVariableIdentifier()
     {
-        return program.getAllocator().get (readIdentifier());
+        auto part1 = readVariableIdentifier();
+
+        if (matchIf (HEARTOperator::doubleColon))
+            return TokenisedPathString::join (part1, readQualifiedGeneralIdentifier());
+
+        return part1;
+    }
+
+    Identifier parseGeneralIdentifier()
+    {
+        return program.getAllocator().get (readGeneralIdentifier());
+    }
+
+    Identifier parseVariableIdentifier()
+    {
+        return program.getAllocator().get (readVariableIdentifier());
+    }
+
+    std::string readVariableIdentifier()
+    {
+        auto name = currentStringValue;
+        expect (Token::identifier);
+
+        if (name[0] != '$')
+            throwError (Errors::invalidVariableName (name));
+
+        return name;
+    }
+
+    std::string readGeneralIdentifier()
+    {
+        auto name = currentStringValue;
+        expect (Token::identifier);
+
+        if (name[0] == '$')
+            throwError (Errors::invalidIdentifierName (name));
+
+        return name;
     }
 
     int64_t parseLiteralInt()
@@ -1595,7 +1632,7 @@ private:
     Identifier readBlockName()
     {
         expect (HEARTOperator::at);
-        return program.getAllocator().get ("@" + readIdentifier());
+        return program.getAllocator().get ("@" + readGeneralIdentifier());
     }
 
     StructurePtr findStruct (const std::string& name)
@@ -1625,7 +1662,7 @@ private:
         if (matchIf ("clamp"))    return parseBoundedIntType (false);
 
         auto errorPos = location;
-        auto name = readQualifiedIdentifier();
+        auto name = readQualifiedGeneralIdentifier();
 
         if (auto s = findStruct (name))
             return parseArrayTypeSuffixes (Type::createStruct (*s));
