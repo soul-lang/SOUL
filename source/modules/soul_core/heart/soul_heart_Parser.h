@@ -46,9 +46,9 @@ struct IdentifierMatcher
     static constexpr bool isIdentifierStart    (UnicodeChar c) noexcept  { return isIdentifierAnywhere (c) || c == '$' || c == '@'; }
     static constexpr bool isIdentifierBody     (UnicodeChar c) noexcept  { return isIdentifierAnywhere (c) || (c >= '0' && c <= '9'); }
 
-    static constexpr TokenType categoriseIdentifier (const std::string& identifier) noexcept
+    static TokenType categoriseIdentifier (const std::string& identifier) noexcept
     {
-        switch (identifier[0])
+        switch (identifier.at (0))
         {
             case '$': return Token::variableIdentifier;
             case '@': return Token::blockIdentifier;
