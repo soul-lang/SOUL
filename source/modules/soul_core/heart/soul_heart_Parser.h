@@ -33,11 +33,28 @@ struct DummyKeywordMatcher
 };
 
 //==============================================================================
+namespace Token
+{
+    SOUL_DECLARE_TOKEN (variableIdentifier,  "$variableIdentifier")
+    SOUL_DECLARE_TOKEN (blockIdentifier,     "$blockIdentifier")
+}
+
+//==============================================================================
 struct IdentifierMatcher
 {
     static constexpr bool isIdentifierAnywhere (UnicodeChar c) noexcept  { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; }
-    static constexpr bool isIdentifierStart    (UnicodeChar c) noexcept  { return isIdentifierAnywhere (c) || c == '$'; }
+    static constexpr bool isIdentifierStart    (UnicodeChar c) noexcept  { return isIdentifierAnywhere (c) || c == '$' || c == '@'; }
     static constexpr bool isIdentifierBody     (UnicodeChar c) noexcept  { return isIdentifierAnywhere (c) || (c >= '0' && c <= '9'); }
+
+    static constexpr TokenType categoriseIdentifier (const std::string& identifier) noexcept
+    {
+        switch (identifier.at (0))
+        {
+            case '$': return Token::variableIdentifier;
+            case '@': return Token::blockIdentifier;
+            default:  return Token::identifier;
+        }
+    }
 };
 
 //==============================================================================
@@ -46,7 +63,7 @@ namespace HEARTOperator
     // NB: declaration order matters here for operators of different lengths that start the same way
     #define SOUL_HEART_OPERATORS(X) \
         X(semicolon,          ";")      X(dot,                ".")  \
-        X(comma,              ",")      X(at,                 "@")  \
+        X(comma,              ",") \
         X(openParen,          "(")      X(closeParen,         ")")  \
         X(openBrace,          "{")      X(closeBrace,         "}")  \
         X(openDoubleBracket,  "[[")     X(closeDoubleBracket, "]]") \
@@ -733,7 +750,7 @@ private:
     {
         for (;;)
         {
-            auto name = readBlockName();
+            auto name = parseBlockName();
 
             for (auto& b : state.blocks)
                 if (b.block.name == name)
@@ -766,7 +783,7 @@ private:
 
             skipPastNextOccurrenceOf (HEARTOperator::semicolon);
 
-            while (! matches (HEARTOperator::at))
+            while (! matches (Token::blockIdentifier))
             {
                 if (matchIf (HEARTOperator::closeBrace))
                     return;
@@ -835,7 +852,7 @@ private:
             return true;
         }
 
-        if (matches (Token::identifier))
+        if (matchesAnyIdentifier())
         {
             if (auto existingVariableTarget = parseVariableExpression (state))
             {
@@ -949,7 +966,7 @@ private:
     {
         if (matchIf ("branch"))
         {
-            auto& dest = readBlockNameAndFind (state);
+            auto& dest = parseBlockNameAndFind (state);
             auto destArgs = parseOptionalBranchArgs<heart::Branch::ArgListType> (state);
             expectSemicolon();
             builder.addBranch (dest, std::move (destArgs), {});
@@ -960,10 +977,10 @@ private:
         {
             auto& condition = parseExpression (state, PrimitiveType::bool_);
             expect (HEARTOperator::question);
-            auto& trueBranch = readBlockNameAndFind (state);
+            auto& trueBranch = parseBlockNameAndFind (state);
             auto trueBranchArgs = parseOptionalBranchArgs<heart::BranchIf::ArgListType> (state);
             expect (HEARTOperator::colon);
-            auto& falseBranch = readBlockNameAndFind (state);
+            auto& falseBranch = parseBlockNameAndFind (state);
             auto falseBranchArgs = parseOptionalBranchArgs<heart::BranchIf::ArgListType> (state);
             expectSemicolon();
             builder.addBranchIf (condition, trueBranch, std::move (trueBranchArgs), falseBranch, std::move (falseBranchArgs), {});
@@ -1086,9 +1103,9 @@ private:
         return {};
     }
 
-    heart::Block& readBlockNameAndFind (const FunctionParseState& state)
+    heart::Block& parseBlockNameAndFind (const FunctionParseState& state)
     {
-        return getBlock (state, readBlockName());
+        return getBlock (state, parseBlockName());
     }
 
     pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
@@ -1267,19 +1284,19 @@ private:
         SOUL_UNARY_OPS (SOUL_COMPARE_UNARY_OP)
         #undef SOUL_COMPARE_UNARY_OP
 
+        if (matches (Token::variableIdentifier))
+        {
+            auto errorPos = location;
+            auto name = readQualifiedVariableIdentifier();
+
+            if (auto v = findVariable (state, name, true))
+                return parseVariableSuffixes (state, *v);
+
+            errorPos.throwError (Errors::unresolvedSymbol (name));
+        }
+
         if (matches (Token::identifier))
         {
-            if (currentStringValue[0] == '$')
-            {
-                auto errorPos = location;
-                auto name = readQualifiedVariableIdentifier();
-
-                if (auto v = findVariable (state, name, true))
-                    return parseVariableSuffixes (state, *v);
-
-                errorPos.throwError (Errors::unresolvedSymbol (name));
-            }
-
             if (matchIf ("cast"))
                 return parseCast (state);
 
@@ -1335,7 +1352,7 @@ private:
 
     pool_ptr<heart::Expression> parseVariableExpression (const FunctionParseState& state)
     {
-        if (matches (Token::identifier))
+        if (matches (Token::variableIdentifier))
         {
             if (auto v = findVariable (state, currentStringValue, true))
             {
@@ -1571,13 +1588,28 @@ private:
         return program.getAllocator().get (readVariableIdentifier());
     }
 
+    Identifier parseBlockName()
+    {
+        auto name = currentStringValue;
+        expect (Token::blockIdentifier);
+
+        if (name.length() < 2)
+            throwError (Errors::invalidBlockName (name));
+
+        return program.getAllocator().get (name);
+    }
+
     std::string readVariableIdentifier()
     {
         auto name = currentStringValue;
-        expect (Token::identifier);
 
-        if (name[0] != '$')
+        if (matchesAnyIdentifier() && ! matches (Token::variableIdentifier))
             throwError (Errors::invalidVariableName (name));
+
+        if (name.length() < 2)
+            throwError (Errors::invalidVariableName (name));
+
+        expect (Token::variableIdentifier);
 
         return name;
     }
@@ -1585,12 +1617,18 @@ private:
     std::string readGeneralIdentifier()
     {
         auto name = currentStringValue;
-        expect (Token::identifier);
 
-        if (name[0] == '$')
+        if (matchesAnyIdentifier() && ! matches (Token::identifier))
             throwError (Errors::invalidIdentifierName (name));
 
+        expect (Token::identifier);
+
         return name;
+    }
+
+    bool matchesAnyIdentifier() const
+    {
+        return matches (Token::identifier) || matches (Token::variableIdentifier) || matches (Token::blockIdentifier);
     }
 
     int64_t parseLiteralInt()
@@ -1629,12 +1667,6 @@ private:
         return v;
     }
 
-    Identifier readBlockName()
-    {
-        expect (HEARTOperator::at);
-        return program.getAllocator().get ("@" + readGeneralIdentifier());
-    }
-
     StructurePtr findStruct (const std::string& name)
     {
         if (auto s = module->findStruct (name))
@@ -1661,13 +1693,17 @@ private:
         if (matchIf ("wrap"))     return parseBoundedIntType (true);
         if (matchIf ("clamp"))    return parseBoundedIntType (false);
 
-        auto errorPos = location;
-        auto name = readQualifiedGeneralIdentifier();
+        if (matches (Token::identifier))
+        {
+            auto errorPos = location;
+            auto name = readQualifiedGeneralIdentifier();
 
-        if (auto s = findStruct (name))
-            return parseArrayTypeSuffixes (Type::createStruct (*s));
+            if (auto s = findStruct (name))
+                return parseArrayTypeSuffixes (Type::createStruct (*s));
 
-        errorPos.throwError (Errors::unresolvedType (name));
+            errorPos.throwError (Errors::unresolvedType (name));
+        }
+
         return {};
     }
 

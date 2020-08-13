@@ -160,7 +160,7 @@ private:
 
             currentStringValue = std::string (input.getAddress(), end.getAddress());
             input = end;
-            return Token::identifier;
+            return IdentifierMatcher::categoriseIdentifier (currentStringValue);
         }
 
         if (input.isDigit())

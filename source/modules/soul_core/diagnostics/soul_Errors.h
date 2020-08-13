@@ -79,6 +79,7 @@ namespace soul
     X(alreadyProcessorWithName,             "There is already a processor called $Q0$ visible in this scope") \
     X(invalidName,                          "Invalid name $Q0$") \
     X(invalidVariableName,                  "Invalid variable name $Q0$") \
+    X(invalidBlockName,                     "Invalid block name $Q0$") \
     X(invalidIdentifierName,                "Invalid identifier name $Q0$") \
     X(nameTooLong,                          "The name $Q0$ exceeded the maximum length") \
     X(notYetImplemented,                    "Language feature not yet implemented: $0$!") \

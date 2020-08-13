@@ -68,8 +68,9 @@ struct StandardOperatorMatcher
 //==============================================================================
 struct StandardIdentifierMatcher
 {
-    static constexpr bool isIdentifierStart (UnicodeChar c) noexcept  { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
-    static constexpr bool isIdentifierBody  (UnicodeChar c) noexcept  { return isIdentifierStart (c) || (c >= '0' && c <= '9') || c == '_'; }
+    static constexpr bool isIdentifierStart (UnicodeChar c) noexcept              { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+    static constexpr bool isIdentifierBody  (UnicodeChar c) noexcept              { return isIdentifierStart (c) || (c >= '0' && c <= '9') || c == '_'; }
+    static constexpr TokenType categoriseIdentifier (const std::string&) noexcept { return Token::identifier; }
 };
 
 //==============================================================================
