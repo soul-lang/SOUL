@@ -48,7 +48,7 @@ struct IdentifierMatcher
 
     static constexpr TokenType categoriseIdentifier (const std::string& identifier) noexcept
     {
-        switch (identifier.at (0))
+        switch (identifier[0])
         {
             case '$': return Token::variableIdentifier;
             case '@': return Token::blockIdentifier;
