@@ -152,6 +152,7 @@ namespace soul
     X(endpointIndexMustBeConstant,          "Endpoint index must be a constant") \
     X(duplicateFunction,                    "A function with matching parameters has already been defined") \
     X(duplicateProcessor,                   "A processor with the name $Q0$ has already been declared") \
+    X(duplicateModule,                      "A module with the name $Q0$ has already been declared") \
     X(processorNeedsAnOutput,               "A processor must declare at least one output") \
     X(functionMustBeVoid,                   "The $0$() function must return 'void'") \
     X(functionHasParams,                    "The $0$() function must not have any parameters") \

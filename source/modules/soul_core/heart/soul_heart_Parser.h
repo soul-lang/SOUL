@@ -189,7 +189,13 @@ private:
     {
         ScannedTopLevelItem newItem (newModule);
         module = newModule;
-        newModule.fullName = readQualifiedGeneralIdentifier();
+
+        auto fullName = readQualifiedGeneralIdentifier();
+
+        if (program.findModuleWithName(fullName))
+            throwError (Errors::duplicateModule (fullName));
+
+        newModule.fullName = fullName;
         newModule.originalFullName = newModule.fullName;
         newModule.shortName = TokenisedPathString (newModule.fullName).getLastPart();
         parseAnnotation (newModule.annotation);
@@ -826,7 +832,7 @@ private:
         {
             auto name = readVariableIdentifier();
 
-            if (findVariable (state, name, false) != nullptr)
+            if (findVariable (state, name) != nullptr)
                 throwError (Errors::nameInUse (name));
 
             parseVariableAssignment (state, builder, { nullptr, name, true, false });
@@ -856,6 +862,9 @@ private:
         {
             if (auto existingVariableTarget = parseVariableExpression (state))
             {
+                if (! existingVariableTarget->isMutable())
+                    location.throwError (Errors::operatorNeedsAssignableTarget ("="));
+
                 parseVariableAssignment (state, builder, { existingVariableTarget, {}, false, false });
                 return true;
             }
@@ -1108,7 +1117,7 @@ private:
         return getBlock (state, parseBlockName());
     }
 
-    pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name, bool includeStateVariables)
+    pool_ptr<heart::Variable> findVariable (const FunctionParseState& state, const std::string& name)
     {
         if (containsChar (name, ':'))
         {
@@ -1126,10 +1135,9 @@ private:
             if (parameter->name == name)
                 return parameter;
 
-        if (includeStateVariables)
-            for (auto& v : module->stateVariables)
-                if (v->name == name)
-                    return v;
+        for (auto& v : module->stateVariables)
+            if (v->name == name)
+                return v;
 
         if (state.currentBlock != nullptr)
         {
@@ -1289,7 +1297,7 @@ private:
             auto errorPos = location;
             auto name = readQualifiedVariableIdentifier();
 
-            if (auto v = findVariable (state, name, true))
+            if (auto v = findVariable (state, name))
                 return parseVariableSuffixes (state, *v);
 
             errorPos.throwError (Errors::unresolvedSymbol (name));
@@ -1354,7 +1362,7 @@ private:
     {
         if (matches (Token::variableIdentifier))
         {
-            if (auto v = findVariable (state, currentStringValue, true))
+            if (auto v = findVariable (state, currentStringValue))
             {
                 skip();
                 return parseVariableSuffixes (state, *v);
@@ -1693,18 +1701,13 @@ private:
         if (matchIf ("wrap"))     return parseBoundedIntType (true);
         if (matchIf ("clamp"))    return parseBoundedIntType (false);
 
-        if (matches (Token::identifier))
-        {
-            auto errorPos = location;
-            auto name = readQualifiedGeneralIdentifier();
+        auto errorPos = location;
+        auto name = readQualifiedGeneralIdentifier();
 
-            if (auto s = findStruct (name))
-                return parseArrayTypeSuffixes (Type::createStruct (*s));
+        if (auto s = findStruct (name))
+            return parseArrayTypeSuffixes (Type::createStruct (*s));
 
-            errorPos.throwError (Errors::unresolvedType (name));
-        }
-
-        return {};
+        errorPos.throwError (Errors::unresolvedType (name));
     }
 
     Type readValueOrRefType()
