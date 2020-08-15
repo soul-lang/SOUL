@@ -106,12 +106,7 @@ static std::string addSuffixToMakeUnique (const std::string& name, IsAlreadyUsed
     return nameToUse;
 }
 
-std::string toStringWithDecPlaces (double n, size_t numDecPlaces);
 std::string getDescriptionOfTimeInSeconds (double numSeconds);
-std::string toHexString (int64_t value);
-std::string toHexString (int64_t value, int numDigits);
-int getHexDigitValue (uint32_t digit) noexcept;
-std::string doubleToJSONString (double n);
 std::string getReadableDescriptionOfByteSize (uint64_t bytes);
 std::string toCppStringLiteral (const std::string& text,
                                 int maxCharsOnLine, bool breakAtNewLines,

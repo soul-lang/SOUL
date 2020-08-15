@@ -69,7 +69,7 @@
 
 #include "../../../include/soul/3rdParty/choc/containers/choc_Value.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_StringUtilities.h"
-#include "../../../include/soul/3rdParty/choc/text/choc_FloatToString.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_JSON.h"
 #include "../../../include/soul/3rdParty/choc/math/choc_MathHelpers.h"
 #include "../../../include/soul/3rdParty/choc/audio/choc_SampleBuffers.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_CodePrinter.h"

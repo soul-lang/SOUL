@@ -250,72 +250,26 @@ std::string makeIdentifierRemovingColons (std::string s)
     return makeSafeIdentifierName (replaceSubString (trimCharacterAtStart (s, ':'), "::", "_"));
 }
 
-std::string toStringWithDecPlaces (double n, size_t numDecPlaces)
-{
-    auto s = std::to_string (n);
-    auto dot = s.find ('.');
-    return dot == std::string::npos ? s : s.substr (0, std::min (s.length(), dot + 1 + numDecPlaces));
-}
-
 std::string getDescriptionOfTimeInSeconds (double numSeconds)
 {
+    auto toStringWithDecPlaces = [] (double n, size_t numDecPlaces)
+    {
+        auto s = choc::text::floatToString (n, (int) numDecPlaces);
+        auto dot = s.find ('.');
+        return dot == std::string::npos ? s : s.substr (0, std::min (s.length(), dot + 1 + numDecPlaces));
+    };
+
     return numSeconds < 1.0 ? (toStringWithDecPlaces (numSeconds * 1000.0, numSeconds < 0.1 ? 2 : 1) + " ms")
                             : (toStringWithDecPlaces (numSeconds, 2) + " sec");
-}
-
-int getHexDigitValue (uint32_t digit) noexcept
-{
-    auto d = digit - (uint32_t) '0';
-
-    if (d < (uint32_t) 10)
-        return (int) d;
-
-    d += (uint32_t) ('0' - 'a');
-
-    if (d < (uint32_t) 6)
-        return (int) d + 10;
-
-    d += (uint32_t) ('a' - 'A');
-
-    if (d < (uint32_t) 6)
-        return (int) d + 10;
-
-    return -1;
-}
-
-std::string toHexString (int64_t value)
-{
-    std::ostringstream s;
-    s << std::hex << value;
-    return s.str();
-}
-
-std::string toHexString (int64_t value, int numDigits)
-{
-    std::ostringstream s;
-    s << std::setw (numDigits) << std::setfill ('0') << std::hex << value;
-    return s.str();
-}
-
-std::string doubleToJSONString (double n)
-{
-    if (std::isfinite (n))
-        return choc::text::floatToString (n);
-
-    if (std::isnan (n))
-        return "\"NaN\"";
-
-    return n < 0 ? "\"-Infinity\""
-                 : "\"Infinity\"";
 }
 
 std::string getReadableDescriptionOfByteSize (uint64_t bytes)
 {
     if (bytes == 1)                  return "1 byte";
     if (bytes < 1024)                return std::to_string (bytes) + " bytes";
-    if (bytes < 1024 * 1024)         return toStringWithDecPlaces (double (bytes) / 1024.0, 1)                     + " KB";
-    if (bytes < 1024 * 1024 * 1024)  return toStringWithDecPlaces (double (bytes) / (1024.0 * 1024.0), 1)          + " MB";
-    else                             return toStringWithDecPlaces (double (bytes) / (1024.0 * 1024.0 * 1024.0), 1) + " GB";
+    if (bytes < 1024 * 1024)         return choc::text::floatToString (double (bytes) / 1024.0, 1)                     + " KB";
+    if (bytes < 1024 * 1024 * 1024)  return choc::text::floatToString (double (bytes) / (1024.0 * 1024.0), 1)          + " MB";
+    else                             return choc::text::floatToString (double (bytes) / (1024.0 * 1024.0 * 1024.0), 1) + " GB";
 }
 
 std::string convertToString (const std::string& name)        { return name; }
@@ -481,7 +435,7 @@ std::string toCppStringLiteral (const std::string& text,
                     charsOnLine += 2;
                 }
                 else if (c >= 32 && c < 127 && ! (lastWasHexEscapeCode  // (have to avoid following a hex escape sequence with a valid hex digit)
-                                                   && getHexDigitValue (c) >= 0))
+                                                   && choc::text::hexDigitToInt (c) >= 0))
                 {
                     out << (char) c;
                     lastWasHexEscapeCode = false;
@@ -497,7 +451,7 @@ std::string toCppStringLiteral (const std::string& text,
                 }
                 else
                 {
-                    out << (c < 16 ? "\\x0" : "\\x") << toHexString ((int) c);
+                    out << (c < 16 ? "\\x0" : "\\x") << choc::text::createHexString (c);
                     lastWasHexEscapeCode = true;
                     trigraphDetected = false;
                     charsOnLine += 4;

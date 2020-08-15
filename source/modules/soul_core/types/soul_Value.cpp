@@ -917,7 +917,7 @@ void ValuePrinter::printUnsizedArrayContent (const Type&, const void* pointer)
 
     ConstantTable::Handle handle;
     writeUnaligned (std::addressof (handle), pointer);
-    print ("0x" + toHexString (handle));
+    print ("0x" + choc::text::createHexString (handle));
 }
 
 

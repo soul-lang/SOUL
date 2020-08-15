@@ -57,7 +57,7 @@ static std::string propertyToString (const StringDictionary& stringDictionary, c
 
     if (asJSON)
     {
-        if (type.isPrimitiveFloat())     return desc + doubleToJSONString (prop.value.getAsDouble());
+        if (type.isPrimitiveFloat())     return desc + choc::json::doubleToString (prop.value.getAsDouble());
         if (type.isPrimitiveInteger())   return desc + std::to_string (prop.value.getAsInt64());
     }
 

@@ -29,6 +29,7 @@
 #include <string_view>
 
 #include "choc_UTF8.h"
+#include "choc_FloatToString.h"
 #include "../containers/choc_Value.h"
 
 namespace choc::json
@@ -76,6 +77,9 @@ std::string addEscapeCharacters (std::string_view sourceString);
     equivalent JSON escape sequences.
 */
 std::string getEscapedQuotedString (std::string_view sourceString);
+
+/** Converts a double to a JSON-format string representation. */
+std::string doubleToString (double value);
 
 //==============================================================================
 //        _        _           _  _
@@ -142,6 +146,15 @@ inline std::string getEscapedQuotedString (std::string_view s)
     writeWithEscapeCharacters (result, text::UTF8Pointer (std::string (s).c_str()));
     result << '"';
     return result.str();
+}
+
+inline std::string doubleToString (double value)
+{
+    if (std::isfinite (value))    return choc::text::floatToString (value);
+    if (std::isnan (value))       return "\"NaN\"";
+
+    return value >= 0 ?  "\"Infinity\""
+                      : "\"-Infinity\"";
 }
 
 //==============================================================================

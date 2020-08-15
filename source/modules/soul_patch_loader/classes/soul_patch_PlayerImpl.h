@@ -270,7 +270,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         if (isConsoleEndpoint (endpointName))
             handler (eventTime, endpointName.c_str(), dump (eventData).c_str());
         else
-            handler (eventTime, endpointName.c_str(), (endpointName + "  " + toStringWithDecPlaces (eventTime / sampleRate, 3)
+            handler (eventTime, endpointName.c_str(), (endpointName + "  " + choc::text::floatToString (eventTime / sampleRate, 3)
                                                          + ": " + dump (eventData) + "\n").c_str());
     }
 

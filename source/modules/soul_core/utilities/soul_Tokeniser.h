@@ -277,7 +277,7 @@ private:
         auto t = input;
 
         if (t.advanceIfStartsWith ("0x", "0X"))
-            return parseIntegerWithBase<16> (t, [] (UnicodeChar c) -> int { return getHexDigitValue (c); });
+            return parseIntegerWithBase<16> (t, [] (UnicodeChar c) -> int { return choc::text::hexDigitToInt (c); });
 
         return false;
     }
@@ -425,7 +425,7 @@ private:
 
                         for (int i = 4; --i >= 0;)
                         {
-                            auto digitValue = getHexDigitValue (input.getAndAdvance());
+                            auto digitValue = choc::text::hexDigitToInt (input.getAndAdvance());
 
                             if (digitValue < 0)
                             {

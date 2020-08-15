@@ -45,6 +45,21 @@ std::string floatToString (float value);
 */
 std::string floatToString (double value);
 
+//==============================================================================
+/** Converts a 32-bit float to an accurate, round-trip-safe string.
+
+    The algorithm used is "Grisu3" from the paper "Printing Floating-Point Numbers
+    Quickly and Accurately with Integers" by Florian Loitsch.
+*/
+std::string floatToString (float value, int maxDecimalPlaces);
+
+/** Converts a 64-bit double to an accurate, round-trip-safe string.
+
+    The algorithm used is "Grisu3" from the paper "Printing Floating-Point Numbers
+    Quickly and Accurately with Integers" by Florian Loitsch.
+*/
+std::string floatToString (double value, int maxDecimalPlaces);
+
 
 //==============================================================================
 /** Helper class containing its own buffer for converting a float or double to a string.
@@ -69,6 +84,9 @@ struct FloatToStringBuffer
 
 private:
     //==============================================================================
+    static_assert (std::is_same<const float, const FloatOrDouble>::value || std::is_same<const double, const FloatOrDouble>::value,
+                   "This class can only handle float or double template types");
+
     char storage[32];
     const char* stringEnd;
 
@@ -361,8 +379,10 @@ private:
     }
 };
 
-inline std::string floatToString (float value)     { return FloatToStringBuffer<float>  (value).toString(); }
-inline std::string floatToString (double value)    { return FloatToStringBuffer<double> (value).toString(); }
+inline std::string floatToString (float value)                          { return FloatToStringBuffer<float>  (value).toString(); }
+inline std::string floatToString (double value)                         { return FloatToStringBuffer<double> (value).toString(); }
+inline std::string floatToString (float value, int maxDecimalPlaces)    { return FloatToStringBuffer<float>  (value, maxDecimalPlaces).toString(); }
+inline std::string floatToString (double value, int maxDecimalPlaces)   { return FloatToStringBuffer<double> (value, maxDecimalPlaces).toString(); }
 
 } // namespace choc::text
 

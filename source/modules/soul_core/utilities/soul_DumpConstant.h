@@ -28,8 +28,8 @@ namespace soul
 */
 inline std::string dump (const choc::value::ValueView& c)
 {
-    if (c.isInt32())    { auto v = c.getInt32(); return v > 0xffff ? "0x" + toHexString (v) : std::to_string (v); }
-    if (c.isInt64())    { auto v = c.getInt64(); return v > 0xffff ? "0x" + toHexString (v) : std::to_string (v); }
+    if (c.isInt32())    { auto v = c.getInt32(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
+    if (c.isInt64())    { auto v = c.getInt64(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
 
     auto printFloat32 = [] (float value) -> std::string
     {

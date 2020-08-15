@@ -40,6 +40,12 @@ namespace choc::text
 /** Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit. */
 int hexDigitToInt (uint32_t unicodeChar);
 
+/** Returns a hex string for the given value.
+    If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
+*/
+template <typename IntegerType>
+std::string createHexString (IntegerType value, int minNumDigits = 0);
+
 inline bool isWhitespace (char c)                               { return c == ' ' || (c <= 13 && c >= 9); }
 
 /** If the given character is at the start and end of the string, it trims it away. */
@@ -96,6 +102,29 @@ inline int hexDigitToInt (uint32_t c)
     auto d2 = d1 + static_cast<uint32_t> ('0' - 'a');   if (d2 < 6u)   return static_cast<int> (d2 + 10);
     auto d3 = d2 + static_cast<uint32_t> ('a' - 'A');   if (d3 < 6u)   return static_cast<int> (d3 + 10);
     return -1;
+}
+
+template <typename IntegerType>
+std::string createHexString (IntegerType v, int minNumDigits)
+{
+    static_assert (std::is_integral<IntegerType>::value, "Need to pass integers into this method");
+    auto value = static_cast<typename std::make_unsigned<IntegerType>::type> (v);
+    CHOC_ASSERT (minNumDigits <= 32);
+
+    char hex[40];
+    const auto end = hex + sizeof (hex) - 1;
+    auto d = end;
+    *d = 0;
+
+    for (;;)
+    {
+        *--d = "0123456789abcdef"[static_cast<uint32_t> (value) & 15u];
+        value = static_cast<decltype (value)> (value >> 4);
+        --minNumDigits;
+
+        if (value == 0 && minNumDigits <= 0)
+            return std::string (d, end);
+    }
 }
 
 inline std::string removeOuterCharacter (std::string t, char outerChar)
