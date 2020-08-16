@@ -152,7 +152,7 @@ struct TokenisedPathString
         if (sections.size() <= 1)
             return {};
 
-        return trim (fullPath.substr (0, sections[sections.size() - 2].end));
+        return choc::text::trim (fullPath.substr (0, sections[sections.size() - 2].end));
     }
 
     static std::string join (const std::string& parent, const std::string& child)
@@ -175,7 +175,7 @@ struct TokenisedPathString
     struct Section { size_t start, end; };
     ArrayWithPreallocation<Section, 8> sections;
 
-    std::string getSection (Section s) const        { return trim (fullPath.substr (s.start, s.end - s.start)); }
+    std::string getSection (Section s) const        { return choc::text::trim (fullPath.substr (s.start, s.end - s.start)); }
 };
 
 

@@ -105,7 +105,7 @@ float getBelaLoadFromString (const std::string& input)
         if (contains (l, "bela-audio"))
         {
             auto toks = choc::text::splitAtWhitespace (l);
-            removeIf (toks, [] (const std::string& s) { return trim (s).empty(); });
+            removeIf (toks, [] (const std::string& s) { return choc::text::trim (s).empty(); });
 
             if (toks.size() > 7)
                 return (float) (std::stod (toks[7]) / 100.0f);

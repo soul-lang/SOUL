@@ -21,7 +21,6 @@
 namespace soul
 {
 
-bool isWhitespace (char);
 bool isDigit (char);
 
 std::string repeatedCharacter (char, size_t num);
@@ -31,9 +30,6 @@ bool containsChar (const std::string&, char) noexcept;
 bool containsChar (const char*, char) noexcept;
 
 std::string trimCharacterAtStart (const std::string& s, char charToRemove);
-std::string trimStart (const std::string&);
-std::string trimEnd (std::string);
-std::string trim (std::string);
 
 template <typename StringType>
 static inline bool contains (const std::string& text, const StringType& substring)
@@ -46,7 +42,6 @@ bool startsWith (const std::string& text, const char* possibleStart);
 bool startsWith (const std::string& text, const std::string& possibleStart);
 bool endsWith (const std::string& text, const std::string& possibleEnd);
 
-std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement);
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
 std::string removeCharacter (std::string s, char charToRemove);
 

@@ -355,8 +355,8 @@ private:
     static std::string replaceArgument (std::string text, size_t index, const std::string& value)
     {
         auto i = std::to_string (index);
-        text = replaceSubString (text, "$Q" + i + "$", choc::text::addSingleQuotes (value));
-        return replaceSubString (text, "$" + i + "$", value);
+        text = choc::text::replace (text, "$Q" + i + "$", choc::text::addSingleQuotes (value));
+        return choc::text::replace (text, "$" + i + "$", value);
     }
 
 public:
@@ -370,7 +370,7 @@ public:
         for (size_t i = 0; i < stringArgs.size(); ++i)
             result = replaceArgument (result, i, stringArgs[i]);
 
-        return CompileMessage { trim (result), location, type, category };
+        return CompileMessage { choc::text::trim (result), location, type, category };
     }
 
     template <typename... Args>

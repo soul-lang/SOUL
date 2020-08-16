@@ -25,7 +25,6 @@
 namespace soul
 {
 
-bool isWhitespace (char c)           { return c == ' ' || (c <= 13 && c >= 9); }
 bool isDigit (char c)                { return c >= '0' && c <= '9'; }
 bool isSafeIdentifierChar (char c)   { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || isDigit (c); }
 
@@ -68,28 +67,6 @@ std::string trimCharacterAtStart (const std::string& s, char charToRemove)
     return {};
 }
 
-std::string trimStart (const std::string& s)
-{
-    for (auto c = s.begin(); c != s.end(); ++c)
-        if (! isWhitespace (*c))
-            return { c, s.end() };
-
-    return {};
-}
-
-std::string trimEnd (std::string s)
-{
-    s.erase (std::find_if (s.rbegin(), s.rend(), [] (char ch) { return ! isWhitespace (ch); }).base(),
-             s.end());
-
-    return s;
-}
-
-std::string trim (std::string s)
-{
-    return trimStart (trimEnd (s));
-}
-
 bool startsWith (const std::string& text, char possibleStart)
 {
     return ! text.empty() && text[0] == possibleStart;
@@ -118,20 +95,6 @@ bool endsWith (const std::string& text, const std::string& possibleEnd)
     auto endLen = possibleEnd.length();
 
     return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
-}
-
-std::string replaceSubString (std::string s, const std::string& toReplace, const std::string& replacement)
-{
-    for (size_t index = 0;;)
-    {
-        index = s.find (toReplace, index);
-
-        if (index == std::string::npos)
-            return s;
-
-        s.replace (index, toReplace.length(), replacement);
-        index += replacement.length();
-    }
 }
 
 std::string retainCharacters (std::string s, const std::string& charactersToRetain)
@@ -247,7 +210,7 @@ bool isSafeIdentifierName (std::string s)
 
 std::string makeIdentifierRemovingColons (std::string s)
 {
-    return makeSafeIdentifierName (replaceSubString (trimCharacterAtStart (s, ':'), "::", "_"));
+    return makeSafeIdentifierName (choc::text::replace (trimCharacterAtStart (s, ':'), "::", "_"));
 }
 
 std::string getDescriptionOfTimeInSeconds (double numSeconds)

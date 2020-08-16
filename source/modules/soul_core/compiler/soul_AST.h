@@ -296,7 +296,7 @@ struct AST
     {
         void addIfNotAlreadyThere (std::string newImport)
         {
-            newImport = trim (newImport);
+            newImport = choc::text::trim (newImport);
 
             if (! contains (imports, newImport))
                 imports.push_back (newImport);

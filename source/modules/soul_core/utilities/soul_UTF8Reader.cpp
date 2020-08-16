@@ -195,7 +195,7 @@ UTF8Reader UTF8Reader::find (const char* searchString) const
             return t;
 }
 
-bool UTF8Reader::isWhitespace() const noexcept          { return soul::isWhitespace (*data); }
+bool UTF8Reader::isWhitespace() const noexcept          { return choc::text::isWhitespace (*data); }
 bool UTF8Reader::isDigit() const noexcept               { return soul::isDigit (*data); }
 
 UTF8Reader UTF8Reader::findEndOfWhitespace() const

@@ -37,16 +37,43 @@ namespace choc::text
 {
 
 //==============================================================================
-/** Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit. */
-int hexDigitToInt (uint32_t unicodeChar);
-
-/** Returns a hex string for the given value.
-    If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
-*/
-template <typename IntegerType>
-std::string createHexString (IntegerType value, int minNumDigits = 0);
-
 inline bool isWhitespace (char c)                               { return c == ' ' || (c <= 13 && c >= 9); }
+
+/** Replaces all occurrences of a one or more substrings.
+    The arguments must be a sequence of pairs of strings, where the first of each pair is the string to
+    look for, followed by its replacement.
+*/
+template <typename StringType, typename... OtherReplacements>
+std::string replace (StringType textToSearch,
+                     std::string_view firstSubstringToReplace, std::string_view firstReplacement,
+                     OtherReplacements&&... otherPairsOfStringsToReplace);
+
+/** Returns a string with any whitespace trimmed from its start and end. */
+std::string trim (std::string textToTrim);
+
+/** Returns a string with any whitespace trimmed from its start and end. */
+std::string_view trim (std::string_view textToTrim);
+
+/** Returns a string with any whitespace trimmed from its start and end. */
+std::string_view trim (const char* textToTrim);
+
+/** Returns a string with any whitespace trimmed from its start. */
+std::string trimStart (std::string textToTrim);
+
+/** Returns a string with any whitespace trimmed from its start. */
+std::string_view trimStart (std::string_view textToTrim);
+
+/** Returns a string with any whitespace trimmed from its start. */
+std::string_view trimStart (const char* textToTrim);
+
+/** Returns a string with any whitespace trimmed from its end. */
+std::string trimEnd (std::string textToTrim);
+
+/** Returns a string with any whitespace trimmed from its end. */
+std::string_view trimEnd (std::string_view textToTrim);
+
+/** Returns a string with any whitespace trimmed from its end. */
+std::string_view trimEnd (const char* textToTrim);
 
 /** If the given character is at the start and end of the string, it trims it away. */
 std::string removeOuterCharacter (std::string text, char outerChar);
@@ -82,6 +109,14 @@ template <typename StringType>
 size_t getLevenshteinDistance (const StringType& string1,
                                const StringType& string2);
 
+/** Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit. */
+int hexDigitToInt (uint32_t unicodeChar);
+
+/** Returns a hex string for the given value.
+    If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
+*/
+template <typename IntegerType>
+std::string createHexString (IntegerType value, int minNumDigits = 0);
 
 
 
@@ -125,6 +160,107 @@ std::string createHexString (IntegerType v, int minNumDigits)
         if (value == 0 && minNumDigits <= 0)
             return std::string (d, end);
     }
+}
+
+template <typename StringType, typename... OtherReplacements>
+std::string replace (StringType textToSearch, std::string_view firstToReplace, std::string_view firstReplacement,
+                     OtherReplacements&&... otherPairsOfStringsToReplace)
+{
+    static_assert ((sizeof... (otherPairsOfStringsToReplace) & 1u) == 0,
+                   "This function expects a list of pairs of strings as its arguments");
+
+    if constexpr (std::is_same<const StringType, const std::string_view>::value || std::is_same<const StringType, const char* const>::value)
+    {
+        return replace (std::string (textToSearch), firstToReplace, firstReplacement,
+                        std::forward<OtherReplacements> (otherPairsOfStringsToReplace)...);
+    }
+    else if constexpr (sizeof... (otherPairsOfStringsToReplace) == 0)
+    {
+        size_t pos = 0;
+
+        for (;;)
+        {
+            pos = textToSearch.find (firstToReplace, pos);
+
+            if (pos == std::string::npos)
+                return textToSearch;
+
+            textToSearch.replace (pos, firstToReplace.length(), firstReplacement);
+            pos += firstReplacement.length();
+        }
+    }
+    else
+    {
+        return replace (replace (std::move (textToSearch), firstToReplace, firstReplacement),
+                        std::forward<OtherReplacements> (otherPairsOfStringsToReplace)...);
+    }
+}
+
+inline std::string      trim (std::string      text)    { return trimStart (trimEnd (std::move (text))); }
+inline std::string_view trim (std::string_view text)    { return trimStart (trimEnd (std::move (text))); }
+
+inline std::string_view trim      (const char* text)    { return trim      (std::string_view (text)); }
+inline std::string_view trimStart (const char* text)    { return trimStart (std::string_view (text)); }
+inline std::string_view trimEnd   (const char* text)    { return trimEnd   (std::string_view (text)); }
+
+inline std::string trimStart (std::string text)
+{
+    auto i = text.begin();
+
+    if (i == text.end())        return {};
+    if (! isWhitespace (*i))    return text;
+
+    for (;;)
+    {
+        ++i;
+
+        if (i == text.end())        return {};
+        if (! isWhitespace (*i))    return { i, text.end() };
+    }
+}
+
+inline std::string_view trimStart (std::string_view text)
+{
+    size_t i = 0;
+
+    for (auto c : text)
+    {
+        if (! isWhitespace (c))
+        {
+            text.remove_prefix (i);
+            return text;
+        }
+
+        ++i;
+    }
+
+    return {};
+}
+
+inline std::string trimEnd (std::string text)
+{
+    for (auto i = text.end();;)
+    {
+        if (i == text.begin())
+            return {};
+
+        --i;
+
+        if (! isWhitespace (*i))
+        {
+            text.erase (i + 1, text.end());
+            return text;
+        }
+    }
+}
+
+inline std::string_view trimEnd (std::string_view text)
+{
+    for (auto i = text.length(); i != 0; --i)
+        if (! isWhitespace (text[i - 1]))
+            return text.substr (0, i);
+
+    return {};
 }
 
 inline std::string removeOuterCharacter (std::string t, char outerChar)

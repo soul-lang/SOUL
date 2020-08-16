@@ -1439,7 +1439,7 @@ private:
 
                     if (numParams != 0)
                         nameRoot = TokenisedPathString::join (nameRoot,
-                                                              "_for_" + makeSafeIdentifierName (replaceSubString (graph.getFullyQualifiedPath().toString(), ":", "_")
+                                                              "_for_" + makeSafeIdentifierName (choc::text::replace (graph.getFullyQualifiedPath().toString(), ":", "_")
                                                                   + "_" + instance.instanceName->toString()));
                     auto& ns = target->getNamespace();
                     target = *StructuralParser::cloneProcessorWithNewName (allocator, ns, target, ns.makeUniqueName (nameRoot));

@@ -173,7 +173,7 @@ struct FileList
 
         externals.visitObjectMembers ([] (const std::string& memberName, const choc::value::ValueView&)
         {
-            auto name = trim (memberName);
+            auto name = choc::text::trim (memberName);
 
             Identifier::Pool tempAllocator;
             auto path = IdentifierPath::fromString (tempAllocator, name);
