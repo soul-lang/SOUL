@@ -106,7 +106,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
         name = desc->name;
         description = desc->description;
-        showMIDIKeyboard = desc->isInstrument;
+        isInstrument = desc->isInstrument;
 
         if (replacementPlayer != nullptr)
         {
@@ -363,17 +363,29 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     }
 
     //==============================================================================
+    using CreatePatchGUIEditorFn = std::function<juce::AudioProcessorEditor*(SOULPatchAudioProcessor&)>;
+
+    /** This can be set if you want to be able to create a custom component for a patch. */
+    CreatePatchGUIEditorFn createCustomGUI;
+
+    /** Returns a list of files for any "view" entries that were specified in the manifest. */
+    std::vector<VirtualFile::Ptr> findViewFiles() const
+    {
+        return soul::patch::findViewFiles (getPatchInstance());
+    }
+
     bool hasEditor() const override     { return true; }
 
     juce::AudioProcessorEditor* createEditor() override
     {
-        if (player == nullptr)
-            return new BusyLoadingEditor (*this);
+        if (player == nullptr)        return new BusyLoadingEditor (*this);
+        if (! player->isPlayable())   return new ErrorDisplayEditor (*this);
 
-        if (! player->isPlayable())
-            return new ErrorDisplayEditor (*this);
+        if (createCustomGUI != nullptr)
+            if (auto editor = createCustomGUI (*this))
+                return editor;
 
-        if (getParameters().size() != 0 || showMIDIKeyboard)
+        if (getParameters().size() != 0 || isInstrument)
             return new ParameterEditor (*this);
 
         return new EditorBase (*this);
@@ -467,29 +479,30 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     //==============================================================================
     void setNonRealtime (bool /*isNonRealtime*/) noexcept override {}
 
+    // This is public to allow custom GUIs to interact with it, but should be used with caution!
+    juce::MidiKeyboardState midiKeyboardState;
+
 private:
+    //==============================================================================
     soul::patch::PatchInstance::Ptr patch;
+    soul::patch::PatchPlayer::Ptr player;
     soul::patch::CompilerCache::Ptr cache;
     soul::patch::SourceFilePreprocessor::Ptr preprocessor;
     soul::patch::ExternalDataProvider::Ptr externalData;
     soul::patch::ConsoleMessageHandler::Ptr consoleHandler;
+    soul::patch::PatchPlayer::Ptr replacementPlayer;
 
     juce::String name, description;
-
-    soul::patch::PatchPlayer::Ptr player, replacementPlayer;
+    bool isInstrument = false;
 
     juce::CriticalSection configLock;
     soul::patch::PatchPlayerConfiguration currentConfig;
 
-    juce::AudioBuffer<float> inputBuffer;
-    juce::AudioBuffer<float> outputBuffer;
+    juce::AudioBuffer<float> inputBuffer, outputBuffer;
     std::vector<soul::MIDIEvent> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
     const int millisecsBetweenFileChecks;
-
-    juce::MidiKeyboardState midiKeyboardState;
-    bool showMIDIKeyboard = false;
 
     juce::ValueTree lastValidState;
 
@@ -915,7 +928,7 @@ private:
         {
             addAndMakeVisible (editor);
 
-            if (p.showMIDIKeyboard)
+            if (p.isInstrument)
                 addAndMakeVisible (midiKeyboard);
 
             auto size = patch.getStoredEditorSize ("defaultView", { 600, 400 });

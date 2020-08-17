@@ -14,6 +14,7 @@
 #endif
 
 #include "../../soul_patch.h"
+#include "soul_patch_Utilities.h"
 #include "soul_patch_AudioProcessor.h"
 
 namespace soul
@@ -40,10 +41,12 @@ public:
     SOULPatchAudioPluginFormat (juce::String patchLoaderLibraryPath,
                                 std::function<void(SOULPatchAudioProcessor&)> reinitialiseProcessor,
                                 CompilerCache::Ptr compilerCache = {},
-                                SourceFilePreprocessor::Ptr sourcePreprocessor = {})
+                                SourceFilePreprocessor::Ptr sourcePreprocessor = {},
+                                SOULPatchAudioProcessor::CreatePatchGUIEditorFn createCustomGUI = {})
        : reinitialiseCallback (std::move (reinitialiseProcessor)),
          cache (std::move (compilerCache)),
-         preprocessor (std::move (sourcePreprocessor))
+         preprocessor (std::move (sourcePreprocessor)),
+         createCustomGUIFn (std::move (createCustomGUI))
     {
         // a callback must be supplied, because the processors aren't in a useable state when first
         // created - a host will have to wait for this callback before actually using them
@@ -76,6 +79,8 @@ public:
             auto* rawPatchPointer = p.get();
             auto reinitCallback = reinitialiseCallback;
             p->askHostToReinitialise = [reinitCallback, rawPatchPointer] { reinitCallback (*rawPatchPointer); };
+
+            p->createCustomGUI = createCustomGUIFn;
 
             p->reinitialise();
             callback (std::move (p), {});
@@ -162,6 +167,7 @@ private:
     std::function<void(SOULPatchAudioProcessor&)> reinitialiseCallback;
     CompilerCache::Ptr cache;
     SourceFilePreprocessor::Ptr preprocessor;
+    SOULPatchAudioProcessor::CreatePatchGUIEditorFn createCustomGUIFn;
 
     static void recursivePatchSearch (juce::StringArray& results, const juce::File& dir, bool recursive)
     {

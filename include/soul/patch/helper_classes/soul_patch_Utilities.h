@@ -205,6 +205,17 @@ inline std::vector<VirtualFile::Ptr> findViewFiles (VirtualFile& manifestFile)
     return views;
 }
 
+/** Returns a list of the "view" files that a patch's manifest contains. */
+inline std::vector<VirtualFile::Ptr> findViewFiles (PatchInstance& instance)
+{
+    auto desc = soul::patch::Description::Ptr (instance.getDescription());
+
+    if (desc->manifestFile != nullptr)
+        return findViewFiles (*desc->manifestFile);
+
+    return {};
+}
+
 //==============================================================================
 /** This looks at the annotation on an endpoint and parses out some common patch properties. */
 struct PatchParameterProperties
