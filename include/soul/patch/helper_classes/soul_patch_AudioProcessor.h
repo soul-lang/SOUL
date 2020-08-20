@@ -536,18 +536,28 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             }
         }
 
-        juce::String getText (float v, int length) const override
+        void setFullRangeValueNotifyingHost (float newFullRangeValue)
+        {
+            setValueNotifyingHost (convertTo0to1 (newFullRangeValue));
+        }
+
+        juce::String getTextForFullRangeValue (float v, int length) const
         {
             juce::String result;
 
             if (textValues.isEmpty())
-                result = juce::String (convertFrom0to1 (v), numDecimalPlaces);
+                result = juce::String (v, numDecimalPlaces);
             else if (textValues.size() == 1)
-                result = preprocessText (textValues[0].toUTF8(), convertFrom0to1 (v));
+                result = preprocessText (textValues[0].toUTF8(), v);
             else
-                result = textValues[juce::jlimit (0, textValues.size() - 1, juce::roundToInt (v * (textValues.size() - 1.0f)))];
+                result = textValues[juce::jlimit (0, textValues.size() - 1, juce::roundToInt (convertTo0to1 (v) * (textValues.size() - 1.0f)))];
 
             return length > 0 ? result.substring (0, length) : result;
+        }
+
+        juce::String getText (float v, int length) const override
+        {
+            return getTextForFullRangeValue (convertFrom0to1 (v), length);
         }
 
         float getValueForText (const juce::String& text) const override
