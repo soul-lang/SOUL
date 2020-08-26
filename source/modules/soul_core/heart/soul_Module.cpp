@@ -188,7 +188,7 @@ Structure& Module::Structs::findOrAdd (std::string name)
 }
 
 
-    
+
 //==============================================================================
 Module::Module (Program& p, ModuleType type)
    : program (*p.pimpl, false), allocator (p.getAllocator()), functions (*this), moduleType (type)

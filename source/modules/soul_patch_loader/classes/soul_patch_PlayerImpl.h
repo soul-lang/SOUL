@@ -50,10 +50,12 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     }
 
     //==============================================================================
-    Span<Bus> getInputBuses() const override                    { return inputBusesSpan; }
-    Span<Bus> getOutputBuses() const override                   { return outputBusesSpan; }
-    Span<Parameter::Ptr> getParameters() const override         { return parameterSpan; }
-    uint32_t getLatencySamples() const override                 { return latency; }
+    Span<Bus> getInputBuses() const override                            { return inputBusesSpan; }
+    Span<Bus> getOutputBuses() const override                           { return outputBusesSpan; }
+    Span<Parameter::Ptr> getParameters() const override                 { return parameterSpan; }
+    Span<EndpointDescription> getInputEventEndpoints() const override   { return inputEventEndpointSpan; }
+    Span<EndpointDescription> getOutputEventEndpoints() const override  { return outputEventEndpointSpan; }
+    uint32_t getLatencySamples() const override                         { return latency; }
 
     //==============================================================================
     void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
@@ -122,7 +124,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         if (! performer->load (messageList, program))
             return messageList.addError ("Failed to load program", {});
 
-        createBuses();
+        createBusesAndEventEndpoints();
         createRenderOperations (consoleHandler);
         resolveExternalVariables (externalDataProvider);
 
@@ -248,19 +250,25 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         return {};
     }
 
-    void createBuses()
+    void createBusesAndEventEndpoints()
     {
-        for (auto& i : performer->getInputEndpoints())
-            if (auto numChans = i.getNumAudioChannels())
-                if (! isParameterInput (i))
-                    inputBuses.push_back ({ makeString (i.name), (uint32_t) numChans });
+        inputBuses.clear();
+        inputEventHandles.clear();
+        outputBuses.clear();
 
-        for (auto& o : performer->getOutputEndpoints())
-            if (auto numChans = o.getNumAudioChannels())
-                outputBuses.push_back ({ makeString (o.name), (uint32_t) numChans });
+        for (auto& audioInput : wrapper.getAudioInputEndpoints())
+            inputBuses.push_back ({ makeString (audioInput.name), (uint32_t) audioInput.getNumAudioChannels() });
+
+        for (auto& audioOutput : wrapper.getAudioOutputEndpoints())
+            outputBuses.push_back ({ makeString (audioOutput.name), (uint32_t) audioOutput.getNumAudioChannels() });
+
+        for (auto& eventInput : wrapper.getEventInputEndpoints())
+            inputEventHandles.push_back (performer->getEndpointHandle (eventInput.endpointID));
 
         inputBusesSpan  = makeSpan (inputBuses);
         outputBusesSpan = makeSpan (outputBuses);
+        inputEventEndpointSpan  = makeSpan (inputEventEndpoints);
+        outputEventEndpointSpan = makeSpan (outputEventEndpoints);
     }
 
     template <typename DebugHandler>
@@ -294,17 +302,18 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         }
 
         wrapper.buildRenderingPipeline ((uint32_t) config.maxFramesPerBlock,
-                                        [&] (const EndpointDetails& endpoint) -> std::function<const float*()>
-                                        {
-                                            auto param = new ParameterImpl (endpoint);
-                                            parameters.push_back (Parameter::Ptr (param));
-                                            return [param] { return param->getValueIfChanged(); };
-                                        },
                                         [] (const EndpointDetails& endpoint) -> uint32_t
                                         {
                                             return checkRampLength (endpoint.annotation.getValue ("rampFrames"));
                                         },
                                         std::move (handleUnusedEvents));
+
+        auto paramEndpoints = wrapper.getParameterEndpoints();
+        parameters.reserve (paramEndpoints.size());
+        uint32_t index = 0;
+
+        for (auto& p : paramEndpoints)
+            parameters.push_back (Parameter::Ptr (new ParameterImpl (p, wrapper.parameterList, index++)));
 
         parameterSpan = makeSpan (parameters);
     }
@@ -315,7 +324,15 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         performer->reset();
 
         for (auto& p : parameters)
-            static_cast<ParameterImpl&>(*p).changed = true;
+            static_cast<ParameterImpl&>(*p).markAsDirty();
+    }
+
+    bool sendInputEvent (EndpointHandle handle, const choc::value::ValueView& event) override
+    {
+        if (handle < inputEventHandles.size())
+            return wrapper.inputEventQueue.pushEvent (inputEventHandles[handle], event);
+
+        return false;
     }
 
     RenderResult render (RenderContext& rc) override
@@ -326,10 +343,6 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         if (rc.numInputChannels != wrapper.getExpectedNumInputChannels()
              || rc.numOutputChannels != wrapper.getExpectedNumOutputChannels())
             return RenderResult::wrongNumberOfChannels;
-
-        // we're reinterpret-casting between these types to avoid having to include choc::midi::ShortMessage in
-        // the public patch API headers, so this just checks that the layout is actually the same.
-        static_assert (sizeof (MIDIEvent) == sizeof (soul::patch::MIDIMessage));
 
         wrapper.render (choc::buffer::createChannelArrayView (rc.inputChannels, rc.numInputChannels, rc.numFrames),
                         choc::buffer::createChannelArrayView (rc.outputChannels, rc.numOutputChannels, rc.numFrames),
@@ -345,7 +358,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     //==============================================================================
     struct ParameterImpl final  : public RefCountHelper<Parameter, ParameterImpl>
     {
-        ParameterImpl (const EndpointDetails& details)  : annotation (details.annotation)
+        ParameterImpl (const EndpointDetails& details, ParameterStateList& list, uint32_t index)
+            : paramList (list), paramIndex (index), annotation (details.annotation)
         {
             ID = makeString (details.name);
 
@@ -366,6 +380,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
                 propertyNameRawStrings.push_back (p.c_str());
 
             propertyNameSpan = makeSpan (propertyNameRawStrings);
+            paramList.setParameter (paramIndex, value);
+            markAsDirty();
         }
 
         float getValue() const override
@@ -375,22 +391,13 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
         void setValue (float newValue) override
         {
-            newValue = snapToLegalValue (newValue);
-
-            if (value != newValue)
-            {
-                value = newValue;
-                changed = true;
-            }
+            value = snapToLegalValue (newValue);
+            paramList.setParameter (paramIndex, value);
         }
 
-        const float* getValueIfChanged()
+        void markAsDirty()
         {
-            if (! changed)
-                return nullptr;
-
-            changed = false;
-            return std::addressof (value);
+            paramList.markAsChanged (paramIndex);
         }
 
         String* getProperty (const char* propertyName) const override
@@ -412,7 +419,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         }
 
         float value = 0;
-        std::atomic<bool> changed { true };
+        ParameterStateList& paramList;
+        const uint32_t paramIndex = 0;
         Annotation annotation;
         std::vector<std::string> propertyNameStrings;
         std::vector<const char*> propertyNameRawStrings;
@@ -451,10 +459,13 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     FileList fileList;
 
     std::vector<Bus> inputBuses, outputBuses;
+    std::vector<EndpointDescription> inputEventEndpoints, outputEventEndpoints;
+    std::vector<soul::EndpointHandle> inputEventHandles;
     std::vector<Parameter::Ptr> parameters;
 
     Span<Bus> inputBusesSpan = {}, outputBusesSpan = {};
     Span<Parameter::Ptr> parameterSpan = {};
+    Span<EndpointDescription> inputEventEndpointSpan, outputEventEndpointSpan;
     uint32_t latency = 0;
 
     PatchPlayerConfiguration config;

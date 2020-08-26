@@ -218,13 +218,7 @@ struct FileList
             : manifestHolder (std::move (m)), stringDescription (std::move (desc))
         {
             manifestFile = manifestHolder.get();
-            description = stringDescription.c_str();
-            UID           = "";
-            version       = "";
-            name          = "";
-            category      = "";
-            manufacturer  = "";
-            URL           = "";
+            updatePointers();
         }
 
         DescriptionImpl (VirtualFile::Ptr m, const choc::value::ValueView& json)
@@ -241,14 +235,19 @@ struct FileList
                 stringURL            = json["URL"].getWithDefault<std::string> ({});
                 isInstrument         = json["isInstrument"].getWithDefault<bool> (false);
 
-                description   = stringDescription.c_str();
-                UID           = stringUID.c_str();
-                version       = stringVersion.c_str();
-                name          = stringName.c_str();
-                category      = stringCategory.c_str();
-                manufacturer  = stringManufacturer.c_str();
-                URL           = stringURL.c_str();
+                updatePointers();
             }
+        }
+
+        void updatePointers()
+        {
+            description   = stringDescription.c_str();
+            UID           = stringUID.c_str();
+            version       = stringVersion.c_str();
+            name          = stringName.c_str();
+            category      = stringCategory.c_str();
+            manufacturer  = stringManufacturer.c_str();
+            URL           = stringURL.c_str();
         }
 
         VirtualFile::Ptr manifestHolder;

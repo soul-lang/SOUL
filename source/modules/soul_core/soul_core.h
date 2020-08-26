@@ -73,6 +73,7 @@
 #include "../../../include/soul/3rdParty/choc/math/choc_MathHelpers.h"
 #include "../../../include/soul/3rdParty/choc/audio/choc_SampleBuffers.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_CodePrinter.h"
+#include "../../../include/soul/3rdParty/choc/containers/choc_DirtyList.h"
 #include "../../../include/soul/common/soul_ProgramDefinitions.h"
 
 #include "utilities/soul_MiscUtilities.h"

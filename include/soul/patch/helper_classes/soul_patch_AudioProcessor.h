@@ -77,6 +77,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
     //==============================================================================
     soul::patch::PatchInstance& getPatchInstance() const        { return *patch; }
+    soul::patch::PatchPlayer::Ptr getPatchPlayer() const        { return player; }
 
     //==============================================================================
     /** This callback can be set by a host, and the processor will call it if the
@@ -302,18 +303,14 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             if (preprocessInputData != nullptr)
                 preprocessInputData (inputBuffer);
 
-            // we're reinterpret-casting between these types to avoid having to include choc::midi::ShortMessage in
-            // the public patch API headers, so this just checks that the layout is actually the same.
-            static_assert (sizeof (MIDIEvent) == sizeof (soul::patch::MIDIMessage));
-
             rc.inputChannels = inputBuffer.getArrayOfWritePointers();
             rc.numInputChannels = (uint32_t) numPatchInputChannels;
             rc.outputChannels = outputBuffer.getArrayOfWritePointers();
             rc.numOutputChannels = (uint32_t) numPatchOutputChannels;
             rc.numFrames = (uint32_t) numFrames;
-            rc.incomingMIDI = reinterpret_cast<const soul::patch::MIDIMessage*> (std::addressof (messageSpaceIn[0]));
+            rc.incomingMIDI = messageSpaceIn.data();
             rc.numMIDIMessagesIn = 0;
-            rc.outgoingMIDI = reinterpret_cast<soul::patch::MIDIMessage*> (std::addressof (messageSpaceOut[0]));
+            rc.outgoingMIDI = messageSpaceOut.data();
             rc.maximumMIDIMessagesOut = (uint32_t) messageSpaceOut.size();
             rc.numMIDIMessagesOut = 0;
 

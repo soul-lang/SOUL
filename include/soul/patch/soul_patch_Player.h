@@ -38,19 +38,6 @@ struct Description   : public RefCountedBase
 };
 
 //==============================================================================
-/** A time-stamped short MIDI message. */
-struct MIDIMessage
-{
-    /** The frame index is a sample offset into the current block of data being
-        processed by a call to PatchPlayer::render().
-    */
-    uint32_t frameIndex;
-
-    /** The 3 bytes of MIDI data (plus a dummy byte to align it when packed). */
-    uint8_t data[4];
-};
-
-//==============================================================================
 /** Gives information about one of the patch's buses.
     Currently this is a minimal bus description, just providing the number of
     channels. In the longer term, this will be expanded to include details such
@@ -87,6 +74,53 @@ struct Parameter  : public RefCountedBase
 
     /** Returns the names of all the annotations on the SOUL stream. */
     virtual Span<const char*> getPropertyNames() const = 0;
+};
+
+//==============================================================================
+/** This struct is used to pass a */
+struct SerialisedType
+{
+    const void* serialisedTypeData;
+    uint32_t size;
+
+    choc::value::Type get() const
+    {
+        if (size == 0)
+            return {};
+
+        auto data = static_cast<const uint8_t*> (serialisedTypeData);
+        choc::value::InputData source { data, data + size };
+        return choc::value::Type::deserialise (source);
+    }
+};
+
+struct SerialisedValue
+{
+    const void* serialisedValueData;
+    uint32_t size;
+
+    choc::value::Value get() const
+    {
+        if (size == 0)
+            return {};
+
+        auto data = static_cast<const uint8_t*> (serialisedValueData);
+        choc::value::InputData source { data, data + size };
+        return choc::value::Value::deserialise (source);
+    }
+};
+
+using EndpointHandle = uint32_t;
+
+struct EndpointDescription
+{
+    EndpointHandle handle;
+    String::Ptr ID, name;
+    soul::EndpointType type;
+    SerialisedValue annotation;
+
+    const SerialisedType* valueTypes;
+    uint32_t numValueTypes;
 };
 
 //==============================================================================
@@ -155,6 +189,9 @@ public:
     /** Returns a list of patch's parameters. */
     virtual Span<Parameter::Ptr> getParameters() const = 0;
 
+    virtual Span<EndpointDescription> getInputEventEndpoints() const = 0;
+    virtual Span<EndpointDescription> getOutputEventEndpoints() const = 0;
+
     /** Returns the patch's internal latency. */
     virtual uint32_t getLatencySamples() const = 0;
 
@@ -163,6 +200,15 @@ public:
         Calls to this method must not be made concurrently with the render() method!
     */
     virtual void reset() = 0;
+
+    /** Posts an event value to be delivered to an endpoint.
+        The event will be queued and will invoke a callback in the program at some
+        unspecified time in the future (probably the start of the next block that
+        gets processed). The available handles for input event endpoinst are obtained
+        with a call to getInputEventEndpoints().
+    */
+    virtual bool sendInputEvent (EndpointHandle inputEndpointHandle,
+                                 const choc::value::ValueView& event) = 0;
 
     /** Return value for the PatchPlayer::render() method. */
     enum class RenderResult
@@ -192,12 +238,12 @@ public:
         /** An array of MIDI messages for the render method to process.
             See the numMIDIMessages variable for the number of channels.
         */
-        const MIDIMessage* incomingMIDI;
+        const soul::MIDIEvent* incomingMIDI;
 
         /** An array of MIDI messages for the render method to write to.
             See the numMIDIMessages variable for the number of channels.
         */
-        MIDIMessage* outgoingMIDI;
+        soul::MIDIEvent* outgoingMIDI;
 
         /** Number of audio frames to process */
         uint32_t numFrames;

@@ -33,6 +33,8 @@
  #include <dlfcn.h>
 #endif
 
+#include "common/soul_ProgramDefinitions.h"
+
 #pragma pack (push, 1)
 #define SOUL_PATCH_MAIN_INCLUDE_FILE 1
 
