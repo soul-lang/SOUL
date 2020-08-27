@@ -119,7 +119,7 @@ private:
     {
         SOUL_ASSERT (v.isExternal);
         auto& hv = createVariableDeclaration (v, heart::Variable::Role::external);
-        module.stateVariables.push_back (hv);
+        module.addStateVariable (hv);
         return hv;
     }
 
@@ -256,10 +256,10 @@ private:
         index->context.throwError (Errors::endpointIndexMustBeConstant());
     }
 
-    static int64_t getDelayLength (pool_ptr<AST::Expression> delay)
+    static std::optional<int64_t> getDelayLength (pool_ptr<AST::Expression> delay)
     {
         if (delay == nullptr)
-            return 0;
+            return {};
 
         if (auto c = delay->getAsConstant())
             return SanityCheckPass::checkDelayLineLength (c->context, c->value);
@@ -309,7 +309,7 @@ private:
             {
                 auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (i);
 
-                auto& p = module.allocate<heart::ProcessorInstance>();
+                auto& p = module.allocate<heart::ProcessorInstance> (CodeLocation{});
                 p.instanceName = instanceName;
                 p.sourceName = targetProcessor.getFullyQualifiedPath().toString();
                 p.arraySize = getProcessorArraySize (i->arraySize).value_or (1);
@@ -317,7 +317,7 @@ private:
                 if (i->clockMultiplierRatio != nullptr)
                 {
                     if (auto c = i->clockMultiplierRatio->getAsConstant())
-                        p.clockMultiplier = heart::getClockRatioFromValue (i->clockMultiplierRatio->context, c->value);
+                        p.clockMultiplier.setMultiplier (i->clockMultiplierRatio->context, c->value);
                     else
                         i->clockMultiplierRatio->context.throwError (Errors::ratioMustBeInteger());
                 }
@@ -325,7 +325,7 @@ private:
                 if (i->clockDividerRatio != nullptr)
                 {
                     if (auto c = i->clockDividerRatio->getAsConstant())
-                        p.clockDivider = heart::getClockRatioFromValue (i->clockDividerRatio->context, c->value);
+                        p.clockMultiplier.setDivider (i->clockDividerRatio->context, c->value);
                     else
                         i->clockDividerRatio->context.throwError (Errors::ratioMustBeInteger());
                 }
@@ -883,7 +883,7 @@ private:
 
                 // Skip writing constant or unwritten-to variables to the state
                 if (! (v.numWrites == 0 && (type.isPrimitive() || type.isBoundedInt())))
-                    module.stateVariables.push_back (createVariableDeclaration (v, heart::Variable::Role::state));
+                    module.addStateVariable (createVariableDeclaration (v, heart::Variable::Role::state));
             }
         }
         else

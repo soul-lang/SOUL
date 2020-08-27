@@ -39,6 +39,8 @@ Structure::Member& Structure::getMemberWithName (std::string_view memberName)
 
 void Structure::addMember (Type type, std::string memberName)
 {
+    SOUL_ASSERT (! hasMemberWithName (memberName));
+    
     memberIndexMap[memberName] = members.size();
     members.push_back ({ std::move (type), std::move (memberName) });
 }

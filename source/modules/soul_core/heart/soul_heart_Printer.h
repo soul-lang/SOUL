@@ -57,7 +57,7 @@ private:
 
         void printAll()
         {
-            for (auto& v : module.stateVariables)
+            for (auto& v : module.getStateVariables())
                 allVisibleVariables.push_back (v->name);
 
             if (module.isProcessor())   out << "processor ";
@@ -166,10 +166,8 @@ private:
                 if (mi->arraySize > 1)
                     out << '[' << mi->arraySize << ']';
 
-                SOUL_ASSERT (! (mi->hasClockMultiplier() && mi->hasClockDivider())); // Can't have both
-
-                if (mi->hasClockMultiplier())   out << " * " << mi->clockMultiplier;
-                if (mi->hasClockDivider())      out << " / " << mi->clockDivider;
+                if (mi->clockMultiplier.hasValue())
+                    out << " " << mi->clockMultiplier.toString();
 
                 out << ';' << newLine;
             }
@@ -185,8 +183,8 @@ private:
 
                 printEndpointReference (c->source);
 
-                if (c->delayLength > 0)
-                    out << " -> [" << c->delayLength << ']';
+                if (c->delayLength)
+                    out << " -> [" << *c->delayLength << ']';
 
                 out << " -> ";
                 printEndpointReference (c->dest);
@@ -213,7 +211,7 @@ private:
 
         void printStateVariables()
         {
-            heart::Utilities::VariableListByType list (module.stateVariables);
+            heart::Utilities::VariableListByType list (module.getStateVariables());
 
             for (auto& type : list.types)
             {

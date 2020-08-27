@@ -83,6 +83,24 @@ pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) 
     return {};
 }
 
+
+void Module::addStateVariable (pool_ref<heart::Variable> v)
+{
+    SOUL_ASSERT (v->isState() && findStateVariable (v->name.toString()) == nullptr);
+
+    stateVariables.push_back (v);
+}
+
+ArrayView<pool_ref<heart::Variable>> Module::getStateVariables() const
+{
+    return stateVariables;
+}
+    
+void Module::clearStateVariables()
+{
+    stateVariables.clear();
+}
+
 heart::Function& Module::getFunction (const std::string& name) const
 {
     return *findFunction (name);
@@ -95,6 +113,30 @@ pool_ptr<heart::Function> Module::findFunction (const std::string& name) const
             return f;
 
     return {};
+}
+
+heart::Function& Module::addFunction (const std::string& name, bool isEventFunction)
+{
+    SOUL_ASSERT (findFunction (name) == nullptr);
+
+    auto& fn = allocate<heart::Function>();
+    fn.name = allocator.get (name);
+
+    if (isEventFunction)
+    {
+        SOUL_ASSERT (! heart::isReservedFunctionName (name));
+        fn.functionType = heart::FunctionType::event();
+    }
+    else if (name == heart::getRunFunctionName())         fn.functionType = heart::FunctionType::run();
+    else if (name == heart::getUserInitFunctionName())    fn.functionType = heart::FunctionType::userInit();
+    else if (name == heart::getSystemInitFunctionName())
+    {
+        fn.functionType = heart::FunctionType::systemInit();
+    }
+
+    functions.push_back (fn);
+
+    return fn;
 }
 
 pool_ptr<heart::Variable> Module::findStateVariable (const std::string& name) const

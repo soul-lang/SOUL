@@ -80,6 +80,11 @@ struct heart
     static constexpr const char* getSystemInitFunctionName()        { return "_initialise"; }
     static constexpr const char* getGenericSpecialisationNameTag()  { return "_specialised_"; }
 
+    static bool isReservedFunctionName (const std::string& name)
+    {
+        return (name == getRunFunctionName() || name == getUserInitFunctionName() || name == getSystemInitFunctionName());
+    }
+
     static std::string getEventFunctionName (const std::string& endpointName, const Type& t)
     {
         return "_" + endpointName + "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
@@ -266,17 +271,56 @@ struct heart
     };
 
     //==============================================================================
+    struct ClockMultiplier
+    {
+        ClockMultiplier() = default;
+        ClockMultiplier (const ClockMultiplier& c) : multiplier (c.multiplier), divider (c.divider) {}
+
+        bool hasValue() const         { return multiplier.has_value() || divider.has_value(); }
+        double getRatio() const       { return static_cast<double> (multiplier.value_or (1)) / static_cast<double> (divider.value_or (1)); }
+
+        std::string toString() const
+        {
+            std::ostringstream oss;
+
+            if (multiplier.has_value())
+                oss << "* " << *multiplier;
+
+            if (divider.has_value())
+                oss << "/ " << *divider;
+
+            return oss.str();
+        }
+
+        template <typename Thrower>
+        void setMultiplier (Thrower&& errorPos, const Value& value)
+        {
+            SOUL_ASSERT (! divider.has_value());
+            multiplier = heart::getClockRatioFromValue (errorPos, value);
+        }
+
+        template <typename Thrower>
+        void setDivider (Thrower&& errorPos, const Value& value)
+        {
+            SOUL_ASSERT (! multiplier.has_value());
+            divider = heart::getClockRatioFromValue (errorPos, value);
+        }
+
+    private:
+        std::optional<int64_t> multiplier;
+        std::optional<int64_t> divider;
+    };
+
+    //==============================================================================
     struct ProcessorInstance  : public Object
     {
+        ProcessorInstance (CodeLocation l) : Object (std::move (l)) {}
+
         std::string instanceName, sourceName;
-        int64_t clockMultiplier = 1;
-        int64_t clockDivider = 1;
         uint32_t arraySize = 1;
         TemporaryDataHolder tempData;
 
-        bool hasClockMultiplier() const    { return clockMultiplier != 1; }
-        bool hasClockDivider() const       { return clockDivider != 1; }
-        double getClockRatio() const       { return static_cast<double> (clockMultiplier) / static_cast<double> (clockDivider); }
+        ClockMultiplier clockMultiplier;
     };
 
     struct EndpointReference
@@ -293,7 +337,7 @@ struct heart
 
         EndpointReference source, dest;
         InterpolationType interpolationType = InterpolationType::none;
-        int64_t delayLength = 0;
+        std::optional<int64_t> delayLength;
     };
 
     template <typename Thrower>

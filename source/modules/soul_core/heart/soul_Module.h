@@ -47,13 +47,13 @@ public:
     std::vector<pool_ref<heart::ProcessorInstance>> processorInstances;
 
     // Properties if it's a processor
-    std::vector<pool_ref<heart::Variable>> stateVariables;
     std::vector<pool_ref<heart::Function>> functions;
-    std::vector<StructurePtr> structs;
+    std::vector<StructurePtr>              structs;
 
     Annotation annotation;
     double sampleRate = 0;
     uint32_t latency = 0;
+    CodeLocation location;
 
     //==============================================================================
     bool isSystemModule() const;
@@ -63,10 +63,15 @@ public:
     heart::Function& getFunction (const std::string& name) const;
     pool_ptr<heart::Function> findFunction (const std::string& name) const;
     pool_ptr<heart::Variable> findStateVariable (const std::string& name) const;
+    heart::Function& addFunction (const std::string& name, bool isEventFunction);
 
     //==============================================================================
     pool_ptr<heart::InputDeclaration>  findInput  (const std::string& name) const;
     pool_ptr<heart::OutputDeclaration> findOutput (const std::string& name) const;
+
+    void addStateVariable (pool_ref<heart::Variable>);
+    ArrayView<pool_ref<heart::Variable>> getStateVariables() const;
+    void clearStateVariables();
 
     //==============================================================================
     Structure& addStruct (std::string name);
@@ -88,6 +93,8 @@ public:
 private:
     //==============================================================================
     friend class Program;
+
+    std::vector<pool_ref<heart::Variable>> stateVariables;
 
     uint32_t moduleID = 0;
 

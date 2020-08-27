@@ -23,13 +23,13 @@ namespace soul
 
 //==============================================================================
 template <typename Vector, typename Type>
-bool contains (const Vector& v, Type&& i)
+inline bool contains (const Vector& v, Type&& i)
 {
     return std::find (std::begin (v), std::end (v), i) != v.end();
 }
 
 template <typename Vector, typename Predicate>
-bool removeIf (Vector& v, Predicate&& pred)
+inline bool removeIf (Vector& v, Predicate&& pred)
 {
     auto oldEnd = std::end (v);
     auto newEnd = std::remove_if (std::begin (v), oldEnd, pred);
@@ -42,7 +42,7 @@ bool removeIf (Vector& v, Predicate&& pred)
 }
 
 template <typename Vector, typename Predicate>
-bool removeFirst (Vector& v, Predicate&& pred)
+inline bool removeFirst (Vector& v, Predicate&& pred)
 {
     auto found = std::find_if (std::begin (v), std::end (v), pred);
 
@@ -83,6 +83,17 @@ inline void appendVector (Vector1& dest, const Vector2& source)
     for (auto& i : source)
         dest.push_back (i);
 }
+
+template<typename Vector, typename Type>
+inline bool appendIfNotPresent (Vector& v, Type&& i)
+{
+    if (contains (v, i))
+        return false;
+
+    v.push_back (i);
+    return true;
+}
+
 
 template <typename Vector1, typename Vector2>
 inline void copyVector (Vector1& dest, const Vector2& source)

@@ -69,8 +69,8 @@ struct ModuleCloner
                 newModule.connections.push_back (clone (c));
         }
 
-        for (auto& v : oldModule.stateVariables)
-            newModule.stateVariables.push_back (getRemappedVariable (v));
+        for (auto& v : oldModule.getStateVariables())
+            newModule.addStateVariable (getRemappedVariable (v));
 
         for (size_t i = 0; i < oldModule.functions.size(); ++i)
             clone (newModule.functions[i], oldModule.functions[i]);
@@ -224,14 +224,13 @@ struct ModuleCloner
 
     heart::ProcessorInstance& clone (const heart::ProcessorInstance& old)
     {
-        auto& p = newModule.allocate<heart::ProcessorInstance>();
+        auto& p = newModule.allocate<heart::ProcessorInstance> (old.location);
         auto& mapping = processorInstanceMappings[old];
         SOUL_ASSERT (mapping == nullptr);
         mapping = p;
         p.instanceName = old.instanceName;
         p.sourceName = old.sourceName;
         p.clockMultiplier = old.clockMultiplier;
-        p.clockDivider = old.clockDivider;
         p.arraySize = old.arraySize;
         return p;
     }

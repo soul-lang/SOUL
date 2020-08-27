@@ -449,7 +449,7 @@ struct heart::Utilities
                 addNode (p);
 
             for (auto& c : graph.connections)
-                if (c->delayLength == 0 && c->source.processor != nullptr && c->dest.processor != nullptr)
+                if ((! c->delayLength) && c->source.processor != nullptr && c->dest.processor != nullptr)
                     addConnection (*c->source.processor, *c->dest.processor, c);
         }
 

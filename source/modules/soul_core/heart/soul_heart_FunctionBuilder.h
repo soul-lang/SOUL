@@ -348,20 +348,19 @@ struct FunctionBuilder  : public BlockBuilder
     static heart::Function& getOrCreateFunction (Module& m, const std::string& name, Type returnType,
                                                  std::function<void(FunctionBuilder&)> buildFunction)
     {
-        for (auto& f : m.functions)
-            if (f->name == name)
-                return f;
+        auto fn = m.findFunction (name);
+
+        if (fn != nullptr)
+            return *fn;
 
         return createFunction (m, name, std::move (returnType), std::move (buildFunction));
     }
 
     static heart::Function& createEmptyFunction (Module& m, const std::string& name, Type returnType)
     {
-        auto& fn = m.allocate<heart::Function>();
-        fn.name = m.allocator.get (name);
+        auto& fn = m.addFunction (name, false);
         fn.returnType = std::move (returnType);
         fn.hasNoBody = true;
-        m.functions.push_back (fn);
 
         return fn;
     }

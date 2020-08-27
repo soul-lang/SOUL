@@ -171,9 +171,11 @@ private:
 
         while (! matches (Token::eof))
         {
-            if (matchIf ("graph"))              scanTopLevelItem (scannedTopLevelItems, program.addGraph());
-            else if (matchIf ("processor"))     scanTopLevelItem (scannedTopLevelItems, program.addProcessor());
-            else if (matchIf ("namespace"))     scanTopLevelItem (scannedTopLevelItems, program.addNamespace());
+            auto moduleLocation = location;
+
+            if (matchIf ("graph"))              scanTopLevelItem (moduleLocation, scannedTopLevelItems, program.addGraph());
+            else if (matchIf ("processor"))     scanTopLevelItem (moduleLocation, scannedTopLevelItems, program.addProcessor());
+            else if (matchIf ("namespace"))     scanTopLevelItem (moduleLocation, scannedTopLevelItems, program.addNamespace());
             else                                throwError (Errors::expectedTopLevelDecl());
         }
 
@@ -185,17 +187,13 @@ private:
         return program;
     }
 
-    void scanTopLevelItem (std::vector<ScannedTopLevelItem>& scannedTopLevelItems, Module& newModule)
+    void scanTopLevelItem (const CodeLocation& moduleLocation, std::vector<ScannedTopLevelItem>& scannedTopLevelItems, Module& newModule)
     {
         ScannedTopLevelItem newItem (newModule);
         module = newModule;
 
-        auto fullName = readQualifiedGeneralIdentifier();
-
-        if (program.findModuleWithName(fullName))
-            throwError (Errors::duplicateModule (fullName));
-
-        newModule.fullName = fullName;
+        newModule.location = moduleLocation;
+        newModule.fullName = readQualifiedGeneralIdentifier();
         newModule.originalFullName = newModule.fullName;
         newModule.shortName = TokenisedPathString (newModule.fullName).getLastPart();
         parseAnnotation (newModule.annotation);
@@ -332,10 +330,6 @@ private:
             }
         }
 
-        if (! module->isNamespace())
-            if (module->outputs.empty())
-                throwError (Errors::processorNeedsAnOutput());
-
         resetPosition (nextItemPos);
     }
 
@@ -344,10 +338,12 @@ private:
         item.inputDecls.push_back (getCurrentTokeniserPosition());
         auto& inputDeclaration = module->allocate<heart::InputDeclaration> (location);
         inputDeclaration.name = parseGeneralIdentifier();
-        inputDeclaration.index = (uint32_t) module->inputs.size();
 
-        if (module->findInput (inputDeclaration.name) != nullptr || module->findOutput (inputDeclaration.name) != nullptr)
-            throwError (Errors::nameInUse (inputDeclaration.name));
+        auto errorLocation = location;
+        if (isReservedFunctionName (inputDeclaration.name))
+            errorLocation.throwError (Errors::invalidEventFunctionName (inputDeclaration.name));
+
+        inputDeclaration.index = (uint32_t) module->inputs.size();
 
         module->inputs.push_back (inputDeclaration);
         skipPastNextOccurrenceOf (HEARTOperator::semicolon);
@@ -356,13 +352,14 @@ private:
     void scanOutput (ScannedTopLevelItem& item)
     {
         item.outputDecls.push_back (getCurrentTokeniserPosition());
-        auto& output = module->allocate<heart::OutputDeclaration> (location);
-        output.name = parseGeneralIdentifier();
+        auto& outputDeclaration = module->allocate<heart::OutputDeclaration> (location);
+        outputDeclaration.name = parseGeneralIdentifier();
 
-        if (module->findInput (output.name) != nullptr || module->findOutput (output.name) != nullptr)
-            throwError (Errors::nameInUse (output.name));
+        auto errorLocation = location;
+        if (isReservedFunctionName (outputDeclaration.name))
+            errorLocation.throwError (Errors::invalidEventFunctionName (outputDeclaration.name));
 
-        module->outputs.push_back (output);
+        module->outputs.push_back (outputDeclaration);
         skipPastNextOccurrenceOf (HEARTOperator::semicolon);
     }
 
@@ -457,11 +454,7 @@ private:
     {
         auto name = readQualifiedGeneralIdentifier();
 
-        for (auto m : module->processorInstances)
-            if (m->instanceName == name)
-                location.throwError (Errors::duplicateProcessor (name));
-
-        auto& mi = module->allocate<heart::ProcessorInstance>();
+        auto& mi = module->allocate<heart::ProcessorInstance> (location);
         module->processorInstances.push_back (mi);
         mi.instanceName = name;
         expect (HEARTOperator::assign);
@@ -476,12 +469,12 @@ private:
         if (matchIf (HEARTOperator::times))
         {
             auto errorPos = location;
-            mi.clockMultiplier = heart::getClockRatioFromValue (errorPos, parseInt32Value());
+            mi.clockMultiplier.setMultiplier (errorPos, parseInt32Value());
         }
         else if (matchIf (HEARTOperator::divide))
         {
             auto errorPos = location;
-            mi.clockDivider = heart::getClockRatioFromValue (errorPos, parseInt32Value());
+            mi.clockMultiplier.setDivider (errorPos, parseInt32Value());
         }
 
         expectSemicolon();
@@ -502,12 +495,6 @@ private:
         if (matchIf (HEARTOperator::openBracket))
         {
             c.delayLength = parseInt32();
-
-            if (c.delayLength < 1)
-                location.throwError (Errors::delayLineTooShort());
-
-            if (c.delayLength > (int32_t) AST::maxDelayLineLength)
-                location.throwError (Errors::delayLineTooLong());
 
             expect (HEARTOperator::closeBracket);
             expect (HEARTOperator::rightArrow);
@@ -587,9 +574,8 @@ private:
         auto type = readValueType();
         auto name = program.getAllocator().get (readVariableIdentifier());
 
-        for (auto& v : module->stateVariables)
-            if (v->name == name)
-                throwError (Errors::nameInUse (v->name));
+        if (module->findStateVariable (name.toString()))
+            throwError (Errors::nameInUse (name.toString()));
 
         auto& v = module->allocate<heart::Variable> (location, type, name,
                                                      isExternal ? heart::Variable::Role::external
@@ -603,7 +589,8 @@ private:
         }
 
         parseAnnotation (v.annotation);
-        module->stateVariables.push_back (v);
+
+        module->addStateVariable (v);
         expectSemicolon();
     }
 
@@ -637,17 +624,15 @@ private:
 
     void scanFunction (ScannedTopLevelItem& item, bool isEventFunction)
     {
-        auto& fn = module->allocate<heart::Function>();
+        auto name = parseGeneralIdentifier();
 
-        fn.name = parseGeneralIdentifier();
+        if (isEventFunction && heart::isReservedFunctionName (name))
+            throwError (Errors::invalidEventFunctionName (name));
 
-        if (isEventFunction)                              fn.functionType = FunctionType::event();
-        else if (fn.name == getRunFunctionName())         fn.functionType = FunctionType::run();
-        else if (fn.name == getUserInitFunctionName())    fn.functionType = FunctionType::userInit();
-        else if (fn.name == getSystemInitFunctionName())  fn.functionType = FunctionType::systemInit();
+        if (module->findFunction (name) != nullptr)
+            throwError (Errors::nameInUse (name));
 
-        if (module->findFunction (fn.name) != nullptr)
-            throwError (Errors::nameInUse (fn.name));
+        auto& fn = module->addFunction (name, isEventFunction);
 
         expect (HEARTOperator::openParen);
         item.functionParamCode.push_back (getCurrentTokeniserPosition());
@@ -680,8 +665,6 @@ private:
 
             skip();
         }
-
-        module->functions.push_back (fn);
     }
 
     void parseFunctionParams (heart::Function& f)
@@ -1136,9 +1119,8 @@ private:
             if (parameter->name == name)
                 return parameter;
 
-        for (auto& v : module->stateVariables)
-            if (v->name == name)
-                return v;
+        if (auto stateVariable = module->findStateVariable (name))
+            return stateVariable;
 
         if (state.currentBlock != nullptr)
         {

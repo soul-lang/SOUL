@@ -26,7 +26,7 @@ struct heart::Checker
     static void sanityCheck (const Program& program)
     {
         ignoreUnused (program.getMainProcessor());
-        sanityCheckInputsAndOutputs (program);
+        sanityCheckModules (program);
         sanityCheckAdvanceAndStreamCalls (program);
         checkConnections (program);
         checkForRecursiveFunctions (program);
@@ -36,8 +36,60 @@ struct heart::Checker
         checkStreamOperations (program);
     }
 
-    static void sanityCheckInputsAndOutputs (const Program& program)
+    static void sanityCheckModules (const Program& program)
     {
+        std::vector<std::string> moduleNames;
+
+        for (auto& m : program.getModules())
+        {
+            if (! appendIfNotPresent (moduleNames, m->fullName))
+                m->location.throwError (Errors::duplicateModule (m->fullName));
+
+            {
+                std::vector<std::string> ioNames;
+
+                for (auto& i : m->inputs)
+                {
+                    auto& name = i->name.toString();
+
+                    if (! appendIfNotPresent (ioNames, name))
+                        i->location.throwError (Errors::nameInUse (name));
+
+                    if (i->arraySize)
+                    {
+                        if (i->arraySize == 0 || i->arraySize > AST::maxProcessorArraySize)
+                            i->location.throwError (Errors::illegalArraySize());
+                    }
+                }
+
+                for (auto& o : m->outputs)
+                {
+                    auto& name = o->name.toString();
+
+                    if (! appendIfNotPresent (ioNames, name))
+                        o->location.throwError (Errors::nameInUse (name));
+
+                    if (o->arraySize)
+                    {
+                        if (o->arraySize == 0 || o->arraySize > AST::maxProcessorArraySize)
+                            o->location.throwError (Errors::illegalArraySize());
+                    }
+                }
+            }
+
+            if (m->isProcessor() || m->isGraph())
+                if (m->outputs.empty())
+                    m->location.throwError (Errors::processorNeedsAnOutput());
+
+            {
+                std::vector<std::string> processorInstanceNames;
+
+                for (auto& processorInstance : m->processorInstances)
+                    if (! appendIfNotPresent (processorInstanceNames, processorInstance->instanceName))
+                        processorInstance->location.throwError (Errors::duplicateProcessor (processorInstance->instanceName));
+            }
+        }
+
         auto& mainProcessor = program.getMainProcessor();
 
         for (auto& input : mainProcessor.inputs)
@@ -66,6 +118,15 @@ struct heart::Checker
                     size_t sourceInstanceArraySize = 1, destInstanceArraySize = 1;
                     auto sourceDescription = conn->source.endpointName;
                     auto destDescription   = conn->dest.endpointName;
+
+                    if (conn->delayLength)
+                    {
+                        if (conn->delayLength < 1)
+                            conn->location.throwError (Errors::delayLineTooShort());
+
+                        if (conn->delayLength > (int32_t) AST::maxDelayLineLength)
+                            conn->location.throwError (Errors::delayLineTooLong());
+                    }
 
                     if (auto sourceProcessor = conn->source.processor)
                     {

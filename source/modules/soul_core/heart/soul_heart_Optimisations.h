@@ -84,7 +84,7 @@ struct Optimisations
 
         for (auto& m : modules)
             if (m->isNamespace() && m->functions.empty() && m->structs.empty()
-                 && m->stateVariables.empty())
+                 && m->getStateVariables().empty())
                 program.removeModule (m);
     }
 

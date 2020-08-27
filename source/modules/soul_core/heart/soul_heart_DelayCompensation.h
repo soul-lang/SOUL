@@ -138,8 +138,8 @@ private:
             if (auto dst = findNode (c->dest.processor))
                 latencyAtEndOfConnection = dst->absoluteLatencyAtInput;
 
-            if (latencyAtEndOfConnection >= latencyAtStartOfConnection)
-                c->delayLength += latencyAtEndOfConnection - latencyAtStartOfConnection;
+            if (latencyAtEndOfConnection > latencyAtStartOfConnection)
+                c->delayLength = c->delayLength.value_or (0) + (latencyAtEndOfConnection - latencyAtStartOfConnection);
         }
     }
 
