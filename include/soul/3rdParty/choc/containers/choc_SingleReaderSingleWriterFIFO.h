@@ -27,6 +27,8 @@
 #include <vector>
 #include <atomic>
 
+#include "choc_FIFOReadWritePosition.h"
+
 namespace choc::fifo
 {
 
@@ -49,12 +51,12 @@ struct SingleReaderSingleWriterFIFO
     void reset (size_t numItems, const Item& itemInitialiser);
 
     /** Resets the FIFO, keeping the current size. */
-    void reset();
+    void reset()                                            { position.reset(); }
 
     /** Returns the number of items in the FIFO. */
-    uint32_t getUsedSlots() const;
+    uint32_t getUsedSlots() const                           { return position.getUsedSlots(); }
     /** Returns the number of free slots in the FIFO. */
-    uint32_t getFreeSlots() const;
+    uint32_t getFreeSlots() const                           { return position.getFreeSlots(); }
 
     /** Attempts to push an into into the FIFO, returning false if no space was available. */
     bool push (const Item&);
@@ -66,13 +68,8 @@ struct SingleReaderSingleWriterFIFO
     bool pop (Item& result);
 
 private:
+    FIFOReadWritePosition<uint32_t, std::atomic<uint32_t>> position;
     std::vector<Item> items;
-    uint32_t capacity = 0;
-    std::atomic<uint32_t> validStart, validEnd;
-
-    uint32_t getUsed (uint32_t s, uint32_t e) const   { return e >= s ? (e - s) : (capacity + 1u - (s - e)); }
-    uint32_t getFree (uint32_t s, uint32_t e) const   { return e >= s ? (capacity + 1u - (e - s)) : (s - e); }
-    uint32_t increment (uint32_t i) const             { return i != capacity ? i + 1u : 0; }
 
     SingleReaderSingleWriterFIFO (const SingleReaderSingleWriterFIFO&) = delete;
 };
@@ -91,65 +88,52 @@ private:
 
 template <typename Item> SingleReaderSingleWriterFIFO<Item>::SingleReaderSingleWriterFIFO()   { reset (1); }
 
-template <typename Item> uint32_t SingleReaderSingleWriterFIFO<Item>::getUsedSlots() const    { return getUsed (validStart, validEnd); }
-template <typename Item> uint32_t SingleReaderSingleWriterFIFO<Item>::getFreeSlots() const    { return getFree (validStart, validEnd); }
-
 template <typename Item> void SingleReaderSingleWriterFIFO<Item>::reset (size_t size)
 {
-    capacity = static_cast<uint32_t> (size);
-    items.resize (capacity + 1u);
-    reset();
+    position.reset (size);
+    items.resize (size + 1u);
 }
 
 template <typename Item> void SingleReaderSingleWriterFIFO<Item>::reset (size_t size, const Item& itemToCopy)
 {
-    capacity = static_cast<uint32_t> (size);
-    items.resize (capacity + 1u, itemToCopy);
-    reset();
-}
-
-template <typename Item> void SingleReaderSingleWriterFIFO<Item>::reset()
-{
-    validStart = 0;
-    validEnd = 0;
+    position.reset (size);
+    items.resize (size + 1u, itemToCopy);
 }
 
 template <typename Item> bool SingleReaderSingleWriterFIFO<Item>::push (const Item& item)
 {
-    auto end = validEnd.load();
-    auto newEnd = increment (end);
+    if (auto slot = position.lockSlotForWriting())
+    {
+        items[slot.index] = item;
+        position.unlock (slot);
+        return true;
+    }
 
-    if (newEnd == validStart)
-        return false;
-
-    items[end] = item;
-    validEnd = newEnd;
-    return true;
+    return false;
 }
 
 template <typename Item> bool SingleReaderSingleWriterFIFO<Item>::push (Item&& item)
 {
-    auto end = validEnd.load();
-    auto newEnd = increment (end);
+    if (auto slot = position.lockSlotForWriting())
+    {
+        items[slot.index] = std::move (item);
+        position.unlock (slot);
+        return true;
+    }
 
-    if (newEnd == validStart)
-        return false;
-
-    items[end] = std::move (item);
-    validEnd = newEnd;
-    return true;
+    return false;
 }
 
 template <typename Item> bool SingleReaderSingleWriterFIFO<Item>::pop (Item& result)
 {
-    if (validStart == validEnd)
-        return false;
+    if (auto slot = position.lockSlotForReading())
+    {
+        result = std::move (items[slot.index]);
+        position.unlock (slot);
+        return true;
+    }
 
-    auto start = validStart.load();
-    auto newStart = increment (start);
-    result = std::move (items[start]);
-    validStart = newStart;
-    return true;
+    return false;
 }
 
 
