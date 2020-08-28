@@ -145,13 +145,14 @@ ArrayView<StructurePtr> Module::Structs::get() const
 
 Structure& Module::Structs::add (std::string name)
 {
-    SOUL_ASSERT (find (name) == nullptr); // name clash!
+    SOUL_ASSERT (find (name) == nullptr);
     structs.push_back (*new Structure (std::move (name), nullptr));
     return *structs.back();
 }
 
 Structure& Module::Structs::add (Structure& s)
 {
+    SOUL_ASSERT (find (s.getName()) == nullptr);
     structs.push_back (s);
     return *structs.back();
 }
