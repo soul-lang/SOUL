@@ -25,8 +25,172 @@
 namespace soul
 {
 
+//==============================================================================
+size_t Module::Functions::size() const  { return functions.size(); }
+
+pool_ptr<heart::Function> Module::Functions::findRunFunction() const
+{
+    return find (heart::getRunFunctionName());
+}
+
+heart::Function& Module::Functions::getRunFunction() const
+{
+    return *findRunFunction();
+}
+
+ArrayView<pool_ref<heart::Function>> Module::Functions::get() const
+{
+    return functions;
+}
+
+heart::Function& Module::Functions::get (const std::string& name) const
+{
+    return *find (name);
+}
+
+heart::Function& Module::Functions::at (size_t index) const
+{
+    SOUL_ASSERT (index < functions.size());
+
+    return functions[index];
+}
+
+
+pool_ptr<heart::Function> Module::Functions::find (const std::string& name) const
+{
+    for (auto& f : functions)
+        if (f->name == name)
+            return f;
+
+    return {};
+}
+
+heart::Function& Module::Functions::add (const std::string& name, bool isEventFunction)
+{
+    SOUL_ASSERT (find (name) == nullptr);
+
+    auto& fn = module.allocate<heart::Function>();
+    fn.name = module.allocator.get (name);
+
+    if (isEventFunction)
+    {
+        SOUL_ASSERT (! heart::isReservedFunctionName (name));
+        fn.functionType = heart::FunctionType::event();
+    }
+    else if (name == heart::getRunFunctionName())         fn.functionType = heart::FunctionType::run();
+    else if (name == heart::getUserInitFunctionName())    fn.functionType = heart::FunctionType::userInit();
+    else if (name == heart::getSystemInitFunctionName())
+    {
+        fn.functionType = heart::FunctionType::systemInit();
+    }
+
+    functions.push_back (fn);
+
+    return fn;
+}
+
+bool Module::Functions::remove (heart::Function& f)
+{
+    return removeItem (functions, f);
+}
+
+bool Module::Functions::contains (const heart::Function& f) const
+{
+    return soul::contains (functions, f);
+}
+
+
+
+//==============================================================================
+size_t Module::StateVariables::size() const  { return stateVariables.size(); }
+
+ArrayView<pool_ref<heart::Variable>> Module::StateVariables::get() const
+{
+    return stateVariables;
+}
+
+void Module::StateVariables::clear()
+{
+    stateVariables.clear();
+}
+
+pool_ptr<heart::Variable> Module::StateVariables::find (const std::string& name) const
+{
+    for (auto& v : stateVariables)
+        if (v->name == name)
+            return v;
+
+    return {};
+}
+
+void Module::StateVariables::add (pool_ref<heart::Variable> v)
+{
+    SOUL_ASSERT (v->isState() && find (v->name.toString()) == nullptr);
+
+    stateVariables.push_back (v);
+}
+
+
+
+
+
+
+//==============================================================================
+size_t Module::Structs::size() const  { return structs.size(); }
+
+ArrayView<StructurePtr> Module::Structs::get() const
+{
+    return structs;
+}
+
+Structure& Module::Structs::add (std::string name)
+{
+    SOUL_ASSERT (find (name) == nullptr); // name clash!
+    structs.push_back (*new Structure (std::move (name), nullptr));
+    return *structs.back();
+}
+
+Structure& Module::Structs::add (Structure& s)
+{
+    structs.push_back (s);
+    return *structs.back();
+}
+
+bool Module::Structs::remove (Structure& s)
+{
+    return removeItem (structs, s);
+}
+
+
+Structure& Module::Structs::addCopy (Structure& s)
+{
+    SOUL_ASSERT (find (s.getName()) == nullptr); // name clash!
+    structs.push_back (*new Structure (s));
+    return *structs.back();
+}
+
+StructurePtr Module::Structs::find (std::string_view name) const noexcept
+{
+    for (auto& s : structs)
+        if (name == s->getName())
+            return s;
+
+    return {};
+}
+
+Structure& Module::Structs::findOrAdd (std::string name)
+{
+    if (auto s = find (name))
+        return *s;
+
+    return add (std::move (name));
+}
+
+
+    
+//==============================================================================
 Module::Module (Program& p, ModuleType type)
-   : program (*p.pimpl, false), allocator (p.getAllocator()), moduleType (type)
+   : program (*p.pimpl, false), allocator (p.getAllocator()), functions (*this), moduleType (type)
 {
 }
 
@@ -37,6 +201,7 @@ Module::Module (Program& p, const Module& toClone)
      originalFullName (toClone.originalFullName),
      annotation (toClone.annotation),
      allocator (p.getAllocator()),
+     functions (*this),
      moduleType (toClone.moduleType)
 {
 }
@@ -51,19 +216,9 @@ bool Module::isNamespace() const        { return moduleType == ModuleType::names
 
 bool Module::isSystemModule() const     { return startsWith (originalFullName, "soul::"); }
 
-pool_ptr<heart::Function> Module::findRunFunction() const
-{
-    for (auto& f : functions)
-        if (f->functionType.isRun())
-            return f;
 
-    return {};
-}
 
-heart::Function& Module::getRunFunction() const
-{
-    return *findRunFunction();
-}
+
 
 pool_ptr<heart::InputDeclaration> Module::findInput (const std::string& name) const
 {
@@ -84,113 +239,22 @@ pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) 
 }
 
 
-void Module::addStateVariable (pool_ref<heart::Variable> v)
-{
-    SOUL_ASSERT (v->isState() && findStateVariable (v->name.toString()) == nullptr);
 
-    stateVariables.push_back (v);
-}
 
-ArrayView<pool_ref<heart::Variable>> Module::getStateVariables() const
-{
-    return stateVariables;
-}
-    
-void Module::clearStateVariables()
-{
-    stateVariables.clear();
-}
 
-heart::Function& Module::getFunction (const std::string& name) const
-{
-    return *findFunction (name);
-}
-
-pool_ptr<heart::Function> Module::findFunction (const std::string& name) const
-{
-    for (auto& f : functions)
-        if (f->name == name)
-            return f;
-
-    return {};
-}
-
-heart::Function& Module::addFunction (const std::string& name, bool isEventFunction)
-{
-    SOUL_ASSERT (findFunction (name) == nullptr);
-
-    auto& fn = allocate<heart::Function>();
-    fn.name = allocator.get (name);
-
-    if (isEventFunction)
-    {
-        SOUL_ASSERT (! heart::isReservedFunctionName (name));
-        fn.functionType = heart::FunctionType::event();
-    }
-    else if (name == heart::getRunFunctionName())         fn.functionType = heart::FunctionType::run();
-    else if (name == heart::getUserInitFunctionName())    fn.functionType = heart::FunctionType::userInit();
-    else if (name == heart::getSystemInitFunctionName())
-    {
-        fn.functionType = heart::FunctionType::systemInit();
-    }
-
-    functions.push_back (fn);
-
-    return fn;
-}
-
-pool_ptr<heart::Variable> Module::findStateVariable (const std::string& name) const
-{
-    for (auto& v : stateVariables)
-        if (v->name == name)
-            return v;
-
-    return {};
-}
-
-Structure& Module::addStruct (std::string name)
-{
-    SOUL_ASSERT (findStruct (name) == nullptr); // name clash!
-    structs.push_back (*new Structure (std::move (name), nullptr));
-    return *structs.back();
-}
-
-Structure& Module::addStructCopy (Structure& s)
-{
-    SOUL_ASSERT (findStruct (s.getName()) == nullptr); // name clash!
-    structs.push_back (*new Structure (s));
-    return *structs.back();
-}
-
-StructurePtr Module::findStruct (std::string_view name) const noexcept
-{
-    for (auto& s : structs)
-        if (name == s->getName())
-            return s;
-
-    return {};
-}
-
-Structure& Module::findOrAddStruct (std::string name)
-{
-    if (auto s = findStruct (name))
-        return *s;
-
-    return addStruct (std::move (name));
-}
 
 void Module::rebuildBlockPredecessors()
 {
-    for (auto& f : functions)
+    for (auto& f : functions.get())
         f->rebuildBlockPredecessors();
 }
 
 void Module::rebuildVariableUseCounts()
 {
-    for (auto& v : stateVariables)
+    for (auto& v : stateVariables.get())
         v->readWriteCount.reset();
 
-    for (auto& f : functions)
+    for (auto& f : functions.get())
         f->rebuildVariableUseCounts();
 }
 

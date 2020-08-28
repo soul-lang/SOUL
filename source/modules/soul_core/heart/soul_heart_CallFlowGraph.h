@@ -76,13 +76,13 @@ struct CallFlowGraph
     static CallSequenceCheckResults checkFunctionCallSequences (const Program& program)
     {
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 f->localVariableStackSize = 0;
 
         CallSequenceCheckResults results;
 
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 iterateCallSequences (f, results, nullptr, 0);
 
         return results;

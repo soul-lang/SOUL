@@ -218,7 +218,7 @@ private:
         for (size_t i = 0; i < item.structBodyCode.size(); ++i)
         {
             resetPosition (item.structBodyCode[i]);
-            parseStructBody (*module->structs[i]);
+            parseStructBody (*module->structs.get()[i]);
         }
 
         resetPosition (nextItemPos);
@@ -234,7 +234,7 @@ private:
         for (size_t i = 0; i < item.functionParamCode.size(); ++i)
         {
             resetPosition (item.functionParamCode[i]);
-            parseFunctionParams (module->functions[i]);
+            parseFunctionParams (module->functions.at (i));
         }
 
         module.reset();
@@ -326,7 +326,7 @@ private:
             if (item.functionBodyCode[i] != UTF8Reader())
             {
                 resetPosition (item.functionBodyCode[i]);
-                parseFunctionBody (module->functions[i]);
+                parseFunctionBody (module->functions.at (i));
             }
         }
 
@@ -574,7 +574,7 @@ private:
         auto type = readValueType();
         auto name = program.getAllocator().get (readVariableIdentifier());
 
-        if (module->findStateVariable (name.toString()))
+        if (module->stateVariables.find (name.toString()))
             throwError (Errors::nameInUse (name.toString()));
 
         auto& v = module->allocate<heart::Variable> (location, type, name,
@@ -590,7 +590,7 @@ private:
 
         parseAnnotation (v.annotation);
 
-        module->addStateVariable (v);
+        module->stateVariables.add (v);
         expectSemicolon();
     }
 
@@ -598,10 +598,10 @@ private:
     {
         auto name = readQualifiedGeneralIdentifier();
 
-        if (module->findStruct (name) != nullptr)
+        if (module->structs.find (name) != nullptr)
             throwError (Errors::nameInUse (name));
 
-        module->addStruct (std::move (name));
+        module->structs.add (std::move (name));
         expect (HEARTOperator::openBrace);
         item.structBodyCode.push_back (getCurrentTokeniserPosition());
         skipPastNextOccurrenceOf (HEARTOperator::closeBrace);
@@ -629,10 +629,10 @@ private:
         if (isEventFunction && heart::isReservedFunctionName (name))
             throwError (Errors::invalidEventFunctionName (name));
 
-        if (module->findFunction (name) != nullptr)
+        if (module->functions.find (name) != nullptr)
             throwError (Errors::nameInUse (name));
 
-        auto& fn = module->addFunction (name, isEventFunction);
+        auto& fn = module->functions.add (name, isEventFunction);
 
         expect (HEARTOperator::openParen);
         item.functionParamCode.push_back (getCurrentTokeniserPosition());
@@ -940,14 +940,14 @@ private:
     {
         if (! containsChar (name, ':'))
         {
-            for (auto& fn : module->functions)
+            for (auto& fn : module->functions.get())
                 if (fn->name == name && functionArgTypesMatch (fn, argTypes))
                     return fn;
         }
         else
         {
             for (auto& m : program.getModules())
-                for (auto& fn : m->functions)
+                for (auto& fn : m->functions.get())
                     if (TokenisedPathString::join (m->fullName, fn->name) == name && functionArgTypesMatch (fn, argTypes))
                         return fn;
         }
@@ -1119,7 +1119,7 @@ private:
             if (parameter->name == name)
                 return parameter;
 
-        if (auto stateVariable = module->findStateVariable (name))
+        if (auto stateVariable = module->stateVariables.find (name))
             return stateVariable;
 
         if (state.currentBlock != nullptr)
@@ -1660,11 +1660,11 @@ private:
 
     StructurePtr findStruct (const std::string& name)
     {
-        if (auto s = module->findStruct (name))
+        if (auto s = module->structs.find (name))
             return s;
 
         for (auto& m : program.getModules())
-            for (auto& s : m->structs)
+            for (auto& s : m->structs.get())
                 if (program.getFullyQualifiedStructName (*s) == name)
                     return s;
 

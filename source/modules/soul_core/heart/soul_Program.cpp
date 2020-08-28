@@ -50,7 +50,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     pool_ptr<Module> findModuleContainingFunction (const heart::Function& f) const
     {
         for (auto& m : modules)
-            if (contains (m->functions, f))
+            if (m->functions.contains (f))
                 return m;
 
         return {};
@@ -82,7 +82,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         auto variableName = path.getLastPart();
 
         if (auto m = findModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
-            return m->findStateVariable (variableName);
+            return m->stateVariables.find (variableName);
 
         return {};
     }
@@ -94,7 +94,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         auto functionName = path.getLastPart();
 
         if (auto m = findModuleWithName (TokenisedPathString::join (Program::getRootNamespaceName(), path.getParentPath())))
-            return m->findFunction (functionName);
+            return m->functions.find (functionName);
 
         return {};
     }
@@ -130,7 +130,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         std::vector<pool_ref<heart::Variable>> result;
 
         for (auto& m : modules)
-            for (auto& v : m->stateVariables)
+            for (auto& v : m->stateVariables.get())
                 if (v->isExternal())
                     result.push_back (v);
 
@@ -175,7 +175,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         {
             for (auto& m : modules)
             {
-                if (contains (m->stateVariables, v))
+                if (contains (m->stateVariables.get(), v))
                 {
                     if (m == context)
                         return v.name.toString();
@@ -193,7 +193,7 @@ struct Program::ProgramImpl  : public RefCountedObject
         SOUL_ASSERT (v.isState()); // This can only work for state variables
 
         for (auto& m : modules)
-            if (contains (m->stateVariables, v))
+            if (contains (m->stateVariables.get(), v))
                 return TokenisedPathString::join (m->originalFullName, v.name);
 
         return v.name;
@@ -217,7 +217,7 @@ struct Program::ProgramImpl  : public RefCountedObject
     {
         for (auto& m : modules)
         {
-            if (contains (m->structs, s))
+            if (contains (m->structs.get(), s))
             {
                 if (context != nullptr && m == context)
                     return s.getName();

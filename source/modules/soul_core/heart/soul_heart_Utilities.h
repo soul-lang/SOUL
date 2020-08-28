@@ -42,7 +42,7 @@ struct heart::Utilities
     {
         for (auto& m : program.getModules())
         {
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 visit (f->returnType);
 
@@ -70,11 +70,11 @@ struct heart::Utilities
     {
         for (auto& m : program.getModules())
         {
-            for (auto& s : m->structs)
+            for (auto& s : m->structs.get())
                 for (auto& member : s->getMembers())
                     visit (member.type);
 
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 visit (f->returnType);
 
@@ -189,7 +189,7 @@ struct heart::Utilities
     {
         auto inlineNextOccurrence = [&] (Module& module) -> bool
         {
-            for (auto& f : module.functions)
+            for (auto& f : module.functions.get())
             {
                 if (! f->functionType.isRun())
                 {

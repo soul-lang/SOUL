@@ -57,7 +57,7 @@ private:
 
         void printAll()
         {
-            for (auto& v : module.getStateVariables())
+            for (auto& v : module.stateVariables.get())
                 allVisibleVariables.push_back (v->name);
 
             if (module.isProcessor())   out << "processor ";
@@ -211,7 +211,7 @@ private:
 
         void printStateVariables()
         {
-            heart::Utilities::VariableListByType list (module.getStateVariables());
+            heart::Utilities::VariableListByType list (module.stateVariables.get());
 
             for (auto& type : list.types)
             {
@@ -236,13 +236,13 @@ private:
 
         void printStructs()
         {
-            for (auto& s : module.structs)
+            for (auto& s : module.structs.get())
                 printStruct (*s);
         }
 
         void printFunctions()
         {
-            for (auto f : module.functions)
+            for (auto f : module.functions.get())
                 printFunction (f);
         }
 

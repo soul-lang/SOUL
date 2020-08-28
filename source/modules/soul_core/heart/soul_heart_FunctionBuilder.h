@@ -348,7 +348,7 @@ struct FunctionBuilder  : public BlockBuilder
     static heart::Function& getOrCreateFunction (Module& m, const std::string& name, Type returnType,
                                                  std::function<void(FunctionBuilder&)> buildFunction)
     {
-        auto fn = m.findFunction (name);
+        auto fn = m.functions.find (name);
 
         if (fn != nullptr)
             return *fn;
@@ -358,7 +358,7 @@ struct FunctionBuilder  : public BlockBuilder
 
     static heart::Function& createEmptyFunction (Module& m, const std::string& name, Type returnType)
     {
-        auto& fn = m.addFunction (name, false);
+        auto& fn = m.functions.add (name, false);
         fn.returnType = std::move (returnType);
         fn.hasNoBody = true;
 

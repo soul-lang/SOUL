@@ -227,7 +227,7 @@ struct heart::Checker
     {
         for (auto& m : program.getModules())
         {
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 auto firstAdvanceCall = heart::Utilities::findFirstAdvanceCall (f);
 
@@ -259,7 +259,7 @@ struct heart::Checker
     static void checkForInfiniteLoops (const Program& program)
     {
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 if (CallFlowGraph::doesFunctionContainInfiniteLoops (f))
                     f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
@@ -287,7 +287,7 @@ struct heart::Checker
     {
         for (auto& m : program.getModules())
         {
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 for (auto& b : f->blocks)
                 {
@@ -346,7 +346,7 @@ struct heart::Checker
     {
         for (auto& m : program.getModules())
         {
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 if (! f->blocks.empty())
                 {

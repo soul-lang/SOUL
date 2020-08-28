@@ -33,17 +33,17 @@ struct Optimisations
         {
             m->rebuildVariableUseCounts();
 
-            for (auto f : m->functions)
+            for (auto f : m->functions.get())
                 removeDuplicateConstants (f);
 
             m->rebuildVariableUseCounts();
 
-            for (auto f : m->functions)
+            for (auto f : m->functions.get())
                 convertWriteOnceVariablesToConstants (f);
 
             m->rebuildVariableUseCounts();
 
-            for (auto f : m->functions)
+            for (auto f : m->functions.get())
                 removeUnusedVariables (f);
         }
     }
@@ -53,20 +53,20 @@ struct Optimisations
         removeCallsToVoidFunctionsWithoutSideEffects (program);
 
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 f->functionUseTestFlag = false;
 
-        for (auto f : mainModule.functions)
+        for (auto f : mainModule.functions.get())
             if (f->isExported)
                 recursivelyFlagFunctionUse (f);
 
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 if (! f->functionUseTestFlag && f->annotation.getBool ("do_not_optimise"))
                     recursivelyFlagFunctionUse (f);
 
         for (auto& m : program.getModules())
-            removeIf (m->functions, [] (heart::Function& f) { return ! f.functionUseTestFlag; });
+            m->functions.removeIf ([] (heart::Function& f) { return ! f.functionUseTestFlag; });
     }
 
     static void removeUnusedProcessors (Program& program)
@@ -74,7 +74,7 @@ struct Optimisations
         auto modules = program.getModules();
 
         for (auto& m : modules)
-            if (m->isProcessor() && m->functions.empty() && m->structs.empty())
+            if (m->isProcessor() && m->functions.get().empty() && m->structs.get().empty())
                 program.removeModule (m);
     }
 
@@ -83,21 +83,21 @@ struct Optimisations
         auto modules = program.getModules();
 
         for (auto& m : modules)
-            if (m->isNamespace() && m->functions.empty() && m->structs.empty()
-                 && m->getStateVariables().empty())
+            if (m->isNamespace() && m->functions.get().empty() && m->structs.get().empty()
+                 && m->stateVariables.get().empty())
                 program.removeModule (m);
     }
 
     static void removeUnusedStructs (Program& program)
     {
         for (auto& m : program.getModules())
-            for (auto& s : m->structs)
+            for (auto& s : m->structs.get())
                 s->activeUseFlag = false;
 
         heart::Utilities::visitAllTypes (program, [] (const Type& t) { recursivelyFlagStructUse (t); });
 
         for (auto& m : program.getModules())
-            removeIf (m->structs, [] (const StructurePtr& s) { return ! s->activeUseFlag; });
+            m->structs.removeIf ([] (const StructurePtr& s) { return ! s->activeUseFlag; });
     }
 
     struct UnusedStructMembers
@@ -110,13 +110,13 @@ struct Optimisations
     static std::vector<UnusedStructMembers> findUnreadStructMembers (Program& program)
     {
         for (auto& module : program.getModules())
-            for (auto& s : module->structs)
+            for (auto& s : module->structs.get())
                 for (auto& m : s->getMembers())
                     m.readWriteCount.reset();
 
         for (auto& module : program.getModules())
         {
-            for (auto& f : module->functions)
+            for (auto& f : module->functions.get())
             {
                 f->visitExpressions ([] (pool_ref<heart::Expression>& value, AccessType mode)
                 {
@@ -130,7 +130,7 @@ struct Optimisations
 
         for (auto& module : program.getModules())
         {
-            for (auto& s : module->structs)
+            for (auto& s : module->structs.get())
             {
                 ArrayWithPreallocation<size_t, 4> unusedMembers;
 
@@ -152,7 +152,7 @@ struct Optimisations
     static void optimiseFunctionBlocks (Program& program)
     {
         for (auto& m : program.getModules())
-            for (auto f : m->functions)
+            for (auto f : m->functions.get())
                 optimiseFunctionBlocks (f, program.getAllocator());
     }
 
@@ -180,7 +180,7 @@ struct Optimisations
 
         for (auto& m : program.getModules())
         {
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
             {
                 auto result = inlineAllCallsToFunction (program, f, functionToInline);
 
@@ -195,7 +195,7 @@ struct Optimisations
         if (! anyChanged)
             return false;
 
-        removeItem (program.getModuleContainingFunction (functionToInline).functions, functionToInline);
+        program.getModuleContainingFunction (functionToInline).functions.remove (functionToInline);
         return true;
     }
 
@@ -204,7 +204,7 @@ struct Optimisations
         std::vector<StringDictionary::Handle> handlesUsed;
 
         for (auto& m : program.getModules())
-            for (auto f : m->functions)
+            for (auto f : m->functions.get())
                 f->visitExpressions ([&] (pool_ref<heart::Expression>& e, AccessType)
                                      {
                                          if (auto c = cast<heart::Constant> (e))
@@ -349,7 +349,7 @@ private:
     static void removeCallsToVoidFunctionsWithoutSideEffects (Program& program)
     {
         for (auto& m : program.getModules())
-            for (auto& f : m->functions)
+            for (auto& f : m->functions.get())
                 for (auto& b : f->blocks)
                     b->statements.removeMatches ([] (heart::Statement& s)
                                                  {

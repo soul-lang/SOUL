@@ -35,21 +35,21 @@ struct ModuleCloner
 
     void createStructPlaceholders()
     {
-        for (auto& s : oldModule.structs)
+        for (auto& s : oldModule.structs.get())
         {
             auto& mapping = structMappings[s.get()];
             SOUL_ASSERT (mapping == nullptr);
-            mapping = newModule.addStructCopy (*s);
+            mapping = newModule.structs.addCopy (*s);
         }
     }
 
     void cloneStructAndFunctionPlaceholders()
     {
-        for (auto& s : oldModule.structs)
+        for (auto& s : oldModule.structs.get())
             populateClonedStruct (*s);
 
-        for (auto& f : oldModule.functions)
-            newModule.functions.push_back (createNewFunctionObject (f));
+        for (auto& f : oldModule.functions.get())
+            functionMappings[f] = newModule.functions.add (f->name, f->functionType.isEvent());
     }
 
     void clone()
@@ -69,11 +69,11 @@ struct ModuleCloner
                 newModule.connections.push_back (clone (c));
         }
 
-        for (auto& v : oldModule.getStateVariables())
-            newModule.addStateVariable (getRemappedVariable (v));
+        for (auto& v : oldModule.stateVariables.get())
+            newModule.stateVariables.add (getRemappedVariable (v));
 
-        for (size_t i = 0; i < oldModule.functions.size(); ++i)
-            clone (newModule.functions[i], oldModule.functions[i]);
+        for (size_t i = 0; i <  oldModule.functions.size(); ++i)
+            clone (newModule.functions.at (i), oldModule.functions.at (i));
 
         newModule.latency = oldModule.latency;
     }
@@ -400,13 +400,6 @@ struct ModuleCloner
     heart::AdvanceClock& clone (const heart::AdvanceClock& a)
     {
         return newModule.allocate<heart::AdvanceClock> (a.location);
-    }
-
-    heart::Function& createNewFunctionObject (const heart::Function& old)
-    {
-        auto& f = newModule.allocate<heart::Function>();
-        functionMappings[old] = f;
-        return f;
     }
 
     void clone (heart::Function& f, const heart::Function& old)

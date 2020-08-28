@@ -60,9 +60,8 @@ private:
             {
                 if (! f->isGeneric())
                 {
-                    auto& af = module.allocate<heart::Function>();
-                    af.name = getFunctionName (f);
-                    module.functions.push_back (af);
+                    auto name = getFunctionName (f);
+                    auto& af = module.functions.add (name, false);
                     f->generatedFunction = af;
                 }
             }
@@ -119,7 +118,7 @@ private:
     {
         SOUL_ASSERT (v.isExternal);
         auto& hv = createVariableDeclaration (v, heart::Variable::Role::external);
-        module.addStateVariable (hv);
+        module.stateVariables.add (hv);
         return hv;
     }
 
@@ -347,7 +346,6 @@ private:
             auto& af = f.getGeneratedFunction();
 
             if (f.isIntrinsic())                af.functionType = heart::FunctionType::intrinsic();
-            else if (f.isRunFunction())         af.functionType = heart::FunctionType::run();
             else if (f.isEventFunction())       af.functionType = heart::FunctionType::event();
             else if (f.isUserInitFunction())    af.functionType = heart::FunctionType::userInit();
             else if (f.isSystemInitFunction())  af.functionType = heart::FunctionType::systemInit();
@@ -365,21 +363,21 @@ private:
         if (f.isEventFunction())
         {
             auto name = heart::getEventFunctionName (nameRoot, f.parameters[0]->getType());
-            SOUL_ASSERT (module.findFunction (name) == nullptr);
+            SOUL_ASSERT (module.functions.find (name) == nullptr);
             return module.allocator.get (name);
         }
 
         return module.allocator.get (addSuffixToMakeUnique (nameRoot,
                                                             [this] (const std::string& name)
                                                             {
-                                                                return module.findFunction (name) != nullptr;
+                                                                return module.functions.find (name) != nullptr;
                                                             }));
     }
 
     void generateStructs (ArrayView<pool_ref<AST::StructDeclaration>> structs)
     {
         for (auto& s : structs)
-            module.structs.push_back (s->getStruct());
+            module.structs.add (s->getStruct());
     }
 
     void generateFunctions (ArrayView<pool_ref<AST::Function>> functions)
@@ -883,7 +881,7 @@ private:
 
                 // Skip writing constant or unwritten-to variables to the state
                 if (! (v.numWrites == 0 && (type.isPrimitive() || type.isBoundedInt())))
-                    module.addStateVariable (createVariableDeclaration (v, heart::Variable::Role::state));
+                    module.stateVariables.add (createVariableDeclaration (v, heart::Variable::Role::state));
             }
         }
         else

@@ -29,6 +29,74 @@ namespace soul
 class Module  final
 {
 public:
+    //==============================================================================
+    class Functions
+    {
+    public:
+        Functions (Module& m) : module (m) {}
+
+        size_t size() const;
+        ArrayView<pool_ref<heart::Function>> get() const;
+        pool_ptr<heart::Function> findRunFunction() const;
+        heart::Function& getRunFunction() const;
+        heart::Function& get (const std::string& name) const;
+        heart::Function& at (size_t index) const;
+        pool_ptr<heart::Function> find (const std::string& name) const;
+        heart::Function& add (const std::string& name, bool isEventFunction);
+        bool remove (heart::Function&);
+        bool contains (const heart::Function&) const;
+
+        template <typename Predicate>
+        inline bool removeIf (Predicate&& pred)
+        {
+            return soul::removeIf (functions, std::move (pred));
+        }
+
+    private:
+        std::vector<pool_ref<heart::Function>> functions;
+        Module& module;
+    };
+
+
+    //==============================================================================
+    class StateVariables
+    {
+    public:
+        size_t size() const;
+        ArrayView<pool_ref<heart::Variable>> get() const;
+        pool_ptr<heart::Variable> find (const std::string& name) const;
+        void add (pool_ref<heart::Variable>);
+        void clear();
+
+    private:
+        std::vector<pool_ref<heart::Variable>> stateVariables;
+    };
+
+
+    //==============================================================================
+    class Structs
+    {
+    public:
+        size_t size() const;
+        ArrayView<StructurePtr> get() const;
+        Structure& add (std::string name);
+        Structure& add (Structure&);
+        Structure& addCopy (Structure&);
+        Structure& findOrAdd (std::string name);
+        StructurePtr find (std::string_view name) const noexcept;
+        bool remove (Structure&);
+
+        template <typename Predicate>
+        inline bool removeIf (Predicate&& pred)
+        {
+            return soul::removeIf (structs, std::move (pred));
+        }
+
+    private:
+        std::vector<StructurePtr> structs;
+    };
+
+
     bool isProcessor() const;
     bool isGraph() const;
     bool isNamespace() const;
@@ -47,8 +115,6 @@ public:
     std::vector<pool_ref<heart::ProcessorInstance>> processorInstances;
 
     // Properties if it's a processor
-    std::vector<pool_ref<heart::Function>> functions;
-    std::vector<StructurePtr>              structs;
 
     Annotation annotation;
     double sampleRate = 0;
@@ -58,26 +124,9 @@ public:
     //==============================================================================
     bool isSystemModule() const;
 
-    pool_ptr<heart::Function> findRunFunction() const;
-    heart::Function& getRunFunction() const;
-    heart::Function& getFunction (const std::string& name) const;
-    pool_ptr<heart::Function> findFunction (const std::string& name) const;
-    pool_ptr<heart::Variable> findStateVariable (const std::string& name) const;
-    heart::Function& addFunction (const std::string& name, bool isEventFunction);
-
     //==============================================================================
     pool_ptr<heart::InputDeclaration>  findInput  (const std::string& name) const;
     pool_ptr<heart::OutputDeclaration> findOutput (const std::string& name) const;
-
-    void addStateVariable (pool_ref<heart::Variable>);
-    ArrayView<pool_ref<heart::Variable>> getStateVariables() const;
-    void clearStateVariables();
-
-    //==============================================================================
-    Structure& addStruct (std::string name);
-    Structure& addStructCopy (Structure&);
-    Structure& findOrAddStruct (std::string name);
-    StructurePtr findStruct (std::string_view name) const noexcept;
 
     //==============================================================================
     void rebuildBlockPredecessors();
@@ -90,11 +139,16 @@ public:
     Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
 
+
+
+
+    Functions       functions;
+    StateVariables  stateVariables;
+    Structs         structs;
+
 private:
     //==============================================================================
     friend class Program;
-
-    std::vector<pool_ref<heart::Variable>> stateVariables;
 
     uint32_t moduleID = 0;
 

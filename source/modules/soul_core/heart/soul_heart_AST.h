@@ -756,6 +756,9 @@ struct heart
 
         FunctionType& operator= (FunctionType newType)
         {
+            if (type == newType.type)
+                return *this;;
+
             SOUL_ASSERT (isNormal() || newType.isNormal());
             type = newType.type;
             return *this;
