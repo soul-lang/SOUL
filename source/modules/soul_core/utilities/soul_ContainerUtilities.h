@@ -237,6 +237,15 @@ struct LinkedList
         bool operator== (Iterator other) const          { return object == other.object; }
         bool operator!= (Iterator other) const          { return object != other.object; }
 
+        void removeAllSuccessors()
+        {
+            if (object != nullptr)
+                object->nextObject = nullptr;
+        }
+
+    private:
+        friend struct LinkedList;
+
         void insertAfter (Type& newObject)
         {
             newObject.nextObject = next();
@@ -256,12 +265,6 @@ struct LinkedList
 
             if (object->nextObject != nullptr)
                 object->nextObject = object->nextObject->nextObject;
-        }
-
-        void removeAllSuccessors()
-        {
-            if (object != nullptr)
-                object->nextObject = nullptr;
         }
 
         Type* object = nullptr;
