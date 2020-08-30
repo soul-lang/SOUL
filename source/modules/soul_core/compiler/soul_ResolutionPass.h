@@ -1649,7 +1649,7 @@ private:
             PossibleFunction() = delete;
             PossibleFunction (PossibleFunction&&) = default;
 
-            PossibleFunction (AST::Function& f, ArrayView<Type> argTypes) : function (f)
+            PossibleFunction (AST::Function& f, ArrayView<Type> argTypes, ArrayView<pool_ptr<AST::Constant>> constantArgValues) : function (f)
             {
                 for (size_t i = 0; i < argTypes.size(); ++i)
                 {
@@ -1671,7 +1671,11 @@ private:
                         continue;
 
                     if (! TypeRules::canPassAsArgumentTo (targetParamType, argTypes[i], false))
-                        isImpossible = true;
+                    {
+                        if (constantArgValues[i] == nullptr
+                             || ! TypeRules::canSilentlyCastTo (targetParamType, constantArgValues[i]->value))
+                            isImpossible = true;
+                    }
 
                     requiresCast = true;
                 }
@@ -1747,12 +1751,26 @@ private:
                 }
             }
 
+            ArrayWithPreallocation<pool_ptr<AST::Constant>, 4> constantArgs;
+
+            if (call.arguments != nullptr)
+            {
+                constantArgs.reserve (argTypes.size());
+
+                for (auto& c : call.arguments->items)
+                    constantArgs.push_back (c->getAsConstant());
+            }
+            else
+            {
+                constantArgs.resize (argTypes.size());
+            }
+
             ArrayWithPreallocation<PossibleFunction, 4> results;
 
             for (auto& i : search.itemsFound)
                 if (auto f = cast<AST::Function> (i))
                     if (f->originalGenericFunction == nullptr)
-                        results.push_back (PossibleFunction (*f, argTypes));
+                        results.push_back (PossibleFunction (*f, argTypes, constantArgs));
 
             return results;
         }
@@ -2359,8 +2377,7 @@ private:
                 a.context.throwError (Errors::operatorNeedsAssignableTarget ("="));
 
             SanityCheckPass::expectSilentCastPossible (a.context,
-                                                       a.target->getResultType().removeReferenceIfPresent()
-                                                                                .removeConstIfPresent(),
+                                                       a.target->getResultType().withConstAndRefFlags (false, false),
                                                        a.newValue);
             return a;
         }
