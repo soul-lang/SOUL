@@ -57,6 +57,21 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     Span<EndpointDescription> getOutputEventEndpoints() const override  { return outputEventEndpointSpan; }
     uint32_t getLatencySamples() const override                         { return latency; }
 
+    EndpointDescription getEndpointDetails (const char* endpointID) const override
+    {
+        for (auto& e : endpointHolders)
+            if (e.desc.ID.toString<std::string>() == endpointID)
+                return e.desc;
+
+        EndpointDescription desc;
+        desc.handle = std::numeric_limits<decltype (desc.handle)>::max();
+        desc.type = soul::EndpointType::unknown;
+        desc.annotation = {};
+        desc.valueTypes = {};
+        desc.numValueTypes = 0;
+        return desc;
+    }
+
     //==============================================================================
     void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
     {
@@ -253,7 +268,9 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     void createBusesAndEventEndpoints()
     {
         inputBuses.clear();
-        inputEventHandles.clear();
+        inputEventEndpoints.clear();
+        outputEventEndpoints.clear();
+        endpointHolders.clear();
         outputBuses.clear();
 
         for (auto& audioInput : wrapper.getAudioInputEndpoints())
@@ -262,13 +279,79 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         for (auto& audioOutput : wrapper.getAudioOutputEndpoints())
             outputBuses.push_back ({ makeString (audioOutput.name), (uint32_t) audioOutput.getNumAudioChannels() });
 
+        for (auto& e : performer->getInputEndpoints())
+            getEndpointDescription (e);
+
+        for (auto& e : performer->getInputEndpoints())
+            getEndpointDescription (e);
+
         for (auto& eventInput : wrapper.getEventInputEndpoints())
-            inputEventHandles.push_back (performer->getEndpointHandle (eventInput.endpointID));
+            inputEventEndpoints.push_back (getEndpointDescription (eventInput));
+
+        for (auto& eventOutput : wrapper.getEventOutputEndpoints())
+            outputEventEndpoints.push_back (getEndpointDescription (eventOutput));
 
         inputBusesSpan  = makeSpan (inputBuses);
         outputBusesSpan = makeSpan (outputBuses);
         inputEventEndpointSpan  = makeSpan (inputEventEndpoints);
         outputEventEndpointSpan = makeSpan (outputEventEndpoints);
+    }
+
+    struct EndpointDescriptionHolder
+    {
+        EndpointDescriptionHolder (const EndpointDetails& e, EndpointHandle patchHandle, soul::EndpointHandle performerHandle)
+            : handle (performerHandle)
+        {
+            desc.handle = patchHandle;
+            desc.ID = makeString (e.endpointID.toString());
+            desc.name = makeString (e.name);
+            desc.type = e.endpointType;
+
+            annotationData = serialise (e.annotation.toExternalValue());
+            desc.annotation = { annotationData.data(), static_cast<uint32_t> (annotationData.size()) };
+
+            for (auto& t : e.dataTypes)
+                typeData.push_back (serialise (t));
+
+            for (auto& t : typeData)
+                types.push_back ({ t.data(), static_cast<uint32_t> (t.size()) });
+
+            desc.valueTypes = types.data();
+            desc.numValueTypes = static_cast<uint32_t> (types.size());
+        }
+
+        template <typename ValueOrType>
+        static std::vector<char> serialise (const ValueOrType& v)
+        {
+            struct Writer
+            {
+                std::vector<char> s;
+                void write (const void* data, size_t size)  { s.insert (s.end(), static_cast<const char*> (data), static_cast<const char*> (data) + size); }
+            };
+
+            Writer w;
+            v.serialise (w);
+            return w.s;
+        }
+
+        soul::EndpointHandle handle;
+        EndpointDescription desc;
+        std::vector<SerialisedType> types;
+        std::vector<std::vector<char>> typeData;
+        std::vector<char> annotationData;
+    };
+
+    EndpointDescription getEndpointDescription (const EndpointDetails& e)
+    {
+        auto handle = performer->getEndpointHandle (e.endpointID);
+
+        for (auto& desc : endpointHolders)
+            if (desc.handle == handle)
+                return desc.desc;
+
+        auto index = endpointHolders.size();
+        endpointHolders.push_back (EndpointDescriptionHolder (e, static_cast<EndpointHandle> (index), handle));
+        return endpointHolders.back().desc;
     }
 
     template <typename DebugHandler>
@@ -329,8 +412,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
     bool sendInputEvent (EndpointHandle handle, const choc::value::ValueView& event) override
     {
-        if (handle < inputEventHandles.size())
-            return wrapper.inputEventQueue.pushEvent (inputEventHandles[handle], event);
+        if (handle < endpointHolders.size())
+            return wrapper.inputEventQueue.pushEvent (endpointHolders[handle].handle, event);
 
         return false;
     }
@@ -460,7 +543,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
     std::vector<Bus> inputBuses, outputBuses;
     std::vector<EndpointDescription> inputEventEndpoints, outputEventEndpoints;
-    std::vector<soul::EndpointHandle> inputEventHandles;
+    std::vector<EndpointDescriptionHolder> endpointHolders;
     std::vector<Parameter::Ptr> parameters;
 
     Span<Bus> inputBusesSpan = {}, outputBusesSpan = {};

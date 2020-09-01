@@ -192,6 +192,8 @@ public:
     virtual Span<EndpointDescription> getInputEventEndpoints() const = 0;
     virtual Span<EndpointDescription> getOutputEventEndpoints() const = 0;
 
+    virtual EndpointDescription getEndpointDetails (const char* endpointID) const = 0;
+
     /** Returns the patch's internal latency. */
     virtual uint32_t getLatencySamples() const = 0;
 
