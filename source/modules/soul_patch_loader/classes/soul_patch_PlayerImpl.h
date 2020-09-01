@@ -63,6 +63,10 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
             if (e.desc.ID.toString<std::string>() == endpointID)
                 return e.desc;
 
+        for (auto& e : endpointHolders)
+            if (e.desc.name.toString<std::string>() == endpointID)
+                return e.desc;
+
         EndpointDescription desc;
         desc.handle = std::numeric_limits<decltype (desc.handle)>::max();
         desc.type = soul::EndpointType::unknown;
@@ -282,7 +286,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         for (auto& e : performer->getInputEndpoints())
             getEndpointDescription (e);
 
-        for (auto& e : performer->getInputEndpoints())
+        for (auto& e : performer->getOutputEndpoints())
             getEndpointDescription (e);
 
         for (auto& eventInput : wrapper.getEventInputEndpoints())

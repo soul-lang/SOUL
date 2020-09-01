@@ -1,0 +1,15 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "dev.soul.examples.padsynth",
+        "version":          "1.0",
+        "name":             "PadSynth",
+        "description":      "SOUL Pad Synth example",
+        "category":         "synth",
+        "manufacturer":     "soul.dev",
+        "isInstrument":     true,
+
+        "source":           "../PadSynth/PadSynth.soul",
+        "view":             "react/build/main.js"
+    }
+}
