@@ -132,6 +132,9 @@ struct ShortMessage
     /** Returns a hex string dump of the message. */
     std::string toHexString() const                     { return printHexMIDIData (data, length()); }
 
+    bool operator== (const ShortMessage&) const;
+    bool operator!= (const ShortMessage&) const;
+
 private:
     bool isVoiceMessage (uint8_t type) const            { return (data[0] & 0xf0) == type; }
     uint32_t get14BitValue() const                      { return data[1] | (static_cast<uint32_t> (data[2]) << 7); }
@@ -161,6 +164,18 @@ inline uint8_t ShortMessage::length() const
     if (group == 7)   return lastGroupLengths[firstByte & 0xf];
 
     return 0;
+}
+
+inline bool ShortMessage::operator== (const ShortMessage& other) const
+{
+    return data[0] == other.data[0]
+        && data[1] == other.data[1]
+        && data[2] == other.data[2];
+}
+
+inline bool ShortMessage::operator!= (const ShortMessage& other) const
+{
+    return ! operator== (other);
 }
 
 inline std::string ShortMessage::getDescription() const
