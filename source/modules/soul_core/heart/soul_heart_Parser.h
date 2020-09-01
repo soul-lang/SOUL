@@ -341,7 +341,7 @@ private:
 
         auto errorLocation = location;
         if (isReservedFunctionName (inputDeclaration.name))
-            errorLocation.throwError (Errors::invalidEventFunctionName (inputDeclaration.name));
+            errorLocation.throwError (Errors::invalidEndpointName (inputDeclaration.name));
 
         inputDeclaration.index = (uint32_t) module->inputs.size();
 
@@ -357,7 +357,7 @@ private:
 
         auto errorLocation = location;
         if (isReservedFunctionName (outputDeclaration.name))
-            errorLocation.throwError (Errors::invalidEventFunctionName (outputDeclaration.name));
+            errorLocation.throwError (Errors::invalidEndpointName (outputDeclaration.name));
 
         module->outputs.push_back (outputDeclaration);
         skipPastNextOccurrenceOf (HEARTOperator::semicolon);
@@ -627,7 +627,7 @@ private:
         auto name = parseGeneralIdentifier();
 
         if (isEventFunction && heart::isReservedFunctionName (name))
-            throwError (Errors::invalidEventFunctionName (name));
+            throwError (Errors::invalidEndpointName (name));
 
         if (module->functions.find (name) != nullptr)
             throwError (Errors::nameInUse (name));
