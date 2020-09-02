@@ -41,8 +41,12 @@ void Structure::addMember (Type type, std::string memberName)
 {
     SOUL_ASSERT (! hasMemberWithName (memberName));
 
+    // Ensure we won't create a recursive structure (one containing itself) if we add a member of this type
+    SOUL_ASSERT (! (type.isStruct() && type.getStruct()->containsMemberOfType (Type::createStruct (*this), true)));
+
     memberIndexMap[memberName] = members.size();
     members.push_back ({ std::move (type), std::move (memberName) });
+
 }
 
 void Structure::removeMember (std::string_view memberName)
@@ -126,11 +130,27 @@ static void checkStructRecursion (Structure* structToCheck, const CodeLocation& 
 
     parentStructs.pop_back();
 }
+    
 
 void Structure::checkForRecursiveNestedStructs (const CodeLocation& location)
 {
     ArrayWithPreallocation<Structure*, 8> parentStructs;
     checkStructRecursion (this, location, parentStructs);
 }
+
+bool Structure::containsMemberOfType (const Type& type, bool checkSubStructs) const
+{
+    for (auto& m : members)
+    {
+        if (m.type.isEqual (type, Type::failOnAllDifferences))
+            return true;
+
+        if (checkSubStructs && m.type.isStruct() && m.type.getStruct()->containsMemberOfType (type, checkSubStructs))
+            return true;
+    }
+
+    return false;
+}
+
 
 } // namespace soul

@@ -74,6 +74,8 @@ public:
 
     void checkForRecursiveNestedStructs (const CodeLocation&);
 
+    bool containsMemberOfType (const Type& type, bool checkSubStructs) const;
+
 private:
     ArrayWithPreallocation<Member, 8> members;
 

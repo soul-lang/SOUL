@@ -611,12 +611,17 @@ private:
     {
         while (! matchIf (HEARTOperator::closeBrace))
         {
+            auto typeLocation = location;
+
             auto type = readValueType();
             auto name = readGeneralIdentifier();
             expectSemicolon();
 
             if (s.hasMemberWithName (name))
                 throwError (Errors::nameInUse (name));
+
+            if (type.isStruct() && type.getStruct()->containsMemberOfType (Type::createStruct (s), true))
+                typeLocation.throwError (Errors::typesReferToEachOther (s.getName(), type.getStruct()->getName()));
 
             s.addMember (type, name);
         }

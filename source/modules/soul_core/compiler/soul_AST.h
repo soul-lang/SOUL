@@ -1307,6 +1307,11 @@ struct AST
 
         bool isResolved() const override
         {
+            ScopedResolver scopedResolver (isBeingResolved);
+
+            if (scopedResolver.isBeingResolved())
+                return false;
+
             for (auto& m : members)
                 if (! isResolvedAsType (m.type.get()))
                     return false;
@@ -1325,15 +1330,28 @@ struct AST
                 structure.reset (new Structure (name.toString(), const_cast<StructDeclaration*> (this)));
 
                 for (auto& m : members)
-                    structure->addMember(m.type->resolveAsType(), m.name.toString());
+                    structure->addMember (m.type->resolveAsType(), m.name.toString());
             }
 
             return *structure;
         }
 
     private:
+
+        struct ScopedResolver
+        {
+            ScopedResolver (bool& b) : flag(b) { originalValue = flag; flag = true; }
+            ~ScopedResolver()                  { flag = false; }
+            bool isBeingResolved() const       { return originalValue; }
+
+        private:
+            bool originalValue;
+            bool& flag;
+        };
+        
         mutable StructurePtr structure;
         ArrayWithPreallocation<Member, 16> members;
+        mutable bool isBeingResolved = false;
     };
 
     struct UsingDeclaration  : public TypeDeclarationBase

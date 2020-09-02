@@ -76,6 +76,7 @@ heart::Function& Module::Functions::add (const std::string& name, bool isEventFu
     {
         SOUL_ASSERT (! heart::isReservedFunctionName (name));
         fn.functionType = heart::FunctionType::event();
+        fn.returnType = PrimitiveType::void_;
     }
     else if (name == heart::getRunFunctionName())         fn.functionType = heart::FunctionType::run();
     else if (name == heart::getUserInitFunctionName())    fn.functionType = heart::FunctionType::userInit();
@@ -88,6 +89,21 @@ heart::Function& Module::Functions::add (const std::string& name, bool isEventFu
 
     return fn;
 }
+
+heart::Function& Module::Functions::add (pool_ref<heart::InputDeclaration> input, const Type& type)
+{
+    SOUL_TODO   // Check that the input is present on the module
+
+    SOUL_ASSERT (input->isEventEndpoint());
+    SOUL_ASSERT (input->canHandleType (type));
+
+    auto functionName = heart::getEventFunctionName (input->name, type);
+
+    SOUL_ASSERT (find (functionName) == nullptr);
+
+    return add (functionName, true);
+}
+
 
 bool Module::Functions::remove (heart::Function& f)
 {
