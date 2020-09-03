@@ -94,21 +94,27 @@ private:
     }
 
     template <int numParams, typename MethodType>
+    juce::var call (MethodType method, const juce::var::NativeFunctionArgs& args)
+    {
+        if (args.numArguments != numParams)
+            return juce::var::undefined();
+
+        if constexpr (numParams == 0)    return (this->*method)();
+        if constexpr (numParams == 1)    return (this->*method) (args.arguments[0]);
+        if constexpr (numParams == 2)    return (this->*method) (args.arguments[0], args.arguments[1]);
+        if constexpr (numParams == 3)    return (this->*method) (args.arguments[0], args.arguments[1], args.arguments[2]);
+        if constexpr (numParams == 4)    return (this->*method) (args.arguments[0], args.arguments[1], args.arguments[2], args.arguments[3]);
+        static_assert (numParams <= 4);
+        return {};
+    }
+
+    template <int numParams, typename MethodType>
     void addMethodBinding (const char* name, MethodType method)
     {
         reactRootComponent.engine.registerNativeMethod (name,
             [this, method] (const juce::var::NativeFunctionArgs& args) -> juce::var
             {
-                if (args.numArguments != numParams)
-                    return juce::var::undefined();
-
-                if constexpr (numParams == 0)    return (this->*method)();
-                if constexpr (numParams == 1)    return (this->*method) (args.arguments[0]);
-                if constexpr (numParams == 2)    return (this->*method) (args.arguments[0], args.arguments[1]);
-                if constexpr (numParams == 3)    return (this->*method) (args.arguments[0], args.arguments[1], args.arguments[2]);
-                if constexpr (numParams == 4)    return (this->*method) (args.arguments[0], args.arguments[1], args.arguments[2], args.arguments[3]);
-                static_assert (numParams <= 4);
-                return {};
+                return call<numParams> (method, args);
             });
     }
 
