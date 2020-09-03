@@ -287,7 +287,7 @@ private:
         auto childProcessorInstance = parentGraph.findChildProcessor (childProcessorName);
 
         if (childProcessorInstance == nullptr)
-            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName.toString()));
+            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName));
 
         if (childProcessorInstance->arraySize != nullptr)
             nameContext.throwError (Errors::notYetImplemented ("Exposing child endpoints involving processor arrays"));
@@ -316,7 +316,7 @@ private:
         }
 
         if (childGraph == nullptr)
-            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName.toString()));
+            nameContext.throwError (Errors::cannotFindProcessor (childProcessorName));
 
         auto& newEndpointInChild = allocator.allocate<AST::EndpointDeclaration> (AST::Context(), hoistedEndpoint.isInput);
         newEndpointInChild.name = allocator.get (makeUniqueEndpointName (*childGraph, path));

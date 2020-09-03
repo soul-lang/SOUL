@@ -106,7 +106,7 @@ struct heart
         Constant& allocateZeroInitialiser (const Type& type)  { return allocateConstant (Value::zeroInitialiser (type)); }
 
         template <typename Type>
-        Identifier get (const Type& newString)  { return identifiers.get (newString); }
+        Identifier get (const Type& newString)                { return identifiers.get (newString); }
 
         PoolAllocator pool;
         Identifier::Pool identifiers;
@@ -891,7 +891,7 @@ struct heart
                               {
                                   if (auto v = cast<Variable> (value))
                                       if (v->isFunctionLocal() && v->readWriteCount.numWrites == 0 && v->readWriteCount.numReads != 0)
-                                          v->location.throwError (Errors::useOfUninitialisedVariable (v->name.toString(), name.toString()));
+                                          v->location.throwError (Errors::useOfUninitialisedVariable (v->name, name));
                               });
         }
 

@@ -486,7 +486,7 @@ private:
                 for (size_t i = 0; i < targetFunction.parameters.size(); ++i)
                 {
                     auto& param = targetFunction.parameters[i].get();
-                    auto newParamName = inlinedFnName + "_param_" + makeSafeIdentifierName (param.name.toString());
+                    auto newParamName = inlinedFnName + "_param_" + makeSafeIdentifierName (param.name);
                     auto& localParamVar = builder.createMutableLocalVariable (param.type, newParamName);
                     builder.addAssignment (localParamVar, call.arguments[i]);
                     remappedVariables[param] = localParamVar;
@@ -655,7 +655,7 @@ private:
                 if (v == nullptr)
                 {
                     v = module.allocate<heart::Variable> (old.location, old.type,
-                                                          old.name.isValid() ? module.allocator.get (inlinedFnName + "_" + makeSafeIdentifierName (old.name.toString()))
+                                                          old.name.isValid() ? module.allocator.get (inlinedFnName + "_" + makeSafeIdentifierName (old.name))
                                                                              : Identifier(),
                                                           old.role);
                     v->annotation = old.annotation;

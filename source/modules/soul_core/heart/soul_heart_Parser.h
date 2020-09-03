@@ -574,8 +574,8 @@ private:
         auto type = readValueType();
         auto name = program.getAllocator().get (readVariableIdentifier());
 
-        if (module->stateVariables.find (name.toString()))
-            throwError (Errors::nameInUse (name.toString()));
+        if (module->stateVariables.find (name))
+            throwError (Errors::nameInUse (name));
 
         auto& v = module->allocate<heart::Variable> (location, type, name,
                                                      isExternal ? heart::Variable::Role::external
@@ -741,7 +741,7 @@ private:
         }
 
         if (f.blocks.empty())
-            f.location.throwError (Errors::emptyFunction(f.name.toString()));
+            f.location.throwError (Errors::emptyFunction (f.name));
 
         builder.endFunction();
     }

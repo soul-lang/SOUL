@@ -1694,7 +1694,7 @@ private:
         pool_ptr<AST::Expression> resolveFunction (const PossibleFunction& f, AST::CallOrCast& call, bool ignoreErrorsInGenerics)
         {
             if (f.function.isRunFunction() || f.function.isUserInitFunction())
-                call.context.throwError (Errors::cannotCallFunction (f.function.name.toString()));
+                call.context.throwError (Errors::cannotCallFunction (f.function.name));
 
             if (f.function.isGeneric())
                 return createCallToGenericFunction (call, f.function, ignoreErrorsInGenerics);

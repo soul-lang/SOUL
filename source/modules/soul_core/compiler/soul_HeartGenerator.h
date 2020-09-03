@@ -96,7 +96,7 @@ private:
     {
         SOUL_ASSERT (path.getFirstPart().toString() == Program::getRootNamespaceName());
         path = path.fromSecondPart();
-        removeIf (path.pathSections, [] (const Identifier& section) { return startsWith (section.toString(), "_for"); });
+        removeIf (path.pathSections, [] (const Identifier& section) { return startsWith (section, "_for"); });
         return path.toString();
     }
 

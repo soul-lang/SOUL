@@ -31,13 +31,14 @@ struct Identifier  final
 
     bool isValid() const noexcept                                   { return name != nullptr; }
     operator const std::string&() const                             { SOUL_ASSERT (isValid()); return *name; }
+    operator std::string_view() const                               { SOUL_ASSERT (isValid()); return std::string_view (*name); }
     const std::string& toString() const                             { SOUL_ASSERT (isValid()); return *name; }
     std::string toStringWithFallback (const std::string& fallback) const  { return isValid() ? *name : fallback; }
 
     bool operator== (const Identifier& other) const noexcept        { return name == other.name; }
     bool operator!= (const Identifier& other) const noexcept        { return name != other.name; }
-    bool operator== (const std::string& other) const                { SOUL_ASSERT (isValid()); return *name == other; }
-    bool operator!= (const std::string& other) const                { SOUL_ASSERT (isValid()); return *name != other; }
+    bool operator== (std::string_view other) const                  { SOUL_ASSERT (isValid()); return *name == other; }
+    bool operator!= (std::string_view other) const                  { SOUL_ASSERT (isValid()); return *name != other; }
 
     //==============================================================================
     struct Pool  final
@@ -87,7 +88,7 @@ struct Identifier  final
             if (! i.isValid())
                 return {};
 
-            return get (i.toString());
+            return get (static_cast<std::string_view> (i));
         }
 
         void clear()

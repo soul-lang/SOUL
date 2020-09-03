@@ -1307,10 +1307,10 @@ struct AST
 
         bool isResolved() const override
         {
-            ScopedResolver scopedResolver (isBeingResolved);
-
-            if (scopedResolver.isBeingResolved())
+            if (isBeingResolved)
                 return false;
+
+            ScopedResolver scopedResolver (isBeingResolved);
 
             for (auto& m : members)
                 if (! isResolvedAsType (m.type.get()))
@@ -1337,15 +1337,11 @@ struct AST
         }
 
     private:
-
         struct ScopedResolver
         {
-            ScopedResolver (bool& b) : flag(b) { originalValue = flag; flag = true; }
-            ~ScopedResolver()                  { flag = false; }
-            bool isBeingResolved() const       { return originalValue; }
+            ScopedResolver (bool& b) : flag (b) { flag = true; }
+            ~ScopedResolver()                   { flag = false; }
 
-        private:
-            bool originalValue;
             bool& flag;
         };
         

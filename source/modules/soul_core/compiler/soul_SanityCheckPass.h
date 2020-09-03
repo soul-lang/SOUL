@@ -335,10 +335,10 @@ private:
                 if (f->isRunFunction() || f->isUserInitFunction())
                 {
                     if (! f->returnType->resolveAsType().isVoid())
-                        f->context.throwError (Errors::functionMustBeVoid (f->name.toString()));
+                        f->context.throwError (Errors::functionMustBeVoid (f->name));
 
                     if (! f->parameters.empty())
-                        f->context.throwError (Errors::functionHasParams (f->name.toString()));
+                        f->context.throwError (Errors::functionHasParams (f->name));
 
                     if (f->isRunFunction())
                         ++numRunFunctions;

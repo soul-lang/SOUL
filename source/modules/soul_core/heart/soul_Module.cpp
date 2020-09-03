@@ -26,37 +26,16 @@ namespace soul
 {
 
 //==============================================================================
-size_t Module::Functions::size() const  { return functions.size(); }
+size_t Module::Functions::size() const                                      { return functions.size(); }
+pool_ptr<heart::Function> Module::Functions::findRunFunction() const        { return find (heart::getRunFunctionName()); }
+heart::Function& Module::Functions::getRunFunction() const                  { return *findRunFunction(); }
+ArrayView<pool_ref<heart::Function>> Module::Functions::get() const         { return functions; }
+heart::Function& Module::Functions::get (std::string_view name) const       { return *find (name); }
+heart::Function& Module::Functions::at (size_t index) const                 { return functions[index]; }
+bool Module::Functions::remove (heart::Function& f)                         { return removeItem (functions, f); }
+bool Module::Functions::contains (const heart::Function& f) const           { return soul::contains (functions, f); }
 
-pool_ptr<heart::Function> Module::Functions::findRunFunction() const
-{
-    return find (heart::getRunFunctionName());
-}
-
-heart::Function& Module::Functions::getRunFunction() const
-{
-    return *findRunFunction();
-}
-
-ArrayView<pool_ref<heart::Function>> Module::Functions::get() const
-{
-    return functions;
-}
-
-heart::Function& Module::Functions::get (const std::string& name) const
-{
-    return *find (name);
-}
-
-heart::Function& Module::Functions::at (size_t index) const
-{
-    SOUL_ASSERT (index < functions.size());
-
-    return functions[index];
-}
-
-
-pool_ptr<heart::Function> Module::Functions::find (const std::string& name) const
+pool_ptr<heart::Function> Module::Functions::find (std::string_view name) const
 {
     for (auto& f : functions)
         if (f->name == name)
@@ -65,7 +44,7 @@ pool_ptr<heart::Function> Module::Functions::find (const std::string& name) cons
     return {};
 }
 
-heart::Function& Module::Functions::add (const std::string& name, bool isEventFunction)
+heart::Function& Module::Functions::add (std::string name, bool isEventFunction)
 {
     SOUL_ASSERT (find (name) == nullptr);
 
@@ -80,56 +59,29 @@ heart::Function& Module::Functions::add (const std::string& name, bool isEventFu
     }
     else if (name == heart::getRunFunctionName())         fn.functionType = heart::FunctionType::run();
     else if (name == heart::getUserInitFunctionName())    fn.functionType = heart::FunctionType::userInit();
-    else if (name == heart::getSystemInitFunctionName())
-    {
-        fn.functionType = heart::FunctionType::systemInit();
-    }
+    else if (name == heart::getSystemInitFunctionName())  fn.functionType = heart::FunctionType::systemInit();
 
     functions.push_back (fn);
-
     return fn;
 }
 
 heart::Function& Module::Functions::add (const heart::InputDeclaration& input, const Type& type)
 {
-    auto moduleInput = module.findInput (input.name);
-    SOUL_ASSERT (moduleInput != nullptr && moduleInput == &input);
+    SOUL_ASSERT (module.findInput (input.name) == std::addressof (input));
     SOUL_ASSERT (input.isEventEndpoint() && input.canHandleType (type));
 
     auto functionName = heart::getEventFunctionName (input.name, type);
-
     SOUL_ASSERT (find (functionName) == nullptr);
 
     return add (functionName, true);
 }
 
-
-bool Module::Functions::remove (heart::Function& f)
-{
-    return removeItem (functions, f);
-}
-
-bool Module::Functions::contains (const heart::Function& f) const
-{
-    return soul::contains (functions, f);
-}
-
-
-
 //==============================================================================
-size_t Module::StateVariables::size() const  { return stateVariables.size(); }
+size_t Module::StateVariables::size() const                                 { return stateVariables.size(); }
+ArrayView<pool_ref<heart::Variable>> Module::StateVariables::get() const    { return stateVariables; }
+void Module::StateVariables::clear()                                        { stateVariables.clear(); }
 
-ArrayView<pool_ref<heart::Variable>> Module::StateVariables::get() const
-{
-    return stateVariables;
-}
-
-void Module::StateVariables::clear()
-{
-    stateVariables.clear();
-}
-
-pool_ptr<heart::Variable> Module::StateVariables::find (const std::string& name) const
+pool_ptr<heart::Variable> Module::StateVariables::find (std::string_view name) const
 {
     for (auto& v : stateVariables)
         if (v->name == name)
@@ -138,17 +90,11 @@ pool_ptr<heart::Variable> Module::StateVariables::find (const std::string& name)
     return {};
 }
 
-void Module::StateVariables::add (pool_ref<heart::Variable> v)
+void Module::StateVariables::add (heart::Variable& v)
 {
-    SOUL_ASSERT (v->isState() && find (v->name.toString()) == nullptr);
-
+    SOUL_ASSERT (v.isState() && find (v.name) == nullptr);
     stateVariables.push_back (v);
 }
-
-
-
-
-
 
 //==============================================================================
 size_t Module::Structs::size() const  { return structs.size(); }
@@ -169,14 +115,13 @@ Structure& Module::Structs::add (Structure& s)
 {
     SOUL_ASSERT (find (s.getName()) == nullptr);
     structs.push_back (s);
-    return *structs.back();
+    return s;
 }
 
 bool Module::Structs::remove (Structure& s)
 {
     return removeItem (structs, s);
 }
-
 
 Structure& Module::Structs::addCopy (Structure& s)
 {
@@ -201,8 +146,6 @@ Structure& Module::Structs::findOrAdd (std::string name)
 
     return add (std::move (name));
 }
-
-
 
 //==============================================================================
 Module::Module (Program& p, ModuleType type)
@@ -232,11 +175,7 @@ bool Module::isNamespace() const        { return moduleType == ModuleType::names
 
 bool Module::isSystemModule() const     { return startsWith (originalFullName, "soul::"); }
 
-
-
-
-
-pool_ptr<heart::InputDeclaration> Module::findInput (const std::string& name) const
+pool_ptr<heart::InputDeclaration> Module::findInput (std::string_view name) const
 {
     for (auto& f : inputs)
         if (f->name == name)
@@ -245,7 +184,7 @@ pool_ptr<heart::InputDeclaration> Module::findInput (const std::string& name) co
     return {};
 }
 
-pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) const
+pool_ptr<heart::OutputDeclaration> Module::findOutput (std::string_view name) const
 {
     for (auto& f : outputs)
         if (f->name == name)
@@ -253,11 +192,6 @@ pool_ptr<heart::OutputDeclaration> Module::findOutput (const std::string& name) 
 
     return {};
 }
-
-
-
-
-
 
 void Module::rebuildBlockPredecessors()
 {

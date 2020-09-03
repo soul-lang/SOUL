@@ -39,25 +39,24 @@ public:
         ArrayView<pool_ref<heart::Function>> get() const;
         pool_ptr<heart::Function> findRunFunction() const;
         heart::Function& getRunFunction() const;
-        heart::Function& get (const std::string& name) const;
+        heart::Function& get (std::string_view name) const;
         heart::Function& at (size_t index) const;
-        pool_ptr<heart::Function> find (const std::string& name) const;
-        heart::Function& add (const std::string& name, bool isEventFunction);
-        heart::Function& add (const heart::InputDeclaration& input, const Type& type);
+        pool_ptr<heart::Function> find (std::string_view name) const;
+        heart::Function& add (std::string name, bool isEventFunction);
+        heart::Function& add (const heart::InputDeclaration&, const Type&);
         bool remove (heart::Function&);
         bool contains (const heart::Function&) const;
 
         template <typename Predicate>
-        inline bool removeIf (Predicate&& pred)
+        bool removeIf (Predicate&& pred)
         {
             return soul::removeIf (functions, std::move (pred));
         }
 
     private:
-        std::vector<pool_ref<heart::Function>> functions;
+        ArrayWithPreallocation<pool_ref<heart::Function>, 32> functions;
         Module& module;
     };
-
 
     //==============================================================================
     class StateVariables
@@ -65,14 +64,13 @@ public:
     public:
         size_t size() const;
         ArrayView<pool_ref<heart::Variable>> get() const;
-        pool_ptr<heart::Variable> find (const std::string& name) const;
-        void add (pool_ref<heart::Variable>);
+        pool_ptr<heart::Variable> find (std::string_view name) const;
+        void add (heart::Variable&);
         void clear();
 
     private:
-        std::vector<pool_ref<heart::Variable>> stateVariables;
+        ArrayWithPreallocation<pool_ref<heart::Variable>, 32> stateVariables;
     };
-
 
     //==============================================================================
     class Structs
@@ -88,19 +86,21 @@ public:
         bool remove (Structure&);
 
         template <typename Predicate>
-        inline bool removeIf (Predicate&& pred)
+        bool removeIf (Predicate&& pred)
         {
             return soul::removeIf (structs, std::move (pred));
         }
 
     private:
-        std::vector<StructurePtr> structs;
+        ArrayWithPreallocation<StructurePtr, 32> structs;
     };
 
-
+    //==============================================================================
     bool isProcessor() const;
     bool isGraph() const;
     bool isNamespace() const;
+
+    bool isSystemModule() const;
 
     Program program;
 
@@ -116,22 +116,10 @@ public:
     std::vector<pool_ref<heart::ProcessorInstance>> processorInstances;
 
     // Properties if it's a processor
-
     Annotation annotation;
     double sampleRate = 0;
     uint32_t latency = 0;
     CodeLocation location;
-
-    //==============================================================================
-    bool isSystemModule() const;
-
-    //==============================================================================
-    pool_ptr<heart::InputDeclaration>  findInput  (const std::string& name) const;
-    pool_ptr<heart::OutputDeclaration> findOutput (const std::string& name) const;
-
-    //==============================================================================
-    void rebuildBlockPredecessors();
-    void rebuildVariableUseCounts();
 
     //==============================================================================
     heart::Allocator& allocator;
@@ -139,13 +127,18 @@ public:
     template <typename Type, typename... Args>
     Type& allocate (Args&&... args)         { return allocator.allocate<Type> (std::forward<Args> (args)...); }
 
-
-
-
-
+    //==============================================================================
     Functions       functions;
     StateVariables  stateVariables;
     Structs         structs;
+
+    //==============================================================================
+    pool_ptr<heart::InputDeclaration>  findInput  (std::string_view name) const;
+    pool_ptr<heart::OutputDeclaration> findOutput (std::string_view name) const;
+
+    //==============================================================================
+    void rebuildBlockPredecessors();
+    void rebuildVariableUseCounts();
 
 private:
     //==============================================================================
