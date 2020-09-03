@@ -620,6 +620,11 @@ private:
             if (s.hasMemberWithName (name))
                 throwError (Errors::nameInUse (name));
 
+            auto structType = Type::createStruct (s);
+
+            if (type.isEqual (structType, Type::failOnAllDifferences))
+                typeLocation.throwError (Errors::typeContainsItself (s.getName()));
+
             if (type.isStruct() && type.getStruct()->containsMemberOfType (Type::createStruct (s), true))
                 typeLocation.throwError (Errors::typesReferToEachOther (s.getName(), type.getStruct()->getName()));
 

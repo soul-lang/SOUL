@@ -90,14 +90,13 @@ heart::Function& Module::Functions::add (const std::string& name, bool isEventFu
     return fn;
 }
 
-heart::Function& Module::Functions::add (pool_ref<heart::InputDeclaration> input, const Type& type)
+heart::Function& Module::Functions::add (const heart::InputDeclaration& input, const Type& type)
 {
-    SOUL_TODO   // Check that the input is present on the module
+    auto moduleInput = module.findInput (input.name);
+    SOUL_ASSERT (moduleInput != nullptr && moduleInput == &input);
+    SOUL_ASSERT (input.isEventEndpoint() && input.canHandleType (type));
 
-    SOUL_ASSERT (input->isEventEndpoint());
-    SOUL_ASSERT (input->canHandleType (type));
-
-    auto functionName = heart::getEventFunctionName (input->name, type);
+    auto functionName = heart::getEventFunctionName (input.name, type);
 
     SOUL_ASSERT (find (functionName) == nullptr);
 

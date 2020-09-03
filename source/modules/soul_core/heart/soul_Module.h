@@ -43,7 +43,7 @@ public:
         heart::Function& at (size_t index) const;
         pool_ptr<heart::Function> find (const std::string& name) const;
         heart::Function& add (const std::string& name, bool isEventFunction);
-        heart::Function& add (pool_ref<heart::InputDeclaration> input, const Type& type);
+        heart::Function& add (const heart::InputDeclaration& input, const Type& type);
         bool remove (heart::Function&);
         bool contains (const heart::Function&) const;
 
