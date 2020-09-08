@@ -9,11 +9,11 @@ class Patch extends Component {
 
     this.paramIDs = global.getAllParameterIDs();
 
-    print ("\nSOUL Patch Manifest: " + JSON.stringify (getManifest(), null, 2));
-    print ("\nPatch Description: " + JSON.stringify (getPatchDescription(), null, 2));
-    print ("\nInput Event Endpoint IDs: " + JSON.stringify (getInputEventEndpointIDs(), null, 2));
-    print ("\nOutput Event Endpoint IDs: " + JSON.stringify (getOutputEventEndpointIDs(), null, 2));
-    print ("\nParameter IDs: " + JSON.stringify (this.paramIDs, null, 2));
+    console.log ("\nSOUL Patch Manifest: " + JSON.stringify (getManifest(), null, 2));
+    console.log ("\nPatch Description: " + JSON.stringify (getPatchDescription(), null, 2));
+    console.log ("\nInput Event Endpoint IDs: " + JSON.stringify (getInputEventEndpointIDs(), null, 2));
+    console.log ("\nOutput Event Endpoint IDs: " + JSON.stringify (getOutputEventEndpointIDs(), null, 2));
+    console.log ("\nParameter IDs: " + JSON.stringify (this.paramIDs, null, 2));
   }
 
   render() {

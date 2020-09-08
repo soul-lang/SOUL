@@ -120,7 +120,6 @@ private:
 
     void registerBindings()
     {
-        addMethodBinding<1> ("print",                         &BlueprintEditorComponent::print);
         addMethodBinding<0> ("getPatchDescription",           &BlueprintEditorComponent::getPatchDescription);
         addMethodBinding<0> ("getManifest",                   &BlueprintEditorComponent::getManifest);
         addMethodBinding<0> ("getAllParameterIDs",            &BlueprintEditorComponent::getAllParameterIDs);
@@ -132,6 +131,7 @@ private:
         addMethodBinding<2> ("setParameterValue",             &BlueprintEditorComponent::setParameterValue);
         addMethodBinding<1> ("getParameterValue",             &BlueprintEditorComponent::getParameterValue);
         addMethodBinding<1> ("getParameterState",             &BlueprintEditorComponent::getParameterState);
+        addMethodBinding<1> ("injectLiveMIDIMessage",         &BlueprintEditorComponent::injectLiveMIDIMessage);
     }
 
     void initialiseParameterList()
@@ -148,12 +148,6 @@ private:
             params[i++]->valueChangedCallback = [handle, dirtyList = std::addressof (dirtyParameterList)] (float) { dirtyList->markAsDirty (handle); };
             dirtyParameterList.markAsDirty (handle);
         }
-    }
-
-    juce::var print (const juce::var& v)
-    {
-        std::cout << (v.isString() ? v.toString() : juce::JSON::toString (v, false)) << std::endl;
-        return juce::var::undefined();
     }
 
     juce::var getPatchDescription() const
@@ -340,6 +334,15 @@ private:
             return v;
         }
 
+        return juce::var::undefined();
+    }
+
+    // Expects an integer with 3 MIDI bytes in the format ((byte0 << 16) | (byte1 << 8) | byte2)
+    juce::var injectLiveMIDIMessage (int shortMIDIBytes)
+    {
+        patch.injectMIDIMessage (static_cast<uint8_t> (shortMIDIBytes >> 16),
+                                 static_cast<uint8_t> (shortMIDIBytes >> 8),
+                                 static_cast<uint8_t> (shortMIDIBytes));
         return juce::var::undefined();
     }
 
