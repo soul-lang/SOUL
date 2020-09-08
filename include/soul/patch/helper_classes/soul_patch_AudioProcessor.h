@@ -246,6 +246,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         numPatchInputChannels = 0;
         numPatchOutputChannels = 0;
         setRateAndBufferSizeDetails (sampleRate, maxBlockSize);
+        midiCollector.reset (sampleRate);
         midiKeyboardState.reset();
 
         if (player != nullptr)
@@ -261,17 +262,10 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             auto monoToStereo = [] (juce::AudioBuffer<float>& b) { b.copyFrom (1, 0, b, 0, 0, b.getNumSamples()); };
             auto stereoToMono = [] (juce::AudioBuffer<float>& b) { b.addFrom  (0, 0, b, 1, 0, b.getNumSamples()); };
 
-            if (numPatchInputChannels == 1 && pluginBuses.getMainInputChannels() == 2)
-                preprocessInputData = stereoToMono;
-
-            if (numPatchInputChannels == 2 && pluginBuses.getMainInputChannels() == 1)
-                preprocessInputData = monoToStereo;
-
-            if (numPatchOutputChannels == 1 && pluginBuses.getMainOutputChannels() == 2)
-                postprocessOutputData = monoToStereo;
-
-            if (numPatchOutputChannels == 2 && pluginBuses.getMainOutputChannels() == 1)
-                postprocessOutputData = stereoToMono;
+            if (numPatchInputChannels  == 1 && pluginBuses.getMainInputChannels()  == 2)  preprocessInputData   = stereoToMono;
+            if (numPatchInputChannels  == 2 && pluginBuses.getMainInputChannels()  == 1)  preprocessInputData   = monoToStereo;
+            if (numPatchOutputChannels == 1 && pluginBuses.getMainOutputChannels() == 2)  postprocessOutputData = monoToStereo;
+            if (numPatchOutputChannels == 2 && pluginBuses.getMainOutputChannels() == 1)  postprocessOutputData = stereoToMono;
         }
     }
 
@@ -293,7 +287,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         inputBuffer.setSize (juce::jmax (numPatchInputChannels, getTotalNumInputChannels()), numFrames, false, false, true);
         inputBuffer.clear();
 
-        if (player != nullptr && player->isPlayable() && (! isSuspended()))
+        if (player != nullptr && player->isPlayable() && ! isSuspended())
         {
             soul::patch::PatchPlayer::RenderContext rc;
 
@@ -314,6 +308,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             rc.maximumMIDIMessagesOut = (uint32_t) messageSpaceOut.size();
             rc.numMIDIMessagesOut = 0;
 
+            midiCollector.removeNextBlockOfMessages (midi, numFrames);
             midiKeyboardState.processNextMidiBuffer (midi, 0, numFrames, true);
 
             if (! midi.isEmpty())
@@ -358,6 +353,12 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
         for (int i = 0; i < getTotalNumOutputChannels(); ++i)
             audio.copyFrom (i, 0, outputBuffer, i, 0, numFrames);
+    }
+
+    void injectMIDIMessage (uint8_t byte0, uint8_t byte1, uint8_t byte2)
+    {
+        auto message = choc::midi::ShortMessage (byte0, byte1, byte2);
+        midiCollector.addMessageToQueue (juce::MidiMessage (message.data, message.length(), 0.0));
     }
 
     //==============================================================================
@@ -715,6 +716,7 @@ private:
     std::vector<soul::MIDIEvent> messageSpaceIn, messageSpaceOut;
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
+    juce::MidiMessageCollector midiCollector;
     const int millisecsBetweenFileChecks;
 
     juce::ValueTree lastValidState;
