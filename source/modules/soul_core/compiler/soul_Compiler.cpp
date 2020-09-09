@@ -25,7 +25,7 @@
 namespace soul
 {
 
-Compiler::Compiler()
+    Compiler::Compiler (bool i) : includeStandardLibrary (i)
 {
     reset();
 }
@@ -36,7 +36,9 @@ void Compiler::reset()
     allocator.clear();
     auto rootNamespaceName = allocator.get (Program::getRootNamespaceName());
     topLevelNamespace = allocator.allocate<AST::Namespace> (AST::Context(), rootNamespaceName);
-    addDefaultBuiltInLibrary();
+
+    if (includeStandardLibrary)
+        addDefaultBuiltInLibrary();
 }
 
 bool Compiler::addCode (CompileMessageList& messageList, CodeLocation code)
@@ -143,7 +145,12 @@ Program Compiler::build (CompileMessageList& messageList, const BuildBundle& bun
         return buildHEART (messageList, heartFiles.front());
     }
 
-    Compiler c;
+    Compiler c (bundle.settings.overrideStandardLibrary.empty());
+
+    if (! bundle.settings.overrideStandardLibrary.empty())
+        for (auto& file : bundle.settings.overrideStandardLibrary)
+            if (! c.addCode (messageList, CodeLocation::createFromSourceFile (file)))
+                return {};
 
     for (auto& file : bundle.sourceFiles)
         if (! c.addCode (messageList, CodeLocation::createFromSourceFile (file)))

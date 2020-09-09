@@ -56,7 +56,7 @@ CodeLocation CodeLocation::createFromString (std::string filename, std::string t
     return code;
 }
 
-CodeLocation CodeLocation::createFromSourceFile (const BuildBundle::SourceFile& f)
+CodeLocation CodeLocation::createFromSourceFile (const SourceFile& f)
 {
     return createFromString (f.filename, f.content);
 }

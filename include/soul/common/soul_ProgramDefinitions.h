@@ -140,6 +140,13 @@ struct MIDIEvent
     building SOUL programs.
     @see BuildBundle
 */
+struct SourceFile
+{
+    std::string filename, content;
+};
+
+using SourceFiles = std::vector<SourceFile>;
+
 struct BuildSettings
 {
     double       sampleRate         = 0;
@@ -148,6 +155,7 @@ struct BuildSettings
     int          optimisationLevel  = -1;
     int32_t      sessionID          = 0;
     std::string  mainProcessor;
+    SourceFiles  overrideStandardLibrary;
 
     choc::value::Value customSettings;
 };
@@ -158,12 +166,7 @@ struct BuildSettings
 */
 struct BuildBundle
 {
-    struct SourceFile
-    {
-        std::string filename, content;
-    };
-
-    std::vector<SourceFile> sourceFiles;
+    SourceFiles sourceFiles;
     BuildSettings settings;
 };
 

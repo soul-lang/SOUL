@@ -33,7 +33,7 @@ namespace soul
 class Compiler  final
 {
 public:
-    Compiler();
+    Compiler (bool includeStandardLibrary = true);
 
     /** This static method runs a complete build and link for a BuildBundle, and returns
         the resulting program.
@@ -69,6 +69,8 @@ private:
     AST::ProcessorBase& findMainProcessor (const BuildSettings&);
 
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, AST::ProcessorBase& processorToRun);
+
+    bool includeStandardLibrary;
 };
 
 } // namespace soul
