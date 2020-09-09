@@ -1,0 +1,122 @@
+## global
+
+namespace test
+{
+    bool near<FloatType> (FloatType f1, FloatType f2)
+    {
+        let diff = (f1 > f2) ? (f1 - f2) : (f2 - f1);
+
+        return diff < 0.01f;
+    }
+}
+
+## function
+
+bool testNear()
+{
+    return test::near (1.0f, 1.0001f) &&
+           test::near (-4.0f, -3.999f) &&
+           ! test::near (4.0f, 4.02f);
+}
+
+## function
+
+bool testDbToGainFloat32()
+{
+    return test::near (soul::dBtoGain (0.0f), 1.0f) &&
+           test::near (soul::dBtoGain (6.02f), 2.0f) &&
+           test::near (soul::dBtoGain (-6.02f), 0.5f) &&
+           soul::dBtoGain (-110.0f) == 0.0f;
+}
+
+bool testD4DbToGainFloat64()
+{
+    return test::near (soul::dBtoGain (0.0), 1.0) &&
+           test::near (soul::dBtoGain (6.02), 2.0) &&
+           test::near (soul::dBtoGain (-6.02), 0.5) &&
+           soul::dBtoGain (-110.0) == 0.0;
+}
+
+
+bool testGainTodBFloat32()
+{
+    return soul::gainTodB (-2.0f) == -100.0f &&
+            soul::gainTodB (0.0f) == -100.0f &&
+            test::near (soul::gainTodB (0.25f), -12.04f) &&
+            test::near (soul::gainTodB (1.0f), 0.0f) &&
+            test::near (soul::gainTodB (2.0f), 6.02f);
+}
+
+bool testGainTodBFloat64()
+{
+    return soul::gainTodB (-2.0) == -100.0 &&
+            soul::gainTodB (0.0) == -100.0 &&
+            test::near (soul::gainTodB (0.25), -12.04) &&
+            test::near (soul::gainTodB (1.0), 0.0) &&
+            test::near (soul::gainTodB (2.0), 6.02);
+}
+
+## function
+
+bool testNoteNumberToFrequencyInt()
+{
+    return test::near (soul::noteNumberToFrequency (69), 440.0f) &&
+           test::near (soul::noteNumberToFrequency (69 + 12), 880.0f) &&
+           test::near (soul::noteNumberToFrequency (69 - 36), 55.0f);
+}
+
+bool testNoteNumberToFrequencyFloat32()
+{
+    return test::near (soul::noteNumberToFrequency (69.0f), 440.0f) &&
+           test::near (soul::noteNumberToFrequency (69.0f + 12), 880.0f) &&
+           test::near (soul::noteNumberToFrequency (69.0f - 36), 55.0f);
+}
+
+bool testFrequencyToNoteNumber()
+{
+    // Test an arbitrary range of values round trip correctly
+    for (float f = -5.0f; f < 200.0f; f += 7.63f)
+        if (! test::near (soul::frequencyToNoteNumber (soul::noteNumberToFrequency (f)), f))
+            return false;
+
+    return true;
+}
+
+
+## function
+
+bool testGetSpeedRatioForPitchedSample()
+{
+    return test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f), 1.0f) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 70.0f), 1.059463f) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f + 12), 2.0f) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f - 12), 0.5f) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 48000.0f, 69.0f + 1), (1.059463f) * (44100.0f / 48000.0f));
+}
+
+
+## function
+
+bool testPanLawLinear()
+{
+    let left   = soul::pan_law::linear (-1.0f);
+    let centre = soul::pan_law::linear (0.0f);
+    let right  = soul::pan_law::linear (1.0f);
+
+    return left[0] == 2.0f && left[1] == 0.0f &&
+           centre[0] == 1.0f && centre[1] == 1.0f &&
+           right[0] == 0.0f && right[1] == 2.0f;
+}
+
+bool testPanLawCentre3db()
+{
+    let left   = soul::pan_law::centre3dB (-1.0f);
+    let centre = soul::pan_law::centre3dB (0.0f);
+    let right  = soul::pan_law::centre3dB (1.0f);
+
+    let minus3db = soul::dBtoGain (-3.0f);
+
+    return left[0] == 1.0f && left[1] == 0.0f &&
+           test::near (centre[0], minus3db) && test::near (centre[1], minus3db) &&
+           right[0] == 0.0f && right[1] == 1.0f;
+}
