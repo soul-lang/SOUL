@@ -264,59 +264,6 @@ namespace soul::pan_law
                 sin ((1.0f + pan) * quarterPi));
     }
 }
-
-/** This namespace contains delay related helper function */
-namespace soul::delay
-{
-    processor EventDelay (using EventType, int maxEvents, int delay)
-    {
-        input event EventType eventIn;
-        output event EventType eventOut;
-
-        int currentTime;
-
-        struct EventEntry
-        {
-            int dispatchTime;
-            EventType queuedEvent;
-        }
-
-        EventEntry[maxEvents] eventEntries;
-
-        wrap<maxEvents> readPos, writePos;
-        int queuedEvents;
-
-        event eventIn (EventType e)
-        {
-            if (queuedEvents < maxEvents)
-            {
-                eventEntries[writePos].dispatchTime = currentTime + delay;
-                eventEntries[writePos].queuedEvent = e;
-                writePos++;
-                queuedEvents++;
-            }
-        }
-
-        void run()
-        {
-            loop
-            {
-)soul_code"
-R"soul_code(
-
-                while (queuedEvents > 0 && eventEntries[readPos].dispatchTime == currentTime)
-                {
-                    eventOut << eventEntries[readPos].queuedEvent;
-                    readPos++;
-                    queuedEvents--;
-                }
-
-                currentTime++;
-                advance();
-            }
-        }
-    }
-}
 )soul_code";
 
     if (moduleName == "soul.mixing")  return R"soul_code(
