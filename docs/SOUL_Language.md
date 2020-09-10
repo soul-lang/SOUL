@@ -76,6 +76,14 @@ If nothing in this document seems particularly surprising or unusual, then we've
   - [Built-in constants](#built-in-constants)
   - [Built-in library Functions](#built-in-library-functions)
   - [HEART](#heart)
+- [Creating unit-tests with the `.soultest` file format](#creating-unit-tests-with-the-soultest-file-format)
+    - [`## compile`](#compile)
+    - [`## function`](#function)
+    - [`## error <error message>`](#error-error-message)
+    - [`## processor`](#processor)
+    - [`## global`](#global)
+    - [`## console`](#console)
+    - [`## disabled`](#disabled)
 
 <!-- /code_chunk_output -->
 
@@ -1434,3 +1442,101 @@ These namespaces include:
 The front-end SOUL compiler converts SOUL into a HEART program, and then it is passed to something like a JIT compiler or a C++ or WASM code-generator. Since HEART is a much simpler, this makes the process of optimising, manipulating and security-checking the code easier, and it makes it simpler to implement new back-end JIT engines.
 
 The syntax of the HEART language can be seen indirectly in the `soul_core` compiler module, but we'll also release a full spec document describing it as soon as we can!
+
+## Creating unit-tests with the `.soultest` file format
+
+The command-line soul tool can be used to run unit-tests by providing it with a `.soultest` file, e.g.
+
+`soul errors MyUnitTests.soultest`
+
+(Power-user tip: If you set up VSCode or your favourite IDE to run this command on a source file it makes it very easy to jump straight to any failed tests, as they are printed in the usual compile error format).
+
+The content of a test file is a sequence of chunks of code, each one beginning with a delineater line to declare the type and parameters for that test.
+
+A delimiter line begins with a double-hash `##` followed by a command. The available commands are:
+
+#### `## compile`
+
+The simplest kind of test, this just makes sure that the block of code which follows it compiles without errors, e.g.
+
+```C++
+## compile
+int foo() { return 123; }
+```
+
+#### `## function`
+
+This attempts to compile the subsequent code-chunk and to evaluate any functions which take no parameters and return a bool. If any of these functions return false, this is considered a failure.
+
+e.g.
+```C++
+## function
+bool testAddition() { return 1 + 1 == 2; }
+bool testSubtraction() { return 2 - 1 == 1; }
+```
+
+#### `## error <error message>`
+
+This section declares that the code which follows it must make the compiler emit the given error message. The main purpose of this is to test the compiler, so it may not be particularly useful to users, but if you're writing generic functions and want to make sure they reject certain types then it may be handy.
+
+If you provide a delimiter which is just `## error` without a message, then running the test will re-save your `.soultest` file after adding the error message to this line. That lets you easily create a test and use this to fill-in the error message. Subsequent runs of the test will fail if the new error doesn't match the one in the file.
+
+e.g.
+
+```C++
+## error 2:41: error: Divide-by zero is undefined behaviour
+
+bool test()  { let i = 5; ++i; return i / 0 == 0; }
+```
+
+#### `## processor`
+
+This test expects to find a processor or graph declaration called `test`, which has an output stream of `int`s. It will then instantiate that processor and look at the numbers which come out of the stream.
+
+If a 1 is written, it is ignored
+If a 0 is written, the test fails
+The processor continues to run until a -1 is written to the stream.
+
+e.g.
+```C++
+## processor
+
+processor test // the processor must be called "test" (but it could be a complex graph of other processors)
+{
+    output event int results; // the stream must be of type int, but the name doesn't matter
+
+    void run()
+    {
+        results << 1; // sending a 1 = success. If this is changed to 0, the test will fail.
+
+        loop { advance(); results << -1; } // a -1 must be emitted to make the test terminate
+    }
+}
+```
+
+#### `## global`
+
+A global chunk should go at the start of the file, and just provides a chunk of shared code which all the other tests will have added. This is handy if youf file contains many tests with repeatitive common functionality.
+
+#### `## console`
+
+This test tries to run a processor called `test` (same rules apply as for the `## processor` test) and checks the string that it writes to the console, e.g.
+
+```C++
+## console 321xxx
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        console << 321 << "xxx";
+        loop { out << -1; advance(); } // the -1 is needed to make the test terminate
+    }
+}
+```
+
+#### `## disabled`
+
+This just marks the block as disabled, and no test is run, but the number of disabled tests in the file is reported in the results.
