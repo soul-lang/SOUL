@@ -90,6 +90,7 @@ struct FileList
             throwPatchLoadError ("Expected a .soulpatch file");
 
         manifest = { manifestFile, manifestName, 0 };
+        manifest.lastModificationTime = manifest.getLastModificationTime();
         filesToWatch.push_back (manifest);
     }
 
