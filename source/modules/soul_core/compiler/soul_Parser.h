@@ -1513,7 +1513,7 @@ private:
 
         auto& e = parseSuffixes (parseExpression());
         expect (Operator::semicolon);
-        r.returnValue = castExpressionToTargetType (*returnType, e);
+        r.returnValue = e;
         return r;
     }
 
@@ -1859,29 +1859,6 @@ private:
         }
 
         pp.context.throwError (Errors::latencyOnlyForProcessor());
-    }
-
-    AST::Expression& castExpressionToTargetType (AST::Expression& targetType, AST::Expression& source)
-    {
-        auto list = cast<AST::CommaSeparatedList> (source);
-
-        if (list == nullptr)
-        {
-            if (AST::isResolvedAsType (targetType) && AST::isResolvedAsValue (source))
-            {
-                auto type = targetType.resolveAsType();
-
-                if (source.getResultType().isIdentical (type))
-                    return source;
-
-                return allocate<AST::TypeCast> (source.context, type, source);
-            }
-
-            list = allocate<AST::CommaSeparatedList> (source.context);
-            list->items.push_back (source);
-        }
-
-        return allocate<AST::CallOrCast> (targetType, *list, false);
     }
 
     static size_t getMaxNumElements (const Type& arrayOrVectorType)

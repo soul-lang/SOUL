@@ -77,7 +77,7 @@ namespace soul::random
     {
         let s = (state.seed * 48271) % 0x7fffffff;
         state.seed = s + 1;
-        return s;
+        return int32 (s);
     }
 
     /** Advances the given RNG state and returns a value 0 to 1 */
