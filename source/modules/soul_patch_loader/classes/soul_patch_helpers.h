@@ -27,12 +27,12 @@ bool operator!= (PatchPlayerConfiguration s1, PatchPlayerConfiguration s2)    { 
 
 static bool isValidPathString (const char* s)
 {
-    constexpr int maxLength = 8192;
+    constexpr size_t maxLength = 8192;
 
     if (s != nullptr)
-        for (int i = 0; i < maxLength; ++i)
+        for (size_t i = 0; i < maxLength; ++i)
             if (s[i] == 0)
-                return juce::CharPointer_UTF8::isValidString (s, i);
+                return choc::text::findInvalidUTF8Data (s, i) == nullptr;
 
     return false;
 }

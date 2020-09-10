@@ -51,8 +51,7 @@ namespace soul::patch
                                         const char* path)
     {
         if (soul::patch::isValidPathString (path))
-            return createPatchInstance (std::move (performerFactory),
-                                        createLocalOrRemoteFile (juce::CharPointer_UTF8 (path)));
+            return createPatchInstance (std::move (performerFactory), createLocalOrRemoteFile (path));
 
         return {};
     }

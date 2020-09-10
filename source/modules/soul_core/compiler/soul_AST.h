@@ -1344,7 +1344,7 @@ struct AST
 
             bool& flag;
         };
-        
+
         mutable StructurePtr structure;
         ArrayWithPreallocation<Member, 16> members;
         mutable bool isBeingResolved = false;

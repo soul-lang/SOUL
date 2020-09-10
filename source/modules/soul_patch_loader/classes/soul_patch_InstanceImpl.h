@@ -27,14 +27,17 @@ namespace soul::patch
 struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInstanceImpl>
 {
     PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, VirtualFile::Ptr f)
-        : performerFactory (std::move (factory)), root (std::move (f))
+        : performerFactory (std::move (factory)), manifestFile (std::move (f))
     {
-        if (auto name = String::Ptr (root->getName()))
+        if (auto name = String::Ptr (manifestFile->getName()))
         {
             fileList.manifestName = name.toString<std::string>();
 
             if (endsWith (fileList.manifestName, getManifestSuffix()))
-                fileList.root = VirtualFile::Ptr (root->getParent());
+            {
+                fileList.manifestFile = manifestFile;
+                fileList.root = VirtualFile::Ptr (manifestFile->getParent());
+            }
         }
     }
 
@@ -58,7 +61,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
 
     VirtualFile* getLocation() override
     {
-        return root.incrementAndGetPointer();
+        return manifestFile.incrementAndGetPointer();
     }
 
     Description* getDescription() override
@@ -78,10 +81,10 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     }
 
     PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration& config,
-                                       CompilerCache* cache,
-                                       SourceFilePreprocessor* preprocessor,
-                                       ExternalDataProvider* externalDataProvider,
-                                       ConsoleMessageHandler* consoleHandler) override
+                                   CompilerCache* cache,
+                                   SourceFilePreprocessor* preprocessor,
+                                   ExternalDataProvider* externalDataProvider,
+                                   ConsoleMessageHandler* consoleHandler) override
     {
         PatchPlayer::Ptr patch;
 
@@ -116,7 +119,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     }
 
     std::unique_ptr<soul::PerformerFactory> performerFactory;
-    const VirtualFile::Ptr root;
+    VirtualFile::Ptr manifestFile;
     FileList fileList;
     Description::Ptr description;
 };

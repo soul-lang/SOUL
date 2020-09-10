@@ -130,7 +130,7 @@ static void checkStructRecursion (Structure* structToCheck, const CodeLocation& 
 
     parentStructs.pop_back();
 }
-    
+
 
 void Structure::checkForRecursiveNestedStructs (const CodeLocation& location)
 {

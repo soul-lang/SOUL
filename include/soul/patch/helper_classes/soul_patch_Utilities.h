@@ -33,6 +33,10 @@ namespace patch
 template <typename BaseClass, typename DerivedClass>
 struct RefCountHelper  : public BaseClass
 {
+    RefCountHelper() = default;
+    RefCountHelper (const RefCountHelper&) = delete;
+    RefCountHelper (RefCountHelper&&) = delete;
+
     int addRef() noexcept override   { return ++refCount; }
     int release() noexcept override  { auto newCount = --refCount; if (newCount == 0) delete static_cast<DerivedClass*> (this); return newCount; }
 

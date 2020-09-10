@@ -42,7 +42,7 @@ struct FileState
 */
 struct FileList
 {
-    VirtualFile::Ptr root;
+    VirtualFile::Ptr manifestFile, root;
     std::string manifestName;
     FileState manifest;
     std::vector<FileState> sourceFiles, filesToWatch;
@@ -86,10 +86,10 @@ struct FileList
 
     void findManifestFile()
     {
-        if (root == nullptr || ! endsWith (manifestName, getManifestSuffix()))
+        if (manifestFile == nullptr || ! endsWith (manifestName, getManifestSuffix()))
             throwPatchLoadError ("Expected a .soulpatch file");
 
-        manifest = checkAndCreateFileState (manifestName);
+        manifest = { manifestFile, manifestName, 0 };
         filesToWatch.push_back (manifest);
     }
 
@@ -189,6 +189,7 @@ struct FileList
     bool hasChanged() const
     {
         FileList newList;
+        newList.manifestFile = manifestFile;
         newList.root = root;
         newList.manifestName = manifestName;
 
@@ -249,6 +250,9 @@ struct FileList
             manufacturer  = stringManufacturer.c_str();
             URL           = stringURL.c_str();
         }
+
+        DescriptionImpl (const DescriptionImpl&) = delete;
+        DescriptionImpl (DescriptionImpl&&) = delete;
 
         VirtualFile::Ptr manifestHolder;
         std::string stringUID, stringVersion, stringName, stringDescription, stringCategory, stringManufacturer, stringURL;

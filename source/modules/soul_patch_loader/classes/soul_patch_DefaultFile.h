@@ -147,8 +147,13 @@ struct LocalFile final  : public RefCountHelper<VirtualFile, LocalFile>
 
 //==============================================================================
 /** Creates either a LocalFile or RemoteFile object, based on the path provided */
-inline static VirtualFile* createLocalOrRemoteFile (const juce::String& path)
+VirtualFile* createLocalOrRemoteFile (const char* pathOrURL)
 {
+    if (pathOrURL == nullptr || choc::text::findInvalidUTF8Data (pathOrURL, strlen (pathOrURL)) != nullptr)
+        return {};
+
+    auto path = juce::String::fromUTF8 (pathOrURL);
+
     for (auto* protocol : { "http:", "https:", "ftp:", "sftp:", "file:" })
         if (path.startsWithIgnoreCase (protocol))
             return new RemoteFile (juce::URL (path));
