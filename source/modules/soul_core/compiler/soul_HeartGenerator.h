@@ -67,10 +67,11 @@ private:
             }
         }
 
-        if (auto vars = source.getStateVariableList())
-            for (auto& v : *vars)
-                if (v->isExternal)
-                    addExternalVariable (v);
+        auto& vars = source.getStateVariableList();
+
+        for (auto& v : vars)
+            if (v->isExternal)
+                addExternalVariable (v);
     }
 
     pool_ptr<const AST::Graph> sourceGraph;

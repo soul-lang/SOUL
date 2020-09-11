@@ -239,6 +239,7 @@ private:
             if (matches (Token::literalString))
             {
                 parentNamespace.importsList.addIfNotAlreadyThere (currentStringValue);
+                expect (Token::literalString);
             }
             else if (matches (Token::identifier))
             {
@@ -383,15 +384,10 @@ private:
             if (isExternal && type->getConstness() == AST::Constness::definitelyConst)
                 declarationContext.throwError (Errors::noConstOnExternals());
 
-            if (auto stateVariables = module->getStateVariableList())
-            {
-                parseVariableDeclaration (*type, name, isExternal, context,
-                                          [&] (AST::VariableDeclaration& v)  { stateVariables->push_back (v); });
-            }
-            else
-            {
-                throwError (Errors::noVariableInThisScope());
-            }
+            auto& stateVariables = module->getStateVariableList();
+
+            parseVariableDeclaration (*type, name, isExternal, context,
+                                      [&] (AST::VariableDeclaration& v)  { stateVariables.push_back (v); });
         }
     }
 
@@ -1824,10 +1820,9 @@ private:
 
     void parseTopLevelLetOrVar (bool isLet)
     {
-        if (auto stateVariables = module->getStateVariableList())
-            parseLetOrVarDeclaration (isLet, [&] (AST::VariableDeclaration& v) { stateVariables->push_back (v); });
-        else
-            throwError (Errors::noVariableInThisScope());
+        auto& stateVariables = module->getStateVariableList();
+
+        parseLetOrVarDeclaration (isLet, [&] (AST::VariableDeclaration& v) { stateVariables.push_back (v); });
     }
 
     void parseProcessorLatencyDeclaration()

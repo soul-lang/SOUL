@@ -554,7 +554,7 @@ struct AST
 
         virtual std::vector<pool_ref<StructDeclaration>>*      getStructList() = 0;
         virtual std::vector<pool_ref<UsingDeclaration>>*       getUsingList() = 0;
-        virtual std::vector<pool_ref<VariableDeclaration>>*    getStateVariableList() = 0;
+        virtual std::vector<pool_ref<VariableDeclaration>>&    getStateVariableList() = 0;
         virtual std::vector<pool_ref<Function>>*               getFunctionList() = 0;
 
         size_t getNumInputs() const                 { return countEndpoints (true); }
@@ -698,7 +698,7 @@ struct AST
 
         std::vector<pool_ref<StructDeclaration>>*    getStructList() override                { return &structures; }
         std::vector<pool_ref<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
-        std::vector<pool_ref<VariableDeclaration>>*  getStateVariableList() override         { return &stateVariables; }
+        std::vector<pool_ref<VariableDeclaration>>&  getStateVariableList() override         { return stateVariables; }
         std::vector<pool_ref<Function>>*             getFunctionList() override              { return &functions; }
 
         pool_ptr<Expression> latency;
@@ -753,7 +753,7 @@ struct AST
 
         std::vector<pool_ref<StructDeclaration>>* getStructList() override                   { return {}; }
         std::vector<pool_ref<UsingDeclaration>>* getUsingList() override                     { return {}; }
-        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override          { return &constants; }
+        std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override          { return constants; }
         std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
 
         std::vector<pool_ref<ProcessorInstance>> processorInstances;
@@ -810,7 +810,7 @@ struct AST
         std::vector<pool_ref<Function>>* getFunctionList() override                    { return &functions; }
         std::vector<pool_ref<StructDeclaration>>* getStructList() override             { return &structures; }
         std::vector<pool_ref<UsingDeclaration>>* getUsingList() override               { return &usings; }
-        std::vector<pool_ref<VariableDeclaration>>* getStateVariableList() override    { return &constants; }
+        std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override    { return constants; }
 
         ImportsList importsList;
         std::vector<pool_ref<Function>> functions;
