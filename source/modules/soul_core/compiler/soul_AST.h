@@ -985,7 +985,6 @@ struct AST
         {
             pool_ptr<QualifiedIdentifier> name;
             pool_ptr<Expression> index;
-            bool isWildcard = false;
         };
 
         ArrayWithPreallocation<PathSection, 4> sections;

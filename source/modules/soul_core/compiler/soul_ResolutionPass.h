@@ -1387,6 +1387,11 @@ private:
 
         void resolveVariableDeclarationInitialValue (AST::VariableDeclaration& v, const Type& type)
         {
+            if (AST::isResolvedAsValue (v.initialValue))
+                SanityCheckPass::expectSilentCastPossible (v.context,
+                                                           type,
+                                                           *v.initialValue);
+
             if (! (AST::isResolvedAsValue (v.initialValue) && v.initialValue->getResultType().isIdentical (type)))
                 v.initialValue = allocator.allocate<AST::TypeCast> (v.initialValue->context, type, *v.initialValue);
 

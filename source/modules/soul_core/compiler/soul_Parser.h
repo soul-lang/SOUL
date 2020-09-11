@@ -747,7 +747,6 @@ private:
                 if (matchIf (Operator::times))
                 {
                     throwError (Errors::notYetImplemented ("Wildcard child endpoint references"));
-                    path.isWildcard = true;
                 }
                 else
                 {
@@ -764,12 +763,6 @@ private:
                 }
 
                 e.childPath->sections.push_back (path);
-
-                if (path.isWildcard)
-                {
-                    canParseName = false;
-                    break;
-                }
 
                 if (matchIf (Operator::dot))
                     continue;
