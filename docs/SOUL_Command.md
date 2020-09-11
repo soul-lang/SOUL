@@ -1,6 +1,6 @@
 ### The `soul` command-line tool
 
-This folder contains builds of the command (find it in the `soul_command` folder) lets you compile, play, and render soul code, and generate C++ and HEART code from it!
+The `soul` command-line utility lets you compile, play, render, and generate C++ and HEART code.
 
 [Click here to download binaries for various platforms.](https://github.com/soul-lang/SOUL/releases/latest)
 
@@ -8,24 +8,23 @@ This folder contains builds of the command (find it in the `soul_command` folder
 ```
    _____ _____ _____ __
   |   __|     |  |  |  |     SOUL toolkit
-  |__   |  |  |  |  |  |__   (C)2019 ROLI Ltd.
+  |__   |  |  |  |  |  |__   (C)2020 ROLI Ltd.
   |_____|_____|_____|_____|
 
-  SOUL toolkit version 0.0.1
-  Library version 0.8.0
-  Build date: Apr 20 2020 18:36:21
+  SOUL version 0.9.49
+  Build date: Sep 10 2020 09:32:01
 
 Usage:
 
  soul help [command]                    Shows the list of commands, or gives details about a particular command
  soul version                           Prints the current version number
- soul play [--block-size=<size>] [--rate=<sample-rate>] [--nogui] <file or folder to watch>
-                                        Watches for changes to a SOUL file or folder and plays it back, either locally or remotely
- soul render --length=<samples> --output=<target file> [--input=<source audio file>] [--rate=<sample-rate>] <soul file>
+ soul play [--block-size=<size>] [--rate=<sample-rate>] [--inputs=<channels>] [--outputs=<channels>] [--audio-device-type=<type>] [--input-device=<name>] [--output-device=<name>] [--list-device-types] [--list-devices] [--nogui] [--nopatch] [--libraryDir=<path>] <Patch file to play>
+                                        Plays a SOUL patch
+ soul render --length=<samples> --output=<target file> [--input=<source audio file>] [--rate=<sample-rate>] [--libraryDir=<path>] <soul file>
                                         Runs a SOUL program, reading and rendering its input and output to audio files
- soul errors <soul file> [--testToRun=N] [--runDisabled]
+ soul errors <soul file> [--testToRun=N] [--libraryDir=<path>] [--runDisabled]
                                         Does a dry-run of compiling a SOUL file and outputs any errors encountered
- soul generate [--cpp] [--wasm] [--heart] [--juce] [--juce-header] [--juce-cpp] [--graph] [--output=<output file/folder>] <soul file>
+ soul generate [--cpp] [--wasm] [--heart] [--juce] [--juce-header] [--juce-cpp] [--graph] [--raw] [--output=<output file/folder>] <soul file>
                                         Compiles a SOUL file and generates equivalent code in another target format such as C++ or WASM. The --juce option will create a folder containing a complete JUCE project which implements a patch as pure C++. The --juce-header and --juce-cpp options let you selectively create the C++ declarations and definitions for a juce plugin class.
  soul create new_patch_name [--synth] [--effect] [--output=<output folder>]
                                         Creates a patch manifest file and the boilerplate for a processor.
@@ -34,23 +33,21 @@ Usage:
 
 To play some sound, probably the best start is to point it at the example `.soulpatch` files in the examples folder.
 
-..and then you can either run one like this:
+..and then you can run one like this:
 
 `soul play ~/mystuff/SOUL/examples/patches/ClassicRingtone.soulpatch`
 
-or leave it watching the entire folder for changes like this:
+While running, it will monitor all the patch files, and if any are modified, it will re-compile and re-load the patch.
 
-`soul play ~/mystuff/SOUL/examples/patches`
+Note that it can be usd to compile and play just a specific `.soul` file on its own, rather than as part of a `.soulpatch` bundle, but to do so you must add the `--nopatch` argument to the command. This avoids confusion when people see a folder containing both `.soulpatch` and `.soul` files, and get unexpected results when they try to play one of the `.soul` files which were intended only to be used as part of a patch.
 
-..which means that as soon as you save a change to one of the files in there, it'll re-compile and play it, so you can tinker around with changes to the code. This is how we've been using it for things like our public demos.
-
-Note that if you want to compile a specific `.soul` file on its own, rather than as part of a `.soulpatch` bundle, you must add the `--nopatch` argument to the command. This helps to avoid confusion when people see a folder containing both `.soulpatch` and `.soul` files, and get unexpected results when the try to play one of the `.soul` files which were intended only to be used as path of a patch.
+The `play` command can take quite a few other arguments to set things like the audio device, sample rate, and channels needed.
 
 ### `soul generate`
 
 The `generate` function can take a `.soul` or `.soulpatch` file and translate to C++ or show the HEART intermediate code that is used internally.
 
-The `--cpp` options generates a dependency-free C++ class which implements the given SOUL patch. It has methods that can be used to read and write to its input and output endpoints at a low-level, and also a higher-level audio/MIDI rendering function that can process audio in a more familiar "process" style function.
+The `--cpp` options generates a dependency-free C++ class which implements the core rendering functionality of a SOUL patch. It has methods that can be used to read and write to its input and output endpoints at a low-level, and also provides higher-level audio/MIDI rendering functions that can process audio in a more familiar "processor" style.
 
 The `--juce` option will create a folder (set its location with `--output=<path>`) containing a ready-to-go JUCE C++ project which can be used to build native VST/AU/AAX plugins. You should be able to simply open the generated `.jucer` file using the Projucer, and build/customise it as you would a normal JUCE plugin project.
 
@@ -113,7 +110,9 @@ name: SOUL
 errorMatch: (?<file>[\\/0-9a-zA-Z-\\._]+):(?<line>\d+):(?<col>\d+):\s*error:\s*(?<message>.+)
 ```
 
-We'll find a neater way of delivering support for IDEs soon, as well as some SOUL syntax highlighting support.
+##### Running unit tests
+
+The `soul errors` command can also be given a `.soultest` unit test file to run - see the [language document](SOUL_Language.md) for details on the format of these files.
 
 ### `soul create`
 
