@@ -748,69 +748,58 @@ private:
         breakTarget = breakBlock;
         continueTarget = continueBlock;
 
-        if (l.isDoLoop)
+        auto& startBlock = builder.createBlock ("@loop_", labelIndex);
+        auto& bodyBlock  = builder.createBlock ("@body_", labelIndex);
+
+        if (l.numIterations != nullptr)
         {
             SOUL_ASSERT (l.iterator == nullptr);
-            builder.beginBlock (continueBlock);
+            SOUL_ASSERT (l.condition == nullptr);
+            auto indexType = l.numIterations->getResultType();
+
+            if (! indexType.isPrimitiveInteger())
+                l.numIterations->context.throwError (Errors::expectedInteger());
+
+            if (indexType.isInteger64())
+            {
+                if (auto constNumIterations = l.numIterations->getAsConstant())
+                {
+                    auto num = constNumIterations->value.getAsInt64();
+
+                    if (num <= 0x7fffffff)
+                        indexType = PrimitiveType::int32;
+                }
+            }
+
+            auto& counterVar = builder.createMutableLocalVariable (indexType, "$counter_" + std::to_string (labelIndex));
+            builder.addAssignment (counterVar, builder.createCastIfNeeded (evaluateAsExpression (*l.numIterations), indexType));
+
+            builder.beginBlock (startBlock);
+            auto& isCounterInRange = builder.createBinaryOp (l.context.location, counterVar,
+                                                             builder.createZeroInitialiser (indexType),
+                                                             BinaryOp::Op::greaterThan);
+            builder.addBranchIf (isCounterInRange, bodyBlock, breakBlock, bodyBlock);
             visitAsStatement (l.body);
-            addBranchIf (*l.condition, continueBlock, breakBlock, breakBlock);
+            builder.beginBlock (continueBlock);
+            builder.decrementValue (counterVar);
         }
         else
         {
-            auto& startBlock = builder.createBlock ("@loop_", labelIndex);
-            auto& bodyBlock  = builder.createBlock ("@body_", labelIndex);
+            builder.beginBlock (startBlock);
 
-            if (l.numIterations != nullptr)
-            {
-                SOUL_ASSERT (l.iterator == nullptr);
-                SOUL_ASSERT (l.condition == nullptr);
-                auto indexType = l.numIterations->getResultType();
-
-                if (! indexType.isPrimitiveInteger())
-                    l.numIterations->context.throwError (Errors::expectedInteger());
-
-                if (indexType.isInteger64())
-                {
-                    if (auto constNumIterations = l.numIterations->getAsConstant())
-                    {
-                        auto num = constNumIterations->value.getAsInt64();
-
-                        if (num <= 0x7fffffff)
-                            indexType = PrimitiveType::int32;
-                    }
-                }
-
-                auto& counterVar = builder.createMutableLocalVariable (indexType, "$counter_" + std::to_string (labelIndex));
-                builder.addAssignment (counterVar, builder.createCastIfNeeded (evaluateAsExpression (*l.numIterations), indexType));
-
-                builder.beginBlock (startBlock);
-                auto& isCounterInRange = builder.createBinaryOp (l.context.location, counterVar,
-                                                                 builder.createZeroInitialiser (indexType),
-                                                                 BinaryOp::Op::greaterThan);
-                builder.addBranchIf (isCounterInRange, bodyBlock, breakBlock, bodyBlock);
-                visitAsStatement (l.body);
-                builder.beginBlock (continueBlock);
-                builder.decrementValue (counterVar);
-            }
+            if (l.condition == nullptr)
+                builder.addBranch (bodyBlock, bodyBlock);
+            else if (auto c = l.condition->getAsConstant())
+                builder.addBranch (c->value.getAsBool() ? bodyBlock : breakBlock, bodyBlock);
             else
-            {
-                builder.beginBlock (startBlock);
+                addBranchIf (*l.condition, bodyBlock, breakBlock, bodyBlock);
 
-                if (l.condition == nullptr)
-                    builder.addBranch (bodyBlock, bodyBlock);
-                else if (auto c = l.condition->getAsConstant())
-                    builder.addBranch (c->value.getAsBool() ? bodyBlock : breakBlock, bodyBlock);
-                else
-                    addBranchIf (*l.condition, bodyBlock, breakBlock, bodyBlock);
-
-                visitAsStatement (l.body);
-                builder.beginBlock (continueBlock);
-                visitAsStatement (l.iterator);
-            }
-
-            builder.addBranch (startBlock, breakBlock);
+            visitAsStatement (l.body);
+            builder.beginBlock (continueBlock);
+            visitAsStatement (l.iterator);
         }
 
+        builder.addBranch (startBlock, breakBlock);
         breakTarget = oldbreakTarget;
         continueTarget = oldcontinueTarget;
     }

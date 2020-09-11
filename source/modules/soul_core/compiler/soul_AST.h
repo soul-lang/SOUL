@@ -1463,11 +1463,10 @@ struct AST
     //==============================================================================
     struct LoopStatement  : public Statement
     {
-        LoopStatement (const Context& c, bool isDo)  : Statement (ObjectType::LoopStatement, c), isDoLoop (isDo) {}
+        LoopStatement (const Context& c)  : Statement (ObjectType::LoopStatement, c) {}
 
         pool_ptr<Statement> iterator, body;
         pool_ptr<Expression> condition, numIterations;
-        const bool isDoLoop;
     };
 
     //==============================================================================

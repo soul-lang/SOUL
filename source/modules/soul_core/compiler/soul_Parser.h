@@ -1021,8 +1021,7 @@ private:
     {
         if (matches (Operator::openBrace))     return parseBlock ({});
         if (matchIf (Keyword::if_))            return parseIf();
-        if (matchIf (Keyword::while_))         return parseDoOrWhileLoop (false);
-        if (matchIf (Keyword::do_))            return parseDoOrWhileLoop (true);
+        if (matchIf (Keyword::while_))         return parseWhileLoop();
         if (matchIf (Keyword::for_))           return parseForLoop();
         if (matchIf (Keyword::loop))           return parseLoopStatement();
         if (matchIf (Keyword::return_))        return parseReturn();
@@ -1874,7 +1873,7 @@ private:
         expect (Operator::openParen);
         auto& block = allocate<AST::Block> (getContext(), nullptr);
         ScopedScope scope (*this, block);
-        auto& loopStatement = allocate<AST::LoopStatement> (getContext(), false);
+        auto& loopStatement = allocate<AST::LoopStatement> (getContext());
         block.addStatement (parseStatement());
         block.addStatement (loopStatement);
 
@@ -1892,7 +1891,7 @@ private:
 
     AST::Statement& parseLoopStatement()
     {
-        auto& loopStatement = allocate<AST::LoopStatement> (getContext(), false);
+        auto& loopStatement = allocate<AST::LoopStatement> (getContext());
 
         if (matchIf (Operator::openParen))
             loopStatement.numIterations = matchCloseParen (parseExpression());
@@ -1901,21 +1900,13 @@ private:
         return loopStatement;
     }
 
-    AST::Statement& parseDoOrWhileLoop (bool isDoLoop)
+    AST::Statement& parseWhileLoop()
     {
-        auto& loopStatement = allocate<AST::LoopStatement> (getContext(), isDoLoop);
-
-        if (isDoLoop)
-        {
-            loopStatement.body = parseBlock ({});
-            expect (Keyword::while_);
-        }
+        auto& loopStatement = allocate<AST::LoopStatement> (getContext());
 
         expect (Operator::openParen);
         loopStatement.condition = matchCloseParen (parseExpression());
-
-        if (! isDoLoop)
-            loopStatement.body = parseStatement();
+        loopStatement.body = parseStatement();
 
         return loopStatement;
     }

@@ -1284,14 +1284,11 @@ callMyFunction (x > 0 ? 1 : 2);
 
 ### Loops
 
-SOUL provides the usual trio of `while`, `do` and `for` loops:
+SOUL provides the familiar `while` and `for` loops:
 
 ```C++
 int i = 0;
 while (i < 10) { foo(i); ++i; }
-
-int i = 0;
-do { foo(i); ++i; } while (i < 10);
 
 for (int i = 0; i < 10; ++i)
     foo(i);
@@ -1312,6 +1309,20 @@ loop (10)  // runs 10 times
 ```
 
 You can use the standard `break` keyword to jump out of any of these loops, and `continue` to jump to the start of the next iteration.
+
+The C-style `do..while` syntax isn't supported, because the same effect is easily achieved using `loop` and `break`. This style also gives more flexibility and clarity over the control flow, and access to variables inside the loop, e.g.
+
+```C++
+int i = 0;
+
+loop
+{
+    doSomething();
+
+    if (++x > 10)
+        break;
+}
+```
 
 ### Reading and writing to endpoints
 
