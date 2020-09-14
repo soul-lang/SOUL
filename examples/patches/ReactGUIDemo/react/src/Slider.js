@@ -41,26 +41,28 @@ class Slider extends Component {
     ParameterChangeNotifier.removeParameterListener (this.props.paramID, this._onParameterValueChange);
   }
 
-  _onMeasure(width, height) {
+  _onMeasure(e) {
     this.setState({
-      width: width,
-      height: height,
+      width: e.width,
+      height: e.height,
     });
   }
 
-  _onMouseDown(mouseX, mouseY) {
+  _onMouseDown(e) {
     this._valueAtDragStart = this.state.value;
+    this._mouseDownX = e.x;
+    this._mouseDownY = e.y;
     global.beginParameterChangeGesture(this.props.paramID);
   }
 
-  _onMouseUp(mouseX, mouseY) {
+  _onMouseUp(e) {
     global.endParameterChangeGesture(this.props.paramID);
   }
 
-  _onMouseDrag(mouseX, mouseY, mouseDownX, mouseDownY) {
+  _onMouseDrag(e) {
     // Component vectors
-    let dx = mouseX - mouseDownX;
-    let dy = mouseDownY - mouseY;
+    let dx = e.x - this._mouseDownX;
+    let dy = e.y - this._mouseDownY;
 
     // Delta
     let dm = dx + dy;
