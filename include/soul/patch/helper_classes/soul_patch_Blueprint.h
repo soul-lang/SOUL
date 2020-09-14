@@ -54,8 +54,15 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
                 this->bundleLoaded();
         };
 
-        reactRootComponent.evaluate (fileToLoad);
-        reactRootComponent.enableHotReloading();
+        try
+        {
+            reactRootComponent.evaluate (fileToLoad);
+            reactRootComponent.enableHotReloading();
+        }
+        catch (const blueprint::EcmascriptEngine::Error&)
+        {
+            failedToLoad = true;
+        }
     }
 
     ~BlueprintEditorComponent() override
@@ -71,7 +78,12 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
             auto name = soul::patch::String::Ptr (view->getName()).toString<juce::String>();
 
             if (name.endsWithIgnoreCase (".js") && view->getSize() != 0)
-                return new BlueprintEditorComponent (p, view);
+            {
+                auto c = std::make_unique<BlueprintEditorComponent> (p, view);
+
+                if (! c->failedToLoad)
+                    return c.release();
+            }
         }
 
         return {};
@@ -360,6 +372,7 @@ private:
     soul::patch::SOULPatchAudioProcessor& patch;
     soul::patch::VirtualFile::Ptr view;
     blueprint::ReactApplicationRoot reactRootComponent;
+    bool failedToLoad = false;
 
     std::unordered_map<juce::String, soul::patch::SOULPatchAudioProcessor::PatchParameter*> parameterIDMap;
     choc::fifo::DirtyList<soul::patch::SOULPatchAudioProcessor::PatchParameter> dirtyParameterList;
