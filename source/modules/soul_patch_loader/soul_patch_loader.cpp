@@ -38,20 +38,23 @@ namespace soul::patch
     }
 
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory> performerFactory,
+                                        const soul::BuildSettings& buildSettings,
                                         soul::patch::VirtualFile* file)
     {
         if (file != nullptr && performerFactory != nullptr)
             return new soul::patch::PatchInstanceImpl (std::move (performerFactory),
+                                                       buildSettings,
                                                        soul::patch::VirtualFile::Ptr (file));
 
         return {};
     }
 
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory> performerFactory,
+                                        const soul::BuildSettings& buildSettings,
                                         const char* path)
     {
         if (soul::patch::isValidPathString (path))
-            return createPatchInstance (std::move (performerFactory), createLocalOrRemoteFile (path));
+            return createPatchInstance (std::move (performerFactory), buildSettings, createLocalOrRemoteFile (path));
 
         return {};
     }

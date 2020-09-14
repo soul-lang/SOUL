@@ -58,6 +58,7 @@ namespace soul::patch
         some kind of JIT engine back-end.
     */
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory>,
+                                        const soul::BuildSettings&,
                                         const char* path);
 
     /** This function can be used as an implementation for the createSOULPatchBundle() function
@@ -65,6 +66,7 @@ namespace soul::patch
         some kind of JIT engine back-end.
     */
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory>,
+                                        const soul::BuildSettings&,
                                         soul::patch::VirtualFile*);
 
     /** Creates a VirtualFile instance for a file or URL. */

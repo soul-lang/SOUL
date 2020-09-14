@@ -26,8 +26,8 @@ namespace soul::patch
 */
 struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInstanceImpl>
 {
-    PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, VirtualFile::Ptr f)
-        : performerFactory (std::move (factory)), manifestFile (std::move (f))
+    PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, const BuildSettings& settings, VirtualFile::Ptr f)
+        : performerFactory (std::move (factory)), buildSettings (settings), manifestFile (std::move (f))
     {
         if (auto name = String::Ptr (manifestFile->getName()))
         {
@@ -95,11 +95,10 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
             auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory->createPerformer());
             patch = PatchPlayer::Ptr (patchImpl);
 
-            soul::BuildSettings settings;
-            settings.sampleRate = config.sampleRate;
-            settings.maxBlockSize = config.maxFramesPerBlock;
+            buildSettings.sampleRate = config.sampleRate;
+            buildSettings.maxBlockSize = config.maxFramesPerBlock;
 
-            patchImpl->compile (settings, cache, preprocessor, externalDataProvider, consoleHandler);
+            patchImpl->compile (buildSettings, cache, preprocessor, externalDataProvider, consoleHandler);
         }
         catch (const PatchLoadError& e)
         {
@@ -119,6 +118,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     }
 
     std::unique_ptr<soul::PerformerFactory> performerFactory;
+    BuildSettings buildSettings;
     VirtualFile::Ptr manifestFile;
     FileList fileList;
     Description::Ptr description;
