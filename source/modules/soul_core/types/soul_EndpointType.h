@@ -108,7 +108,6 @@ struct EndpointDetails
     EndpointDetails (EndpointID, std::string name, EndpointType,
                      const std::vector<Type>& dataTypes, Annotation);
 
-    uint32_t getNumAudioChannels() const;
     const choc::value::Type& getFrameType() const;
     const choc::value::Type& getValueType() const;
     const choc::value::Type& getSingleEventType() const;

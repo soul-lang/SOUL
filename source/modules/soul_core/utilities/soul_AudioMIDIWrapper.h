@@ -30,25 +30,49 @@ struct ParameterStateList
 {
     ParameterStateList() = default;
 
-    /** Initialises the list with an array of per-parameter update actions. */
-    void initialise (ArrayView<std::function<void(float)>> parameterUpdateActions)
+    using GetRampLengthForSparseStreamFn = std::function<uint32_t(const EndpointDetails&)>;
+
+    void initialise (soul::Performer& performer,
+                     std::vector<EndpointDetails> parameterEndpoints,
+                     GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
     {
-        parameters.clear();
-        parameters.reserve (parameterUpdateActions.size());
+        std::vector<std::function<void(float)>> parameterUpdateActions;
 
-        for (auto& action : parameterUpdateActions)
-            parameters.push_back ({ action, {}, 0 });
+        for (auto& parameterInput : parameterEndpoints)
+        {
+            auto endpointHandle = performer.getEndpointHandle (parameterInput.endpointID);
+            auto floatValue = choc::value::createFloat32 (0);
 
-        std::vector<Parameter*> parameterPtrs;
-        parameterPtrs.reserve (parameters.size());
+            if (isEvent (parameterInput))
+            {
+                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue] (float newValue) mutable
+                {
+                    floatValue.getViewReference().set (newValue);
+                    performer.addInputEvent (endpointHandle, floatValue);
+                });
+            }
+            else if (isStream (parameterInput))
+            {
+                SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
+                auto rampFrames = getRampLengthForSparseStreamFn (parameterInput);
 
-        for (auto& p : parameters)
-            parameterPtrs.push_back (std::addressof (p));
+                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue, rampFrames] (float newValue) mutable
+                {
+                    floatValue.getViewReference().set (newValue);
+                    performer.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames);
+                });
+            }
+            else if (isValue (parameterInput))
+            {
+                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue] (float newValue) mutable
+                {
+                    floatValue.getViewReference().set (newValue);
+                    performer.setInputValue (endpointHandle, floatValue);
+                });
+            }
+        }
 
-        auto dirtyHandles = dirtyList.initialise (parameterPtrs);
-
-        for (size_t i = 0; i < parameters.size(); ++i)
-            parameters[i].dirtyListHandle = dirtyHandles[i];
+        initialise (parameterUpdateActions);
     }
 
     /** Sets the current value for a parameter, and if the value has changed, marks it as
@@ -92,6 +116,26 @@ private:
 
     std::vector<Parameter> parameters;
     choc::fifo::DirtyList<Parameter> dirtyList;
+
+    void initialise (ArrayView<std::function<void(float)>> parameterUpdateActions)
+    {
+        parameters.clear();
+        parameters.reserve (parameterUpdateActions.size());
+
+        for (auto& action : parameterUpdateActions)
+            parameters.push_back ({ action, {}, 0 });
+
+        std::vector<Parameter*> parameterPtrs;
+        parameterPtrs.reserve (parameters.size());
+
+        for (auto& p : parameters)
+            parameterPtrs.push_back (std::addressof (p));
+
+        auto dirtyHandles = dirtyList.initialise (parameterPtrs);
+
+        for (size_t i = 0; i < parameters.size(); ++i)
+            parameters[i].dirtyListHandle = dirtyHandles[i];
+    }
 };
 
 //==============================================================================
@@ -101,12 +145,10 @@ struct InputEventQueue
 {
     InputEventQueue() = default;
 
-    using HandleEventFn = std::function<void(EndpointHandle, const choc::value::ValueView&)>;
-
-    void initialise (size_t maxQueueSize, HandleEventFn handleEvent)
+    void initialise (soul::Performer& p, size_t maxQueueSize)
     {
+        performer = std::addressof (p);
         fifoSlots.resize (maxQueueSize);
-        processEvent = handleEvent;
     }
 
     void clear()
@@ -135,7 +177,7 @@ struct InputEventQueue
             if (auto slot = fifoPosition.lockSlotForReading())
             {
                 auto& event = fifoSlots[slot.index];
-                processEvent (event.endpointHandle, event.event);
+                performer->addInputEvent (event.endpointHandle, event.event);
                 fifoPosition.unlock (slot);
 
                 if (maxNumToProcess-- != 0)
@@ -156,7 +198,7 @@ private:
 
     std::vector<Event> fifoSlots;
     choc::fifo::FIFOReadWritePosition<uint32_t, std::atomic<uint32_t>> fifoPosition;
-    HandleEventFn processEvent;
+    soul::Performer* performer = nullptr;
 };
 
 //==============================================================================
@@ -180,78 +222,29 @@ struct AudioMIDIWrapper
         maxBlockSize = 0;
     }
 
-    std::vector<EndpointDetails> getAudioInputEndpoints()       { return getInputEndpoints (InputEndpointType::audio); }
-    std::vector<EndpointDetails> getParameterEndpoints()        { return getInputEndpoints (InputEndpointType::parameter); }
-    std::vector<EndpointDetails> getEventInputEndpoints()       { return getInputEndpoints (InputEndpointType::event); }
+    std::vector<EndpointDetails> getAudioInputEndpoints()       { return getInputEndpointsOfType (performer, InputEndpointType::audio); }
+    std::vector<EndpointDetails> getParameterEndpoints()        { return getInputEndpointsOfType (performer, InputEndpointType::parameter); }
+    std::vector<EndpointDetails> getEventInputEndpoints()       { return getInputEndpointsOfType (performer, InputEndpointType::event); }
 
-    std::vector<EndpointDetails> getAudioOutputEndpoints()      { return getOutputEndpoints (OutputEndpointType::audio); }
-    std::vector<EndpointDetails> getEventOutputEndpoints()      { return getOutputEndpoints (OutputEndpointType::event); }
+    std::vector<EndpointDetails> getAudioOutputEndpoints()      { return getOutputEndpointsOfType (performer, OutputEndpointType::audio); }
+    std::vector<EndpointDetails> getEventOutputEndpoints()      { return getOutputEndpointsOfType (performer, OutputEndpointType::event); }
 
-    /**
-    */
-    using GetRampLengthForSparseStreamFn = std::function<uint32_t(const EndpointDetails&)>;
-
-    /**
-    */
     using HandleUnusedEventFn = std::function<bool(uint64_t eventTime, const std::string& endpointName, const choc::value::ValueView&)>;
 
-    /**
-    */
     void buildRenderingPipeline (uint32_t processorMaxBlockSize,
-                                 GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn,
+                                 ParameterStateList::GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn,
                                  HandleUnusedEventFn&& handleUnusedEventFn)
     {
-        SOUL_ASSERT (processorMaxBlockSize > 0);
         reset();
         auto& perf = performer;
+        SOUL_ASSERT (processorMaxBlockSize > 0);
         maxBlockSize = std::min (512u, processorMaxBlockSize);
 
-        inputEventQueue.initialise (1024, [&perf] (EndpointHandle endpointHandle, const choc::value::ValueView& value)
-        {
-            perf.addInputEvent (endpointHandle, value);
-        });
+        inputEventQueue.initialise (perf, 1024);
 
-        {
-            std::vector<std::function<void(float)>> parameterUpdateActions;
+        parameterList.initialise (perf, getParameterEndpoints(), std::move (getRampLengthForSparseStreamFn));
 
-            for (auto& parameterInput : getParameterEndpoints())
-            {
-                auto endpointHandle = perf.getEndpointHandle (parameterInput.endpointID);
-                auto floatValue = choc::value::createFloat32 (0);
-
-                if (isEvent (parameterInput))
-                {
-                    parameterUpdateActions.push_back ([&perf, endpointHandle, floatValue] (float newValue) mutable
-                    {
-                        floatValue.getViewReference().set (newValue);
-                        perf.addInputEvent (endpointHandle, floatValue);
-                    });
-                }
-                else if (isStream (parameterInput))
-                {
-                    SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
-                    auto rampFrames = getRampLengthForSparseStreamFn (parameterInput);
-
-                    parameterUpdateActions.push_back ([&perf, endpointHandle, floatValue, rampFrames] (float newValue) mutable
-                    {
-                        floatValue.getViewReference().set (newValue);
-                        perf.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames);
-                    });
-                }
-                else if (isValue (parameterInput))
-                {
-                    parameterUpdateActions.push_back ([&perf, endpointHandle, floatValue] (float newValue) mutable
-                    {
-                        floatValue.getViewReference().set (newValue);
-                        perf.setInputValue (endpointHandle, floatValue);
-                    });
-                }
-            }
-
-            parameterList.initialise (parameterUpdateActions);
-        }
-
-        for (auto& midiInput : getInputEndpoints (InputEndpointType::midi))
+        for (auto& midiInput : getInputEndpointsOfType (performer, InputEndpointType::midi))
         {
             auto endpointHandle = perf.getEndpointHandle (midiInput.endpointID);
             choc::value::Value midiEvent (midiInput.getSingleEventType());
@@ -266,9 +259,9 @@ struct AudioMIDIWrapper
             });
         }
 
-        for (auto& audioInput : getInputEndpoints (InputEndpointType::audio))
+        for (auto& audioInput : getAudioInputEndpoints())
         {
-            auto numSourceChans = audioInput.getNumAudioChannels();
+            auto numSourceChans = getNumAudioChannels (audioInput);
             SOUL_ASSERT (numSourceChans != 0);
             auto endpointHandle = perf.getEndpointHandle (audioInput.endpointID);
             auto& frameType = audioInput.getFrameType();
@@ -328,7 +321,7 @@ struct AudioMIDIWrapper
                     });
                 });
             }
-            else if (auto numChans = outputEndpoint.getNumAudioChannels())
+            else if (auto numChans = getNumAudioChannels (outputEndpoint))
             {
                 auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
                 auto& frameType = outputEndpoint.getFrameType();
@@ -462,64 +455,6 @@ private:
     std::vector<std::function<void(RenderContext&)>> postRenderOperations;
     uint32_t numInputChannelsExpected = 0, numOutputChannelsExpected = 0;
     uint32_t maxBlockSize = 0;
-
-    enum class InputEndpointType
-    {
-        audio,
-        parameter,
-        midi,
-        event,
-        other
-    };
-
-    static InputEndpointType getInputEndpointType (const EndpointDetails& details)
-    {
-        if (isParameterInput (details))         return InputEndpointType::parameter;
-        if (isMIDIEventEndpoint (details))      return InputEndpointType::midi;
-        if (details.getNumAudioChannels() != 0) return InputEndpointType::audio;
-        if (isEvent (details))                  return InputEndpointType::event;
-
-        return InputEndpointType::other;
-    }
-
-    std::vector<EndpointDetails> getInputEndpoints (InputEndpointType type)
-    {
-        std::vector<EndpointDetails> results;
-
-        for (auto& e : performer.getInputEndpoints())
-            if (getInputEndpointType (e) == type)
-                results.push_back (e);
-
-        return results;
-    }
-
-    enum class OutputEndpointType
-    {
-        audio,
-        midi,
-        event,
-        other
-    };
-
-    static OutputEndpointType getOutputEndpointType (const EndpointDetails& details)
-    {
-        if (isMIDIEventEndpoint (details))      return OutputEndpointType::midi;
-        if (details.getNumAudioChannels() != 0) return OutputEndpointType::audio;
-        if (isEvent (details))                  return OutputEndpointType::event;
-
-        return OutputEndpointType::other;
-    }
-
-    std::vector<EndpointDetails> getOutputEndpoints (OutputEndpointType type)
-    {
-        std::vector<EndpointDetails> results;
-
-        for (auto& e : performer.getOutputEndpoints())
-            if (getOutputEndpointType (e) == type)
-                results.push_back (e);
-
-        return results;
-    }
 };
 
 }

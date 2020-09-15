@@ -39,14 +39,6 @@ EndpointDetails::EndpointDetails (EndpointID id, std::string nm, EndpointType t,
         dataTypes.push_back (type.getExternalType());
 }
 
-uint32_t EndpointDetails::getNumAudioChannels() const
-{
-    if (isStream (endpointType))
-        return getFrameType().getNumElements();
-
-    return 0;
-}
-
 const choc::value::Type& EndpointDetails::getFrameType() const
 {
     SOUL_ASSERT (isStream (endpointType) && dataTypes.size() == 1);

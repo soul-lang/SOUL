@@ -68,5 +68,30 @@ bool isMIDIEventEndpoint (const EndpointDetails&);
 Type createMIDIEventEndpointType();
 bool isParameterInput (const EndpointDetails&);
 bool isConsoleEndpoint (const std::string& endpointName);
+bool isAudioEndpoint (const EndpointDetails&);
+uint32_t getNumAudioChannels (const EndpointDetails&);
+
+enum class InputEndpointType
+{
+    audio,
+    parameter,
+    midi,
+    event,
+    other
+};
+
+enum class OutputEndpointType
+{
+    audio,
+    midi,
+    event,
+    other
+};
+
+InputEndpointType getInputEndpointType (const EndpointDetails&);
+OutputEndpointType getOutputEndpointType (const EndpointDetails&);
+
+std::vector<EndpointDetails> getInputEndpointsOfType (Performer&, InputEndpointType);
+std::vector<EndpointDetails> getOutputEndpointsOfType (Performer&, OutputEndpointType);
 
 } // namespace soul

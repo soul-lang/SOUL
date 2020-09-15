@@ -67,4 +67,59 @@ bool isParameterInput (const EndpointDetails& details)
     return false;
 }
 
+uint32_t getNumAudioChannels (const EndpointDetails& details)
+{
+    if (isStream (details))
+        return details.getFrameType().getNumElements();
+
+    return 0;
+}
+
+bool isAudioEndpoint (const EndpointDetails& details)
+{
+    return getNumAudioChannels (details) != 0;
+}
+
+InputEndpointType getInputEndpointType (const EndpointDetails& details)
+{
+    if (isParameterInput (details))         return InputEndpointType::parameter;
+    if (isMIDIEventEndpoint (details))      return InputEndpointType::midi;
+    if (isAudioEndpoint (details))          return InputEndpointType::audio;
+    if (isEvent (details))                  return InputEndpointType::event;
+
+    return InputEndpointType::other;
+}
+
+OutputEndpointType getOutputEndpointType (const EndpointDetails& details)
+{
+    if (isMIDIEventEndpoint (details))   return OutputEndpointType::midi;
+    if (isAudioEndpoint (details))       return OutputEndpointType::audio;
+    if (isEvent (details))               return OutputEndpointType::event;
+
+    return OutputEndpointType::other;
+}
+
+std::vector<EndpointDetails> getInputEndpointsOfType (Performer& p, InputEndpointType type)
+{
+    std::vector<EndpointDetails> results;
+
+    for (auto& e : p.getInputEndpoints())
+        if (getInputEndpointType (e) == type)
+            results.push_back (e);
+
+    return results;
+}
+
+std::vector<EndpointDetails> getOutputEndpointsOfType (Performer& p, OutputEndpointType type)
+{
+    std::vector<EndpointDetails> results;
+
+    for (auto& e : p.getOutputEndpoints())
+        if (getOutputEndpointType (e) == type)
+            results.push_back (e);
+
+    return results;
+}
+
+
 } // namespace soul

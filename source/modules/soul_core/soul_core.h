@@ -92,6 +92,7 @@ namespace soul
     struct ValuePrinter;
     struct CompileMessage;
     class Structure;
+    class Performer;
 }
 
 //==============================================================================
