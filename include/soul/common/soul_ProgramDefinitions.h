@@ -140,6 +140,9 @@ struct TimeSignature
 {
     uint16_t numerator = 0;     /**< The numerator is the top number in a time-signature, e.g. the 3 of 3/4. */
     uint16_t denominator = 0;   /**< The numerator is the bottom number in a time-signature, e.g. the 4 of 3/4. */
+
+    bool operator== (TimeSignature other) const noexcept   { return numerator == other.numerator && denominator == other.denominator; }
+    bool operator!= (TimeSignature other) const noexcept   { return ! operator== (other); }
 };
 
 //==============================================================================

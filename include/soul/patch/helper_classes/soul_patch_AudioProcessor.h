@@ -248,6 +248,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         setRateAndBufferSizeDetails (sampleRate, maxBlockSize);
         midiCollector.reset (sampleRate);
         midiKeyboardState.reset();
+        playheadState.reset();
 
         if (player != nullptr)
         {
@@ -289,6 +290,9 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
         if (player != nullptr && player->isPlayable() && ! isSuspended())
         {
+            if (auto playhead = getPlayHead())
+                playheadState.updateAndApply (*playhead, *player);
+
             soul::patch::PatchPlayer::RenderContext rc;
 
             for (int i = 0; i < getTotalNumInputChannels(); i++)
@@ -717,21 +721,75 @@ private:
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
     juce::MidiMessageCollector midiCollector;
+
     const int millisecsBetweenFileChecks;
 
     juce::ValueTree lastValidState;
 
-    struct IDs
+    //==============================================================================
+    struct PlayheadState
     {
-        const juce::Identifier SOULPatch    { "SOULPatch" },
-                               id           { "id" },
-                               version      { "version" },
-                               PARAM        { "PARAM" },
-                               value        { "value" },
-                               EDITORS      { "EDITORS" };
+        soul::TimeSignature currentTimeSig;
+        float currentBPM = 0;
+        int64_t currentFramePos = 0;
+        double currentQuarterNotePos = 0;
+        double currentQuarterNoteBarStart = 0;
+        soul::TransportState currentTransportState = soul::TransportState::stopped;
+
+        void reset()   { *this = {}; }
+
+        void updateAndApply (juce::AudioPlayHead& playhead, soul::patch::PatchPlayer& playerToUse)
+        {
+            juce::AudioPlayHead::CurrentPositionInfo info;
+
+            if (playhead.getCurrentPosition (info))
+            {
+                auto newTimeSig = soul::TimeSignature { static_cast<uint16_t> (info.timeSigNumerator),
+                                                        static_cast<uint16_t> (info.timeSigDenominator) };
+
+                if (newTimeSig != currentTimeSig)
+                {
+                    currentTimeSig = newTimeSig;
+                    playerToUse.applyNewTimeSignature (newTimeSig);
+                }
+
+                auto newBPM = static_cast<float> (info.bpm);
+
+                if (newBPM != currentBPM)
+                {
+                    currentBPM = newBPM;
+                    playerToUse.applyNewTempo (newBPM);
+                }
+
+                auto newFramePos = info.timeInSamples;
+                auto newQuarterNotePos = info.ppqPosition;
+                auto newQuarterNoteBarStart = info.ppqPositionOfLastBarStart;
+
+                if (newFramePos != currentFramePos
+                     || newQuarterNotePos != currentQuarterNotePos
+                     || newQuarterNoteBarStart != currentQuarterNoteBarStart)
+                {
+                    currentFramePos = newFramePos;
+                    currentQuarterNotePos = newQuarterNotePos;
+                    currentQuarterNoteBarStart = newQuarterNoteBarStart;
+
+                    playerToUse.setNewTimelinePosition ({ newFramePos, newQuarterNotePos, newQuarterNoteBarStart });
+                }
+
+                auto newTransportState = info.isRecording ? soul::TransportState::recording
+                                                          : (info.isPlaying ? soul::TransportState::playing
+                                                                            : soul::TransportState::stopped);
+
+                if (currentTransportState != newTransportState)
+                {
+                    currentTransportState = newTransportState;
+                    playerToUse.setNewTransportState (newTransportState);
+                }
+            }
+        }
     };
 
-    IDs ids;
+    PlayheadState playheadState;
 
     //==============================================================================
     soul::patch::PatchPlayerConfiguration getConfigCopy() const
@@ -1026,6 +1084,20 @@ private:
         juce::TextButton goToFolderButton { "Open folder containing patch" };
     };
 
+    //==============================================================================
+    struct IDs
+    {
+        const juce::Identifier SOULPatch    { "SOULPatch" },
+                               id           { "id" },
+                               version      { "version" },
+                               PARAM        { "PARAM" },
+                               value        { "value" },
+                               EDITORS      { "EDITORS" };
+    };
+
+    IDs ids;
+
+    //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SOULPatchAudioProcessor)
 };
 
