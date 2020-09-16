@@ -212,6 +212,7 @@ public:
     virtual bool sendInputEvent (EndpointHandle inputEndpointHandle,
                                  const choc::value::ValueView& event) = 0;
 
+    //==============================================================================
     /** Return value for the PatchPlayer::render() method. */
     enum class RenderResult
     {
@@ -270,11 +271,36 @@ public:
         uint32_t numMIDIMessagesOut;
     };
 
+    //==============================================================================
     /** Renders the next block of audio.
         The RenderContext object provides all the necessary input/output audio and
         MIDI data that is needed.
     */
     virtual RenderResult render (RenderContext&) = 0;
+
+    /** Sends a time-signature to the patch.
+        A host must call this on the audio thread, before a call to render().
+        It should avoid calling it except when the value has actually changed.
+    */
+    virtual void applyNewTimeSignature (TimeSignature) = 0;
+
+    /** Sends a new tempo to the patch.
+        A host must call this on the audio thread, before a call to render().
+        It should avoid calling it except when the value has actually changed.
+    */
+    virtual void applyNewTempo (float newBPM) = 0;
+
+    /** Updates the patch about the playback state changing.
+        A host must call this on the audio thread, before a call to render().
+        It should avoid calling it except when the value has actually changed.
+    */
+    virtual void setNewTransportState (TransportState) = 0;
+
+    /** Tells the patch about the current position along a timeline.
+        A host must call this on the audio thread, before a call to render().
+        It should avoid calling it except when the value has actually changed.
+    */
+    virtual void setNewTimelinePosition (TimelinePosition) = 0;
 };
 
 } // namespace patch

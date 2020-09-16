@@ -840,6 +840,83 @@ R"soul_code(
 }
 )soul_code";
 
+    if (moduleName == "soul.timeline")  return R"soul_code(
+/**
+    This namespace contains various types and functions which are used when
+    dealing with positions and tempos along a timeline.
+*/
+namespace soul::timeline
+{
+    //==============================================================================
+    /** Represents a simple time-signature. */
+    struct TimeSignature
+    {
+        int numerator;     // The top number of a time-signature, e.g. the 3 of 3/4.
+        int denominator;   // The bottom number of a time-signature, e.g. the 4 of 3/4.
+    }
+
+    //==============================================================================
+    /** Represents a tempo in BPM. */
+    struct Tempo
+    {
+        float bpm;  // beats per minute
+    }
+
+    //==============================================================================
+    float quarterNotesPerBeat (TimeSignature timeSig)                                       { return 4.0f / timeSig.denominator; }
+    float beatsPerQuarterNote (TimeSignature timeSig)                                       { return timeSig.denominator / 4.0f; }
+
+    float secondsPerBeat (Tempo tempo)                                                      { return tempo.bpm <= 0 ? 0.0f : (60.0f / tempo.bpm); }
+    float secondsPerQuarterNote (Tempo tempo, TimeSignature timeSig)                        { return tempo.secondsPerBeat() * timeSig.beatsPerQuarterNote(); }
+
+    float64 framesPerBeat (Tempo tempo, float64 sampleRate)                                 { return sampleRate * tempo.secondsPerBeat(); }
+    float64 framesPerQuarterNote (Tempo tempo, TimeSignature timeSig, float64 sampleRate)   { return sampleRate * tempo.secondsPerQuarterNote (timeSig); }
+
+    //==============================================================================
+    /** Represents the state of a host which can play timeline-based material. */
+    struct TransportState
+    {
+        /** In the absence of enums, the valid values for the state are:
+            0 = stopped, 1 = playing, 2 = recording.
+        */
+        int state;
+    }
+
+)soul_code"
+R"soul_code(
+
+    bool isStopped   (TransportState t)       { return t.state == 0; }
+    bool isPlaying   (TransportState t)       { return t.state == 1; }
+    bool isRecording (TransportState t)       { return t.state == 2; }
+
+    //==============================================================================
+    /** Represents a position along a timeline, in terms of frames and also (where
+        appropriate) quarter notes.
+    */
+    struct Position
+    {
+        /** A number of frames from the start of the timeline. */
+        int64 currentFrame;
+
+        /** The number of quarter-notes since the beginning of the timeline.
+            A host may not have a meaningful value for this, so it may just be 0.
+            Bear in mind that a timeline may contain multiple changes of tempo and
+            time-signature, so this value will not necessarily keep increasing at
+            a constant rate.
+        */
+        float64 currentQuarterNote;
+
+        /** The number of quarter-notes from the beginning of the timeline to the
+            start of the current bar.
+            A host may not have a meaningful value for this, so it may just be 0.
+            You can subtract this from currentQuarterNote to find out how which
+            quarter-note the position represents within the current bar.
+        */
+        float64 lastBarStartQuarterNote;
+    }
+}
+)soul_code";
+
     if (moduleName == "soul.oscillators")  return R"soul_code(
 /**
     This namespace contains various simple oscillators, including sine, square,

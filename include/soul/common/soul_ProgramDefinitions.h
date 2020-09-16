@@ -135,6 +135,49 @@ struct MIDIEvent
 };
 
 //==============================================================================
+/** Simple class to hold a time-signature. */
+struct TimeSignature
+{
+    uint16_t numerator = 0;     /**< The numerator is the top number in a time-signature, e.g. the 3 of 3/4. */
+    uint16_t denominator = 0;   /**< The numerator is the bottom number in a time-signature, e.g. the 4 of 3/4. */
+};
+
+//==============================================================================
+/** Represents the state of a host which can play timeline-based material. */
+enum class TransportState
+{
+    stopped    = 0,
+    playing    = 1,
+    recording  = 2
+};
+
+//==============================================================================
+/** Represents a position along a timeline, in terms of frames and also (where
+    appropriate) quarter notes.
+*/
+struct TimelinePosition
+{
+    /** A number of frames from the start of the timeline. */
+    int64_t currentFrame = 0;
+
+    /** The number of quarter-notes since the beginning of the timeline.
+        A host may not have a meaningful value for this, so it may just be 0.
+        Bear in mind that a timeline may contain multiple changes of tempo and
+        time-signature, so this value will not necessarily keep increasing at
+        a constant rate.
+    */
+    double currentQuarterNote = 0;
+
+    /** The number of quarter-notes from the beginning of the timeline to the
+        start of the current bar.
+        A host may not have a meaningful value for this, so it may just be 0.
+        You can subtract this from currentQuarterNote to find out how which
+        quarter-note the position represents within the current bar.
+    */
+    double lastBarStartQuarterNote = 0;
+};
+
+//==============================================================================
 /**
     A collection of properties needed by the compiler, linker and loaders when
     building SOUL programs.

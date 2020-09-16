@@ -278,10 +278,10 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         outputBuses.clear();
 
         for (auto& audioInput : wrapper.getAudioInputEndpoints())
-            inputBuses.push_back ({ makeString (audioInput.name), (uint32_t) audioInput.getNumAudioChannels() });
+            inputBuses.push_back ({ makeString (audioInput.name), getNumAudioChannels (audioInput) });
 
         for (auto& audioOutput : wrapper.getAudioOutputEndpoints())
-            outputBuses.push_back ({ makeString (audioOutput.name), (uint32_t) audioOutput.getNumAudioChannels() });
+            outputBuses.push_back ({ makeString (audioOutput.name), getNumAudioChannels (audioOutput) });
 
         for (auto& e : performer->getInputEndpoints())
             getEndpointDescription (e);
@@ -440,6 +440,26 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
                         rc.numMIDIMessagesOut);
 
         return RenderResult::ok;
+    }
+
+    void applyNewTimeSignature (TimeSignature newTimeSig) override
+    {
+        wrapper.timelineEvents.applyNewTimeSignature (newTimeSig);
+    }
+
+    void applyNewTempo (float newBPM) override
+    {
+        wrapper.timelineEvents.applyNewTempo (newBPM);
+    }
+
+    void setNewTransportState (TransportState newState) override
+    {
+        wrapper.timelineEvents.setNewTransportState (newState);
+    }
+
+    void setNewTimelinePosition (TimelinePosition newPosition) override
+    {
+        wrapper.timelineEvents.setNewTimelinePosition (newPosition);
     }
 
     //==============================================================================

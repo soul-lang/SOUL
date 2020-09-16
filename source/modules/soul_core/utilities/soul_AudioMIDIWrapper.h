@@ -33,12 +33,11 @@ struct ParameterStateList
     using GetRampLengthForSparseStreamFn = std::function<uint32_t(const EndpointDetails&)>;
 
     void initialise (soul::Performer& performer,
-                     std::vector<EndpointDetails> parameterEndpoints,
                      GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
     {
         std::vector<std::function<void(float)>> parameterUpdateActions;
 
-        for (auto& parameterInput : parameterEndpoints)
+        for (auto& parameterInput : getInputEndpointsOfType (performer, InputEndpointType::parameter))
         {
             auto endpointHandle = performer.getEndpointHandle (parameterInput.endpointID);
             auto floatValue = choc::value::createFloat32 (0);
@@ -202,6 +201,117 @@ private:
 };
 
 //==============================================================================
+struct TimelineEventCallbacks
+{
+    TimelineEventCallbacks() = default;
+
+    void initialise (Performer& p)
+    {
+        performer = std::addressof (p);
+        timeSigHandle = {};
+        tempoHandle = {};
+        transportHandle = {};
+        positionHandle = {};
+
+        for (auto& e : getInputEndpointsOfType (p, InputEndpointType::event))
+        {
+            if (e.dataTypes.size() == 1)
+            {
+                auto& type = e.dataTypes.front();
+
+                if (type.isObject())
+                {
+                    if (matchesType (type, newTimeSigValue.getType()))     timeSigHandle   = p.getEndpointHandle (e.endpointID);
+                    if (matchesType (type, newTempoValue.getType()))       tempoHandle     = p.getEndpointHandle (e.endpointID);
+                    if (matchesType (type, newTransportValue.getType()))   transportHandle = p.getEndpointHandle (e.endpointID);
+                    if (matchesType (type, newPositionValue.getType()))    positionHandle  = p.getEndpointHandle (e.endpointID);
+                }
+            }
+        }
+    }
+
+    static bool matchesType (const choc::value::Type& t1, const choc::value::Type& t2)
+    {
+        auto numElements = t1.getNumElements();
+
+        if (numElements != t2.getNumElements())
+            return false;
+
+        if (! endsWith (t1.getObjectClassName(), t2.getObjectClassName()))
+            return false;
+
+        for (uint32_t i = 0; i < numElements; ++i)
+        {
+            auto& m1 = t1.getObjectMember (i);
+            auto& m2 = t2.getObjectMember (i);
+
+            if (m1.type != m2.type || m1.name != m2.name)
+                return false;
+        }
+
+        return true;
+    }
+
+    void applyNewTimeSignature (TimeSignature newTimeSig)
+    {
+        if (timeSigHandle)
+        {
+            newTimeSigValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newTimeSig.numerator));
+            newTimeSigValue.getObjectMemberAt (1).value.set (static_cast<int32_t> (newTimeSig.denominator));
+            performer->addInputEvent (timeSigHandle, newTimeSigValue);
+        }
+    }
+
+    void applyNewTempo (float newBPM)
+    {
+        if (tempoHandle)
+        {
+            newTempoValue.getObjectMemberAt (0).value.set (newBPM);
+            performer->addInputEvent (tempoHandle, newTempoValue);
+        }
+    }
+
+    void setNewTransportState (TransportState newState)
+    {
+        if (transportHandle)
+        {
+            newTransportValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newState));
+            performer->addInputEvent (transportHandle, newTransportValue);
+        }
+    }
+
+    void setNewTimelinePosition (TimelinePosition newPosition)
+    {
+        if (positionHandle)
+        {
+            newPositionValue.getObjectMemberAt (0).value.set (newPosition.currentFrame);
+            newPositionValue.getObjectMemberAt (1).value.set (newPosition.currentQuarterNote);
+            newPositionValue.getObjectMemberAt (2).value.set (newPosition.lastBarStartQuarterNote);
+            performer->addInputEvent (positionHandle, newPositionValue);
+        }
+    }
+
+    soul::Performer* performer = nullptr;
+    EndpointHandle timeSigHandle, tempoHandle, transportHandle, positionHandle;
+
+    choc::value::Value newTimeSigValue   { choc::value::createObject ("TimeSignature",
+                                                                      "numerator", choc::value::createInt32 (0),
+                                                                      "denominator", choc::value::createInt32 (0)) };
+
+    choc::value::Value newTempoValue     { choc::value::createObject ("Tempo",
+                                                                      "bpm", choc::value::createFloat32 (0)) };
+
+    choc::value::Value newTransportValue { choc::value::createObject ("TransportState",
+                                                                      "state", choc::value::createFloat32 (0)) };
+
+    choc::value::Value newPositionValue  { choc::value::createObject ("Position",
+                                                                      "currentFrame", choc::value::createInt64 (0),
+                                                                      "currentQuarterNote", choc::value::createFloat64 (0),
+                                                                      "lastBarStartQuarterNote", choc::value::createFloat64 (0)) };
+};
+
+
+//==============================================================================
 /**
     A wrapper to simplify the job of rendering a Performer which only needs to deal
     with a synchronous set of audio, MIDI and parameter data (i.e. standard plugin stuff).
@@ -241,8 +351,8 @@ struct AudioMIDIWrapper
         maxBlockSize = std::min (512u, processorMaxBlockSize);
 
         inputEventQueue.initialise (perf, 1024);
-
-        parameterList.initialise (perf, getParameterEndpoints(), std::move (getRampLengthForSparseStreamFn));
+        parameterList.initialise (perf, std::move (getRampLengthForSparseStreamFn));
+        timelineEvents.initialise (perf);
 
         for (auto& midiInput : getInputEndpointsOfType (performer, InputEndpointType::midi))
         {
@@ -445,6 +555,7 @@ struct AudioMIDIWrapper
 
     ParameterStateList parameterList;
     InputEventQueue inputEventQueue;
+    TimelineEventCallbacks timelineEvents;
 
 private:
     //==============================================================================
