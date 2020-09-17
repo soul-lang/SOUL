@@ -1009,6 +1009,7 @@ struct AST
         pool_ptr<ChildEndpointPath> childPath;
         Annotation annotation;
         bool needsToBeExposedInParent = false;
+        bool isConsoleEndpoint = false;
 
         pool_ptr<heart::InputDeclaration> generatedInput;
         pool_ptr<heart::OutputDeclaration> generatedOutput;
@@ -1086,13 +1087,6 @@ struct AST
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
-        struct ProcessorAndEndpoint
-        {
-            pool_ref<ProcessorRef>         processor;
-            pool_ref<EndpointDeclaration>  endpoint;
-            pool_ptr<Expression>           endpointIndex;
-        };
-
         pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessor (source); }
         pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessor (dest); }
 
@@ -1119,7 +1113,7 @@ struct AST
 
             for (auto& e : p.getEndpoints())
             {
-                if (e->isInput == wantInput)
+                if (!e->isConsoleEndpoint && e->isInput == wantInput)
                 {
                     if (found != nullptr)
                         errorContext.throwError (Errors::mustBeOnlyOneEndpoint());
