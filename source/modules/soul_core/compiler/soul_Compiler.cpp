@@ -78,6 +78,7 @@ void Compiler::addDefaultBuiltInLibrary()
         compile (getSystemModule ("soul.mixing"));
         compile (getSystemModule ("soul.oscillators"));
         compile (getSystemModule ("soul.noise"));
+        compile (getSystemModule ("soul.timeline"));
     }
     catch (soul::AbortCompilationException)
     {

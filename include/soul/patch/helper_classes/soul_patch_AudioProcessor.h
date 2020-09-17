@@ -773,7 +773,7 @@ private:
                     currentQuarterNotePos = newQuarterNotePos;
                     currentQuarterNoteBarStart = newQuarterNoteBarStart;
 
-                    playerToUse.setNewTimelinePosition ({ newFramePos, newQuarterNotePos, newQuarterNoteBarStart });
+                    playerToUse.applyNewTimelinePosition ({ newFramePos, newQuarterNotePos, newQuarterNoteBarStart });
                 }
 
                 auto newTransportState = info.isRecording ? soul::TransportState::recording
@@ -783,7 +783,7 @@ private:
                 if (currentTransportState != newTransportState)
                 {
                     currentTransportState = newTransportState;
-                    playerToUse.setNewTransportState (newTransportState);
+                    playerToUse.applyNewTransportState (newTransportState);
                 }
             }
         }

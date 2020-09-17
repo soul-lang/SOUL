@@ -55,8 +55,16 @@ Type createMIDIEventEndpointType()
 
 bool isParameterInput (const EndpointDetails& details)
 {
-    if (isEvent (details) && ! isMIDIEventEndpoint (details))
-        return true;
+    if (isEvent (details))
+    {
+        if (isConsoleEndpoint (details.name))
+            return false;
+
+        if (details.dataTypes.size() != 1)
+            return false;
+
+        return details.dataTypes.front().isPrimitive();
+    }
 
     if (isStream (details) && details.annotation.hasValue ("name"))
         return true;

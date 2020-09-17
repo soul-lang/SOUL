@@ -452,14 +452,14 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         wrapper.timelineEvents.applyNewTempo (newBPM);
     }
 
-    void setNewTransportState (TransportState newState) override
+    void applyNewTransportState (TransportState newState) override
     {
-        wrapper.timelineEvents.setNewTransportState (newState);
+        wrapper.timelineEvents.applyNewTransportState (newState);
     }
 
-    void setNewTimelinePosition (TimelinePosition newPosition) override
+    void applyNewTimelinePosition (TimelinePosition newPosition) override
     {
-        wrapper.timelineEvents.setNewTimelinePosition (newPosition);
+        wrapper.timelineEvents.applyNewTimelinePosition (newPosition);
     }
 
     //==============================================================================

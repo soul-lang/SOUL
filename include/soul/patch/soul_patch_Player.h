@@ -294,13 +294,13 @@ public:
         A host must call this on the audio thread, before a call to render().
         It should avoid calling it except when the value has actually changed.
     */
-    virtual void setNewTransportState (TransportState) = 0;
+    virtual void applyNewTransportState (TransportState) = 0;
 
     /** Tells the patch about the current position along a timeline.
         A host must call this on the audio thread, before a call to render().
         It should avoid calling it except when the value has actually changed.
     */
-    virtual void setNewTimelinePosition (TimelinePosition) = 0;
+    virtual void applyNewTimelinePosition (TimelinePosition) = 0;
 };
 
 } // namespace patch

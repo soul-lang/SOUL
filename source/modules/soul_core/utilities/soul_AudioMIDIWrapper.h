@@ -258,7 +258,8 @@ struct TimelineEventCallbacks
         {
             newTimeSigValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newTimeSig.numerator));
             newTimeSigValue.getObjectMemberAt (1).value.set (static_cast<int32_t> (newTimeSig.denominator));
-            performer->addInputEvent (timeSigHandle, newTimeSigValue);
+            sendTimeSig = true;
+            anyChanges = true;
         }
     }
 
@@ -267,32 +268,73 @@ struct TimelineEventCallbacks
         if (tempoHandle)
         {
             newTempoValue.getObjectMemberAt (0).value.set (newBPM);
-            performer->addInputEvent (tempoHandle, newTempoValue);
+            sendTempo = true;
+            anyChanges = true;
         }
     }
 
-    void setNewTransportState (TransportState newState)
+    void applyNewTransportState (TransportState newState)
     {
         if (transportHandle)
         {
             newTransportValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newState));
-            performer->addInputEvent (transportHandle, newTransportValue);
+            sendTransport = true;
+            anyChanges = true;
         }
     }
 
-    void setNewTimelinePosition (TimelinePosition newPosition)
+    void applyNewTimelinePosition (TimelinePosition newPosition)
     {
         if (positionHandle)
         {
             newPositionValue.getObjectMemberAt (0).value.set (newPosition.currentFrame);
             newPositionValue.getObjectMemberAt (1).value.set (newPosition.currentQuarterNote);
             newPositionValue.getObjectMemberAt (2).value.set (newPosition.lastBarStartQuarterNote);
-            performer->addInputEvent (positionHandle, newPositionValue);
+            sendPosition = true;
+            anyChanges = true;
+        }
+    }
+
+    void dispatchEventsNow()
+    {
+        if (anyChanges)
+        {
+            anyChanges = false;
+
+            if (sendTimeSig)
+            {
+                sendTimeSig = false;
+                performer->addInputEvent (timeSigHandle, newTimeSigValue);
+            }
+
+            if (sendTempo)
+            {
+                sendTempo = false;
+                performer->addInputEvent (tempoHandle, newTempoValue);
+            }
+
+            if (sendTransport)
+            {
+                sendTransport = false;
+                performer->addInputEvent (transportHandle, newTransportValue);
+            }
+
+            if (sendPosition)
+            {
+                sendPosition = false;
+                performer->addInputEvent (positionHandle, newPositionValue);
+            }
         }
     }
 
     soul::Performer* performer = nullptr;
     EndpointHandle timeSigHandle, tempoHandle, transportHandle, positionHandle;
+
+    bool anyChanges = false;
+    bool sendTimeSig = false;
+    bool sendTempo = false;
+    bool sendTransport = false;
+    bool sendPosition = false;
 
     choc::value::Value newTimeSigValue   { choc::value::createObject ("TimeSignature",
                                                                       "numerator", choc::value::createInt32 (0),
@@ -302,7 +344,7 @@ struct TimelineEventCallbacks
                                                                       "bpm", choc::value::createFloat32 (0)) };
 
     choc::value::Value newTransportValue { choc::value::createObject ("TransportState",
-                                                                      "state", choc::value::createFloat32 (0)) };
+                                                                      "state", choc::value::createInt32 (0)) };
 
     choc::value::Value newPositionValue  { choc::value::createObject ("Position",
                                                                       "currentFrame", choc::value::createInt64 (0),
@@ -488,6 +530,7 @@ struct AudioMIDIWrapper
 
             parameterList.performActionsForUpdatedParameters();
             inputEventQueue.processQueuedEvents (256);
+            timelineEvents.dispatchEventsNow();
 
             performer.advance();
 
