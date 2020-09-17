@@ -352,9 +352,9 @@ private:
                     if (exposeChildEndpoints (allocator, *childGraph))
                         anyChanges = true;
 
-        for (auto& i : graph.processorInstances)
+        for (auto& processorInstance : graph.processorInstances)
         {
-            if (auto childProcessor = i->targetProcessor->getAsProcessor())
+            if (auto childProcessor = processorInstance->targetProcessor->getAsProcessor())
             {
                 for (auto& childEndpoint : childProcessor->getEndpoints())
                 {
@@ -377,7 +377,7 @@ private:
                         }
 
                         auto& parent = createEndpointRef (allocator, {}, *parentEndpoint);
-                        auto& child  = createEndpointRef (allocator, {}, childEndpoint);
+                        auto& child = createConnectionEndpoint (allocator, {}, processorInstance, childEndpoint);
 
                         graph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none,
                                                                                           child, parent, nullptr));
