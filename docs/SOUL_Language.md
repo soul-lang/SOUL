@@ -36,6 +36,7 @@ If nothing in this document seems particularly surprising or unusual, then we've
     - [Processor declarations](#processor-declarations)
       - [The `run()` function](#the-run-function)
       - [The `advance()` function](#the-advance-function)
+      - [The `init()` function](#the-init-function)
       - [Processor state variables](#processor-state-variables)
     - [Input/Output Endpoint declarations](#inputoutput-endpoint-declarations)
       - [Exposing child endpoints](#exposing-child-endpoints)
@@ -587,6 +588,29 @@ If the `run()` function returns at any point, this essentially puts it into an i
 `advance()` is a special built-in function which causes all the processor's streams to move forward in time by the same amount called the timeslice (the exact amount will depend on the rate at which the processor has been instantiated by its parent graph)
 
 A well-formed `run()` function must contain at least one call to `advance()`.
+
+##### The `init()` function
+
+A processor can optionally declare a function with the prototype `void init()`, and if this exists, the runtime will call it when the processor is created, and before it starts running, in order to do any lengthy set-up and initialisation that might be needed, e.g.
+
+```C++
+processor Foo
+{
+    output stream float out;
+
+    float[1024] myLookupTable;
+
+    void init()
+    {
+        myLookupTable = generateComplicatedLookupTable();
+    }
+
+    void run()
+    {
+        loop { out << doSomethingUsingLookupTable (myLookupTable); advance(); }
+    }
+}
+```
 
 ##### Processor state variables
 
