@@ -115,7 +115,7 @@ struct ASTUtilities
         newDebugEndpoint.name = allocator.get (getConsoleEndpointInternalName());
         newDebugEndpoint.needsToBeExposedInParent = true;
         newDebugEndpoint.isConsoleEndpoint = true;
-        
+
         processor->endpoints.push_back (newDebugEndpoint);
 
         return allocator.allocate<AST::OutputEndpointRef> (name.context, newDebugEndpoint);
