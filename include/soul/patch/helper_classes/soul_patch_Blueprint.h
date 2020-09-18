@@ -9,9 +9,11 @@
 
 #pragma once
 
-#include "soul_patch_AudioPluginFormat.h"
-
 #if JUCE_MODULE_AVAILABLE_blueprint
+
+#include "soul_patch_AudioPluginFormat.h"
+#include "../../common/soul_DumpConstant.h"
+#include "../../3rdParty/choc/containers/choc_DirtyList.h"
 
 namespace soul
 {

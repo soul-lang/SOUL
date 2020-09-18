@@ -75,6 +75,7 @@
 #include "../../../include/soul/3rdParty/choc/text/choc_CodePrinter.h"
 #include "../../../include/soul/3rdParty/choc/containers/choc_DirtyList.h"
 #include "../../../include/soul/common/soul_ProgramDefinitions.h"
+#include "../../../include/soul/common/soul_DumpConstant.h"
 
 #include "utilities/soul_MiscUtilities.h"
 
@@ -147,4 +148,3 @@ namespace soul
 #include "utilities/soul_EventQueue.h"
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"
-#include "utilities/soul_DumpConstant.h"
