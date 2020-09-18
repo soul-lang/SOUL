@@ -385,6 +385,12 @@ private:
                 void printFloat32 (float value) override    { if (value == 0) print ("0.0f"); else ValuePrinter::printFloat32 (value); }
                 void printFloat64 (double value) override   { if (value == 0) print ("0.0");  else ValuePrinter::printFloat64 (value); }
 
+                void printStringLiteral (StringDictionary::Handle h) override
+                {
+                    print (dictionary != nullptr ? toHeartStringLiteral (std::string (dictionary->getStringForHandle (h)))
+                           : std::to_string (h.handle));
+                }
+
                 choc::text::CodePrinter& outStream;
             };
 
