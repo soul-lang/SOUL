@@ -387,8 +387,8 @@ private:
 
                 void printStringLiteral (StringDictionary::Handle h) override
                 {
-                    print (dictionary != nullptr ? toHeartStringLiteral (std::string (dictionary->getStringForHandle (h)))
-                           : std::to_string (h.handle));
+                    print (dictionary != nullptr ? toHeartStringLiteral (dictionary->getStringForHandle (h))
+                                                 : std::to_string (h.handle));
                 }
 
                 choc::text::CodePrinter& outStream;

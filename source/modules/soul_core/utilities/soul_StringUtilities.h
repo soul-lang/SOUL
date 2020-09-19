@@ -106,7 +106,7 @@ std::string getReadableDescriptionOfByteSize (uint64_t bytes);
 std::string toCppStringLiteral (const std::string& text,
                                 int maxCharsOnLine, bool breakAtNewLines,
                                 bool replaceSingleQuotes, bool allowStringBreaks);
-std::string toHeartStringLiteral (const std::string& text);
+std::string toHeartStringLiteral (std::string_view text);
 
 //==============================================================================
 std::string convertToString (const std::string& name);

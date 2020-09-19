@@ -162,7 +162,7 @@ inline std::string dump (const choc::value::Type& type)
         return s + " }";
     }
 
-    SOUL_ASSERT_FALSE;
+    return "?";
 }
 
 

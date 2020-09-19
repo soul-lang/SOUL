@@ -436,7 +436,7 @@ std::string toCppStringLiteral (const std::string& text,
     return out.str();
 }
 
-std::string toHeartStringLiteral (const std::string& text)
+std::string toHeartStringLiteral (std::string_view text)
 {
     // Use json style escaped strings
     return choc::json::getEscapedQuotedString (text);
