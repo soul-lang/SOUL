@@ -91,7 +91,7 @@ struct DirtyList
 
 private:
     //==============================================================================
-    std::unique_ptr<std::atomic<bool>[]> flags; // avoiding a vector here as atomics aren't copyable
+    std::unique_ptr<std::atomic_flag[]> flags; // avoiding a vector here as atomics aren't copyable
     std::vector<ObjectType*> allObjects;
     choc::fifo::SingleReaderMultipleWriterFIFO<Handle> fifo;
 };
@@ -116,7 +116,7 @@ std::vector<typename DirtyList<ObjectType>::Handle> DirtyList<ObjectType>::initi
     std::vector<Handle> handles;
     auto numObjects = static_cast<size_t> (objects.size());
     handles.reserve (numObjects);
-    flags.reset (new std::atomic<bool> [numObjects]);
+    flags.reset (new std::atomic_flag[numObjects]);
     allObjects.resize (numObjects);
     fifo.reset (numObjects);
     size_t i = 0;
@@ -124,7 +124,7 @@ std::vector<typename DirtyList<ObjectType>::Handle> DirtyList<ObjectType>::initi
     for (auto& o : objects)
     {
         CHOC_ASSERT (o != nullptr);
-        flags[i] = false;
+        flags[i].clear();
         allObjects[i] = o;
         handles.push_back (static_cast<Handle> (i));
         ++i;
@@ -146,10 +146,8 @@ template <typename ObjectType>
 void DirtyList<ObjectType>::markAsDirty (Handle objectHandle)
 {
     CHOC_ASSERT (objectHandle < allObjects.size());
-    auto& flag = flags[objectHandle];
 
-    bool expected = false;
-    if (flag.compare_exchange_strong (expected, true))
+    if (! flags[objectHandle].test_and_set())
         fifo.push (objectHandle);
 }
 
@@ -161,7 +159,7 @@ ObjectType* DirtyList<ObjectType>::popNextDirtyObject()
     if (! fifo.pop (item))
         return nullptr;
 
-    flags[item] = false;
+    flags[item].clear();
     return allObjects[item];
 }
 

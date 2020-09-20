@@ -66,7 +66,7 @@ struct SingleReaderMultipleWriterFIFO
 
 private:
     choc::fifo::SingleReaderSingleWriterFIFO<Item> fifo;
-    std::atomic<bool> writerActive { false };
+    std::atomic_flag writerActive = ATOMIC_FLAG_INIT;
 
     SingleReaderMultipleWriterFIFO (const SingleReaderMultipleWriterFIFO&) = delete;
 };
@@ -85,32 +85,22 @@ private:
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (const Item& item)
 {
-    for (;;)
-    {
-        bool expected = false;
+    while (writerActive.test_and_set (std::memory_order_acquire))
+    {}
 
-        if (writerActive.compare_exchange_weak (expected, true))
-        {
-            auto result = fifo.push (item);
-            writerActive = false;
-            return result;
-        }
-    }
+    auto result = fifo.push (item);
+    writerActive.clear();
+    return result;
 }
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (Item&& item)
 {
-    for (;;)
-    {
-        bool expected = false;
+    while (writerActive.test_and_set (std::memory_order_acquire))
+    {}
 
-        if (writerActive.compare_exchange_weak (expected, true))
-        {
-            auto result = fifo.push (std::move (item));
-            writerActive = false;
-            return result;
-        }
-    }
+    auto result = fifo.push (std::move (item));
+    writerActive.clear();
+    return result;
 }
 
 } // choc::fifo
