@@ -44,7 +44,9 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
         registerBindings();
 
         addAndMakeVisible (reactRootComponent);
-        setSize (300, 150);
+
+        auto size = patch.getStoredEditorSize (ids.viewSize, { 400, 300 });
+        setSize (size.width, size.height);
         setResizeLimits (200, 100, 4000, 4000);
 
         auto fileToLoad = juce::File::getCurrentWorkingDirectory()
@@ -99,6 +101,8 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
     void resized() override
     {
         reactRootComponent.setBounds (getLocalBounds());
+
+        patch.storeEditorSize (ids.viewSize, { getWidth(), getHeight() });
     }
 
 private:
@@ -305,7 +309,7 @@ private:
     juce::var setParameterValue (const juce::String& paramID, float value)
     {
         if (auto param = getParameterForID (paramID))
-            param->setFullRangeValueNotifyingHost (value);
+            param->setFullRangeValueNotifyingHost ((std::isnan (value) || std::isinf (value)) ? 0.0f : value);
 
         return juce::var::undefined();
     }
@@ -401,7 +405,8 @@ private:
                                isInstrument { "isInstrument" },
                                category     { "category" },
                                manufacturer { "manufacturer" },
-                               stringValue  { "stringValue" };
+                               stringValue  { "stringValue" },
+                               viewSize     { "viewSize" };
     };
 
     IDs ids;
