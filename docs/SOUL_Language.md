@@ -1181,6 +1181,7 @@ A set of built-in functions are provided which take *types* as parameters rather
 
 | function              | operation                                                                            |
 |-----------------------|--------------------------------------------------------------------------------------|
+| `type(T)`             | given an endpoint or value, this evaluates to its type                               |
 | `size(T)`             | returns the number of elements in a vector or array                                  |
 | `elementType(T)`      | returns the type of a vector or array's elements, e.g. `elementType(int[4]) == int`  |
 | `primitiveType(T)`    | returns the scalar type of a primitive or vector, e.g. `primitiveType(int<4>) -> int`|
@@ -1346,6 +1347,21 @@ loop
     if (++x > 10)
         break;
 }
+```
+
+Range-based `for` loops are allowed if the for statement contains just a variable with a `wrap` type, e.g.
+
+```C++
+for (wrap<5> i)
+    console << i << " ";     // prints 0 1 2 3 4
+
+for (wrap<6> i = 2)
+    console << i << " ";     // prints 2 3 4 5
+
+float[4] a;
+
+for (wrap<a.size> i) // iterates over all the indexes in the variable 'a'
+    a[i] = i * 3.0f;
 ```
 
 ### Reading and writing to endpoints
