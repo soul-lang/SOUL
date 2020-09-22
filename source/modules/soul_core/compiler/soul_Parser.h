@@ -1749,6 +1749,9 @@ private:
                     throwError (Errors::externalNeedsInitialiser());
 
                 initialValue = parseSuffixes (parseExpression());
+
+                if (! AST::isPossiblyValue (initialValue))
+                    initialValue->context.throwError (Errors::expectedValue());
             }
             else
             {
