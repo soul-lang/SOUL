@@ -723,7 +723,9 @@ private:
             if (failIfNotResolved (e))
                 return e;
 
-            if (v.variable->numWrites == 0 && v.variable->initialValue != nullptr)
+            if (v.variable->numWrites == 0
+                 && v.variable->initialValue != nullptr
+                 && ! v.variable->doNotConstantFold)
             {
                 if (failIfNotResolved (*v.variable->initialValue))
                     return e;
@@ -1324,26 +1326,6 @@ private:
             }
 
             return b;
-        }
-
-        AST::Expression& visit (AST::DotOperator& d) override
-        {
-            super::visit (d);
-
-            if (d.rhs.path == "type")
-            {
-                if (auto endpoint = d.lhs->getAsEndpoint())
-                {
-                    auto types = endpoint->getDetails().getResolvedDataTypes();
-
-                    if (types.size() == 1)
-                        return allocator.allocate<AST::ConcreteType> (d.context, types.front());
-
-                    d.context.throwError (Errors::endpointHasMultipleTypes());
-                }
-            }
-
-            return d;
         }
 
         Type::ArraySize findSizeOfArray (pool_ptr<AST::Expression> value)
@@ -2490,19 +2472,21 @@ private:
             return s;
         }
 
-        AST::Statement& visit (AST::LoopStatement& s) override
+        AST::Statement& visit (AST::LoopStatement& loop) override
         {
-            if (s.numIterations != nullptr)
-            {
-                if (auto c = s.numIterations->getAsConstant())
-                    if (c->value.getAsInt64() <= 0)
-                        s.numIterations->context.throwError (Errors::negativeLoopCount());
+            super::visit (loop);
 
-                SanityCheckPass::expectSilentCastPossible (s.numIterations->context,
-                                                           Type (PrimitiveType::int64), *s.numIterations);
+            if (loop.numIterations != nullptr)
+            {
+                if (auto c = loop.numIterations->getAsConstant())
+                    if (c->value.getAsInt64() <= 0)
+                        loop.numIterations->context.throwError (Errors::negativeLoopCount());
+
+                SanityCheckPass::expectSilentCastPossible (loop.numIterations->context,
+                                                           Type (PrimitiveType::int64), *loop.numIterations);
             }
 
-            return super::visit (s);
+            return loop;
         }
 
         static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws)

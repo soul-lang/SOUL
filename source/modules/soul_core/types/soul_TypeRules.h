@@ -314,8 +314,8 @@ struct TypeRules
                 return { a, a };
 
             // If either side is a bounded int, only allow the other side to be an integer
-            if (a.isBoundedInt())  { if (b.isPrimitiveInteger()) return { a, a }; return {}; }
-            if (b.isBoundedInt())  { if (a.isPrimitiveInteger()) return { b, b }; return {}; }
+            if (a.isBoundedInt())  { if (b.isPrimitiveInteger()) return { b, b }; return {}; }
+            if (b.isBoundedInt())  { if (a.isPrimitiveInteger()) return { a, a }; return {}; }
 
             if (canSilentlyCastTo (a, b)) return { a, a };
             if (canSilentlyCastTo (b, a)) return { b, b };

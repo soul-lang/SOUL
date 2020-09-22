@@ -1024,8 +1024,8 @@ private:
         if (matchIf (Operator::minusminus))    return matchEndOfStatement (parsePreIncDec (false));
         if (matches (Operator::openParen))     return matchEndOfStatement (parseFactor());
 
-        if (matchesAny (Token::literalInt32, Token::literalInt64, Token::literalFloat64, Token::literalFloat32,
-                        Token::literalString, Operator::minus))
+        if (matchesAny (Token::literalInt32, Token::literalInt64, Token::literalFloat64,
+                        Token::literalFloat32, Token::literalString, Operator::minus))
             return parseExpressionAsStatement (false);
 
         {
@@ -1039,8 +1039,17 @@ private:
                         throwError (Errors::expectedVariableDecl());
 
                     auto context = getContext();
+                    ArrayWithPreallocation<pool_ref<AST::VariableDeclaration>, 8> variablesCreated;
+
                     parseVariableDeclaration (*type, parseIdentifier(), false, context,
-                                              [this] (AST::VariableDeclaration& v) { getCurrentBlock().addStatement (v); });
+                                              [&] (AST::VariableDeclaration& v) { variablesCreated.push_back (v); });
+
+                    if (variablesCreated.size() == 1)
+                        return variablesCreated.front();
+
+                    for (auto& v : variablesCreated)
+                        getCurrentBlock().addStatement (v);
+
                     return getNoop();
                 }
             }
@@ -1459,7 +1468,12 @@ private:
     {
         auto context = getContext();
         auto& rhs = parseExpression();
-        return allocate<AST::Assignment> (context, lhs, createBinaryOperator (context, lhs, rhs, opType));
+        auto& rhsList = allocate<AST::CommaSeparatedList> (rhs.context);
+        rhsList.items.push_back (rhs);
+        auto& getLHSType = allocate<AST::TypeMetaFunction> (lhs.context, lhs, AST::TypeMetaFunction::Op::sourceType);
+        auto& castRHS = allocate<AST::CallOrCast> (getLHSType, rhsList, false);
+
+        return allocate<AST::Assignment> (context, lhs, createBinaryOperator (context, lhs, castRHS, opType));
     }
 
     AST::Expression& parsePreIncDec (bool isIncrement)
@@ -1765,7 +1779,7 @@ private:
             v.name = name;
             parseAnnotation (v.annotation);
 
-            if (matchIf (Operator::semicolon))
+            if (matchIf (Operator::semicolon) || matches (Operator::closeParen))
                 break;
 
             expect (Operator::comma);
@@ -1865,16 +1879,33 @@ private:
         auto& block = allocate<AST::Block> (getContext(), nullptr);
         ScopedScope scope (*this, block);
         auto& loopStatement = allocate<AST::LoopStatement> (getContext());
-        block.addStatement (parseStatement());
+        auto& loopInitialiser = parseStatement();
+        block.addStatement (loopInitialiser);
         block.addStatement (loopStatement);
 
-        if (matchIf (Operator::semicolon))
-            loopStatement.condition = allocate<AST::Constant> (getContext(), Value (true));
+        if (matches (Operator::closeParen))
+        {
+            if (auto v = cast<AST::VariableDeclaration> (loopInitialiser))
+            {
+                loopStatement.rangeLoopInitialiser = v;
+                v->doNotConstantFold = true;
+                skip();
+            }
+            else
+            {
+                expect (Operator::semicolon);
+            }
+        }
         else
-            loopStatement.condition = matchEndOfStatement (parseExpression());
+        {
+            if (matchIf (Operator::semicolon))
+                loopStatement.condition = allocate<AST::Constant> (AST::Context(), Value (true));
+            else
+                loopStatement.condition = matchEndOfStatement (parseExpression());
 
-        if (! matchIf (Operator::closeParen))
-            loopStatement.iterator = matchCloseParen (parseExpression (true));
+            if (! matchIf (Operator::closeParen))
+                loopStatement.iterator = matchCloseParen (parseExpression (true));
+        }
 
         loopStatement.body = parseStatement();
         return block;

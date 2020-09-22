@@ -1460,6 +1460,7 @@ struct AST
 
         pool_ptr<Statement> iterator, body;
         pool_ptr<Expression> condition, numIterations;
+        pool_ptr<VariableDeclaration> rangeLoopInitialiser;
     };
 
     //==============================================================================
@@ -1586,6 +1587,7 @@ struct AST
         enum class Op
         {
             none,
+            sourceType,
             makeConst,
             makeConstSilent,
             makeReference,
@@ -1617,17 +1619,18 @@ struct AST
                           operationReturnsAType (op) ? ExpressionKind::type : ExpressionKind::value),
                           source (type), operation (op)
         {
-            SOUL_ASSERT (isPossiblyType (type));
         }
 
         static constexpr bool operationReturnsAType (Op op)
         {
-            return op == Op::makeConst || op == Op::makeConstSilent || op == Op::makeReference
-                    || op == Op::removeReference || op == Op::elementType || op == Op::primitiveType;
+            return op == Op::sourceType || op == Op::makeConst || op == Op::makeConstSilent
+                    || op == Op::makeReference || op == Op::removeReference
+                    || op == Op::elementType || op == Op::primitiveType;
         }
 
         static Op getOperationForName (Identifier name)
         {
+            if (name == "type")             return Op::sourceType;
             if (name == "elementType")      return Op::elementType;
             if (name == "primitiveType")    return Op::primitiveType;
             if (name == "size")             return Op::size;
@@ -1685,6 +1688,7 @@ struct AST
                 case Op::isConst:           return inputType.isConst();
 
                 case Op::none:
+                case Op::sourceType:
                 case Op::makeConst:
                 case Op::makeConstSilent:
                 case Op::makeReference:
@@ -1708,11 +1712,9 @@ struct AST
 
         bool isResolved() const override
         {
-            if (isResolvedAsValue (source.get()))
-                return checkSourceType (source->getResultType());
-
-            if (isResolvedAsType (source.get()))
-                return checkSourceType (source->resolveAsType());
+            if (isResolvedAsValue (source.get()))      return checkSourceType (source->getResultType());
+            if (isResolvedAsType (source.get()))       return checkSourceType (source->resolveAsType());
+            if (isResolvedAsEndpoint (source.get()))   return operation == Op::sourceType;
 
             return false;
         }
@@ -1721,8 +1723,9 @@ struct AST
 
         pool_ptr<StructDeclaration> getAsStruct() override
         {
-            if (operation == Op::makeConst || operation == Op::makeConstSilent
-                 || operation == Op::makeReference || operation == Op::removeReference)
+            if (operation == Op::sourceType || operation == Op::makeConst
+                 || operation == Op::makeConstSilent || operation == Op::makeReference
+                 || operation == Op::removeReference)
                 return source->getAsStruct();
 
             return {};
@@ -1735,6 +1738,7 @@ struct AST
 
             auto type = getSourceType();
 
+            if (operation == Op::sourceType)       return type;
             if (operation == Op::makeConst)        return type.createConst();
             if (operation == Op::makeConstSilent)  return type.createConstIfNotPresent();
             if (operation == Op::makeReference)    return type.isReference() ? type : type.createReference();
@@ -1776,8 +1780,20 @@ struct AST
 
         Type getSourceType() const
         {
-            return isResolvedAsType (source.get()) ? source->resolveAsType()
-                                                   : source->getResultType();
+            if (isResolvedAsType (source.get()))
+                return source->resolveAsType();
+
+            if (auto endpoint = source->getAsEndpoint())
+            {
+                auto types = endpoint->getDetails().getResolvedDataTypes();
+
+                if (types.size() == 1)
+                    return types.front();
+
+                context.throwError (Errors::endpointHasMultipleTypes());
+            }
+
+            return source->getResultType();
         }
 
         Value getResultValue() const
@@ -1813,6 +1829,7 @@ struct AST
                     return PrimitiveType::bool_;
 
                 case Op::none:
+                case Op::sourceType:
                 case Op::makeConst:
                 case Op::makeConstSilent:
                 case Op::makeReference:
@@ -1903,6 +1920,7 @@ struct AST
         bool isFunctionParameter = false;
         bool isConstant = false;
         bool isExternal = false;
+        bool doNotConstantFold = false;
         size_t numReads = 0, numWrites = 0;
 
         pool_ptr<heart::Variable> generatedVariable;

@@ -752,10 +752,36 @@ private:
         auto& startBlock = builder.createBlock ("@loop_", labelIndex);
         auto& bodyBlock  = builder.createBlock ("@body_", labelIndex);
 
-        if (l.numIterations != nullptr)
+        if (auto rangeLoopVar = l.rangeLoopInitialiser)
         {
-            SOUL_ASSERT (l.iterator == nullptr);
-            SOUL_ASSERT (l.condition == nullptr);
+            SOUL_ASSERT (l.iterator == nullptr && l.condition == nullptr);
+            auto type = rangeLoopVar->getType();
+
+            if (! type.isBoundedInt())
+                rangeLoopVar->context.throwError (Errors::rangeBasedForMustBeWrapType());
+
+            auto numIterations = type.getBoundedIntLimit();
+            auto& counterVar = builder.createMutableLocalVariable (Type::getBoundedIntSizeType(), "$counter_" + std::to_string (labelIndex));
+
+            if (auto init = rangeLoopVar->initialValue)
+                builder.addAssignment (counterVar, builder.createCastIfNeeded (rangeLoopVar->getGeneratedVariable(), Type::getBoundedIntSizeType()));
+            else
+                builder.addZeroAssignment (counterVar);
+
+            builder.beginBlock (startBlock);
+            auto& isCounterInRange = builder.createBinaryOp (l.context.location, counterVar,
+                                                             builder.createConstant (Value (numIterations)),
+                                                             BinaryOp::Op::lessThan);
+            builder.addBranchIf (isCounterInRange, bodyBlock, breakBlock, bodyBlock);
+
+            builder.addCastOrAssignment (rangeLoopVar->getGeneratedVariable(), counterVar);
+            visitAsStatement (l.body);
+            builder.beginBlock (continueBlock);
+            builder.incrementValue (counterVar);
+        }
+        else if (l.numIterations != nullptr)
+        {
+            SOUL_ASSERT (l.iterator == nullptr && l.condition == nullptr);
             auto indexType = l.numIterations->getResultType();
 
             if (! indexType.isPrimitiveInteger())

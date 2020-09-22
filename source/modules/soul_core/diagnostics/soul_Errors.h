@@ -196,6 +196,7 @@ namespace soul
     X(nonIntegerArrayIndex,                 "An array index must be an integer type") \
     X(nonConstArraySize,                    "Expected a constant value for the array size") \
     X(negativeLoopCount,                    "Number of iterations must be a positive number") \
+    X(rangeBasedForMustBeWrapType,          "A range-based-for loop must declare a variable with a 'wrap' type") \
     X(preIncDecCollision,                   "Variables which have the ++ or -- operator applied can not be used twice within the same statement") \
     X(functionCannotBeExternal,             "A function declaration cannot be marked 'external'") \
     X(noConstOnExternals,                   "External declarations do not require the 'const' keyword") \

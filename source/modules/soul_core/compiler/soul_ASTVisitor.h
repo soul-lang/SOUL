@@ -224,6 +224,7 @@ struct ASTVisitor
         visitObjectIfNotNull (l.body);
         visitObjectIfNotNull (l.condition);
         visitObjectIfNotNull (l.numIterations);
+        visitObjectIfNotNull (l.rangeLoopInitialiser);
     }
 
     virtual void visit (AST::NoopStatement&)
@@ -652,6 +653,7 @@ struct RewritingASTVisitor
     {
         replaceExpression (l.condition);
         replaceExpression (l.numIterations);
+        replaceAs (l.rangeLoopInitialiser);
         replaceStatement (l.iterator);
         replaceStatement (l.body);
         return l;
