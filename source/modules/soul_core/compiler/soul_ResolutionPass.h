@@ -173,6 +173,15 @@ private:
             return RewritingASTVisitor::visit (i);
         }
 
+        bool failIfNotResolved (AST::Expression& e)
+        {
+            if (e.isResolved())
+                return false;
+
+            ++numFails;
+            return true;
+        }
+
         ResolutionPass& owner;
         AST::Allocator& allocator;
         AST::ModuleBase& module;
@@ -547,6 +556,9 @@ private:
             if (std::addressof (result) != std::addressof (d))
                 return result;
 
+            if (failIfNotResolved (d.lhs))
+                return result;
+
             if (currentConnection != nullptr)
             {
                 if (auto processorInstance = cast<AST::ProcessorInstanceRef> (d.lhs))
@@ -681,15 +693,6 @@ private:
             : super (rp, shouldIgnoreErrors) { SOUL_ASSERT (shouldIgnoreErrors); }
 
         bool isUsedAsReference = false;
-
-        bool failIfNotResolved (AST::Expression& e)
-        {
-            if (e.isResolved())
-                return false;
-
-            ++numFails;
-            return true;
-        }
 
         AST::Expression& createConstant (const AST::Context& c, Value v)
         {
@@ -1168,7 +1171,7 @@ private:
                         else
                         {
                             if (! ignoreErrors)
-                                s.context.throwError (Errors::wrapOrClampSizeMustBeConstant());
+                                s.rhs->context.throwError (Errors::wrapOrClampSizeMustBeConstant());
                         }
                     }
                 }
