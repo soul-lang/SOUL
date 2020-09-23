@@ -92,10 +92,13 @@ namespace soul
     X(cannotFindInput,                      "Cannot find input $Q0$") \
     X(cannotFindOutput,                     "Cannot find output $Q0$") \
     X(cannotFindEndpoint,                   "Cannot find endpoint $Q0$") \
-    X(mustBeOnlyOneEndpoint,                "This processor has multiple endpoints, so the required one must be specified") \
+    X(cannotConnectFromAnInput,             "The endpoint $Q0$ is an input, so cannot be connected to $Q1$") \
+    X(cannotConnectToAnOutput,              "The endpoint $Q1$ is an output, so cannot take an input from $Q0$") \
     X(processorHasNoSuitableInputs,         "This processor has no suitable input endpoints") \
     X(processorHasNoSuitableOutputs,        "This processor has no suitable output endpoints") \
-    X(cannotChainConnectionWithMultiple,     "Cannot create a chained sequence of connections when multiple endpoints are specified") \
+    X(mustBeOnlyOneEndpoint,                "A processor can only be placed inside a chain if it has exactly one input and one output") \
+    X(cannotNameEndpointInChain,            "A processor that is chained between two others cannot specify an endpoint name") \
+    X(cannotChainConnectionWithMultiple,    "Cannot create a chained sequence of connections when multiple endpoints are specified") \
     X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
     X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \
@@ -230,6 +233,7 @@ namespace soul
     X(cannotResolveBracketedExp,            "Cannot resolve bracketed expression in this context") \
     X(cannotResolveSourceType,              "Cannot resolve source type") \
     X(illegalTypesForBinaryOperator,        "Illegal types for binary operator $Q0$ ($Q1$ and $Q2$)") \
+    X(cannotOperateOnArrays,                "The $Q0$ operator can be applied to vector types, but not arrays") \
     X(eventFunctionIndexInvalid,            "Event Handlers for event arrays need a first argument index integer type") \
     X(noMatchForFunctionCall,               "No suitable override found for function call: $0$") \
     X(ambiguousFunctionCall,                "Ambiguous function call: $0$") \

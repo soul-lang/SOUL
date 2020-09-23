@@ -115,6 +115,7 @@ struct heart::Checker
                 for (auto& conn : m->connections)
                 {
                     pool_ptr<heart::IODeclaration> sourceOutput, destInput;
+                    bool sourceWasAnInput = false, destWasAnOutput = false;
                     size_t sourceInstanceArraySize = 1, destInstanceArraySize = 1;
                     auto sourceDescription = conn->source.endpointName;
                     auto destDescription   = conn->dest.endpointName;
@@ -138,6 +139,9 @@ struct heart::Checker
                         sourceOutput = sourceModule->findOutput (conn->source.endpointName);
                         sourceInstanceArraySize = conn->source.endpointIndex.has_value() ? sourceProcessor->arraySize : 1;
                         sourceDescription = sourceProcessor->instanceName + "." + sourceDescription;
+
+                        if (sourceOutput == nullptr)
+                            sourceWasAnInput = sourceModule->findInput (conn->source.endpointName) != nullptr;
                     }
                     else
                     {
@@ -154,14 +158,22 @@ struct heart::Checker
                         destInput = destModule->findInput (conn->dest.endpointName);
                         destInstanceArraySize = conn->dest.endpointIndex.has_value() ? destProcessor->arraySize : 1;
                         destDescription = destProcessor->instanceName + "." + destDescription;
+
+                        if (destInput == nullptr)
+                            destWasAnOutput = destModule->findOutput (conn->dest.endpointName) != nullptr;
                     }
                     else
                     {
                         destInput = m->findOutput (conn->dest.endpointName);
                     }
 
-                    if (sourceOutput == nullptr)  conn->location.throwError (Errors::cannotFindSource (sourceDescription));
-                    if (destInput == nullptr)     conn->location.throwError (Errors::cannotFindDestination (destDescription));
+                    if (sourceOutput == nullptr)
+                        conn->location.throwError (sourceWasAnInput ? Errors::cannotConnectFromAnInput (sourceDescription, destDescription)
+                                                                    : Errors::cannotFindSource (sourceDescription));
+
+                    if (destInput == nullptr)
+                        conn->location.throwError (destWasAnOutput ? Errors::cannotConnectToAnOutput (sourceDescription, destDescription)
+                                                                   : Errors::cannotFindDestination (destDescription));
 
                     if (conn->source.endpointIndex && sourceOutput->arraySize <= conn->source.endpointIndex)
                         conn->location.throwError (Errors::sourceEndpointIndexOutOfRange());

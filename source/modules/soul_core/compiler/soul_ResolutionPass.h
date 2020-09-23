@@ -1323,12 +1323,20 @@ private:
                 auto resultType = b.getOperandType();
 
                 if (! resultType.isValid() && ! ignoreErrors)
-                    b.context.throwError (Errors::illegalTypesForBinaryOperator (getSymbol (b.operation),
-                                                                                 b.lhs->getResultType().getDescription(),
-                                                                                 b.rhs->getResultType().getDescription()));
+                    throwErrorForBinaryOperatorTypes (b);
             }
 
             return b;
+        }
+
+        static void throwErrorForBinaryOperatorTypes (AST::BinaryOperator& b)
+        {
+            if (b.lhs->getResultType().isArray() && b.rhs->getResultType().isArray())
+                b.context.throwError (Errors::cannotOperateOnArrays (getSymbol (b.operation)));
+
+            b.context.throwError (Errors::illegalTypesForBinaryOperator (getSymbol (b.operation),
+                                                                         b.lhs->getResultType().getDescription(),
+                                                                         b.rhs->getResultType().getDescription()));
         }
 
         Type::ArraySize findSizeOfArray (pool_ptr<AST::Expression> value)
@@ -2328,9 +2336,7 @@ private:
             }
             else if (! operandType.isValid())
             {
-                b.context.throwError (Errors::illegalTypesForBinaryOperator (getSymbol (b.operation),
-                                                                             b.lhs->getResultType().getDescription(),
-                                                                             b.rhs->getResultType().getDescription()));
+                TypeResolver::throwErrorForBinaryOperatorTypes (b);
             }
 
             return b;

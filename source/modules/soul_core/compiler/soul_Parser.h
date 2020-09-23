@@ -572,6 +572,9 @@ private:
                 if (dests.size() != 1)
                     dests.back()->context.throwError (Errors::cannotChainConnectionWithMultiple());
 
+                if (auto dot = cast<AST::DotOperator> (dests.back()))
+                    dot->rhs.context.throwError (Errors::cannotNameEndpointInChain());
+
                 sources = dests;
                 dests.clear();
                 continue;
