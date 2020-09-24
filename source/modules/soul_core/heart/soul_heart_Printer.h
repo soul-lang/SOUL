@@ -334,6 +334,9 @@ private:
             std::vector<std::string> usedNames;
             usedNames.reserve (localVars.size());
 
+            for (auto& v : f.parameters)
+                usedNames.push_back (v->name.toString());
+
             for (auto& v : localVars)
             {
                 SOUL_ASSERT (v->isMutableLocal() || v->isConstant());
