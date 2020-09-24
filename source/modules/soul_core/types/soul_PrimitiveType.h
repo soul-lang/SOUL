@@ -35,6 +35,8 @@ struct PrimitiveType  final
         float32,
         float64,
         fixed,
+        complex32,
+        complex64,
         int32,
         int64,
         bool_
@@ -55,6 +57,9 @@ struct PrimitiveType  final
     bool isFloat64() const;
     bool isFloatingPoint() const;
     bool isFixed() const;
+    bool isComplex() const;
+    bool isComplex32() const;
+    bool isComplex64() const;
     bool isInteger() const;
     bool isInteger32() const;
     bool isInteger64() const;

@@ -37,6 +37,9 @@ bool PrimitiveType::isFloat32() const               { return type == Primitive::
 bool PrimitiveType::isFloat64() const               { return type == Primitive::float64; }
 bool PrimitiveType::isFloatingPoint() const         { return isFloat32() || isFloat64(); }
 bool PrimitiveType::isFixed() const                 { return type == Primitive::fixed; }
+bool PrimitiveType::isComplex() const               { return type == Primitive::complex32 || type == Primitive::complex64; }
+bool PrimitiveType::isComplex32() const             { return type == Primitive::complex32; }
+bool PrimitiveType::isComplex64() const             { return type == Primitive::complex64; }
 bool PrimitiveType::isInteger() const               { return type == Primitive::int32 || type == Primitive::int64; }
 bool PrimitiveType::isInteger32() const             { return type == Primitive::int32; }
 bool PrimitiveType::isInteger64() const             { return type == Primitive::int64; }
@@ -52,6 +55,8 @@ const char* PrimitiveType::getDescription() const
         case Primitive::float32:        return "float32";
         case Primitive::float64:        return "float64";
         case Primitive::fixed:          return "fixed";
+        case Primitive::complex32:      return "complex32";
+        case Primitive::complex64:      return "complex64";
         case Primitive::int32:          return "int32";
         case Primitive::int64:          return "int64";
         case Primitive::bool_:          return "bool";
@@ -67,6 +72,8 @@ const char* PrimitiveType::getShortIdentifierDescription() const
         case Primitive::float32:        return "f32";
         case Primitive::float64:        return "f64";
         case Primitive::fixed:          return "fix";
+        case Primitive::complex32:      return "c32";
+        case Primitive::complex64:      return "c64";
         case Primitive::int32:          return "i32";
         case Primitive::int64:          return "i64";
         case Primitive::bool_:          return "b";
@@ -82,6 +89,8 @@ size_t PrimitiveType::getPackedSizeInBytes() const
         case Primitive::float32:        return 4;
         case Primitive::float64:        return 8;
         case Primitive::fixed:          return 4;
+        case Primitive::complex32:      return 8;
+        case Primitive::complex64:      return 16;
         case Primitive::int32:          return 4;
         case Primitive::int64:          return 8;
         case Primitive::bool_:          return 1;
@@ -191,6 +200,9 @@ bool Type::isVoid() const                 { return primitiveType.isVoid(); }
 bool Type::isFloat32() const              { return primitiveType.isFloat32(); }
 bool Type::isFloat64() const              { return primitiveType.isFloat64(); }
 bool Type::isFloatingPoint() const        { return primitiveType.isFloatingPoint(); }
+bool Type::isComplex() const              { return primitiveType.isComplex(); }
+bool Type::isComplex32() const            { return primitiveType.isComplex32(); }
+bool Type::isComplex64() const            { return primitiveType.isComplex64(); }
 bool Type::isInteger() const              { return primitiveType.isInteger(); }
 bool Type::isInteger32() const            { return primitiveType.isInteger32(); }
 bool Type::isInteger64() const            { return primitiveType.isInteger64(); }

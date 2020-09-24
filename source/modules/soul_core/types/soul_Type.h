@@ -45,6 +45,9 @@ struct Type  final
     bool isFloat32() const;
     bool isFloat64() const;
     bool isFloatingPoint() const;
+    bool isComplex() const;
+    bool isComplex32() const;
+    bool isComplex64() const;
     bool isInteger() const;
     bool isInteger32() const;
     bool isInteger64() const;

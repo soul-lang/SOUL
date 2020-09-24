@@ -36,7 +36,8 @@ namespace Keyword
         X(struct_,    "struct")     X(import,     "import")     X(switch_,  "switch")     X(public_,    "public") \
         X(double_,    "double")     X(private_,   "private")    X(float32,  "float32")    X(float64,    "float64") \
         X(default_,   "default")    X(continue_,  "continue")   X(external, "external")   X(operator_,  "operator") \
-        X(processor,  "processor")  X(namespace_, "namespace")  X(connection, "connection")
+        X(processor,  "processor")  X(namespace_, "namespace")  X(connection, "connection") \
+        X(complex,    "complex")    X(complex32,  "complex32")  X(complex64, "complex64")
 
     SOUL_KEYWORDS (SOUL_DECLARE_TOKEN)
 
@@ -1672,6 +1673,12 @@ private:
         if (matchIf (Keyword::fixed))
         {
             context.throwError (Errors::notYetImplemented ("Fixed point type support"));
+            return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::fixed), parseContext);
+        }
+
+        if (matchIf (Keyword::complex) || matchIf (Keyword::complex32) || matchIf (Keyword::complex64))
+        {
+            context.throwError (Errors::notYetImplemented ("Complex type support"));
             return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::fixed), parseContext);
         }
 

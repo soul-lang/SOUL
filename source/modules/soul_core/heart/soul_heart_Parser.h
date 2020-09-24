@@ -1683,16 +1683,18 @@ private:
 
     Type readValueType()
     {
-        if (matchIf ("float32"))  return parseVectorOrArrayTypeSuffixes (PrimitiveType::float32);
-        if (matchIf ("float64"))  return parseVectorOrArrayTypeSuffixes (PrimitiveType::float64);
-        if (matchIf ("fixed"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::fixed);
-        if (matchIf ("void"))     return parseVectorOrArrayTypeSuffixes (PrimitiveType::void_);
-        if (matchIf ("int32"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::int32);
-        if (matchIf ("int64"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::int64);
-        if (matchIf ("bool"))     return parseVectorOrArrayTypeSuffixes (PrimitiveType::bool_);
-        if (matchIf ("string"))   return parseArrayTypeSuffixes (Type::createStringLiteral());
-        if (matchIf ("wrap"))     return parseBoundedIntType (true);
-        if (matchIf ("clamp"))    return parseBoundedIntType (false);
+        if (matchIf ("float32"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::float32);
+        if (matchIf ("float64"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::float64);
+        if (matchIf ("fixed"))      return parseVectorOrArrayTypeSuffixes (PrimitiveType::fixed);
+        if (matchIf ("complex32"))  return parseVectorOrArrayTypeSuffixes (PrimitiveType::complex32);
+        if (matchIf ("complex64"))  return parseVectorOrArrayTypeSuffixes (PrimitiveType::complex64);
+        if (matchIf ("void"))       return parseVectorOrArrayTypeSuffixes (PrimitiveType::void_);
+        if (matchIf ("int32"))      return parseVectorOrArrayTypeSuffixes (PrimitiveType::int32);
+        if (matchIf ("int64"))      return parseVectorOrArrayTypeSuffixes (PrimitiveType::int64);
+        if (matchIf ("bool"))       return parseVectorOrArrayTypeSuffixes (PrimitiveType::bool_);
+        if (matchIf ("string"))     return parseArrayTypeSuffixes (Type::createStringLiteral());
+        if (matchIf ("wrap"))       return parseBoundedIntType (true);
+        if (matchIf ("clamp"))      return parseBoundedIntType (false);
 
         auto errorPos = location;
         auto name = readQualifiedGeneralIdentifier();
