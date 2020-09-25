@@ -25,6 +25,7 @@
 #define CHOC_SINGLE_READER_MULTI_WRITER_FIFO_HEADER_INCLUDED
 
 #include "choc_SingleReaderSingleWriterFIFO.h"
+#include "../platform/choc_SpinLock.h"
 
 namespace choc::fifo
 {
@@ -66,7 +67,7 @@ struct SingleReaderMultipleWriterFIFO
 
 private:
     choc::fifo::SingleReaderSingleWriterFIFO<Item> fifo;
-    std::atomic_flag writerActive = ATOMIC_FLAG_INIT;
+    choc::threading::SpinLock writeLock;
 
     SingleReaderMultipleWriterFIFO (const SingleReaderMultipleWriterFIFO&) = delete;
 };
@@ -85,21 +86,17 @@ private:
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (const Item& item)
 {
-    while (writerActive.test_and_set (std::memory_order_acquire))
-    {}
-
+    writeLock.lock();
     auto result = fifo.push (item);
-    writerActive.clear();
+    writeLock.unlock();
     return result;
 }
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (Item&& item)
 {
-    while (writerActive.test_and_set (std::memory_order_acquire))
-    {}
-
+    writeLock.lock();
     auto result = fifo.push (std::move (item));
-    writerActive.clear();
+    writeLock.unlock();
     return result;
 }
 
