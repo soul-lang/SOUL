@@ -1934,12 +1934,16 @@ private:
                 if (arraySize == 0)
                     call.context.throwError (Errors::wrongTypeForAtMethod());
             }
-            else
+            else if (array.kind == AST::ExpressionKind::value)
             {
                 auto arrayType = array.getResultType();
 
                 if (! arrayType.isArrayOrVector())
                     call.context.throwError (Errors::wrongTypeForAtMethod());
+            }
+            else
+            {
+                call.context.throwError (Errors::expectedValueOrEndpoint());
             }
 
             auto& ref = allocator.allocate<AST::ArrayElementRef> (call.context, array, index, nullptr, false);
