@@ -150,7 +150,6 @@ struct Value  final
 
     void modifySubElementInPlace (const SubElementPath&, const Value& newValue);
     void modifySubElementInPlace (const SubElementPath&, const void* newData);
-    void setFromSubElementData (const Value& sourceValue, const SubElementPath& sourceValueSubElement);
 
     Value getSlice (size_t start, size_t end) const;
 

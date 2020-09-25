@@ -80,8 +80,7 @@ struct Type  final
         ignoreReferences       = 1,
         ignoreConst            = 2,
         ignoreVectorSize1      = 4,
-        duckTypeStructures     = 8,
-        treatStringAsInt32     = 16
+        duckTypeStructures     = 8
     };
 
     bool isEqual (const Type&, int comparisonFlags) const;
