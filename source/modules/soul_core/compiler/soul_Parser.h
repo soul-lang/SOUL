@@ -1065,7 +1065,6 @@ private:
         {
             giveErrorOnExternalKeyword();
             giveErrorOnAssignmentToProcessorProperty();
-            throwError (Errors::expectedStatement());
         }
 
         return parseExpressionAsStatement (true);
@@ -1110,12 +1109,7 @@ private:
 
     AST::Expression& parseExpressionAsStatement (bool allowAssignment)
     {
-        auto& e = matchEndOfStatement (parseExpression (allowAssignment));
-
-        if (e.isCompileTimeConstant())
-            e.context.throwError (Errors::expressionHasNoEffect());
-
-        return e;
+        return matchEndOfStatement (parseExpression (allowAssignment));
     }
 
     //==============================================================================

@@ -38,7 +38,7 @@ struct SanityCheckPass  final
     {
         runEventFunctionChecker (module);
         runDuplicateNameChecker (module);
-        PostResolutionChecks().visitObject (module);
+        PostResolutionChecks().ASTVisitor::visitObject (module);
         PreAndPostIncOperatorCheck().ASTVisitor::visitObject (module);
     }
 
@@ -654,6 +654,20 @@ private:
 
             if (! UnaryOp::isTypeSuitable (u.operation, u.source->getResultType()))
                 u.source->context.throwError (Errors::wrongTypeForUnary());
+        }
+
+        void visitObject (AST::Statement& t) override
+        {
+            if (auto e = cast<AST::Expression> (t))
+            {
+                if (AST::isResolvedAsType (e))
+                    t.context.throwError (Errors::expectedStatement());
+
+                if (e->isCompileTimeConstant())
+                    t.context.throwError (Errors::expressionHasNoEffect());
+            }
+
+            super::visitObject (t);
         }
 
         void visit (AST::BinaryOperator& b) override
