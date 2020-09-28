@@ -45,6 +45,7 @@ struct AST
         X(FunctionCall) \
         X(TypeCast) \
         X(PreOrPostIncOrDec) \
+        X(InPlaceOperator) \
         X(ArrayElementRef) \
         X(StructMemberRef) \
         X(StructDeclaration) \
@@ -2163,6 +2164,22 @@ struct AST
         Type getResultType() const override         { return target->getResultType(); }
 
         pool_ref<Expression> target, newValue;
+    };
+
+    //==============================================================================
+    struct InPlaceOperator  : public Expression
+    {
+        InPlaceOperator (const Context& c, Expression& lhs, Expression& rhs, BinaryOp::Op op)
+            : Expression (ObjectType::InPlaceOperator, c, ExpressionKind::value), target (lhs), source (rhs), operation (op)
+        {
+            SOUL_ASSERT (isPossiblyValue (lhs) && isPossiblyValue (rhs));
+        }
+
+        bool isResolved() const override            { return target->isResolved() && source->isResolved(); }
+        Type getResultType() const override         { return target->getResultType(); }
+
+        pool_ref<Expression> target, source;
+        BinaryOp::Op operation;
     };
 
     //==============================================================================

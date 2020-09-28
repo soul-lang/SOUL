@@ -1081,19 +1081,19 @@ private:
     {
         auto& lhs = parseTernaryOperator();
 
-        // Re-wite equals operators as binary operators
-        // e.g. X += n -> X = X + n
-        if (matchIf (Operator::plusEquals))                 return parseInPlaceOpExpression (lhs, BinaryOp::Op::add);
-        if (matchIf (Operator::minusEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::subtract);
-        if (matchIf (Operator::timesEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::multiply);
-        if (matchIf (Operator::divideEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::divide);
-        if (matchIf (Operator::moduloEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::modulo);
-        if (matchIf (Operator::leftShiftEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::leftShift);
-        if (matchIf (Operator::rightShiftEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShift);
-        if (matchIf (Operator::rightShiftUnsignedEquals))   return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShiftUnsigned);
-        if (matchIf (Operator::xorEquals))                  return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseXor);
-        if (matchIf (Operator::andEquals))                  return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseAnd);
-        if (matchIf (Operator::orEquals))                   return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseOr);
+        if (matches (Operator::plusEquals))                 return parseInPlaceOpExpression (lhs, BinaryOp::Op::add);
+        if (matches (Operator::minusEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::subtract);
+        if (matches (Operator::timesEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::multiply);
+        if (matches (Operator::divideEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::divide);
+        if (matches (Operator::moduloEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::modulo);
+        if (matches (Operator::leftShiftEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::leftShift);
+        if (matches (Operator::rightShiftEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShift);
+        if (matches (Operator::rightShiftUnsignedEquals))   return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShiftUnsigned);
+        if (matches (Operator::xorEquals))                  return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseXor);
+        if (matches (Operator::bitwiseAndEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseAnd);
+        if (matches (Operator::bitwiseOrEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseOr);
+        if (matches (Operator::logicalAndEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::logicalAnd);
+        if (matches (Operator::logicalOrEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::logicalOr);
 
         if (matchIf (Operator::assign))
         {
@@ -1465,13 +1465,9 @@ private:
     AST::Expression& parseInPlaceOpExpression (AST::Expression& lhs, BinaryOp::Op opType)
     {
         auto context = getContext();
+        skip();
         auto& rhs = parseExpression();
-        auto& rhsList = allocate<AST::CommaSeparatedList> (rhs.context);
-        rhsList.items.push_back (rhs);
-        auto& getLHSType = allocate<AST::TypeMetaFunction> (lhs.context, lhs, AST::TypeMetaFunction::Op::sourceType);
-        auto& castRHS = allocate<AST::CallOrCast> (getLHSType, rhsList, false);
-
-        return allocate<AST::Assignment> (context, lhs, createBinaryOperator (context, lhs, castRHS, opType));
+        return allocate<AST::InPlaceOperator> (getContext(), lhs, rhs, opType);
     }
 
     AST::Expression& parsePreIncDec (bool isIncrement)

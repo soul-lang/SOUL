@@ -227,6 +227,18 @@ private:
                 isReading = oldReading;
             }
 
+            void visit (AST::InPlaceOperator& o) override
+            {
+                auto oldWriting = isWriting;
+                auto oldReading = isReading;
+                isReading = true;
+                isWriting = true;
+                visitObject (o.target);
+                isWriting = oldWriting;
+                isReading = oldReading;
+                visitObject (o.source);
+            }
+
             void visit (AST::VariableRef& v) override
             {
                 ASTVisitor::visit (v);
@@ -2382,14 +2394,11 @@ private:
             return a;
         }
 
-        static std::string getOperatorName (const AST::PreOrPostIncOrDec& p)
-        {
-            return p.isIncrement ? "++" : "--";
-        }
-
         AST::Expression& visit (AST::PreOrPostIncOrDec& p) override
         {
             super::visit (p);
+
+            auto getOperatorName = [] (const AST::PreOrPostIncOrDec& pp)  { return pp.isIncrement ? "++" : "--"; };
 
             if (! p.target->isAssignable())
                 p.context.throwError (Errors::operatorNeedsAssignableTarget (getOperatorName (p)));
@@ -2400,6 +2409,40 @@ private:
                 p.context.throwError (Errors::illegalTypeForOperator (getOperatorName (p)));
 
             return p;
+        }
+
+        AST::Expression& visit (AST::InPlaceOperator& o) override
+        {
+            super::visit (o);
+
+            if (! o.target->isAssignable())
+                o.context.throwError (Errors::operatorNeedsAssignableTarget (BinaryOp::getSymbol (o.operation)));
+
+            auto destType    = o.target->getResultType();
+            auto sourceType  = o.source->getResultType();
+
+            auto opTypes = BinaryOp::getTypes (o.operation, destType, sourceType);
+
+            if (! opTypes.resultType.isValid())
+                o.context.throwError (Errors::illegalTypesForBinaryOperator (BinaryOp::getSymbol (o.operation),
+                                                                             sourceType.getDescription(),
+                                                                             destType.getDescription()));
+
+            SanityCheckPass::expectSilentCastPossible (o.context, opTypes.operandType, o.target);
+            SanityCheckPass::expectSilentCastPossible (o.context, opTypes.operandType, o.source);
+
+            auto& binaryOp = allocator.allocate<AST::BinaryOperator> (o.context, o.target, o.source, o.operation);
+
+            // special-case handling for addition of an int to a wrap or clamp type, as we want this to
+            // work without the user needing to write it out long-hand with a cast
+            if (destType.isBoundedInt() && sourceType.isInteger()
+                 && (o.operation == BinaryOp::Op::add || o.operation == BinaryOp::Op::subtract))
+            {
+                auto& resultCast = allocator.allocate<AST::TypeCast> (o.source->context, destType, binaryOp);
+                return allocator.allocate<AST::Assignment> (o.context, o.target, resultCast);
+            }
+
+            return allocator.allocate<AST::Assignment> (o.context, o.target, binaryOp);
         }
 
         static Type getDataTypeOfArrayRefLHS (AST::ASTObject& o)

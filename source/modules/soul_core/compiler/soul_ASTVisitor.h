@@ -191,6 +191,12 @@ struct ASTVisitor
         visitObject (p.target);
     }
 
+    virtual void visit (AST::InPlaceOperator& o)
+    {
+        visitObject (o.target);
+        visitObject (o.source);
+    }
+
     virtual void visit (AST::ReturnStatement& r)
     {
         visitObjectIfNotNull (r.returnValue);
@@ -615,6 +621,13 @@ struct RewritingASTVisitor
     {
         replaceExpression (p.target);
         return p;
+    }
+
+    virtual AST::Expression& visit (AST::InPlaceOperator& o)
+    {
+        replaceExpression (o.target);
+        replaceExpression (o.source);
+        return o;
     }
 
     virtual AST::Statement& visit (AST::ReturnStatement& r)

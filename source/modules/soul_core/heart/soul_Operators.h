@@ -34,12 +34,14 @@ namespace soul
     X(notEquals,          "!=")             X(logicalNot,         "!") \
     X(plusEquals,         "+=")             X(plusplus,           "++")    X(plus,         "+") \
     X(minusEquals,        "-=")             X(minusminus,         "--")    X(rightArrow,   "->")   X(minus, "-") \
-    X(timesEquals,        "*=")             X(times,              "*") \
-    X(divideEquals,       "/=")             X(divide,             "/") \
-    X(moduloEquals,       "%=")             X(modulo,             "%") \
-    X(xorEquals,          "^=")             X(bitwiseXor,         "^") \
-    X(andEquals,          "&=")             X(logicalAnd,         "&&")    X(bitwiseAnd,   "&") \
-    X(orEquals,           "|=")             X(logicalOr,          "||")    X(bitwiseOr,    "|") \
+    X(timesEquals,        "*=")             X(times,              "*")   \
+    X(divideEquals,       "/=")             X(divide,             "/")   \
+    X(moduloEquals,       "%=")             X(modulo,             "%")   \
+    X(xorEquals,          "^=")             X(bitwiseXor,         "^")   \
+    X(bitwiseAndEquals,   "&=")             X(logicalAndEquals,   "&&=") \
+    X(logicalAnd,         "&&")             X(bitwiseAnd,         "&")   \
+    X(bitwiseOrEquals,    "|=")             X(logicalOrEquals,    "||=") \
+    X(logicalOr,          "||")             X(bitwiseOr,          "|")   \
     X(bitwiseNot,         "~") \
     X(leftShiftEquals,    "<<=")            X(leftShift,          "<<") \
     X(lessThanOrEqual,    "<=")             X(lessThan,           "<") \
@@ -188,7 +190,7 @@ namespace BinaryOp
         if (isBitwiseOperator (op))       return TypeRules::getTypesForBitwiseOp (a, b);
         if (isEqualityOperator (op))      return TypeRules::getTypesForEqualityOp (a, b);
         if (isComparisonOperator (op))    return TypeRules::getTypesForComparisonOp (a, b);
-        if (isArithmeticOperator (op))    return TypeRules::getTypesForArithmeticOp (a, b);
+        if (isArithmeticOperator (op))    return TypeRules::getTypesForArithmeticOp (a, b, false);
 
         SOUL_ASSERT_FALSE;
         return {};

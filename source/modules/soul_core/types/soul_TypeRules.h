@@ -303,13 +303,16 @@ struct TypeRules
         return isTypeSuitableForBinaryOp (a) && isTypeSuitableForBinaryOp (b);
     }
 
-    static BinaryOperatorTypes getTypesForArithmeticOp (const Type& a, const Type& b)
+    static BinaryOperatorTypes getTypesForArithmeticOp (const Type& a, const Type& b, bool allowBoolOperands)
     {
-        if (a.isReference())  return getTypesForArithmeticOp (a.removeReference(), b);
-        if (b.isReference())  return getTypesForArithmeticOp (a, b.removeReference());
+        if (a.isReference())  return getTypesForArithmeticOp (a.removeReference(), b, allowBoolOperands);
+        if (b.isReference())  return getTypesForArithmeticOp (a, b.removeReference(), allowBoolOperands);
 
         if (areTypesSuitableForBinaryOp (a, b))
         {
+            if (! allowBoolOperands && (a.isBool() || b.isBool()))
+                return {};
+
             if (a.isIdentical (b))
                 return { a, a };
 
@@ -350,7 +353,7 @@ struct TypeRules
         if (a.isBoundedInt())   return getTypesForComparisonOp (PrimitiveType::int32, b);
         if (b.isBoundedInt())   return getTypesForComparisonOp (a, PrimitiveType::int32);
 
-        auto operandType = getTypesForArithmeticOp (a, b).operandType;
+        auto operandType = getTypesForArithmeticOp (a, b, true).operandType;
 
         if (operandType.isValid()
              && a.getVectorSize() == b.getVectorSize())
