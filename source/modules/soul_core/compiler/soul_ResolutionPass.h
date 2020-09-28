@@ -1627,8 +1627,9 @@ private:
                                 SOUL_ASSERT (paramTypes.size() == call.getNumArguments());
 
                                 for (size_t i = 0; i < paramTypes.size(); ++i)
-                                    SanityCheckPass::expectSilentCastPossible (call.arguments->items[i]->context,
-                                                                               paramTypes[i], call.arguments->items[i]);
+                                    if (! TypeRules::canPassAsArgumentTo (paramTypes[i], call.arguments->items[i]->getResultType(), true))
+                                        SanityCheckPass::expectSilentCastPossible (call.arguments->items[i]->context,
+                                                                                   paramTypes[i], call.arguments->items[i]);
                             }
 
                             if (totalMatches == 0 || matchingGenerics.size() <= 1)
@@ -1659,7 +1660,9 @@ private:
             PossibleFunction() = delete;
             PossibleFunction (PossibleFunction&&) = default;
 
-            PossibleFunction (AST::Function& f, ArrayView<Type> argTypes, ArrayView<pool_ptr<AST::Constant>> constantArgValues) : function (f)
+            PossibleFunction (AST::Function& f, ArrayView<Type> argTypes,
+                              ArrayView<pool_ptr<AST::Constant>> constantArgValues)
+                : function (f)
             {
                 for (size_t i = 0; i < argTypes.size(); ++i)
                 {
