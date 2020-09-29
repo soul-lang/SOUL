@@ -14,6 +14,7 @@
 #endif
 
 #include "../../soul_patch.h"
+#include "../../patch/helper_classes/soul_patch_Utilities.h"
 #include "../../common/soul_ProgramDefinitions.h"
 
 namespace soul
