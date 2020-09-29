@@ -54,9 +54,9 @@ struct FIFOReadWritePosition
     /** Returns the total number of items that the FIFO has been set up to hold. */
     IndexType getTotalCapacity() const                   { return capacity; }
     /** Returns the number of items in the FIFO. */
-    IndexType getUsedSlots() const                       { return getUsed (validStart, validEnd); }
+    IndexType getUsedSlots() const                       { return getUsed (readPos, writePos); }
     /** Returns the number of free slots in the FIFO. */
-    IndexType getFreeSlots() const                       { return getFree (validStart, validEnd); }
+    IndexType getFreeSlots() const                       { return getFree (readPos, writePos); }
 
     //==============================================================================
     struct WriteSlot
@@ -116,7 +116,7 @@ struct FIFOReadWritePosition
 private:
     //==============================================================================
     uint32_t capacity = 0;
-    AtomicType validStart, validEnd;
+    AtomicType readPos, writePos;
 
     uint32_t getUsed (uint32_t s, uint32_t e) const   { return e >= s ? (e - s) : (capacity + 1u - (s - e)); }
     uint32_t getFree (uint32_t s, uint32_t e) const   { return e >= s ? (capacity + 1u - (e - s)) : (s - e); }
@@ -148,17 +148,17 @@ template <typename IndexType, typename AtomicType> void FIFOReadWritePosition<In
 
 template <typename IndexType, typename AtomicType> void FIFOReadWritePosition<IndexType, AtomicType>::reset()
 {
-    validStart = 0;
-    validEnd = 0;
+    readPos = 0;
+    writePos = 0;
 }
 
 template <typename IndexType, typename AtomicType> typename FIFOReadWritePosition<IndexType, AtomicType>::WriteSlot FIFOReadWritePosition<IndexType, AtomicType>::lockSlotForWriting()
 {
     WriteSlot slot;
-    slot.index = validEnd.load();
+    slot.index = writePos.load();
     slot.newEnd = increment (slot.index);
 
-    if (slot.newEnd == validStart)
+    if (slot.newEnd == readPos)
         slot.index = invalidIndex;
 
     return slot;
@@ -166,15 +166,15 @@ template <typename IndexType, typename AtomicType> typename FIFOReadWritePositio
 
 template <typename IndexType, typename AtomicType> void FIFOReadWritePosition<IndexType, AtomicType>::unlock (WriteSlot slot)
 {
-    validEnd = slot.newEnd;
+    writePos = slot.newEnd;
 }
 
 template <typename IndexType, typename AtomicType> typename FIFOReadWritePosition<IndexType, AtomicType>::ReadSlot FIFOReadWritePosition<IndexType, AtomicType>::lockSlotForReading()
 {
     ReadSlot slot;
-    slot.index = validStart.load();
+    slot.index = readPos.load();
 
-    if (slot.index == validEnd)
+    if (slot.index == writePos)
     {
         slot.index = invalidIndex;
         slot.newStart = slot.index;
@@ -189,7 +189,7 @@ template <typename IndexType, typename AtomicType> typename FIFOReadWritePositio
 
 template <typename IndexType, typename AtomicType> void FIFOReadWritePosition<IndexType, AtomicType>::unlock (ReadSlot slot)
 {
-    validStart = slot.newStart;
+    readPos = slot.newStart;
 }
 
 

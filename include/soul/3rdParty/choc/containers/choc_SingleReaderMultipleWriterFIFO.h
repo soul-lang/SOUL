@@ -40,7 +40,10 @@ struct SingleReaderMultipleWriterFIFO
     SingleReaderMultipleWriterFIFO() = default;
     ~SingleReaderMultipleWriterFIFO() = default;
 
-    /** Clears the FIFO and allocates a size for it. */
+    /** Clears the FIFO and allocates a size for it.
+        Note that this is not thread-safe with respect to the other methods - it must
+        only be called when nothing else is modifying the FIFO.
+    */
     void reset (size_t numItems)                                { fifo.reset (numItems); }
 
     /** Clears the FIFO and allocates a size for it, filling the slots with
@@ -86,18 +89,14 @@ private:
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (const Item& item)
 {
-    writeLock.lock();
-    auto result = fifo.push (item);
-    writeLock.unlock();
-    return result;
+    const std::lock_guard<decltype (writeLock)> lock (writeLock);
+    return fifo.push (item);
 }
 
 template <typename Item> bool SingleReaderMultipleWriterFIFO<Item>::push (Item&& item)
 {
-    writeLock.lock();
-    auto result = fifo.push (std::move (item));
-    writeLock.unlock();
-    return result;
+    const std::lock_guard<decltype (writeLock)> lock (writeLock);
+    return fifo.push (std::move (item));
 }
 
 } // choc::fifo

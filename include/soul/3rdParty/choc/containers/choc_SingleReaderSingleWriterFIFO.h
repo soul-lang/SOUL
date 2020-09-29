@@ -47,6 +47,8 @@ struct SingleReaderSingleWriterFIFO
 
     /** Clears the FIFO and allocates a size for it, filling the slots with
         copies of the given object.
+        Note that this is not thread-safe with respect to the other methods - it must
+        only be called when nothing else is modifying the FIFO.
     */
     void reset (size_t numItems, const Item& itemInitialiser);
 
