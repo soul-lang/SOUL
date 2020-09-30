@@ -2157,7 +2157,6 @@ struct AST
         Assignment (const Context& c, Expression& dest, Expression& source)
             : Expression (ObjectType::Assignment, c, ExpressionKind::value), target (dest), newValue (source)
         {
-            SOUL_ASSERT (isPossiblyValue (target.get()) && isPossiblyValue (newValue.get()));
         }
 
         bool isResolved() const override            { return target->isResolved() && newValue->isResolved(); }
@@ -2172,11 +2171,10 @@ struct AST
         InPlaceOperator (const Context& c, Expression& lhs, Expression& rhs, BinaryOp::Op op)
             : Expression (ObjectType::InPlaceOperator, c, ExpressionKind::value), target (lhs), source (rhs), operation (op)
         {
-            SOUL_ASSERT (isPossiblyValue (lhs) && isPossiblyValue (rhs));
         }
 
         bool isResolved() const override            { return target->isResolved() && source->isResolved(); }
-        Type getResultType() const override         { return target->getResultType(); }
+        Type getResultType() const override         { return {}; }
 
         pool_ref<Expression> target, source;
         BinaryOp::Op operation;
@@ -2188,7 +2186,6 @@ struct AST
         PreOrPostIncOrDec (const Context& c, Expression& input, bool inc, bool post)
             : Expression (ObjectType::PreOrPostIncOrDec, c, ExpressionKind::value), target (input), isIncrement (inc), isPost (post)
         {
-            SOUL_ASSERT (isPossiblyValue (input));
         }
 
         bool isResolved() const override            { return target->isResolved(); }
@@ -2205,7 +2202,6 @@ struct AST
             : Expression (ObjectType::ArrayElementRef, c, ExpressionKind::value),
               object (o), startIndex (start), endIndex (end), isSlice (slice)
         {
-            SOUL_ASSERT (isPossiblyValue (object) || isPossiblyEndpoint (object));
         }
 
         bool isAssignable() const override          { return object->isAssignable(); }

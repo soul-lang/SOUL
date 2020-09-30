@@ -2421,6 +2421,8 @@ private:
             if (! o.target->isAssignable())
                 o.context.throwError (Errors::operatorNeedsAssignableTarget (BinaryOp::getSymbol (o.operation)));
 
+            SanityCheckPass::throwErrorIfNotReadableValue (o.source);
+
             auto destType    = o.target->getResultType();
             auto sourceType  = o.source->getResultType();
 
@@ -2514,6 +2516,7 @@ private:
                 if (s.isSlice)
                     s.startIndex->context.throwError (Errors::notYetImplemented ("Dynamic slice indexes"));
 
+                SanityCheckPass::throwErrorIfNotReadableValue (*s.startIndex);
                 auto indexType = s.startIndex->getResultType();
 
                 if (lhsType.isUnsizedArray())

@@ -233,6 +233,7 @@ namespace soul
     X(cannotResolveBracketedExp,            "Cannot resolve bracketed expression in this context") \
     X(cannotResolveSourceType,              "Cannot resolve source type") \
     X(illegalTypesForBinaryOperator,        "Illegal types for binary operator $Q0$ ($Q1$ and $Q2$)") \
+    X(inPlaceOperatorMustBeStatement,       "The in-place operator $Q0$ must be used as a statement, not an expression") \
     X(cannotOperateOnArrays,                "The $Q0$ operator can be applied to vector types, but not arrays") \
     X(eventFunctionIndexInvalid,            "Event Handlers for event arrays need a first argument index integer type") \
     X(noMatchForFunctionCall,               "No suitable override found for function call: $0$") \

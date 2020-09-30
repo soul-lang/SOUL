@@ -1081,19 +1081,19 @@ private:
     {
         auto& lhs = parseTernaryOperator();
 
-        if (matches (Operator::plusEquals))                 return parseInPlaceOpExpression (lhs, BinaryOp::Op::add);
-        if (matches (Operator::minusEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::subtract);
-        if (matches (Operator::timesEquals))                return parseInPlaceOpExpression (lhs, BinaryOp::Op::multiply);
-        if (matches (Operator::divideEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::divide);
-        if (matches (Operator::moduloEquals))               return parseInPlaceOpExpression (lhs, BinaryOp::Op::modulo);
-        if (matches (Operator::leftShiftEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::leftShift);
-        if (matches (Operator::rightShiftEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShift);
-        if (matches (Operator::rightShiftUnsignedEquals))   return parseInPlaceOpExpression (lhs, BinaryOp::Op::rightShiftUnsigned);
-        if (matches (Operator::xorEquals))                  return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseXor);
-        if (matches (Operator::bitwiseAndEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseAnd);
-        if (matches (Operator::bitwiseOrEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::bitwiseOr);
-        if (matches (Operator::logicalAndEquals))           return parseInPlaceOpExpression (lhs, BinaryOp::Op::logicalAnd);
-        if (matches (Operator::logicalOrEquals))            return parseInPlaceOpExpression (lhs, BinaryOp::Op::logicalOr);
+        if (matches (Operator::plusEquals))                 return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::add);
+        if (matches (Operator::minusEquals))                return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::subtract);
+        if (matches (Operator::timesEquals))                return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::multiply);
+        if (matches (Operator::divideEquals))               return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::divide);
+        if (matches (Operator::moduloEquals))               return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::modulo);
+        if (matches (Operator::leftShiftEquals))            return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::leftShift);
+        if (matches (Operator::rightShiftEquals))           return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::rightShift);
+        if (matches (Operator::rightShiftUnsignedEquals))   return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::rightShiftUnsigned);
+        if (matches (Operator::xorEquals))                  return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::bitwiseXor);
+        if (matches (Operator::bitwiseAndEquals))           return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::bitwiseAnd);
+        if (matches (Operator::bitwiseOrEquals))            return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::bitwiseOr);
+        if (matches (Operator::logicalAndEquals))           return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::logicalAnd);
+        if (matches (Operator::logicalOrEquals))            return parseInPlaceOpExpression (allowAssignment, lhs, BinaryOp::Op::logicalOr);
 
         if (matchIf (Operator::assign))
         {
@@ -1462,9 +1462,13 @@ private:
         return expression;
     }
 
-    AST::Expression& parseInPlaceOpExpression (AST::Expression& lhs, BinaryOp::Op opType)
+    AST::Expression& parseInPlaceOpExpression (bool allowAssignment, AST::Expression& lhs, BinaryOp::Op opType)
     {
         auto context = getContext();
+
+        if (! allowAssignment)
+            context.throwError (Errors::inPlaceOperatorMustBeStatement (currentType));
+
         skip();
         auto& rhs = parseExpression();
         return allocate<AST::InPlaceOperator> (getContext(), lhs, rhs, opType);
