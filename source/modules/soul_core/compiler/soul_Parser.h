@@ -406,7 +406,10 @@ private:
             if (namespaceAliasList == nullptr)
                 throwError (Errors::usingDeclNotAllowed());
 
-            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, parseQualifiedIdentifier(), parseOptionalSpecialisations());
+            auto& identifier     = parseQualifiedIdentifier();
+            auto specialisations = parseOptionalSpecialisations();
+            
+            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisations);
             namespaceAliasList->push_back (alias);
         }
         else
