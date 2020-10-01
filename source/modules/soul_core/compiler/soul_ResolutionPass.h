@@ -1126,7 +1126,7 @@ private:
                 ++numFails;
             else if (AST::isResolvedAsProcessor (s.lhs.get()))
                 s.context.throwError (Errors::arraySuffixOnProcessor());
-            else
+            else if (s.lhs->isResolved())
                 s.context.throwError (Errors::cannotResolveBracketedExp());
 
             return s;
