@@ -409,7 +409,7 @@ struct TypeRules
 
     static bool arraySizeTypeIsOK (const Type& sizeType)
     {
-        return ! (sizeType.isReference() || ! (sizeType.isPrimitiveInteger() || sizeType.isBoundedInt()));
+        return (sizeType.isPrimitiveInteger() || sizeType.isBoundedInt()) && ! sizeType.isReference();
     }
 
     template <typename Thrower>

@@ -1922,7 +1922,8 @@ private:
             auto& array = call.arguments->items[0].get();
             auto& index = call.arguments->items[1].get();
 
-            SanityCheckPass::expectSilentCastPossible (call.context, Type (PrimitiveType::int32), index);
+            if (! index.canSilentlyCastTo (PrimitiveType::int64))
+                SanityCheckPass::expectSilentCastPossible (call.context, Type (PrimitiveType::int32), index);
 
             if (array.kind == AST::ExpressionKind::endpoint)
             {
@@ -2527,7 +2528,7 @@ private:
                 else
                 {
                     SanityCheckPass::expectSilentCastPossible (s.startIndex->context,
-                                                               Type (PrimitiveType::int32), *s.startIndex);
+                                                               Type (PrimitiveType::int64), *s.startIndex);
                 }
             }
 

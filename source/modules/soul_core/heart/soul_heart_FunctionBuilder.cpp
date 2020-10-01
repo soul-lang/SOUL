@@ -26,6 +26,7 @@ namespace
 {
     constexpr auto minInt32Fn  = "_minInt32";
     constexpr auto wrapInt32Fn = "_wrapInt32";
+    constexpr auto wrapInt64Fn = "_wrapInt64";
 
     static soul::Module& getInternalModule (soul::Program& p)
     {
@@ -68,32 +69,40 @@ heart::PureFunctionCall& BlockBuilder::createWrapInt32 (heart::Expression& n, he
 
 heart::PureFunctionCall& BlockBuilder::createWrapInt32 (Module& module, heart::Expression& value, heart::Expression& rangeLimit)
 {
-    SOUL_ASSERT (value.getType().isInteger32() && value.getType().isPrimitiveInteger() && rangeLimit.getType().isInteger32());
+    const auto& valueType = value.getType();
+    SOUL_ASSERT ((valueType.isInteger32() || valueType.isInteger64()) && valueType.isPrimitive()
+                  && rangeLimit.getType().isInteger32() && rangeLimit.getType().isPrimitive());
 
     auto& internalModule = getInternalModule (module.program);
+    auto argType = valueType.isInteger32() ? PrimitiveType::int32 : PrimitiveType::int64;
+    auto name = valueType.isInteger32() ? wrapInt32Fn : wrapInt64Fn;
 
-    auto& function = soul::FunctionBuilder::getOrCreateFunction (internalModule, wrapInt32Fn, PrimitiveType::int32, [] (FunctionBuilder& builder)
+    auto& function = soul::FunctionBuilder::getOrCreateFunction (internalModule, name, PrimitiveType::int32, [argType] (FunctionBuilder& builder)
     {
-        auto& n      = builder.addParameter ("n", PrimitiveType::int32);
-        auto& range  = builder.addParameter ("range", PrimitiveType::int32);
-        auto& a      = builder.createRegisterVariable (PrimitiveType::int32);
+        auto& valueParam  = builder.addParameter ("n", argType);
+        auto& rangeParam  = builder.addParameter ("range", PrimitiveType::int32);
 
-        auto& equals = builder.createBlock ("@equals");
-        auto& notEquals = builder.createBlock ("@notEquals");
+        auto& equalsBlock    = builder.createBlock ("@equals");
+        auto& notEqualsBlock = builder.createBlock ("@notEquals");
 
-        builder.addBranchIf (builder.createComparisonOp (n, builder.createZeroInitialiser(PrimitiveType::int32), BinaryOp::Op::equals), equals, notEquals, equals);
-        builder.addReturn (builder.createZeroInitialiser(PrimitiveType::int32));
-        builder.beginBlock (notEquals);
+        builder.addBranchIf (builder.createComparisonOp (valueParam, builder.createZeroInitialiser (argType), BinaryOp::Op::equals),
+                             equalsBlock, notEqualsBlock, equalsBlock);
+        builder.addReturn (builder.createZeroInitialiser (PrimitiveType::int32));
+        builder.beginBlock (notEqualsBlock);
 
-        builder.addAssignment(a, builder.createBinaryOp(n.location, n, range, BinaryOp::Op::modulo));
+        auto& rangeParamCast = builder.createCastIfNeeded (rangeParam, argType);
+        auto& valueModRange = builder.createRegisterVariable (argType);
+        builder.addAssignment (valueModRange, builder.createBinaryOp (CodeLocation(), valueParam, rangeParamCast, BinaryOp::Op::modulo));
 
-        auto& moduloNegative = builder.createBlock ("@moduloNegative");
-        auto& moduloPositive = builder.createBlock ("@moduloPositive");
+        auto& moduloNegativeBlock = builder.createBlock ("@moduloNegative");
+        auto& moduloPositiveBlock = builder.createBlock ("@moduloPositive");
 
-        builder.addBranchIf (builder.createComparisonOp (a, builder.createZeroInitialiser(PrimitiveType::int32), BinaryOp::Op::lessThan), moduloNegative, moduloPositive, moduloNegative);
-        builder.addReturn (builder.createBinaryOp (a.location, a, range, BinaryOp::Op::add));
-        builder.beginBlock (moduloPositive);
-        builder.addReturn (a);
+        builder.addBranchIf (builder.createComparisonOp (valueModRange, builder.createZeroInitialiser (argType), BinaryOp::Op::lessThan),
+                             moduloNegativeBlock, moduloPositiveBlock, moduloNegativeBlock);
+        builder.addReturn (builder.createCastIfNeeded (builder.createBinaryOp (CodeLocation(), valueModRange, rangeParamCast, BinaryOp::Op::add),
+                                                       PrimitiveType::int32));
+        builder.beginBlock (moduloPositiveBlock);
+        builder.addReturn (builder.createCastIfNeeded (valueModRange, PrimitiveType::int32));
     });
 
     auto& call = module.allocate<heart::PureFunctionCall> (value.location, function);
