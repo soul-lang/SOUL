@@ -46,6 +46,7 @@ namespace soul
     X(expectedValue,                        "Expected a value") \
     X(expectedValueOrEndpoint,              "Expected a value or endpoint") \
     X(expectedProcessorName,                "Expected a processor name") \
+    X(expectedNamespaceName,                "Expected a namespace name") \
     X(expectedProcessorOrEndpoint,          "Expected a processor name or endpoint") \
     X(expectedStatement,                    "Expected a statement") \
     X(expectedInteger,                      "Expected an integer") \
@@ -246,6 +247,7 @@ namespace soul
     X(unknownFunctionWithSuggestion,        "Unknown function: $Q0$ (did you mean $Q1$?)") \
     X(expected1or2Args,                     "Expected 1 or 2 arguments") \
     X(wrongNumArgsForProcessor,             "Wrong number of arguments to instantiate processor $Q0$") \
+    X(wrongNumArgsForNamespace,             "Wrong number of arguments to instantiate namespace $Q0$") \
     X(cannotResolveFunctionOrCast,          "Could not resolve function or cast") \
     X(voidFunctionCannotReturnValue,        "A void function cannot return a value") \
     X(functionReturnTypeCannotBeConst,      "Function return type cannot be const") \

@@ -90,10 +90,10 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         return parentNamespace.subModules;
     }
 
-    static pool_ptr<AST::ProcessorBase> cloneProcessorWithNewName (AST::Allocator& allocator,
-                                                                   AST::Namespace& parentNamespace,
-                                                                   const AST::ProcessorBase& itemToClone,
-                                                                   const std::string& newName)
+    static pool_ptr<AST::ModuleBase> cloneModuleWithNewName (AST::Allocator& allocator,
+                                                             AST::Namespace& parentNamespace,
+                                                             const AST::ModuleBase& itemToClone,
+                                                             const std::string& newName)
     {
         StructuralParser p (allocator, itemToClone.context.location, parentNamespace);
         auto newNameID = allocator.identifiers.get (newName);
@@ -101,6 +101,7 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
 
         if (itemToClone.isProcessor())  return p.parseProcessorDecl (parentNamespace);
         if (itemToClone.isGraph())      return p.parseGraphDecl (parentNamespace);
+        if (itemToClone.isNamespace())  return p.parseNamespaceDecl (parentNamespace);
 
         SOUL_ASSERT_FALSE;
         return {};
@@ -263,13 +264,12 @@ private:
 
     void parseTopLevelDeclContent()
     {
+        parseSpecialisationParameters();
+
         auto processor = cast<AST::ProcessorBase> (module);
 
         if (processor != nullptr)
-        {
-            parseSpecialisationParameters (*processor);
             parseAnnotation (processor->annotation);
-        }
 
         expect (Operator::openBrace);
 
@@ -295,7 +295,6 @@ private:
             else
             {
                 if (matchIf (Keyword::struct_))         { parseStructDeclaration();  continue; }
-                if (matchIf (Keyword::using_))          { parseUsingDeclaration();   continue; }
 
                 if (matchIf (Keyword::namespace_))
                 {
@@ -331,6 +330,7 @@ private:
                 continue;
             }
 
+            if (matchIf (Keyword::using_))          { parseUsingDeclaration();             continue; }
             if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);        continue; }
             if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);       continue; }
             if (matchIf (Keyword::event))           { parseEventFunction();                continue; }
@@ -394,17 +394,33 @@ private:
 
     void parseUsingDeclaration()
     {
-        auto usingList = module->getUsingList();
-
-        if (usingList == nullptr)
-            throwError (Errors::usingDeclNotAllowed());
-
         auto context = getContext();
         auto name = parseIdentifier();
+
         expect (Operator::assign);
-        auto& type = parseType (ParseTypeContext::usingDeclTarget);
+
+        if (matchIf (Keyword::namespace_))
+        {
+            auto namespaceAliasList = module->getNamespaceAliasList();
+
+            if (namespaceAliasList == nullptr)
+                throwError (Errors::usingDeclNotAllowed());
+
+            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, parseQualifiedIdentifier(), parseOptionalSpecialisations());
+            namespaceAliasList->push_back (alias);
+        }
+        else
+        {
+            auto usingList = module->getUsingList();
+
+            if (usingList == nullptr)
+                throwError (Errors::usingDeclNotAllowed());
+
+            auto& type = parseType (ParseTypeContext::usingDeclTarget);
+            usingList->push_back (allocate<AST::UsingDeclaration> (context, name, type));
+        }
+
         expect (Operator::semicolon);
-        usingList->push_back (allocate<AST::UsingDeclaration> (context, name, type));
     }
 
     void parseStructDeclaration()
@@ -441,7 +457,7 @@ private:
     }
 
     //==============================================================================
-    void parseSpecialisationParameters (AST::ProcessorBase& p)
+    void parseSpecialisationParameters()
     {
         if (matchIf (Operator::openParen))
         {
@@ -452,20 +468,20 @@ private:
             {
                 if (matchIf (Keyword::using_))
                 {
-                    if (p.isGraph())
+                    if (module->isGraph())
                         throwError (Errors::graphCannotHaveSpecialisations());
 
                     auto context = getContext();
                     auto name = parseIdentifier();
-                    p.addSpecialisationParameter (allocate<AST::UsingDeclaration> (context, name, nullptr));
+                    module->addSpecialisationParameter (allocate<AST::UsingDeclaration> (context, name, nullptr));
                 }
                 else if (matchIf (Keyword::processor))
                 {
-                    if (! p.isGraph())
+                    if (! module->isGraph())
                         throwError (Errors::processorSpecialisationNotAllowed());
 
                     auto context = getContext();
-                    p.addSpecialisationParameter (allocate<AST::ProcessorAliasDeclaration> (context, parseIdentifier()));
+                    module->addSpecialisationParameter (allocate<AST::ProcessorAliasDeclaration> (context, parseIdentifier()));
                 }
                 else
                 {
@@ -473,7 +489,7 @@ private:
                     auto& parameterType = parseType (ParseTypeContext::processorParameter);
                     auto& parameterVariable = allocate<AST::VariableDeclaration> (getContext(), parameterType, nullptr, true);
                     parameterVariable.name = parseIdentifier();
-                    p.addSpecialisationParameter (parameterVariable);
+                    module->addSpecialisationParameter (parameterVariable);
                 }
             }
             while (matchIf (Operator::comma));
@@ -629,6 +645,19 @@ private:
         }
 
         // Parameterised
+        u.specialisationArgs = parseOptionalSpecialisations();
+
+        // Clocked
+        if (matchIf (Operator::times))
+            u.clockMultiplierRatio = parseExpression();
+        else if (matchIf (Operator::divide))
+            u.clockDividerRatio = parseExpression();
+    }
+
+    std::vector<pool_ref<AST::Expression>> parseOptionalSpecialisations()
+    {
+        std::vector<pool_ref<AST::Expression>> specialisations;
+
         if (matchIf (Operator::openParen))
         {
             if (! matchIf (Operator::closeParen))
@@ -636,7 +665,7 @@ private:
                 for (;;)
                 {
                     auto context = getContext();
-                    u.specialisationArgs.push_back (parseProcessorSpecialisationValueOrType());
+                    specialisations.push_back (parseSpecialisationValueOrType());
 
                     if (matchIf (Operator::closeParen))
                         break;
@@ -646,14 +675,10 @@ private:
             }
         }
 
-        // Clocked
-        if (matchIf (Operator::times))
-            u.clockMultiplierRatio = parseExpression();
-        else if (matchIf (Operator::divide))
-            u.clockDividerRatio = parseExpression();
+        return specialisations;
     }
 
-    AST::Expression& parseProcessorSpecialisationValueOrType()
+    AST::Expression& parseSpecialisationValueOrType()
     {
         auto startPos = getCurrentTokeniserPosition();
 

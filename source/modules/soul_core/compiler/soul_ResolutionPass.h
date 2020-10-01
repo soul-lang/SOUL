@@ -74,6 +74,7 @@ private:
             tryPass<QualifiedIdentifierResolver> (runStats, true);
             tryPass<TypeResolver> (runStats, true);
             tryPass<ProcessorInstanceResolver> (runStats, true);
+            tryPass<NamespaceAliasResolver> (runStats, true);
             tryPass<ConvertStreamOperations> (runStats, true);
             rebuildVariableUseCounts (module);
             tryPass<FunctionResolver> (runStats, true);
@@ -101,6 +102,7 @@ private:
                 tryPass<QualifiedIdentifierResolver> (runStats, false);
                 tryPass<TypeResolver> (runStats, false);
                 tryPass<ProcessorInstanceResolver> (runStats, false);
+                tryPass<NamespaceAliasResolver> (runStats, false);
                 tryPass<ConvertStreamOperations> (runStats, false);
                 tryPass<GenericFunctionResolver> (runStats, false);
                 break;
@@ -415,6 +417,11 @@ private:
                         return getOrCreateImplicitProcessorInstance (qi.context, *p);
 
                     return allocator.allocate<AST::ProcessorRef> (qi.context, *p);
+                }
+
+                if (auto n = cast<AST::Namespace> (item))
+                {
+                    return allocator.allocate<AST::NamespaceRef> (qi.context, *n);
                 }
 
                 if (auto p = cast<AST::ProcessorInstance> (item))
@@ -1419,6 +1426,7 @@ private:
 
         AST::Graph& visit (AST::Graph& g) override          { return g.getSpecialisationParameters().empty() ? super::visit (g) : g; }
         AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
+        AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
 
         AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
         {
@@ -1452,7 +1460,7 @@ private:
                                                               "_for_" + makeSafeIdentifierName (choc::text::replace (graph.getFullyQualifiedPath().toString(), ":", "_")
                                                                   + "_" + instance.instanceName->toString()));
                     auto& ns = target->getNamespace();
-                    target = *StructuralParser::cloneProcessorWithNewName (allocator, ns, target, ns.makeUniqueName (nameRoot));
+                    target = *cast<AST::ProcessorBase> (StructuralParser::cloneModuleWithNewName (allocator, ns, target, ns.makeUniqueName (nameRoot)));
                     specialisationParams = target->getSpecialisationParameters();
                 }
 
@@ -1512,6 +1520,128 @@ private:
             }
 
             return instance;
+        }
+    };
+
+    //==============================================================================
+    struct NamespaceAliasResolver  : public ErrorIgnoringRewritingASTVisitor
+    {
+        static inline constexpr const char* getPassName()  { return "NamespaceInstanceResolver"; }
+        using super::visit;
+
+        NamespaceAliasResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
+            : super (rp, shouldIgnoreErrors) {}
+
+        AST::Graph& visit (AST::Graph& g) override          { return g.getSpecialisationParameters().empty() ? super::visit (g) : g; }
+        AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
+        AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
+
+        AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& instance) override
+        {
+            super::visit (instance);
+
+            if (! instance.isResolved())
+            {
+                if (auto n = instance.targetNamespace->getAsNamespace())
+                {
+                    instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, instance.targetNamespaceSpecialisations);
+                    ++itemsReplaced;
+                }
+                else
+                {
+                    if (! ignoreErrors)
+                        instance.targetNamespace->context.throwError (Errors::expectedNamespaceName());
+
+                    ++numFails;
+                }
+            }
+
+            return instance;
+        }
+
+        pool_ref<AST::Namespace> getOrAddNamespaceSpecialisation (AST::Context& context, pool_ptr<AST::Namespace> namespaceToClone, std::vector<pool_ref<AST::Expression>>& args)
+        {
+            auto numParams = args.size();
+            auto specialisationParams = namespaceToClone->getSpecialisationParameters();
+
+            if (specialisationParams.size() != numParams)
+                context.throwError (Errors::wrongNumArgsForNamespace (namespaceToClone->getFullyQualifiedPath()));
+
+            // No parameters, just use the existing namespace
+            if (numParams == 0)
+                return *namespaceToClone;
+
+            std::stringstream instanceKey;
+
+            for (size_t i = 0; i < numParams; ++i)
+            {
+                auto& arg = args[i].get();
+                auto& param = specialisationParams[i];
+
+                if (auto u = cast<AST::UsingDeclaration> (param))
+                {
+                    if (! AST::isResolvedAsType (arg))
+                        arg.context.throwError (Errors::expectedType());
+
+                    instanceKey << "," << arg.getConcreteType()->getShortIdentifierDescription();
+                    continue;
+                }
+
+                if (auto v = cast<AST::VariableDeclaration> (param))
+                {
+                    if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
+                        arg.context.throwError (Errors::expectedValue());
+
+                    SanityCheckPass::expectSilentCastPossible (arg.context, v->getType(), arg);
+
+                    auto& value = arg.getAsConstant()->value;
+                    instanceKey << "," << std::string (static_cast<char *> (value.getPackedData()), value.getPackedDataSize());
+                    continue;
+                }
+
+                SOUL_ASSERT_FALSE;
+            }
+
+            for (auto i : namespaceToClone->namespaceInstances)
+                if (i.key == instanceKey.str())
+                    return *i.instance;
+
+            auto specialisedName = "_" + namespaceToClone->name.toString();
+
+            auto& ns = namespaceToClone->getNamespace();
+
+            auto target = cast<AST::Namespace> (StructuralParser::cloneModuleWithNewName (allocator, ns, *namespaceToClone, ns.makeUniqueName (specialisedName)));
+            namespaceToClone->namespaceInstances.push_back ({instanceKey.str(), target});
+
+            specialisationParams = target->getSpecialisationParameters();
+
+            if (numParams != 0)
+            {
+                for (size_t i = 0; i < numParams; ++i)
+                {
+                    auto& arg = args[i].get();
+                    auto& param = specialisationParams[i];
+
+                    if (auto u = cast<AST::UsingDeclaration> (param))
+                    {
+                        u->targetType = arg;
+                        continue;
+                    }
+
+                    if (auto v = cast<AST::VariableDeclaration> (param))
+                    {
+                        SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
+                        v->initialValue = arg;
+                        continue;
+                    }
+
+                    SOUL_ASSERT_FALSE;
+                }
+
+                target->specialisationParams.clear();
+            }
+
+            return *target;
         }
     };
 

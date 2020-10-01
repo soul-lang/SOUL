@@ -58,6 +58,7 @@ struct AST
         X(OutputEndpointRef) \
         X(ConnectionEndpointRef) \
         X(ProcessorRef) \
+        X(NamespaceRef) \
         X(ProcessorInstanceRef) \
         X(CommaSeparatedList) \
         X(ProcessorProperty) \
@@ -79,6 +80,7 @@ struct AST
     #define SOUL_AST_OBJECTS(X) \
         X(Function) \
         X(ProcessorAliasDeclaration) \
+        X(NamespaceAliasDeclaration) \
         X(Connection) \
         X(ProcessorInstance) \
         X(EndpointDeclaration) \
@@ -363,6 +365,7 @@ struct AST
         virtual ArrayView<pool_ref<Function>>                   getFunctions() const            { return {}; }
         virtual ArrayView<pool_ref<StructDeclaration>>          getStructDeclarations() const   { return {}; }
         virtual ArrayView<pool_ref<UsingDeclaration>>           getUsingDeclarations() const    { return {}; }
+        virtual ArrayView<pool_ref<NamespaceAliasDeclaration>>  getNamespaceAliases() const     { return {}; }
         virtual ArrayView<pool_ref<ModuleBase>>                 getSubModules() const           { return {}; }
         virtual ArrayView<pool_ref<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
 
@@ -431,6 +434,10 @@ struct AST
             for (auto& m : getSubModules())
                 if (m->name == name)
                     return m;
+
+            for (auto& a : getNamespaceAliases())
+                if (a->name == name)
+                    return a->resolvedNamespace;
 
             return {};
         }
@@ -550,11 +557,22 @@ struct AST
         virtual bool isGraph() const                { return false; }
         virtual bool isNamespace() const            { return false; }
 
-        virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const  { return {}; }
-        virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                 { return {}; }
+        Namespace& getNamespace() const
+        {
+            auto processorNamespace = getParentScope()->getAsNamespace();
+            SOUL_ASSERT (processorNamespace != nullptr);
+            return *processorNamespace;
+        }
+
+
+        virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const   { return specialisationParams; }
+        virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                  { return {}; }
+        std::vector<pool_ref<NamespaceAliasDeclaration>>*      getNamespaceAliasList()               { return &namespaceAliases; }
+        std::vector<pool_ref<UsingDeclaration>>*               getUsingList()                        { return &usings; }
+        ArrayView<pool_ref<UsingDeclaration>>                  getUsingDeclarations() const override { return usings; }
+        ArrayView<pool_ref<NamespaceAliasDeclaration>>         getNamespaceAliases() const override  { return namespaceAliases; }
 
         virtual std::vector<pool_ref<StructDeclaration>>*      getStructList() = 0;
-        virtual std::vector<pool_ref<UsingDeclaration>>*       getUsingList() = 0;
         virtual std::vector<pool_ref<VariableDeclaration>>&    getStateVariableList() = 0;
         virtual std::vector<pool_ref<Function>>*               getFunctionList() = 0;
 
@@ -609,6 +627,14 @@ struct AST
         Identifier name;
         bool isFullyResolved = false;
 
+        virtual void addSpecialisationParameter (VariableDeclaration&) = 0;
+        virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
+        virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
+
+        std::vector<pool_ref<ASTObject>> specialisationParams;
+        std::vector<pool_ref<UsingDeclaration>> usings;
+        std::vector<pool_ref<NamespaceAliasDeclaration>> namespaceAliases;
+
     private:
         size_t countEndpoints (bool countInputs) const
         {
@@ -630,17 +656,9 @@ struct AST
             SOUL_ASSERT (getParentScope() != nullptr);
         }
 
-        Namespace& getNamespace() const
-        {
-            auto processorNamespace = getParentScope()->getAsNamespace();
-            SOUL_ASSERT (processorNamespace != nullptr);
-            return *processorNamespace;
-        }
-
         ProcessorBase* getAsProcessor() override        { return this; }
 
         ArrayView<pool_ref<EndpointDeclaration>>  getEndpoints() const override                   { return endpoints; }
-        ArrayView<pool_ref<ASTObject>>            getSpecialisationParameters() const override    { return specialisationParams; }
 
         template <typename StringType>
         pool_ptr<EndpointDeclaration> findEndpoint (const StringType& nameToFind, bool isInput) const
@@ -662,14 +680,9 @@ struct AST
             return {};
         }
 
-        virtual void addSpecialisationParameter (VariableDeclaration&) = 0;
-        virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
-        virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
-
         bool isSpecialisedInstance() const      { return owningInstance != nullptr; }
 
         std::vector<pool_ref<EndpointDeclaration>> endpoints;
-        std::vector<pool_ref<ASTObject>> specialisationParams;
 
         Annotation annotation;
 
@@ -695,10 +708,8 @@ struct AST
         ArrayView<pool_ref<VariableDeclaration>>     getVariables() const override           { return stateVariables; }
         ArrayView<pool_ref<Function>>                getFunctions() const override           { return functions; }
         ArrayView<pool_ref<StructDeclaration>>       getStructDeclarations() const override  { return structures; }
-        ArrayView<pool_ref<UsingDeclaration>>        getUsingDeclarations() const override   { return usings; }
 
         std::vector<pool_ref<StructDeclaration>>*    getStructList() override                { return &structures; }
-        std::vector<pool_ref<UsingDeclaration>>*     getUsingList() override                 { return &usings; }
         std::vector<pool_ref<VariableDeclaration>>&  getStateVariableList() override         { return stateVariables; }
         std::vector<pool_ref<Function>>*             getFunctionList() override              { return &functions; }
 
@@ -723,7 +734,6 @@ struct AST
         }
 
         std::vector<pool_ref<StructDeclaration>> structures;
-        std::vector<pool_ref<UsingDeclaration>> usings;
         std::vector<pool_ref<Function>> functions;
         std::vector<pool_ref<VariableDeclaration>> stateVariables;
     };
@@ -753,7 +763,6 @@ struct AST
         ArrayView<pool_ref<VariableDeclaration>> getVariables() const override               { return constants; }
 
         std::vector<pool_ref<StructDeclaration>>* getStructList() override                   { return {}; }
-        std::vector<pool_ref<UsingDeclaration>>* getUsingList() override                     { return {}; }
         std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override          { return constants; }
         std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
 
@@ -799,26 +808,46 @@ struct AST
     {
         Namespace (const Context& c, Identifier moduleName) : ModuleBase (ObjectType::Namespace, c, moduleName) {}
 
+        void addSpecialisationParameter (VariableDeclaration& v) override
+        {
+            SOUL_ASSERT (v.isConstant);
+            constants.push_back (v);
+            specialisationParams.push_back (v);
+        }
+
+        void addSpecialisationParameter (UsingDeclaration& u) override
+        {
+            usings.push_back (u);
+            specialisationParams.push_back (u);
+        }
+
+        void addSpecialisationParameter (ProcessorAliasDeclaration&) override          { SOUL_ASSERT_FALSE; }
+
         bool isNamespace() const override                                              { return true; }
         Namespace* getAsNamespace() override                                           { return this; }
 
         ArrayView<pool_ref<VariableDeclaration>> getVariables() const override         { return constants; }
         ArrayView<pool_ref<Function>> getFunctions() const override                    { return functions; }
         ArrayView<pool_ref<StructDeclaration>> getStructDeclarations() const override  { return structures; }
-        ArrayView<pool_ref<UsingDeclaration>> getUsingDeclarations() const override    { return usings; }
         ArrayView<pool_ref<ModuleBase>> getSubModules() const override                 { return subModules; }
 
         std::vector<pool_ref<Function>>* getFunctionList() override                    { return &functions; }
         std::vector<pool_ref<StructDeclaration>>* getStructList() override             { return &structures; }
-        std::vector<pool_ref<UsingDeclaration>>* getUsingList() override               { return &usings; }
         std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override    { return constants; }
 
         ImportsList importsList;
         std::vector<pool_ref<Function>> functions;
         std::vector<pool_ref<StructDeclaration>> structures;
-        std::vector<pool_ref<UsingDeclaration>> usings;
         std::vector<pool_ref<ModuleBase>> subModules;
         std::vector<pool_ref<VariableDeclaration>> constants;
+
+        struct NamespaceInstance
+        {
+            std::string              key;
+            pool_ptr<AST::Namespace> instance;
+        };
+
+        std::vector<NamespaceInstance> namespaceInstances;
     };
 
     //==============================================================================
@@ -848,6 +877,7 @@ struct AST
         virtual Type getResultType() const                            { SOUL_ASSERT_FALSE; return {}; }
         virtual Type resolveAsType() const                            { SOUL_ASSERT_FALSE; return {}; }
         virtual pool_ptr<ProcessorBase> getAsProcessor() const        { return {}; }
+        virtual pool_ptr<Namespace> getAsNamespace() const            { return {}; }
         virtual pool_ptr<EndpointDeclaration> getAsEndpoint() const   { return {}; }
         virtual bool isOutputEndpoint() const                         { return false; }
         virtual Constness getConstness() const                        { return Constness::unknown; }
@@ -1360,16 +1390,46 @@ struct AST
         pool_ptr<Expression> targetType;
     };
 
-    //==============================================================================
+    struct NamespaceAliasDeclaration : public ASTObject
+    {
+        NamespaceAliasDeclaration (const Context& c, Identifier nm, pool_ptr<Expression> target, std::vector<pool_ref<Expression>> targetSpecialisations)
+        : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm), targetNamespace (target), targetNamespaceSpecialisations (targetSpecialisations)
+        {
+        }
+
+        bool isResolved() const                         { return resolvedNamespace != nullptr; }
+
+        Identifier                        name;
+        pool_ptr<Expression>              targetNamespace;
+        std::vector<pool_ref<Expression>> targetNamespaceSpecialisations;
+        pool_ptr<Namespace>               resolvedNamespace;
+    };
+
     struct ProcessorAliasDeclaration  : public ASTObject
     {
         ProcessorAliasDeclaration (const Context& c, Identifier nm)
-            : ASTObject (ObjectType::ProcessorAliasDeclaration, c), name (nm)
+        : ASTObject (ObjectType::ProcessorAliasDeclaration, c), name (nm)
         {
         }
 
         Identifier name;
         pool_ptr<ProcessorBase> targetProcessor;
+    };
+
+
+    //==============================================================================
+    struct NamespaceRef   : public Expression
+    {
+        NamespaceRef (const Context& c, Namespace& n)
+            : Expression (ObjectType::NamespaceRef, c, ExpressionKind::processor), ns (n)
+        {
+        }
+
+        bool isResolved() const override                           { return true; }
+        bool isCompileTimeConstant() const override                { return true; }
+        pool_ptr<Namespace> getAsNamespace() const override        { return ns; }
+
+        Namespace& ns;
     };
 
     struct ProcessorRef   : public Expression

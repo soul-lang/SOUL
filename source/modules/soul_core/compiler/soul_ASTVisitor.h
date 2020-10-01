@@ -94,15 +94,18 @@ struct ASTVisitor
         visitArray (p.stateVariables);
         visitObjectIfNotNull (p.latency);
         visitArray (p.functions);
+        visitArray (p.namespaceAliases);
     }
 
     virtual void visit (AST::Graph& g)
     {
         visitArray (g.endpoints);
+        visitArray (g.usings);
         visitArray (g.processorInstances);
         visitArray (g.processorAliases);
         visitArray (g.connections);
         visitArray (g.constants);
+        visitArray (g.namespaceAliases);
     }
 
     virtual void visit (AST::Namespace& n)
@@ -112,6 +115,7 @@ struct ASTVisitor
         visitArray (n.usings);
         visitArray (n.constants);
         visitArray (n.functions);
+        visitArray (n.namespaceAliases);
     }
 
     virtual void visit (AST::Block& b)
@@ -276,6 +280,11 @@ struct ASTVisitor
         visitObjectIfNotNull (u.targetType);
     }
 
+    virtual void visit (AST::NamespaceAliasDeclaration& o)
+    {
+        visitObjectIfNotNull (o.targetNamespace);
+    }
+
     virtual void visit (AST::SubscriptWithBrackets& s)
     {
         visitObject (s.lhs);
@@ -345,6 +354,10 @@ struct ASTVisitor
     }
 
     virtual void visit (AST::ProcessorRef&)
+    {
+    }
+
+    virtual void visit (AST::NamespaceRef&)
     {
     }
 
@@ -496,22 +509,25 @@ struct RewritingASTVisitor
     //==============================================================================
     virtual AST::Processor& visit (AST::Processor& p)
     {
-        visitArray (p.endpoints);
-        visitArray (p.structures);
-        visitArray (p.stateVariables);
-        replaceArray (p.functions);
+        visitArray        (p.endpoints);
+        visitArray        (p.structures);
+        visitArray        (p.stateVariables);
+        replaceArray      (p.functions);
         replaceExpression (p.latency);
+        visitArray        (p.namespaceAliases);
 
         return p;
     }
 
     virtual AST::Graph& visit (AST::Graph& g)
     {
-        visitArray (g.endpoints);
-        visitArray (g.processorInstances);
-        visitArray (g.processorAliases);
-        visitArray (g.connections);
-        visitArray (g.constants);
+        visitArray   (g.endpoints);
+        replaceArray (g.usings);
+        visitArray   (g.processorInstances);
+        visitArray   (g.processorAliases);
+        visitArray   (g.connections);
+        visitArray   (g.constants);
+        visitArray   (g.namespaceAliases);
 
         return g;
     }
@@ -523,6 +539,7 @@ struct RewritingASTVisitor
         replaceArray (n.usings);
         visitArray   (n.constants);
         replaceArray (n.functions);
+        visitArray   (n.namespaceAliases);
 
         return n;
     }
@@ -724,6 +741,13 @@ struct RewritingASTVisitor
         return u;
     }
 
+    virtual AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& o)
+    {
+        replaceExpression (o.targetNamespace);
+        return o;
+    }
+
+
     virtual AST::Expression& visit (AST::SubscriptWithBrackets& s)
     {
         replaceExpression (s.lhs);
@@ -809,6 +833,11 @@ struct RewritingASTVisitor
     virtual AST::ProcessorRef& visit (AST::ProcessorRef& pr)
     {
         return pr;
+    }
+
+    virtual AST::NamespaceRef& visit (AST::NamespaceRef& n)
+    {
+        return n;
     }
 
     virtual AST::ProcessorInstanceRef& visit (AST::ProcessorInstanceRef& i)

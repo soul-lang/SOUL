@@ -436,6 +436,7 @@ private:
             for (auto& v : p.stateVariables)   duplicateNameChecker.check (v->name, v->context);
             for (auto& s : p.structures)       duplicateNameChecker.check (s->name, s->context);
             for (auto& u : p.usings)           duplicateNameChecker.check (u->name, u->context);
+            for (auto& a : p.namespaceAliases) duplicateNameChecker.check (a->name, a->context);
 
             // (functions must be scanned last)
             for (auto& f : p.functions)
@@ -467,10 +468,11 @@ private:
         {
             soul::DuplicateNameChecker duplicateNameChecker;
 
-            for (auto& s : n.structures)    duplicateNameChecker.check (s->name, s->context);
-            for (auto& u : n.usings)        duplicateNameChecker.check (u->name, u->context);
-            for (auto& m : n.subModules)    duplicateNameChecker.check (m->name, m->context);
-            for (auto& c : n.constants)     duplicateNameChecker.check (c->name, c->context);
+            for (auto& s : n.structures)       duplicateNameChecker.check (s->name, s->context);
+            for (auto& u : n.usings)           duplicateNameChecker.check (u->name, u->context);
+            for (auto& m : n.subModules)       duplicateNameChecker.check (m->name, m->context);
+            for (auto& c : n.constants)        duplicateNameChecker.check (c->name, c->context);
+            for (auto& a : n.namespaceAliases) duplicateNameChecker.check (a->name, a->context);
 
             // (functions must be scanned last)
             for (auto& f : n.functions)     duplicateNameChecker.checkWithoutAdding (f->name, f->nameLocation);
