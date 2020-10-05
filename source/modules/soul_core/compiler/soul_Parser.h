@@ -201,12 +201,12 @@ private:
         throwError (Errors::expectedTopLevelDecl());
     }
 
-    AST::Processor&  parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
-    AST::Graph&      parseGraphDecl     (AST::Namespace& ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
-    AST::Namespace&  parseNamespaceDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
+    pool_ptr<AST::Processor> parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
+    pool_ptr<AST::Graph>     parseGraphDecl     (AST::Namespace& ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
+    pool_ptr<AST::Namespace> parseNamespaceDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
 
     template <typename ModuleType>
-    ModuleType& parseTopLevelItem (AST::Namespace& parentNamespace)
+    pool_ptr<ModuleType> parseTopLevelItem (AST::Namespace& parentNamespace)
     {
         auto context = getContext();
         auto name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
@@ -215,6 +215,23 @@ private:
         {
             name = *newNameForFirstDecl;
             newNameForFirstDecl = nullptr;
+        }
+
+        if (matchIf (Operator::assign))
+        {
+            auto namespaceAliasList = parentNamespace.getNamespaceAliasList();
+
+            if (namespaceAliasList == nullptr)
+                throwError (Errors::usingDeclNotAllowed());
+
+            auto& identifier     = parseQualifiedIdentifier();
+            auto specialisations = parseOptionalSpecialisations();
+            expect (Operator::semicolon);
+
+            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisations);
+            namespaceAliasList->push_back (alias);
+
+            return {};
         }
 
         auto& newModule = allocate<ModuleType> (context, name);
@@ -399,29 +416,13 @@ private:
 
         expect (Operator::assign);
 
-        if (matchIf (Keyword::namespace_))
-        {
-            auto namespaceAliasList = module->getNamespaceAliasList();
+        auto usingList = module->getUsingList();
 
-            if (namespaceAliasList == nullptr)
-                throwError (Errors::usingDeclNotAllowed());
+        if (usingList == nullptr)
+            throwError (Errors::usingDeclNotAllowed());
 
-            auto& identifier     = parseQualifiedIdentifier();
-            auto specialisations = parseOptionalSpecialisations();
-            
-            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisations);
-            namespaceAliasList->push_back (alias);
-        }
-        else
-        {
-            auto usingList = module->getUsingList();
-
-            if (usingList == nullptr)
-                throwError (Errors::usingDeclNotAllowed());
-
-            auto& type = parseType (ParseTypeContext::usingDeclTarget);
-            usingList->push_back (allocate<AST::UsingDeclaration> (context, name, type));
-        }
+        auto& type = parseType (ParseTypeContext::usingDeclTarget);
+        usingList->push_back (allocate<AST::UsingDeclaration> (context, name, type));
 
         expect (Operator::semicolon);
     }
