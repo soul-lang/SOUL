@@ -283,7 +283,7 @@ struct ASTVisitor
     virtual void visit (AST::NamespaceAliasDeclaration& o)
     {
         visitObjectIfNotNull (o.targetNamespace);
-        visitArray (o.targetNamespaceSpecialisations);
+        visitObjectIfNotNull (o.specialisationArgs);
     }
 
     virtual void visit (AST::SubscriptWithBrackets& s)
@@ -346,10 +346,7 @@ struct ASTVisitor
     virtual void visit (AST::ProcessorInstance& i)
     {
         visitObject (*i.targetProcessor);
-
-        for (auto& a : i.specialisationArgs)
-            visitObject (a);
-
+        visitObjectIfNotNull (i.specialisationArgs);
         visitObjectIfNotNull (i.clockMultiplierRatio);
         visitObjectIfNotNull (i.clockDividerRatio);
     }
@@ -745,10 +742,9 @@ struct RewritingASTVisitor
     virtual AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& o)
     {
         replaceExpression (o.targetNamespace);
-        replaceArray (o.targetNamespaceSpecialisations);
+        replaceExpression (o.specialisationArgs);
         return o;
     }
-
 
     virtual AST::Expression& visit (AST::SubscriptWithBrackets& s)
     {
@@ -819,9 +815,7 @@ struct RewritingASTVisitor
     virtual AST::ProcessorInstance& visit (AST::ProcessorInstance& i)
     {
         replaceExpression (i.targetProcessor);
-
-        for (auto& a : i.specialisationArgs)
-            replaceExpression (a);
+        replaceExpression (i.specialisationArgs);
 
         if (i.clockMultiplierRatio != nullptr)
             replaceExpression (i.clockMultiplierRatio);

@@ -683,9 +683,7 @@ struct AST
         bool isSpecialisedInstance() const      { return owningInstance != nullptr; }
 
         std::vector<pool_ref<EndpointDeclaration>> endpoints;
-
         Annotation annotation;
-
         pool_ptr<ProcessorInstance> owningInstance;
     };
 
@@ -1195,9 +1193,8 @@ struct AST
         ProcessorInstance (const Context& c) : ASTObject (ObjectType::ProcessorInstance, c) {}
 
         pool_ptr<QualifiedIdentifier> instanceName;
-        pool_ptr<Expression> targetProcessor;
-        std::vector<pool_ref<Expression>> specialisationArgs;
-        pool_ptr<Expression> clockMultiplierRatio, clockDividerRatio, arraySize;
+        pool_ptr<Expression> targetProcessor, specialisationArgs,
+                             clockMultiplierRatio, clockDividerRatio, arraySize;
         bool wasCreatedImplicitly = false;
     };
 
@@ -1397,30 +1394,29 @@ struct AST
         {
         }
 
-        NamespaceAliasDeclaration (const Context& c, Identifier nm, pool_ptr<Expression> target, std::vector<pool_ref<Expression>> targetSpecialisations)
-            : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm), targetNamespace (target), targetNamespaceSpecialisations (targetSpecialisations)
+        NamespaceAliasDeclaration (const Context& c, Identifier nm, pool_ptr<Expression> target, pool_ptr<Expression> targetSpecialisationArgs)
+            : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm), targetNamespace (target),
+              specialisationArgs (targetSpecialisationArgs)
         {
         }
 
-        bool isResolved() const                         { return resolvedNamespace != nullptr; }
+        bool isResolved() const                 { return resolvedNamespace != nullptr; }
 
-        Identifier                        name;
-        pool_ptr<Expression>              targetNamespace;
-        std::vector<pool_ref<Expression>> targetNamespaceSpecialisations;
-        pool_ptr<Namespace>               resolvedNamespace;
+        Identifier name;
+        pool_ptr<Expression> targetNamespace, specialisationArgs;
+        pool_ptr<Namespace> resolvedNamespace;
     };
 
     struct ProcessorAliasDeclaration  : public ASTObject
     {
         ProcessorAliasDeclaration (const Context& c, Identifier nm)
-        : ASTObject (ObjectType::ProcessorAliasDeclaration, c), name (nm)
+            : ASTObject (ObjectType::ProcessorAliasDeclaration, c), name (nm)
         {
         }
 
         Identifier name;
         pool_ptr<ProcessorBase> targetProcessor;
     };
-
 
     //==============================================================================
     struct NamespaceRef   : public Expression

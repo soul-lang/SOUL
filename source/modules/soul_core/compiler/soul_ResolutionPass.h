@@ -420,9 +420,7 @@ private:
                 }
 
                 if (auto n = cast<AST::Namespace> (item))
-                {
                     return allocator.allocate<AST::NamespaceRef> (qi.context, *n);
-                }
 
                 if (auto p = cast<AST::ProcessorInstance> (item))
                     return allocator.allocate<AST::ProcessorInstanceRef> (qi.context, *p);
@@ -485,7 +483,7 @@ private:
                     search.findVariables = false;
                     search.findTypes = true;
                     search.findFunctions = false;
-                    search.findProcessorsAndNamespaces = false;
+                    search.findProcessorsAndNamespaces = parsingProcessorInstance != 0;
                     search.findEndpoints = false;
 
                     if (auto scope = name->getParentScope())
@@ -503,7 +501,17 @@ private:
 
                                 return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), *call.arguments);
                             }
+
+                            if (auto p = e->getAsProcessor())
+                                if (parsingProcessorInstance != 0)
+                                    return resolveProcessorInstance (call, *p);
+
+                            SOUL_TODO // better error
                         }
+
+                        if (auto p = cast<AST::Processor> (search.itemsFound.front()))
+                            if (parsingProcessorInstance != 0)
+                                return resolveProcessorInstance (call, *p);
                     }
                 }
                 else
@@ -513,6 +521,17 @@ private:
             }
 
             return call;
+        }
+
+        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
+        {
+            auto& i = allocator.allocate<AST::ProcessorInstance> (call.context);
+            static int newProcessorIndex = 2; SOUL_TODO
+            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (call.context, IdentifierPath (allocator.get (p.name.toString() + "_" + std::to_string (newProcessorIndex++))));
+            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (call.context, p);
+            i.specialisationArgs = call.arguments;
+            currentGraph->addProcessorInstance (i);
+            return allocator.allocate<AST::ProcessorInstanceRef> (call.context, i);
         }
 
         AST::Expression& visit (AST::ArrayElementRef& s) override
@@ -696,8 +715,18 @@ private:
             return result;
         }
 
+        AST::Graph& visit (AST::Graph& g) override
+        {
+            auto lastGraph = currentGraph;
+            currentGraph = g;
+            auto& result = super::visit (g);
+            currentGraph = lastGraph;
+            return result;
+        }
+
         pool_ptr<AST::Statement> currentStatement;
         pool_ptr<AST::Connection> currentConnection;
+        pool_ptr<AST::Graph> currentGraph;
         int parsingProcessorInstance = 0;
         uint32_t numVariablesResolved = 0;
     };
@@ -1416,6 +1445,8 @@ private:
     };
 
     //==============================================================================
+    SOUL_TODO // big overlap between the functionality of specialising processors and namesapces needs a good refactoring
+
     struct ProcessorInstanceResolver  : public ErrorIgnoringRewritingASTVisitor
     {
         static inline constexpr const char* getPassName()  { return "ProcessorInstanceResolver"; }
@@ -1428,6 +1459,114 @@ private:
         AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
         AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
 
+        using ArgList = decltype(AST::CommaSeparatedList::items);
+        using ParamList = decltype(AST::ModuleBase::specialisationParams);
+
+        static auto getSpecialisationArgs (AST::ProcessorInstance& instance)
+        {
+            if (auto csl = cast<AST::CommaSeparatedList> (instance.specialisationArgs))
+                return csl->items;
+
+            ArgList specialisationArgs;
+
+            if (instance.specialisationArgs != nullptr)
+                specialisationArgs.push_back (*instance.specialisationArgs);
+
+            return specialisationArgs;
+        }
+
+        bool canResolveSpecialisationArg (AST::Expression& arg, AST::ASTObject& param) const
+        {
+            if (auto u = cast<AST::UsingDeclaration> (param))
+            {
+                if (AST::isResolvedAsType (arg))
+                    return true;
+
+                if (! ignoreErrors && arg.isResolved())
+                    arg.context.throwError (Errors::expectedType());
+
+                return false;
+            }
+
+            if (auto pa = cast<AST::ProcessorAliasDeclaration> (param))
+            {
+                if (auto prf = cast<AST::ProcessorInstanceRef> (arg))
+                    return prf->processorInstance.specialisationArgs == nullptr
+                            && prf->getAsProcessor()->specialisationParams.empty();
+
+                if (auto pr = arg.getAsProcessor())
+                    return true;
+
+                if (! ignoreErrors && arg.isResolved())
+                    arg.context.throwError (Errors::expectedProcessorName());
+
+                return false;
+            }
+
+            if (auto v = cast<AST::VariableDeclaration> (param))
+            {
+                if (AST::isResolvedAsValue (arg))
+                {
+                    SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
+                    return true;
+                }
+
+                if (! ignoreErrors && arg.isResolved())
+                    arg.context.throwError (Errors::expectedValue());
+
+                return false;
+            }
+
+            return false;
+        }
+
+        void resolveSpecialisationArg (AST::Expression& arg, AST::ASTObject& param) const
+        {
+            if (auto u = cast<AST::UsingDeclaration> (param))
+            {
+                SOUL_ASSERT (AST::isResolvedAsType (arg));
+                u->targetType = arg;
+                return;
+            }
+
+            if (auto pa = cast<AST::ProcessorAliasDeclaration> (param))
+            {
+                auto pr = arg.getAsProcessor();
+                pa->targetProcessor = *pr;
+                return;
+            }
+
+            if (auto v = cast<AST::VariableDeclaration> (param))
+            {
+                SOUL_ASSERT (AST::isResolvedAsValue (arg));
+                v->initialValue = arg;
+                return;
+            }
+
+            SOUL_ASSERT_FALSE;
+        }
+
+        bool canResolveAllSpecialisationArgs (const ArgList& args, const ParamList& params) const
+        {
+            SOUL_ASSERT (args.size() == params.size());
+
+            for (size_t i = 0; i < params.size(); ++i)
+                if (! canResolveSpecialisationArg (args[i].get(), params[i]))
+                    return false;
+
+            return true;
+        }
+
+        void resolveAllSpecialisationArgs (const ArgList& args, ParamList& params)
+        {
+            SOUL_ASSERT (args.size() == params.size());
+
+            for (size_t i = 0; i < params.size(); ++i)
+                resolveSpecialisationArg (args[i].get(), params[i]);
+
+            params.clear();
+        }
+
         AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
         {
             super::visit (instance);
@@ -1437,11 +1576,11 @@ private:
                 if (p->owningInstance == instance)
                     return instance;
 
+                auto specialisationArgs = getSpecialisationArgs (instance);
+                auto numArgs = specialisationArgs.size();
                 auto target = pool_ref<AST::ProcessorBase> (*p);
-                auto numParams = instance.specialisationArgs.size();
-                auto specialisationParams = target->getSpecialisationParameters();
 
-                if (specialisationParams.size() != numParams)
+                if (target->specialisationParams.size() != numArgs)
                     instance.context.throwError (Errors::wrongNumArgsForProcessor (target->getFullyQualifiedPath()));
 
                 auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
@@ -1451,74 +1590,38 @@ private:
                     if (! graph.getMatchingSubModules (instance.instanceName->path).empty())
                         instance.context.throwError (Errors::alreadyProcessorWithName (instance.instanceName->path));
 
-                if (target->owningInstance != nullptr || numParams != 0)
+                if (! canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))
+                {
+                    ++numFails;
+                    return instance;
+                }
+
+                if (target->owningInstance != nullptr || numArgs != 0)
                 {
                     auto nameRoot = target->name.toString();
 
-                    if (numParams != 0)
+                    if (numArgs != 0)
                         nameRoot = TokenisedPathString::join (nameRoot,
                                                               "_for_" + makeSafeIdentifierName (choc::text::replace (graph.getFullyQualifiedPath().toString(), ":", "_")
                                                                   + "_" + instance.instanceName->toString()));
                     auto& ns = target->getNamespace();
                     target = *cast<AST::ProcessorBase> (StructuralParser::cloneModuleWithNewName (allocator, ns, target, ns.makeUniqueName (nameRoot)));
-                    specialisationParams = target->getSpecialisationParameters();
                 }
 
-                if (numParams != 0)
-                {
-                    for (size_t i = 0; i < numParams; ++i)
-                    {
-                        auto& arg = instance.specialisationArgs[i].get();
-                        auto& param = specialisationParams[i];
-
-                        if (auto u = cast<AST::UsingDeclaration> (param))
-                        {
-                            if (! AST::isResolvedAsType (arg))
-                                arg.context.throwError (Errors::expectedType());
-
-                            u->targetType = arg;
-                            continue;
-                        }
-
-                        if (auto pa = cast<AST::ProcessorAliasDeclaration> (param))
-                        {
-                            if (auto pr = arg.getAsProcessor())
-                                pa->targetProcessor = *pr;
-                            else
-                                arg.context.throwError (Errors::expectedProcessorName());
-
-                            continue;
-                        }
-
-                        if (auto v = cast<AST::VariableDeclaration> (param))
-                        {
-                            if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
-                                arg.context.throwError (Errors::expectedValue());
-
-                            SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
-                            v->initialValue = arg;
-                            continue;
-                        }
-
-                        SOUL_ASSERT_FALSE;
-                    }
-
-                    target->specialisationParams.clear();
-                }
+                if (! target->specialisationParams.empty())
+                    resolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams);
 
                 target->owningInstance = instance;
                 instance.targetProcessor = allocator.allocate<AST::ProcessorRef> (instance.context, target);
-                instance.specialisationArgs.clear();
+                instance.specialisationArgs = nullptr;
                 ++itemsReplaced;
-            }
-            else
-            {
-                if (! ignoreErrors)
-                    instance.targetProcessor->context.throwError (Errors::expectedProcessorName());
-
-                ++numFails;
+                return instance;
             }
 
+            if (! ignoreErrors)
+                instance.targetProcessor->context.throwError (Errors::expectedProcessorName());
+
+            ++numFails;
             return instance;
         }
     };
@@ -1536,6 +1639,21 @@ private:
         AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
         AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
 
+        using ArgList = decltype(AST::CommaSeparatedList::items);
+
+        static auto getSpecialisationArgs (AST::NamespaceAliasDeclaration& instance)
+        {
+            if (auto csl = cast<AST::CommaSeparatedList> (instance.specialisationArgs))
+                return csl->items;
+
+            ArgList args;
+
+            if (instance.specialisationArgs != nullptr)
+                args.push_back (*instance.specialisationArgs);
+
+            return args;
+        }
+
         AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& instance) override
         {
             super::visit (instance);
@@ -1546,14 +1664,17 @@ private:
             if (instance.targetNamespace == nullptr)
                 return instance;
 
+
+            auto specialisationArgs = getSpecialisationArgs (instance);
+
             // We need the specialisations to be resolved before we can continue
-            for (auto& e : instance.targetNamespaceSpecialisations)
+            for (auto& e : specialisationArgs)
                 if (! e->isResolved())
                     return instance;
 
             if (auto n = instance.targetNamespace->getAsNamespace())
             {
-                instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, instance.targetNamespaceSpecialisations);
+                instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, specialisationArgs);
                 ++itemsReplaced;
             }
             else
@@ -1567,7 +1688,8 @@ private:
             return instance;
         }
 
-        pool_ref<AST::Namespace> getOrAddNamespaceSpecialisation (AST::Context& context, pool_ptr<AST::Namespace> namespaceToClone, std::vector<pool_ref<AST::Expression>>& args)
+        pool_ref<AST::Namespace> getOrAddNamespaceSpecialisation (AST::Context& context, pool_ptr<AST::Namespace> namespaceToClone,
+                                                                  ArrayView<pool_ref<AST::Expression>> args)
         {
             auto numParams = args.size();
             auto specialisationParams = namespaceToClone->getSpecialisationParameters();
@@ -1612,7 +1734,6 @@ private:
                     SOUL_TODO;  // Decide what to include on the instance key for this
                     continue;
                 }
-
 
                 SOUL_ASSERT_FALSE;
             }

@@ -201,8 +201,8 @@ private:
         throwError (Errors::expectedTopLevelDecl());
     }
 
-    pool_ptr<AST::Processor> parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
-    pool_ptr<AST::Graph>     parseGraphDecl     (AST::Namespace& ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
+    pool_ptr<AST::Processor> parseProcessorDecl (AST::Namespace&  ns)   { return parseTopLevelItem<AST::Processor> (ns); }
+    pool_ptr<AST::Graph>     parseGraphDecl     (AST::Namespace&  ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
     pool_ptr<AST::Namespace> parseNamespaceDecl (AST::ModuleBase& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
 
     template <typename ModuleType>
@@ -224,13 +224,15 @@ private:
             if (namespaceAliasList == nullptr)
                 throwError (Errors::usingDeclNotAllowed());
 
-            auto& identifier     = parseQualifiedIdentifier();
-            auto specialisations = parseOptionalSpecialisations();
+            auto& identifier = parseQualifiedIdentifier();
+            auto specialisationArgs = parseSpecialisationArgs();
+
+            if (matchIf (Operator::openParen))
+                specialisationArgs = parseParenthesisedExpression();
+
             expect (Operator::semicolon);
-
-            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisations);
+            auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisationArgs);
             namespaceAliasList->push_back (alias);
-
             return {};
         }
 
@@ -254,6 +256,17 @@ private:
 
         module = oldModule;
         return newModule;
+    }
+
+    pool_ptr<AST::Expression> parseSpecialisationArgs()
+    {
+        if (! matchIf (Operator::openParen))
+            return {};
+
+        if (matchIf (Operator::closeParen))
+            return {};
+
+        return parseParenthesisedExpression();
     }
 
     void parseImports (AST::Namespace& parentNamespace)
@@ -651,37 +664,13 @@ private:
         }
 
         // Parameterised
-        u.specialisationArgs = parseOptionalSpecialisations();
+        u.specialisationArgs = parseSpecialisationArgs();
 
         // Clocked
         if (matchIf (Operator::times))
             u.clockMultiplierRatio = parseExpression();
         else if (matchIf (Operator::divide))
             u.clockDividerRatio = parseExpression();
-    }
-
-    std::vector<pool_ref<AST::Expression>> parseOptionalSpecialisations()
-    {
-        std::vector<pool_ref<AST::Expression>> specialisations;
-
-        if (matchIf (Operator::openParen))
-        {
-            if (! matchIf (Operator::closeParen))
-            {
-                for (;;)
-                {
-                    auto context = getContext();
-                    specialisations.push_back (parseSpecialisationValueOrType());
-
-                    if (matchIf (Operator::closeParen))
-                        break;
-
-                    expect (Operator::comma);
-                }
-            }
-        }
-
-        return specialisations;
     }
 
     AST::Expression& parseSpecialisationValueOrType()

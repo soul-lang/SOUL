@@ -330,7 +330,7 @@ private:
                         i->clockDividerRatio->context.throwError (Errors::ratioMustBeInteger());
                 }
 
-                SOUL_ASSERT (i->specialisationArgs.empty());
+                SOUL_ASSERT (i->specialisationArgs == nullptr);
 
                 module.processorInstances.push_back (p);
                 return p;
