@@ -203,10 +203,10 @@ private:
 
     pool_ptr<AST::Processor> parseProcessorDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Processor> (ns); }
     pool_ptr<AST::Graph>     parseGraphDecl     (AST::Namespace& ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
-    pool_ptr<AST::Namespace> parseNamespaceDecl (AST::Namespace& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
+    pool_ptr<AST::Namespace> parseNamespaceDecl (AST::ModuleBase& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
 
     template <typename ModuleType>
-    pool_ptr<ModuleType> parseTopLevelItem (AST::Namespace& parentNamespace)
+    pool_ptr<ModuleType> parseTopLevelItem (AST::ModuleBase& parentModule)
     {
         auto context = getContext();
         auto name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
@@ -219,7 +219,7 @@ private:
 
         if (matchIf (Operator::assign))
         {
-            auto namespaceAliasList = parentNamespace.getNamespaceAliasList();
+            auto namespaceAliasList = parentModule.getNamespaceAliasList();
 
             if (namespaceAliasList == nullptr)
                 throwError (Errors::usingDeclNotAllowed());
@@ -234,8 +234,13 @@ private:
             return {};
         }
 
+        auto parentNamespace = cast<AST::Namespace> (parentModule);
+
+        if (parentNamespace == nullptr)
+            context.throwError (Errors::namespaceMustBeInsideNamespace());
+
         auto& newModule = allocate<ModuleType> (context, name);
-        parentNamespace.subModules.push_back (newModule);
+        parentNamespace->subModules.push_back (newModule);
 
         auto newNamespace = cast<AST::Namespace> (newModule);
         ScopedScope scope (*this, newModule);
@@ -284,14 +289,13 @@ private:
         parseSpecialisationParameters();
 
         auto processor = cast<AST::ProcessorBase> (module);
+        auto graph     = cast<AST::Graph> (module);
+        auto ns        = cast<AST::Namespace> (module);
 
         if (processor != nullptr)
             parseAnnotation (processor->annotation);
 
         expect (Operator::openBrace);
-
-        auto graph = cast<AST::Graph> (module);
-        auto ns = cast<AST::Namespace> (module);
 
         if (processor != nullptr)
         {
@@ -315,10 +319,10 @@ private:
 
                 if (matchIf (Keyword::namespace_))
                 {
-                    if (ns == nullptr)
-                        throwError (Errors::namespaceMustBeInsideNamespace());
+//                    if (ns == nullptr)
+//                        throwError (Errors::namespaceMustBeInsideNamespace());
 
-                    parseNamespaceDecl (*ns);
+                    parseNamespaceDecl (*module);
                     continue;
                 }
 
