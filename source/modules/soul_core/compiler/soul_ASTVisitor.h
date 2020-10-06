@@ -283,6 +283,7 @@ struct ASTVisitor
     virtual void visit (AST::NamespaceAliasDeclaration& o)
     {
         visitObjectIfNotNull (o.targetNamespace);
+        visitArray (o.targetNamespaceSpecialisations);
     }
 
     virtual void visit (AST::SubscriptWithBrackets& s)
@@ -744,6 +745,7 @@ struct RewritingASTVisitor
     virtual AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& o)
     {
         replaceExpression (o.targetNamespace);
+        replaceArray (o.targetNamespaceSpecialisations);
         return o;
     }
 

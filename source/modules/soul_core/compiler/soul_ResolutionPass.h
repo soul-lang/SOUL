@@ -1540,20 +1540,28 @@ private:
         {
             super::visit (instance);
 
-            if (! instance.isResolved())
-            {
-                if (auto n = instance.targetNamespace->getAsNamespace())
-                {
-                    instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, instance.targetNamespaceSpecialisations);
-                    ++itemsReplaced;
-                }
-                else
-                {
-                    if (! ignoreErrors)
-                        instance.targetNamespace->context.throwError (Errors::expectedNamespaceName());
+            if (instance.isResolved())
+                return instance;
 
-                    ++numFails;
-                }
+            if (instance.targetNamespace == nullptr)
+                return instance;
+
+            // We need the specialisations to be resolved before we can continue
+            for (auto& e : instance.targetNamespaceSpecialisations)
+                if (! e->isResolved())
+                    return instance;
+
+            if (auto n = instance.targetNamespace->getAsNamespace())
+            {
+                instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, instance.targetNamespaceSpecialisations);
+                ++itemsReplaced;
+            }
+            else
+            {
+                if (! ignoreErrors)
+                    instance.targetNamespace->context.throwError (Errors::expectedNamespaceName());
+
+                ++numFails;
             }
 
             return instance;
@@ -1583,7 +1591,7 @@ private:
                     if (! AST::isResolvedAsType (arg))
                         arg.context.throwError (Errors::expectedType());
 
-                    instanceKey << "," << arg.getConcreteType()->getShortIdentifierDescription();
+                    instanceKey << "," << arg.resolveAsType().getShortIdentifierDescription();
                     continue;
                 }
 
@@ -1598,6 +1606,13 @@ private:
                     instanceKey << "," << std::string (static_cast<char *> (value.getPackedData()), value.getPackedDataSize());
                     continue;
                 }
+
+                if (auto v = cast<AST::NamespaceAliasDeclaration> (param))
+                {
+                    SOUL_TODO;  // Decide what to include on the instance key for this
+                    continue;
+                }
+
 
                 SOUL_ASSERT_FALSE;
             }
@@ -1634,6 +1649,13 @@ private:
                         v->initialValue = arg;
                         continue;
                     }
+
+                    if (auto n = cast<AST::NamespaceAliasDeclaration> (param))
+                    {
+                        n->targetNamespace = arg;
+                        continue;
+                    }
+
 
                     SOUL_ASSERT_FALSE;
                 }

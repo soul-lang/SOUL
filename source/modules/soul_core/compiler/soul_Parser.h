@@ -491,6 +491,14 @@ private:
                     auto context = getContext();
                     module->addSpecialisationParameter (allocate<AST::ProcessorAliasDeclaration> (context, parseIdentifier()));
                 }
+                else if (matchIf (Keyword::namespace_))
+                {
+                    if (! module->isNamespace())
+                        throwError (Errors::namespaceSpecialisationNotAllowed());
+
+                    auto context = getContext();
+                    module->addSpecialisationParameter (allocate<AST::NamespaceAliasDeclaration> (context, parseIdentifier()));
+                }
                 else
                 {
                     giveErrorOnExternalKeyword();

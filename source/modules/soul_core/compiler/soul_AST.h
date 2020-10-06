@@ -630,6 +630,7 @@ struct AST
         virtual void addSpecialisationParameter (VariableDeclaration&) = 0;
         virtual void addSpecialisationParameter (UsingDeclaration&) = 0;
         virtual void addSpecialisationParameter (ProcessorAliasDeclaration&) = 0;
+        virtual void addSpecialisationParameter (NamespaceAliasDeclaration&) = 0;
 
         std::vector<pool_ref<ASTObject>> specialisationParams;
         std::vector<pool_ref<UsingDeclaration>> usings;
@@ -728,10 +729,8 @@ struct AST
             specialisationParams.push_back (u);
         }
 
-        void addSpecialisationParameter (ProcessorAliasDeclaration&) override
-        {
-            SOUL_ASSERT_FALSE;
-        }
+        void addSpecialisationParameter (ProcessorAliasDeclaration&) override { SOUL_ASSERT_FALSE; }
+        void addSpecialisationParameter (NamespaceAliasDeclaration&) override { SOUL_ASSERT_FALSE; }
 
         std::vector<pool_ref<StructDeclaration>> structures;
         std::vector<pool_ref<Function>> functions;
@@ -756,6 +755,7 @@ struct AST
         }
 
         void addSpecialisationParameter (UsingDeclaration&) override                         { SOUL_ASSERT_FALSE; }
+        void addSpecialisationParameter (NamespaceAliasDeclaration&) override                { SOUL_ASSERT_FALSE; }
 
         bool isGraph() const override                                                        { return true; }
 
@@ -819,6 +819,12 @@ struct AST
         {
             usings.push_back (u);
             specialisationParams.push_back (u);
+        }
+
+        void addSpecialisationParameter (NamespaceAliasDeclaration& n) override
+        {
+            namespaceAliases.push_back (n);
+            specialisationParams.push_back (n);
         }
 
         void addSpecialisationParameter (ProcessorAliasDeclaration&) override          { SOUL_ASSERT_FALSE; }
@@ -1392,8 +1398,13 @@ struct AST
 
     struct NamespaceAliasDeclaration : public ASTObject
     {
+        NamespaceAliasDeclaration (const Context& c, Identifier nm)
+            : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm)
+        {
+        }
+
         NamespaceAliasDeclaration (const Context& c, Identifier nm, pool_ptr<Expression> target, std::vector<pool_ref<Expression>> targetSpecialisations)
-        : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm), targetNamespace (target), targetNamespaceSpecialisations (targetSpecialisations)
+            : ASTObject (ObjectType::NamespaceAliasDeclaration, c), name (nm), targetNamespace (target), targetNamespaceSpecialisations (targetSpecialisations)
         {
         }
 
