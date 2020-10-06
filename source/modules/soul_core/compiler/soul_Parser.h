@@ -420,30 +420,20 @@ private:
 
         expect (Operator::assign);
 
-        auto usingList = module->getUsingList();
-
-        if (usingList == nullptr)
-            throwError (Errors::usingDeclNotAllowed());
-
         auto& type = parseType (ParseTypeContext::usingDeclTarget);
-        usingList->push_back (allocate<AST::UsingDeclaration> (context, name, type));
+        module->usings.push_back (allocate<AST::UsingDeclaration> (context, name, type));
 
         expect (Operator::semicolon);
     }
 
     void parseStructDeclaration()
     {
-        auto structs = module->getStructList();
-
-        if (structs == nullptr)
-            throwError (Errors::structDeclNotAllowed());
-
         auto context = getContext();
         auto name = parseIdentifier();
         expect (Operator::openBrace);
 
         auto& newStruct = allocate<AST::StructDeclaration> (context, name);
-        structs->push_back (newStruct);
+        module->structures.push_back (newStruct);
 
         while (! matchIf (Operator::closeBrace))
         {

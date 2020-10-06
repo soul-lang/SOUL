@@ -568,11 +568,9 @@ struct AST
         virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const   { return specialisationParams; }
         virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                  { return {}; }
         std::vector<pool_ref<NamespaceAliasDeclaration>>*      getNamespaceAliasList()               { return &namespaceAliases; }
-        std::vector<pool_ref<UsingDeclaration>>*               getUsingList()                        { return &usings; }
         ArrayView<pool_ref<UsingDeclaration>>                  getUsingDeclarations() const override { return usings; }
         ArrayView<pool_ref<NamespaceAliasDeclaration>>         getNamespaceAliases() const override  { return namespaceAliases; }
 
-        virtual std::vector<pool_ref<StructDeclaration>>*      getStructList() = 0;
         virtual std::vector<pool_ref<VariableDeclaration>>&    getStateVariableList() = 0;
         virtual std::vector<pool_ref<Function>>*               getFunctionList() = 0;
 
@@ -635,6 +633,7 @@ struct AST
         std::vector<pool_ref<ASTObject>> specialisationParams;
         std::vector<pool_ref<UsingDeclaration>> usings;
         std::vector<pool_ref<NamespaceAliasDeclaration>> namespaceAliases;
+        std::vector<pool_ref<StructDeclaration>> structures;
 
     private:
         size_t countEndpoints (bool countInputs) const
@@ -710,7 +709,6 @@ struct AST
         ArrayView<pool_ref<Function>>                getFunctions() const override           { return functions; }
         ArrayView<pool_ref<StructDeclaration>>       getStructDeclarations() const override  { return structures; }
 
-        std::vector<pool_ref<StructDeclaration>>*    getStructList() override                { return &structures; }
         std::vector<pool_ref<VariableDeclaration>>&  getStateVariableList() override         { return stateVariables; }
         std::vector<pool_ref<Function>>*             getFunctionList() override              { return &functions; }
 
@@ -732,7 +730,6 @@ struct AST
         void addSpecialisationParameter (ProcessorAliasDeclaration&) override { SOUL_ASSERT_FALSE; }
         void addSpecialisationParameter (NamespaceAliasDeclaration&) override { SOUL_ASSERT_FALSE; }
 
-        std::vector<pool_ref<StructDeclaration>> structures;
         std::vector<pool_ref<Function>> functions;
         std::vector<pool_ref<VariableDeclaration>> stateVariables;
     };
@@ -762,7 +759,6 @@ struct AST
         ArrayView<pool_ref<ProcessorAliasDeclaration>> getProcessorAliases() const override  { return processorAliases; }
         ArrayView<pool_ref<VariableDeclaration>> getVariables() const override               { return constants; }
 
-        std::vector<pool_ref<StructDeclaration>>* getStructList() override                   { return {}; }
         std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override          { return constants; }
         std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
 
@@ -838,12 +834,10 @@ struct AST
         ArrayView<pool_ref<ModuleBase>> getSubModules() const override                 { return subModules; }
 
         std::vector<pool_ref<Function>>* getFunctionList() override                    { return &functions; }
-        std::vector<pool_ref<StructDeclaration>>* getStructList() override             { return &structures; }
         std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override    { return constants; }
 
         ImportsList importsList;
         std::vector<pool_ref<Function>> functions;
-        std::vector<pool_ref<StructDeclaration>> structures;
         std::vector<pool_ref<ModuleBase>> subModules;
         std::vector<pool_ref<VariableDeclaration>> constants;
 
