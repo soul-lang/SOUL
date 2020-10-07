@@ -3,42 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@babel/runtime-corejs3": "^7.10.3",
+    "@babel/runtime-corejs3": "^7.11.2",
+    "file-loader": "6.1.0",
     "juce-blueprint": "file:../../../../../3rdParty/blueprint/packages/juce-blueprint",
-    "react": "^16.6.3"
+    "react": "^16.13.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.2.0",
+    "@babel/core": "^7.11.1",
     "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/plugin-transform-runtime": "^7.10.3",
-    "@babel/preset-env": "^7.2.0",
-    "@babel/preset-react": "^7.0.0",
+    "@babel/plugin-transform-runtime": "^7.11.0",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-react": "^7.10.4",
     "babel-loader": "^8.0.4",
     "svg-inline-loader": "^0.8.0",
+    "url-loader": "4.1.0",
     "webpack": "^4.27.1",
     "webpack-cli": "^3.1.2"
-  },
-  "babel": {
-    "presets": [
-      "@babel/preset-env",
-      "@babel/preset-react"
-    ],
-    "plugins": [
-      [
-        "@babel/plugin-transform-runtime",
-        {
-          "absoluteRuntime": false,
-          "corejs": 3,
-          "helpers": true,
-          "regenerator": true,
-          "useESModules": false,
-          "version": "7.0.0-beta.0"
-        }
-      ],
-      [
-        "@babel/plugin-proposal-class-properties"
-      ]
-    ]
   },
   "scripts": {
     "start": "webpack -w --mode=development",
