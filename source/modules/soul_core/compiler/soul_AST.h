@@ -1244,7 +1244,14 @@ struct AST
             auto args = "_" + std::to_string (parameters.size());
 
             for (auto& p : parameters)
-                args += "_" + p->getType().withConstAndRefFlags (false, false).getShortIdentifierDescription();
+            {
+                auto argType = p->getType().withConstAndRefFlags (false, false);
+
+                if (argType.isStruct())
+                    args += "_" + std::to_string ((size_t) argType.getStruct().get());
+                else
+                    args += "_" + argType.getShortIdentifierDescription();
+            }
 
             return name.toString() + args;
         }
@@ -2036,7 +2043,12 @@ struct AST
             auto args = std::to_string (types.size());
 
             for (auto& argType : types)
-                args += "_" + argType.getShortIdentifierDescription();
+            {
+                if (argType.isStruct())
+                    args += "_" + std::to_string ((size_t) argType.getStruct().get());
+                else
+                    args += "_" + argType.withConstAndRefFlags (false, false).getShortIdentifierDescription();
+            }
 
             return args;
         }

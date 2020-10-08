@@ -2277,9 +2277,6 @@ private:
             SOUL_ASSERT (genericFunction.isGeneric());
 
             if (auto newFunction = getOrCreateSpecialisedFunction (call, genericFunction,
-                                                                   allocator.get ("_" + genericFunction.name.toString()
-                                                                                    + heart::getGenericSpecialisationNameTag()
-                                                                                    + call.getIDStringForArgumentTypes()),
                                                                    call.getArgumentTypes(),
                                                                    shouldIgnoreErrors))
             {
@@ -2291,44 +2288,69 @@ private:
             return {};
         }
 
-        pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call, AST::Function& genericFunction,
-                                                                Identifier specialisedFunctionName, ArrayView<Type> callerArgumentTypes,
+        std::string getIDStringForTypeArray (const AST::TypeArray& types)
+        {
+            auto result = std::to_string (types.size());
+
+            for (auto& t : types)
+            {
+                if (t.isStruct())
+                    result += "_" + std::to_string ((size_t) t.getStruct().get());
+                else
+                    result += "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
+            }
+
+            return result;
+        }
+
+        std::string getIDStringForFunction (const AST::Function& resolvedGenericFunction)
+        {
+            AST::TypeArray types;
+
+            for (auto t : resolvedGenericFunction.genericSpecialisations)
+            {
+                types.push_back (t->resolveAsType());
+            }
+
+            return getIDStringForTypeArray (types);
+        }
+
+        pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call,
+                                                                AST::Function& genericFunction,
+                                                                ArrayView<Type> callerArgumentTypes,
                                                                 bool shouldIgnoreErrors)
         {
             auto parentScope = genericFunction.getParentScope();
             SOUL_ASSERT (parentScope != nullptr);
 
-            for (auto& f : parentScope->getFunctions())
-                if (f->name == specialisedFunctionName && f->originalGenericFunction == genericFunction)
-                    return f;
+            AST::TypeArray resolvedTypes;
 
-            auto& newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
-            newFunction.name = specialisedFunctionName;
-            newFunction.originalGenericFunction = genericFunction;
-
-            SOUL_ASSERT (callerArgumentTypes.size() == newFunction.parameters.size());
-
-            if (! resolveGenericFunctionTypes (call, genericFunction, newFunction, callerArgumentTypes, shouldIgnoreErrors))
+            if (findGenericFunctionTypes (call, genericFunction, callerArgumentTypes, resolvedTypes, shouldIgnoreErrors))
             {
-                auto parentModule = genericFunction.getParentScope()->getAsModule();
-                SOUL_ASSERT (parentModule != nullptr);
-                removeItem (*parentModule->getFunctionList(), newFunction);
-                return {};
+                auto callerSignatureID = getIDStringForTypeArray (resolvedTypes);
+
+                for (auto& f : parentScope->getFunctions())
+                    if (f->originalGenericFunction == genericFunction && getIDStringForFunction (f) == callerSignatureID)
+                        return f;
+
+                auto& newFunction = StructuralParser::cloneFunction (allocator, genericFunction);
+                newFunction.name = allocator.get ("_" + genericFunction.name.toString() + heart::getGenericSpecialisationNameTag());
+                newFunction.originalGenericFunction = genericFunction;
+                applyGenericFunctionTypes (newFunction, resolvedTypes);
+
+                return newFunction;
             }
 
-            return newFunction;
+            return {};
         }
 
-        bool resolveGenericFunctionTypes (AST::CallOrCast& call, AST::Function& originalFunction,
-                                          AST::Function& function, ArrayView<Type> callerArgumentTypes,
-                                          bool shouldIgnoreErrors)
+        bool findGenericFunctionTypes (AST::CallOrCast& call, AST::Function& function, ArrayView<Type> callerArgumentTypes, AST::TypeArray& resolvedTypes, bool shouldIgnoreErrors)
         {
-            while (! function.genericWildcards.empty())
+            for (auto wildcardToResolve : function.genericWildcards)
             {
-                auto wildcardToResolve = function.genericWildcards.back();
                 SOUL_ASSERT (wildcardToResolve->path.isUnqualified());
+
                 auto wildcardName = wildcardToResolve->path.getLastPart();
-                function.genericWildcards.pop_back();
                 Type resolvedType;
 
                 for (size_t i = 0; i < function.parameters.size(); ++i)
@@ -2336,8 +2358,7 @@ private:
                     if (auto paramType = function.parameters[i]->declaredType)
                     {
                         bool anyReferencesInvolved = false;
-                        auto newMatch = matchParameterAgainstWildcard (*paramType, callerArgumentTypes[i],
-                                                                       wildcardName, anyReferencesInvolved);
+                        auto newMatch = matchParameterAgainstWildcard (*paramType, callerArgumentTypes[i], wildcardName, anyReferencesInvolved);
 
                         if (newMatch.isValid())
                         {
@@ -2355,7 +2376,7 @@ private:
                                     else if (anyReferencesInvolved || ! TypeRules::canSilentlyCastTo (resolvedType, newMatch))
                                     {
                                         if (! shouldIgnoreErrors)
-                                            throwResolutionError (call, originalFunction, wildcardToResolve->context,
+                                            throwResolutionError (call, function, wildcardToResolve->context,
                                                                   "Could not find a value for " + quoteName (wildcardName) + " that satisfies all argument types");
 
                                         return false;
@@ -2373,18 +2394,35 @@ private:
                 if (! resolvedType.isValid())
                 {
                     if (! shouldIgnoreErrors)
-                        throwResolutionError (call, originalFunction, wildcardToResolve->context,
+                        throwResolutionError (call, function, wildcardToResolve->context,
                                               "Failed to resolve generic parameter " + quoteName (wildcardName));
                     return false;
                 }
 
-                auto& type = allocator.allocate<AST::ConcreteType> (AST::Context(), resolvedType);
-                auto& usingDecl = allocator.allocate<AST::UsingDeclaration> (wildcardToResolve->context, wildcardName, type);
-                function.genericSpecialisations.push_back (usingDecl);
+                resolvedTypes.push_back (resolvedType);
             }
 
             return true;
         }
+
+        void applyGenericFunctionTypes (AST::Function& function, const AST::TypeArray& resolvedTypes)
+        {
+            SOUL_ASSERT (function.genericWildcards.size() == resolvedTypes.size());
+
+            for (size_t i = 0; i < resolvedTypes.size(); i++)
+            {
+                auto wildcardToResolve = function.genericWildcards[i];
+                auto& resolvedType = resolvedTypes[i];
+
+                auto& usingDecl = allocator.allocate<AST::UsingDeclaration> (wildcardToResolve->context,
+                                                                             wildcardToResolve->path.getLastPart(),
+                                                                             allocator.allocate<AST::ConcreteType> (AST::Context(), resolvedType));
+                function.genericSpecialisations.push_back (usingDecl);
+            }
+
+            function.genericWildcards.clear();
+        }
+
 
         void throwResolutionError (AST::CallOrCast& call, AST::Function& function,
                                    const AST::Context& errorLocation, const std::string& errorMessage)
