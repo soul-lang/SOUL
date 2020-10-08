@@ -2288,21 +2288,6 @@ private:
             return {};
         }
 
-        std::string getIDStringForTypeArray (const AST::TypeArray& types)
-        {
-            auto result = std::to_string (types.size());
-
-            for (auto& t : types)
-            {
-                if (t.isStruct())
-                    result += "_" + std::to_string ((size_t) t.getStruct().get());
-                else
-                    result += "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
-            }
-
-            return result;
-        }
-
         std::string getIDStringForFunction (const AST::Function& resolvedGenericFunction)
         {
             AST::TypeArray types;
@@ -2312,7 +2297,7 @@ private:
                 types.push_back (t->resolveAsType());
             }
 
-            return getIDStringForTypeArray (types);
+            return ASTUtilities::getIDStringForTypeArray (types);
         }
 
         pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call,
@@ -2327,7 +2312,7 @@ private:
 
             if (findGenericFunctionTypes (call, genericFunction, callerArgumentTypes, resolvedTypes, shouldIgnoreErrors))
             {
-                auto callerSignatureID = getIDStringForTypeArray (resolvedTypes);
+                auto callerSignatureID = ASTUtilities::getIDStringForTypeArray (resolvedTypes);
 
                 for (auto& f : parentScope->getFunctions())
                     if (f->originalGenericFunction == genericFunction && getIDStringForFunction (f) == callerSignatureID)

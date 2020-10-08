@@ -260,7 +260,7 @@ struct SanityCheckPass  final
         {
             if (! f->isGeneric())
             {
-                auto newSig = f->getSignatureID();
+                auto newSig = ASTUtilities::getFunctionSignatureId (f);
 
                 if (contains (functionSigs, newSig))
                     f->context.throwError (Errors::duplicateFunction());

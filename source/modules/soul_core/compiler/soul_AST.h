@@ -1239,23 +1239,6 @@ struct AST
             return name.toString() + heart::Utilities::getDescriptionOfTypeList (getParameterTypes(), true);
         }
 
-        std::string getSignatureID() const
-        {
-            auto args = "_" + std::to_string (parameters.size());
-
-            for (auto& p : parameters)
-            {
-                auto argType = p->getType().withConstAndRefFlags (false, false);
-
-                if (argType.isStruct())
-                    args += "_" + std::to_string ((size_t) argType.getStruct().get());
-                else
-                    args += "_" + argType.getShortIdentifierDescription();
-            }
-
-            return name.toString() + args;
-        }
-
         TypeArray getParameterTypes() const
         {
             TypeArray types;
@@ -2035,22 +2018,6 @@ struct AST
                 return arguments->getListOfResultTypes();
 
             return {};
-        }
-
-        std::string getIDStringForArgumentTypes() const
-        {
-            auto types = getArgumentTypes();
-            auto args = std::to_string (types.size());
-
-            for (auto& argType : types)
-            {
-                if (argType.isStruct())
-                    args += "_" + std::to_string ((size_t) argType.getStruct().get());
-                else
-                    args += "_" + argType.withConstAndRefFlags (false, false).getShortIdentifierDescription();
-            }
-
-            return args;
         }
 
         std::string getDescription (std::string name) const

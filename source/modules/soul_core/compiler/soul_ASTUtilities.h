@@ -155,6 +155,31 @@ struct ASTUtilities
         return allocator.allocate<AST::OutputEndpointRef> (c, e);
     }
 
+    static std::string getIDStringForTypeArray (const AST::TypeArray& types)
+    {
+        auto result = std::to_string (types.size());
+
+        for (auto& t : types)
+        {
+            if (t.isStruct())
+                result += "_" + std::to_string ((size_t) t.getStruct().get());
+            else
+                result += "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
+        }
+
+        return result;
+    }
+
+    static std::string getFunctionSignatureId (const AST::Function& f)
+    {
+        AST::TypeArray types;
+
+        for (auto& p : f.parameters)
+            types.push_back (p->getType().withConstAndRefFlags (false, false));
+
+        return f.name.toString() + "_" + getIDStringForTypeArray (types);
+    }
+
 private:
     static void mergeNamespaces (AST::Namespace& target, AST::Namespace& source)
     {
