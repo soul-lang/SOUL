@@ -744,7 +744,7 @@ R"soul_code(
         static_assert (Array.elementType.primitiveType.isFloat, "readLinearInterpolated() only works with arrays of float values");
         static_assert (IndexType.isFloat && IndexType.isPrimitive, "The index for readLinearInterpolated() must be a floating point value");
 
-        let size = array.size;
+        let size = int (array.size);
 
         if (size == 0)
             return Array.elementType();

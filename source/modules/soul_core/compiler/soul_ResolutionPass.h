@@ -2354,18 +2354,11 @@ private:
                             {
                                 if (! newMatch.isIdentical (resolvedType))
                                 {
-                                    if (! anyReferencesInvolved && TypeRules::canSilentlyCastTo (newMatch, resolvedType))
-                                    {
-                                        resolvedType = newMatch;
-                                    }
-                                    else if (anyReferencesInvolved || ! TypeRules::canSilentlyCastTo (resolvedType, newMatch))
-                                    {
-                                        if (! shouldIgnoreErrors)
-                                            throwResolutionError (call, function, wildcardToResolve->context,
-                                                                  "Could not find a value for " + quoteName (wildcardName) + " that satisfies all argument types");
+                                    if (! shouldIgnoreErrors)
+                                        throwResolutionError (call, function, wildcardToResolve->context,
+                                                              "Could not find a value for " + quoteName (wildcardName) + " that satisfies all argument types");
 
-                                        return false;
-                                    }
+                                    return false;
                                 }
                             }
                             else
