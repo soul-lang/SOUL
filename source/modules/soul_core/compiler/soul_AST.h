@@ -567,7 +567,6 @@ struct AST
 
         virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const   { return specialisationParams; }
         virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                  { return {}; }
-        std::vector<pool_ref<NamespaceAliasDeclaration>>*      getNamespaceAliasList()               { return &namespaceAliases; }
         ArrayView<pool_ref<UsingDeclaration>>                  getUsingDeclarations() const override { return usings; }
         ArrayView<pool_ref<NamespaceAliasDeclaration>>         getNamespaceAliases() const override  { return namespaceAliases; }
 

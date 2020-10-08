@@ -219,11 +219,6 @@ private:
 
         if (matchIf (Operator::assign))
         {
-            auto namespaceAliasList = parentModule.getNamespaceAliasList();
-
-            if (namespaceAliasList == nullptr)
-                throwError (Errors::usingDeclNotAllowed());
-
             auto& identifier = parseQualifiedIdentifier();
             auto specialisationArgs = parseSpecialisationArgs();
 
@@ -232,7 +227,7 @@ private:
 
             expect (Operator::semicolon);
             auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisationArgs);
-            namespaceAliasList->push_back (alias);
+            parentModule.namespaceAliases.push_back (alias);
             return {};
         }
 
@@ -332,9 +327,6 @@ private:
 
                 if (matchIf (Keyword::namespace_))
                 {
-//                    if (ns == nullptr)
-//                        throwError (Errors::namespaceMustBeInsideNamespace());
-
                     parseNamespaceDecl (*module);
                     continue;
                 }
