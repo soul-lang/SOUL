@@ -90,23 +90,6 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
         return parentNamespace.subModules;
     }
 
-    static pool_ptr<AST::ModuleBase> cloneModuleWithNewName (AST::Allocator& allocator,
-                                                             AST::Namespace& parentNamespace,
-                                                             const AST::ModuleBase& itemToClone,
-                                                             const std::string& newName)
-    {
-        StructuralParser p (allocator, itemToClone.context.location, parentNamespace);
-        auto newNameID = allocator.identifiers.get (newName);
-        p.newNameForFirstDecl = &newNameID;
-
-        if (itemToClone.isProcessor())  return p.parseProcessorDecl (parentNamespace);
-        if (itemToClone.isGraph())      return p.parseGraphDecl (parentNamespace);
-        if (itemToClone.isNamespace())  return p.parseNamespaceDecl (parentNamespace);
-
-        SOUL_ASSERT_FALSE;
-        return {};
-    }
-
     static AST::Function& cloneFunction (AST::Allocator& allocator,
                                          const AST::Function& functionToClone)
     {
@@ -250,7 +233,29 @@ private:
             parseTopLevelDeclContent();
 
         module = oldModule;
+
+        newModule.createClone = [&newModule] (AST::Allocator& a, AST::Namespace& parentNS, const std::string& newName) -> AST::ModuleBase&
+        {
+            return cloneModuleWithNewName (a, parentNS, newModule, newName);
+        };
+
         return newModule;
+    }
+
+    static AST::ModuleBase& cloneModuleWithNewName (AST::Allocator& allocator,
+                                                    AST::Namespace& parentNamespace,
+                                                    const AST::ModuleBase& itemToClone,
+                                                    const std::string& newName)
+    {
+        StructuralParser p (allocator, itemToClone.context.location, parentNamespace);
+        auto newNameID = allocator.identifiers.get (newName);
+        p.newNameForFirstDecl = &newNameID;
+
+        if (itemToClone.isProcessor())  return *p.parseProcessorDecl (parentNamespace);
+        if (itemToClone.isGraph())      return *p.parseGraphDecl (parentNamespace);
+
+        SOUL_ASSERT (itemToClone.isNamespace());
+        return *p.parseNamespaceDecl (parentNamespace);
     }
 
     pool_ptr<AST::Expression> parseSpecialisationArgs()

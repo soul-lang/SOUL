@@ -634,6 +634,8 @@ struct AST
         std::vector<pool_ref<NamespaceAliasDeclaration>> namespaceAliases;
         std::vector<pool_ref<StructDeclaration>> structures;
 
+        std::function<ModuleBase&(AST::Allocator&, AST::Namespace& parentNamespace, const std::string& newName)> createClone;
+
     private:
         size_t countEndpoints (bool countInputs) const
         {
