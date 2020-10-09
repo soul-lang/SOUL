@@ -1470,17 +1470,6 @@ private:
 
             return args;
         }
-    };
-
-    //==============================================================================
-    struct ProcessorInstanceResolver  : public ModuleInstanceResolver
-    {
-        static inline constexpr const char* getPassName()  { return "ProcessorInstanceResolver"; }
-        using super = ModuleInstanceResolver;
-        using super::visit;
-
-        ProcessorInstanceResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
-            : super (rp, shouldIgnoreErrors) {}
 
         bool canResolveSpecialisationArg (AST::Expression& arg, AST::ASTObject& param) const
         {
@@ -1524,6 +1513,20 @@ private:
                 return false;
             }
 
+            if (auto n = cast<AST::NamespaceAliasDeclaration> (param))
+            {
+                if (arg.isResolved())
+                {
+                    if (arg.getAsNamespace() != nullptr)
+                        return true;
+
+                    if (! ignoreErrors)
+                        arg.context.throwError (Errors::expectedNamespaceName());
+                }
+
+                return false;
+            }
+
             return false;
         }
 
@@ -1561,6 +1564,12 @@ private:
                 return;
             }
 
+            if (auto n = cast<AST::NamespaceAliasDeclaration> (param))
+            {
+                n->resolvedNamespace = arg.getAsNamespace();
+                return;
+            }
+
             SOUL_ASSERT_FALSE;
         }
 
@@ -1573,6 +1582,17 @@ private:
 
             params.clear();
         }
+    };
+
+    //==============================================================================
+    struct ProcessorInstanceResolver  : public ModuleInstanceResolver
+    {
+        static inline constexpr const char* getPassName()  { return "ProcessorInstanceResolver"; }
+        using super = ModuleInstanceResolver;
+        using super::visit;
+
+        ProcessorInstanceResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
+            : super (rp, shouldIgnoreErrors) {}
 
         AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
         {
@@ -1665,54 +1685,45 @@ private:
                 return instance;
 
             auto specialisationArgs = getSpecialisationArgs (instance);
+            auto numArgs = specialisationArgs.size();
 
-            // We need the specialisations to be resolved before we can continue
-            for (auto& e : specialisationArgs)
-                if (! e->isResolved())
-                    return instance;
-
-            if (auto n = instance.targetNamespace->getAsNamespace())
+            if (auto target = instance.targetNamespace->getAsNamespace())
             {
-                instance.resolvedNamespace = getOrAddNamespaceSpecialisation (instance.context, n, specialisationArgs);
-                ++itemsReplaced;
+                if (target->specialisationParams.size() != numArgs)
+                    instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedPath()));
+
+                if (canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))
+                {
+                    instance.resolvedNamespace = getOrAddNamespaceSpecialisation (*target, specialisationArgs);
+                    ++itemsReplaced;
+                    return instance;
+                }
             }
             else
             {
                 if (! ignoreErrors)
                     instance.targetNamespace->context.throwError (Errors::expectedNamespaceName());
-
-                ++numFails;
             }
 
+            ++numFails;
             return instance;
         }
 
-        pool_ref<AST::Namespace> getOrAddNamespaceSpecialisation (AST::Context& context, pool_ptr<AST::Namespace> namespaceToClone,
-                                                                  ArrayView<pool_ref<AST::Expression>> args)
+        static std::string getSpecialisedName (const ArgList& args, const ParamList& params)
         {
-            auto numParams = args.size();
-            auto specialisationParams = namespaceToClone->getSpecialisationParameters();
+            std::stringstream key;
 
-            if (specialisationParams.size() != numParams)
-                context.throwError (Errors::wrongNumArgsForNamespace (namespaceToClone->getFullyQualifiedPath()));
-
-            // No parameters, just use the existing namespace
-            if (numParams == 0)
-                return *namespaceToClone;
-
-            std::stringstream instanceKey;
-
-            for (size_t i = 0; i < numParams; ++i)
+            for (size_t i = 0; i < args.size(); ++i)
             {
                 auto& arg = args[i].get();
-                auto& param = specialisationParams[i];
+                auto& param = params[i];
 
                 if (auto u = cast<AST::UsingDeclaration> (param))
                 {
                     if (! AST::isResolvedAsType (arg))
                         arg.context.throwError (Errors::expectedType());
 
-                    instanceKey << "," << arg.resolveAsType().getShortIdentifierDescription();
+                    key << "," << arg.resolveAsType().getShortIdentifierDescription();
                     continue;
                 }
 
@@ -1724,7 +1735,7 @@ private:
                     SanityCheckPass::expectSilentCastPossible (arg.context, v->getType(), arg);
 
                     auto& value = arg.getAsConstant()->value;
-                    instanceKey << "," << std::string (static_cast<char *> (value.getPackedData()), value.getPackedDataSize());
+                    key << "," << std::string (static_cast<char *> (value.getPackedData()), value.getPackedDataSize());
                     continue;
                 }
 
@@ -1737,52 +1748,29 @@ private:
                 SOUL_ASSERT_FALSE;
             }
 
-            for (auto i : namespaceToClone->namespaceInstances)
-                if (i.key == instanceKey.str())
+            return key.str();
+        }
+
+        AST::Namespace& getOrAddNamespaceSpecialisation (AST::Namespace& namespaceToClone, const ArgList& specialisationArgs)
+        {
+            SOUL_ASSERT (namespaceToClone.specialisationParams.size() == specialisationArgs.size());
+
+            // No parameters, just use the existing namespace
+            if (specialisationArgs.empty())
+                return namespaceToClone;
+
+            auto instanceKey = getSpecialisedName (specialisationArgs, namespaceToClone.specialisationParams);
+
+            for (auto i : namespaceToClone.namespaceInstances)
+                if (i.key == instanceKey)
                     return *i.instance;
 
-            auto specialisedName = "_" + namespaceToClone->name.toString();
-
-            auto& ns = namespaceToClone->getNamespace();
-
-            auto target = cast<AST::Namespace> (namespaceToClone->createClone (allocator, ns, ns.makeUniqueName (specialisedName)));
-            namespaceToClone->namespaceInstances.push_back ({instanceKey.str(), target});
-
-            specialisationParams = target->getSpecialisationParameters();
-
-            if (numParams != 0)
-            {
-                for (size_t i = 0; i < numParams; ++i)
-                {
-                    auto& arg = args[i].get();
-                    auto& param = specialisationParams[i];
-
-                    if (auto u = cast<AST::UsingDeclaration> (param))
-                    {
-                        u->targetType = arg;
-                        continue;
-                    }
-
-                    if (auto v = cast<AST::VariableDeclaration> (param))
-                    {
-                        SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
-                        v->initialValue = arg;
-                        continue;
-                    }
-
-                    if (auto n = cast<AST::NamespaceAliasDeclaration> (param))
-                    {
-                        n->targetNamespace = arg;
-                        continue;
-                    }
-
-                    SOUL_ASSERT_FALSE;
-                }
-
-                target->specialisationParams.clear();
-            }
-
-            return *target;
+            auto& parentNamespace = namespaceToClone.getNamespace();
+            auto newName = parentNamespace.makeUniqueName ("_" + namespaceToClone.name.toString());
+            auto& target = *cast<AST::Namespace> (namespaceToClone.createClone (allocator, parentNamespace, newName));
+            namespaceToClone.namespaceInstances.push_back ({ instanceKey, target });
+            resolveAllSpecialisationArgs (specialisationArgs, target.specialisationParams);
+            return target;
         }
     };
 
