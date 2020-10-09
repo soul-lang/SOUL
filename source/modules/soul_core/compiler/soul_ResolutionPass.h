@@ -526,8 +526,18 @@ private:
         AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
         {
             auto& i = allocator.allocate<AST::ProcessorInstance> (call.context);
-            static int newProcessorIndex = 2; SOUL_TODO
-            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (call.context, IdentifierPath (allocator.get (p.name.toString() + "_" + std::to_string (newProcessorIndex++))));
+
+            auto name = addSuffixToMakeUnique ("_instance_" + p.name.toString(),
+                                               [&] (const std::string& s)
+                                               {
+                                                    for (auto& instance : currentGraph->processorInstances)
+                                                        if (instance->instanceName->toString() == s)
+                                                            return true;
+
+                                                    return false;
+                                               });
+
+            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (call.context, IdentifierPath (allocator.get (name)));
             i.targetProcessor = allocator.allocate<AST::ProcessorRef> (call.context, p);
             i.specialisationArgs = call.arguments;
             currentGraph->addProcessorInstance (i);
