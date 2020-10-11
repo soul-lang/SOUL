@@ -1560,6 +1560,10 @@ private:
             if (auto v = cast<AST::VariableDeclaration> (param))
             {
                 SOUL_ASSERT (AST::isResolvedAsValue (arg));
+
+                if (v->isResolved())
+                    SanityCheckPass::expectSilentCastPossible (arg.context, v->getType(), arg);
+
                 v->initialValue = arg;
                 return;
             }
@@ -1709,7 +1713,7 @@ private:
             return instance;
         }
 
-        static std::string getSpecialisedName (const ArgList& args, const ParamList& params)
+        static std::string getSpecialisationKey (const ArgList& args, const ParamList& params)
         {
             std::stringstream key;
 
@@ -1720,22 +1724,14 @@ private:
 
                 if (auto u = cast<AST::UsingDeclaration> (param))
                 {
-                    if (! AST::isResolvedAsType (arg))
-                        arg.context.throwError (Errors::expectedType());
-
                     key << "," << arg.resolveAsType().getShortIdentifierDescription();
                     continue;
                 }
 
                 if (auto v = cast<AST::VariableDeclaration> (param))
                 {
-                    if (arg.isResolved() && ! AST::isResolvedAsValue (arg))
-                        arg.context.throwError (Errors::expectedValue());
-
-                    SanityCheckPass::expectSilentCastPossible (arg.context, v->getType(), arg);
-
                     auto& value = arg.getAsConstant()->value;
-                    key << "," << std::string (static_cast<char *> (value.getPackedData()), value.getPackedDataSize());
+                    key << "," << std::string (static_cast<const char*> (value.getPackedData()), value.getPackedDataSize());
                     continue;
                 }
 
@@ -1759,7 +1755,7 @@ private:
             if (specialisationArgs.empty())
                 return namespaceToClone;
 
-            auto instanceKey = getSpecialisedName (specialisationArgs, namespaceToClone.specialisationParams);
+            auto instanceKey = getSpecialisationKey (specialisationArgs, namespaceToClone.specialisationParams);
 
             for (auto i : namespaceToClone.namespaceInstances)
                 if (i.key == instanceKey)
