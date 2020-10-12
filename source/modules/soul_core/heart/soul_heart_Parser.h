@@ -1456,6 +1456,11 @@ private:
                 if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
                     return Value ((double) literalIntValue);
 
+                auto infOrNaN = parseNaNandInfinityTokens();
+
+                if (infOrNaN.isValid() && infOrNaN.getType().isFloat64())
+                    return infOrNaN;
+
                 auto val = literalDoubleValue;
                 expect (Token::literalFloat64);
                 return castValue (Value (val), requiredType);
@@ -1465,6 +1470,11 @@ private:
             {
                 if (matchIf (Token::literalInt32) || matchIf (Token::literalInt64))
                     return Value ((float) literalIntValue);
+
+                auto infOrNaN = parseNaNandInfinityTokens();
+
+                if (infOrNaN.isValid() && infOrNaN.getType().isFloat32())
+                    return infOrNaN;
 
                 auto val = literalDoubleValue;
                 expect (Token::literalFloat32);
