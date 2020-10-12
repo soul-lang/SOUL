@@ -432,7 +432,7 @@ struct AST
         pool_ptr<ModuleBase> findSubModuleNamed (Identifier name) const
         {
             for (auto& m : getSubModules())
-                if (m->name == name)
+                if (m->name == name && (! m->isTemplateModule()))
                     return m;
 
             for (auto& a : getNamespaceAliases())
@@ -553,6 +553,7 @@ struct AST
         Scope* getParentScope() const override      { return ASTObject::getParentScope(); }
         ModuleBase* getAsModule() override          { return this; }
 
+        bool isTemplateModule() const               { return ! specialisationParams.empty(); }
         virtual bool isProcessor() const            { return false; }
         virtual bool isGraph() const                { return false; }
         virtual bool isNamespace() const            { return false; }
