@@ -66,7 +66,7 @@ processor DrumHitPlayer
             {
                 let sampleRate = drumkit.sampleRate;
                 playbackPosition = sampleRate * hit.startTimeSeconds;
-                playbackEndPosition = min (playbackPosition + sampleRate * hit.lengthSeconds, drumkit.frames.size);
+                playbackEndPosition = min (playbackPosition + sampleRate * hit.lengthSeconds, float64 (drumkit.frames.size));
                 positionIncrement = sampleRate / processor.frequency;
                 gain = e.velocity * soul::dBtoGain (hit.gaindB) * soul::pan_law::centre3dB (hit.pan);
                 break;

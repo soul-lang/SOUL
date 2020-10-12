@@ -20,7 +20,7 @@ processor Delay  [[ main ]]
     {
         let delaySamples = max (1, int (processor.frequency * (delayMs / 1000.0f)));
 
-        readPos = writePos - delaySamples;
+        readPos = wrap<maxDelayLength> (writePos - delaySamples);
     }
 
     event delayFeedback (float f)
