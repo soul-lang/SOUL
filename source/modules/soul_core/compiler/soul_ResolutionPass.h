@@ -1724,7 +1724,11 @@ private:
 
                 if (auto u = cast<AST::UsingDeclaration> (param))
                 {
-                    key << "," << arg.resolveAsType().getShortIdentifierDescription();
+                    if (arg.resolveAsType().isStruct())
+                        key << "," << std::to_string ((size_t) arg.resolveAsType().getStruct().get());
+                    else
+                        key << "," << arg.resolveAsType().getShortIdentifierDescription();
+
                     continue;
                 }
 
@@ -1737,7 +1741,7 @@ private:
 
                 if (auto v = cast<AST::NamespaceAliasDeclaration> (param))
                 {
-                    SOUL_TODO;  // Decide what to include on the instance key for this
+                    key << "," << std::to_string ((size_t) v->resolvedNamespace.get());
                     continue;
                 }
 
