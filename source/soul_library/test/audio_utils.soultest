@@ -87,11 +87,11 @@ bool testFrequencyToNoteNumber()
 
 bool testGetSpeedRatioForPitchedSample()
 {
-    return test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f), 1.0f) &&
-           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 70.0f), 1.059463f) &&
-           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f + 12), 2.0f) &&
-           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f - 12), 0.5f) &&
-           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 48000.0f, 69.0f + 1), (1.059463f) * (44100.0f / 48000.0f));
+    return test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f), 1.0) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 70.0f), 1.059463) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f + 12), 2.0) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 44100.0f, 69.0f - 12), 0.5) &&
+           test::near (soul::getSpeedRatioForPitchedSample (44100.0f, 69.0f, 48000.0f, 69.0f + 1), (1.059463) * (44100.0 / 48000.0));
 }
 
 
