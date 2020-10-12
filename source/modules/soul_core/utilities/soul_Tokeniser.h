@@ -73,15 +73,16 @@ namespace Token
 template <typename KeywordList, typename OperatorList, typename IdentifierMatcher>
 struct Tokeniser
 {
-    Tokeniser (const CodeLocation& code)
-        : startLocation (code),
-          location (code),
-          input (location.location)
+    Tokeniser() = default;
+    virtual ~Tokeniser() = default;
+
+    void initialise (const CodeLocation& code)
     {
+        startLocation = code;
+        location = code;
+        input = location.location;
         skip();
     }
-
-    virtual ~Tokeniser() = default;
 
     TokenType skip()
     {

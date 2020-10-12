@@ -141,8 +141,9 @@ private:
 
     //==============================================================================
     StructuralParser (AST::Allocator& a, const CodeLocation& code, AST::ModuleBase& parentScope)
-        : Tokeniser (code), allocator (a), currentScope (std::addressof (parentScope))
+        : allocator (a), currentScope (std::addressof (parentScope))
     {
+        initialise (code);
     }
 
     ~StructuralParser() override = default;

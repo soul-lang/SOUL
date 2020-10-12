@@ -158,7 +158,7 @@ private:
     pool_ptr<Module> module;
 
     //==============================================================================
-    Parser (const CodeLocation& text)  : Tokeniser (text) {}
+    Parser (const CodeLocation& text)  { initialise (text); }
     ~Parser() override = default;
 
     //==============================================================================
