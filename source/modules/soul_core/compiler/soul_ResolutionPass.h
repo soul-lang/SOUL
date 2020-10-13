@@ -392,7 +392,7 @@ private:
             search.findTypes = true;
             search.findFunctions = false;
             search.findProcessorsAndNamespaces = true;
-            search.findProcessorInstances = parsingProcessorInstance == 0;
+            search.findProcessorInstances = (parsingProcessorInstance == 0);
             search.findEndpoints = true;
 
             if (auto scope = qi.getParentScope())
@@ -422,11 +422,15 @@ private:
                 if (auto n = cast<AST::Namespace> (item))
                     return allocator.allocate<AST::NamespaceRef> (qi.context, *n);
 
+                if (auto na = cast<AST::NamespaceAliasDeclaration> (item))
+                    if (na->isResolved())
+                        return allocator.allocate<AST::NamespaceRef> (qi.context, *na->resolvedNamespace);
+
                 if (auto p = cast<AST::ProcessorInstance> (item))
                     return allocator.allocate<AST::ProcessorInstanceRef> (qi.context, *p);
 
                 if (auto pa = cast<AST::ProcessorAliasDeclaration> (item))
-                    if (pa->targetProcessor != nullptr)
+                    if (pa->isResolved())
                         return allocator.allocate<AST::ProcessorRef> (qi.context, *pa->targetProcessor);
 
                 if (auto e = cast<AST::EndpointDeclaration> (item))

@@ -616,7 +616,8 @@ struct AST
 
             if (search.findProcessorsAndNamespaces)
             {
-                search.addFirstWithName (getSubModules(), targetName);
+                search.addFirstWithName (getSubModules(),       targetName);
+                search.addFirstWithName (getNamespaceAliases(), targetName);
                 search.addFirstWithName (getProcessorAliases(), targetName);
             }
         }
@@ -1405,6 +1406,8 @@ struct AST
             : ASTObject (ObjectType::ProcessorAliasDeclaration, c), name (nm)
         {
         }
+
+        bool isResolved() const                 { return targetProcessor != nullptr; }
 
         Identifier name;
         pool_ptr<ProcessorBase> targetProcessor;
