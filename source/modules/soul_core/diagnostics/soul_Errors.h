@@ -302,6 +302,7 @@ namespace soul
     X(blockParametersInvalid,               "Block $0$ parameters invalid") \
     X(missingAnnotationValue,               "Missing annotation value") \
     X(emptyFunction,                        "Function $0$ is empty") \
+    X(tooManyNamespaceInstances,            "Exceeded the maximum number of specialised namespace instances ($0$) - possible namespace recursion") \
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \

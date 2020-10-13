@@ -1674,6 +1674,7 @@ private:
         static inline constexpr const char* getPassName()  { return "NamespaceInstanceResolver"; }
         using super = ModuleInstanceResolver;
         using super::visit;
+        const size_t maxNamespaceInstanceCount = 100;
 
         NamespaceAliasResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
@@ -1769,6 +1770,10 @@ private:
             auto newName = parentNamespace.makeUniqueName ("_" + namespaceToClone.name.toString());
             auto& target = *cast<AST::Namespace> (namespaceToClone.createClone (allocator, parentNamespace, newName));
             namespaceToClone.namespaceInstances.push_back ({ instanceKey, target });
+
+            if (namespaceToClone.namespaceInstances.size() > maxNamespaceInstanceCount)
+                namespaceToClone.context.throwError(Errors::tooManyNamespaceInstances (std::to_string (maxNamespaceInstanceCount)));
+
             resolveAllSpecialisationArgs (specialisationArgs, target.specialisationParams);
             return target;
         }
