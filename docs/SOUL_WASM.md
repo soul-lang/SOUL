@@ -14,23 +14,22 @@ When specifying the path, be sure to include the full name to the soulpatch file
 
 The generated Wasm has the following exported functions that you'll use in the hosting javascript:
 
-| Function                                              |
-|-------------------------------------------------------|
-| `int getDescriptionLength() `                         |
-| `int getDescription() `                               |
-| `int getBufferSize()`                                 |
-| `int getNumInputChannels()`                           |
-| `int getNumOutputChannels()`                          |
-| `int getOutData(int channel)`                         |
-| `int getInData(int channel)`                          |
-| `void prepareToPlay (int sampleRate, int sessionId)`  |
-| `void onParameterUpdate (int parameter, float value)` |
-| `void setAudioInput (int enabled)`                    |
-| `int getMidiBufferLength()`                           |
-| `int getMidiBuffer()`                                 |
-| `void onMidiMessage(int length)`                      |
-| `bool processBlock (int blockSize)`                   |
-
+| Function                                              | Description                                                                                                                  |
+|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `int getDescriptionLength() `                         | Returns the heap offset of the description json                                                                              |
+| `int getDescription() `                               | Returns the size of the patch description json                                                                               |
+| `int getBufferSize()`                                 | Returns the maximum block size that can be rendered per process call, and hence the size of the input and output data blocks |
+| `int getNumInputChannels()`                           | Returns the number of input channels supported by the patch                                                                  |
+| `int getNumOutputChannels()`                          | Returns the number of output channels supported by the patch                                                                 |
+| `int getOutData(int channel)`                         | Returns the heap offset of the output buffer for the given channel                                                           |
+| `int getInData(int channel)`                          | Returns the heap offset of the input buffer for the given channel                                                            |
+| `void prepareToPlay (int sampleRate, int sessionId)`  | Initialises the code with the given sample rate and sessionId                                                                |
+| `void onParameterUpdate (int parameter, float value)` | Updates the indicated parameter to the given value                                                                           |
+| `void setAudioInput (int enabled)`                    | Indicates whether input data is being provided by the host                                                                   |
+| `int getMidiBufferLength()`                           | Returns the length of the midi buffer                                                                                        |
+| `int getMidiBuffer()`                                 | Returns the heap offset of the midi buffer                                                                                   |
+| `void onMidiMessage(int length)`                      | Adds a midi message of the given length                                                                                      |
+| `bool processBlock (int blockSize)`                   | Processes the given blockSize of samples from the inputs to the outputs                                                      |
 
 A typical use of the API will proceed as follows:
 
