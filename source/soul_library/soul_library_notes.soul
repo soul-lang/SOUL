@@ -81,13 +81,15 @@ namespace soul::voice_allocators
                      soul::note_events::NoteOff,
                      soul::note_events::PitchBend,
                      soul::note_events::Pressure,
-                     soul::note_events::Slide) eventIn;
+                     soul::note_events::Slide,
+                     soul::note_events::Control) eventIn;
 
         output event (soul::note_events::NoteOn,
                       soul::note_events::NoteOff,
                       soul::note_events::PitchBend,
                       soul::note_events::Pressure,
-                      soul::note_events::Slide) voiceEventOut[voiceCount];
+                      soul::note_events::Slide,
+                      soul::note_events::Control) voiceEventOut[voiceCount];
 
         event eventIn (soul::note_events::NoteOn e)
         {
@@ -185,6 +187,20 @@ namespace soul::voice_allocators
             {
                 if (voiceInfo[voice].channel == s.channel)
                     voiceEventOut[voice] << s;
+
+                ++voice;
+            }
+        }
+
+        event eventIn (soul::note_events::Control c)
+        {
+            // Forward the event to all notes on this channel
+            wrap<voiceCount> voice = 0;
+
+            loop (voiceCount)
+            {
+                if (voiceInfo[voice].channel == c.channel)
+                    voiceEventOut[voice] << c;
 
                 ++voice;
             }

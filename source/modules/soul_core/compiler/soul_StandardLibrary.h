@@ -1244,21 +1244,23 @@ namespace soul::voice_allocators
                      soul::note_events::NoteOff,
                      soul::note_events::PitchBend,
                      soul::note_events::Pressure,
-                     soul::note_events::Slide) eventIn;
+                     soul::note_events::Slide,
+                     soul::note_events::Control) eventIn;
 
         output event (soul::note_events::NoteOn,
                       soul::note_events::NoteOff,
                       soul::note_events::PitchBend,
                       soul::note_events::Pressure,
-                      soul::note_events::Slide) voiceEventOut[voiceCount];
+                      soul::note_events::Slide,
+                      soul::note_events::Control) voiceEventOut[voiceCount];
 
         event eventIn (soul::note_events::NoteOn e)
         {
             wrap<voiceCount> allocatedVoice = 0;
-            var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
-
 )soul_code"
 R"soul_code(
+
+            var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
 
             // Find the oldest voice to reuse
             for (int i = 1; i < voiceCount; ++i)
@@ -1316,11 +1318,11 @@ R"soul_code(
 
         event eventIn (soul::note_events::PitchBend e)
         {
-            // Forward the pitch bend to all notes on this channel
-            wrap<voiceCount> voice = 0;
-
 )soul_code"
 R"soul_code(
+
+            // Forward the pitch bend to all notes on this channel
+            wrap<voiceCount> voice = 0;
 
             loop (voiceCount)
             {
@@ -1354,6 +1356,20 @@ R"soul_code(
             {
                 if (voiceInfo[voice].channel == s.channel)
                     voiceEventOut[voice] << s;
+
+                ++voice;
+            }
+        }
+
+        event eventIn (soul::note_events::Control c)
+        {
+            // Forward the event to all notes on this channel
+            wrap<voiceCount> voice = 0;
+
+            loop (voiceCount)
+            {
+                if (voiceInfo[voice].channel == c.channel)
+                    voiceEventOut[voice] << c;
 
                 ++voice;
             }
