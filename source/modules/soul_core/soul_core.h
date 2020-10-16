@@ -147,5 +147,6 @@ namespace soul
 #include "venue/soul_Venue.h"
 
 #include "utilities/soul_EventQueue.h"
+#include "utilities/soul_MultiEndpointFIFO.h"
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"

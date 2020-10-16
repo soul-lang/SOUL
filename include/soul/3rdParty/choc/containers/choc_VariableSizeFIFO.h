@@ -74,12 +74,22 @@ struct VariableSizeFIFO
 
     /** Retrieves the first item's data chunk via a callback.
         If there are any pending items in the FIFO, the handleItem function
-        provided will be called - it must be a funtor or lambda with parameters which can
+        provided will be called - it must be a functor or lambda with parameters which can
         accept being called as handleItem (const void* data, uint32_t size).
         The function returns true if a callback was made, or false if the FIFO was empty.
     */
     template <typename HandleItem>
     bool pop (HandleItem&& handleItem);
+
+    /** Allows access to all the available item in the FIFO via a callback.
+        If there are any pending items in the FIFO, the handleItem function
+        will be called for each of them. Then, when no more are available, the itemsComplete
+        function is called. HandleItem must be a functor or lambda which can be called
+        as handleItems (const void* data, uint32_t size). ItemsComplete must be a functor
+        which takes no arguments and returns void.
+    */
+    template <typename HandleItem, typename ItemsComplete>
+    void popAllAvailable (HandleItem&& handleItem, ItemsComplete&& itemsComplete);
 
     /** Returns the number of used bytes in the FIFO. */
     uint32_t getUsedSpace() const;
@@ -170,11 +180,11 @@ inline bool VariableSizeFIFO::push (const void* sourceData, uint32_t numBytes)
 template <typename HandleItem>
 bool VariableSizeFIFO::pop (HandleItem&& handleItem)
 {
-    if (readPos == writePos)
-        return false;
-
     for (;;)
     {
+        if (readPos == writePos)
+            return false;
+
         auto itemData = buffer.data() + static_cast<int32_t> (readPos);
         ItemHeader itemSize;
         std::memcpy (std::addressof (itemSize), itemData, headerSize);
@@ -189,6 +199,32 @@ bool VariableSizeFIFO::pop (HandleItem&& handleItem)
         readPos = 0;
     }
 }
+
+template <typename HandleItem, typename ItemsComplete>
+void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem, ItemsComplete&& itemsComplete)
+{
+    auto originalWritePos = writePos.load();
+
+    while (readPos != originalWritePos)
+    {
+        auto itemData = buffer.data() + static_cast<int32_t> (readPos);
+        ItemHeader itemSize;
+        std::memcpy (std::addressof (itemSize), itemData, headerSize);
+
+        if (itemSize != 0)
+        {
+            handleItem (static_cast<void*> (itemData + headerSize), itemSize);
+            readPos = (readPos + itemSize + headerSize) % capacity;
+        }
+        else
+        {
+            readPos = 0;
+        }
+    }
+
+    itemsComplete();
+}
+
 
 } // namespace choc::fifo
 
