@@ -1,55 +1,54 @@
-
-# SOUL WASM
+## SOUL Wasm
 
 The soul command line tool supports generating a wasm file from soulpatches. You can use this tool to make wasm which can then be instantiated and used via javascript to perform the patches DSP for either offline processing, or for realtime use via WebAudio.
 
-## Generating WASM
+### Generating Wasm
 
-Using the command line tool, the wasm generation can be called with:
+Using the command line tool, the Wasm generation can be called with:
 
 `soul generate --wasm <path to soulpatch file> --output <output filename>`
 
 When specifying the path, be sure to include the full name to the soulpatch file (e.g. Reberb/Reberb.soulpatch)
 
-## The WASM Interface
+### The Wasm Interface
 
-The generated wasm has the following exported functions that you'll use in the hosting javascript:
+The generated Wasm has the following exported functions that you'll use in the hosting javascript:
 
-| Function | Description |
-|-|-|
-| `int getDescriptionLength() ` | Returns the heap offset of the description json
-| `int getDescription() ` | Returns the size of the patch description json
-| `int getBufferSize()` | Returns the maximum block size that can be rendered per process call, and hence the size of the input and output data blocks
-| `int getNumInputChannels()` | Returns the number of input channels supported by the patch
-| `int getNumOutputChannels()` | Returns the number of output channels supported by the patch
-| `int getOutData(int channel)` | Returns the heap offset of the output buffer for the given channel
-| `int getInData(int channel)` | Returns the heap offset of the input buffer for the given channel
-| `void prepareToPlay (int sampleRate, int sessionId)` | Initialises the code with the given sample rate and sessionId
-| `void onParameterUpdate (int parameter, float value)` | Updates the indicated parameter to the given value
-| `void setAudioInput (int enabled)` | Indicates whether input data is being provided by the host
-| `int getMidiBufferLength()` | Returns the length of the midi buffer
-| `int getMidiBuffer()` | Returns the heap offset of the midi buffer
-| `void onMidiMessage(int length)` | Adds a midi message of the given length
-| `bool processBlock (int blockSize)` | Processes the given blockSize of samples from the inputs to the outputs
+| Function                                              |
+|-------------------------------------------------------|
+| `int getDescriptionLength() `                         |
+| `int getDescription() `                               |
+| `int getBufferSize()`                                 |
+| `int getNumInputChannels()`                           |
+| `int getNumOutputChannels()`                          |
+| `int getOutData(int channel)`                         |
+| `int getInData(int channel)`                          |
+| `void prepareToPlay (int sampleRate, int sessionId)`  |
+| `void onParameterUpdate (int parameter, float value)` |
+| `void setAudioInput (int enabled)`                    |
+| `int getMidiBufferLength()`                           |
+| `int getMidiBuffer()`                                 |
+| `void onMidiMessage(int length)`                      |
+| `bool processBlock (int blockSize)`                   |
 
 
 A typical use of the API will proceed as follows:
 
-### Buses and Parameter inspection
+#### Buses and Parameter inspection
 
-Having instantiated the wasm, a call to the getDescription() and getDesctiptionLength() will yield the location of a UTF-8 string in the heap, containing a json description of the loaded patch. Using the Reverb patch as an example (https://soul.dev/lab/?id=Reverb) the exported json looks as follows:
+Having instantiated the Wasm, a call to the getDescription() and getDesctiptionLength() will yield the location of a UTF-8 string in the heap, containing a JSON description of the loaded patch. Using the Reverb patch as an example (https://soul.dev/lab/?id=Reverb) the exported JSON looks as follows:
 
 
 ```json
   "description": {
-    "UID" : "dev.soul.examples.reverb",
-    "version" : "1.0",
-    "name" : "Reverb",
-    "description" : "SOUL Reverb",
-    "category" : "fx",
-    "manufacturer" : "soul.dev",
-    "URL" : "",
-    "isInstrument" : "false"
+    "UID"           : "dev.soul.examples.reverb",
+    "version"       : "1.0",
+    "name"          : "Reverb",
+    "description"   : "SOUL Reverb",
+    "category"      : "fx",
+    "manufacturer"  : "soul.dev",
+    "URL"           : "",
+    "isInstrument"  : "false"
   },
   "inputBuses": [
     {
@@ -135,7 +134,7 @@ Having instantiated the wasm, a call to the getDescription() and getDesctiptionL
 }
 ```
 
-This json describes the patch, the inputs and outputs, and the parameters which are exposed. The input and output channels provided by the wasm code use de-interleaved streams, so the input and output busses indicate an index for the first channel corresponding to their allocated buffers. For example, if a patch has two inputs, the first one float<2> and the second float<3> then you'd expect to see the inputs described as:
+This JSON describes the patch, the inputs and outputs, and the parameters which are exposed. The input and output channels provided by the Wasm code use de-interleaved streams, so the input and output busses indicate an index for the first channel corresponding to their allocated buffers. For example, if a patch has two inputs, the first one float<2> and the second float<3> then you'd expect to see the inputs described as:
 
 ```json
   "inputBuses": [
@@ -154,16 +153,16 @@ This json describes the patch, the inputs and outputs, and the parameters which 
 
 From this description you can see that we have two busses, with 5 channels in total (so calling `getNumInputChannels()` will return 5). `audioIn1` has an index of 0, so it's two channels will occupy [0] and [1] in the input channel data. `audioIn2` has an index of 2, so it's three channels will occupy [2],[3] and [4] in the input array. Calls to `getInData()` with the corresponding indexes will return the offsets of these buffers in the heap.
 
-Parameters are somewhat simpler - each parameter's index is included in the json, including min and max values. Let's say we want to set the `width` parameter to it's maximum value (100.0) then we'd call `onParameterUpdate (5, 100.0)` as it's index was given as 5. Attempting to set the parameter outside the valid range will cause unexpected results. Expect future releases to enforce the range, and apply parameter quantisation.
+Parameters are somewhat simpler - each parameter's index is included in the JSON, including min and max values. Let's say we want to set the `width` parameter to it's maximum value (100.0) then we'd call `onParameterUpdate (5, 100.0)` as it's index was given as 5. Attempting to set the parameter outside the valid range will cause unexpected results. Expect future releases to enforce the range, and apply parameter quantisation.
 
-### Initialisation
+#### Initialisation
 
 To initialise the runtime state, the following must be performed:
 
 1) A call to `prepareToPlay()` must be made specifying the sample rate and sessionId. The sessionId can be read by the SOUL code and used as a random seed, so ideally it should be a random integer.
-2) Initial parameters need to be set - you are required to call `onParameterUpdate()` to set each parameter to the specified initial values in the exported json.
+2) Initial parameters need to be set - you are required to call `onParameterUpdate()` to set each parameter to the specified initial values in the exported JSON.
 
-### Producing output
+#### Producing output
 
 Per block, the logic to be followed is as follows:
 

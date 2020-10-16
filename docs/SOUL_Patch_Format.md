@@ -99,8 +99,8 @@ The binaries and libraries can be downloaded as github releases: https://github.
 In SOUL, each input declaration can have an arbitrary set of properties ('annotations') attached to it, e.g.
 
 ```C++
-    input event float cutoff    [[ name: "Cut-off", min: 0, max: 127, init: 80, unit: "semi", step: 0.1 ]];
-    input event float turbo     [[ name: "Turbo Boost", boolean, text: "off|on" ]]
+input event float cutoff  [[ name: "Cut-off", min: 0, max: 127, init: 80, unit: "semi", step: 0.1 ]];
+input event float turbo   [[ name: "Turbo Boost", boolean, text: "off|on" ]]
 ```
 
 If you'd like an input to be treated by a host as a parameter rather than an audio stream, you can attach some of the following annotations to it:
@@ -111,8 +111,8 @@ If you'd like an input to be treated by a host as a parameter rather than an aud
 - `max:` The maximum value of the range of a parameter (inclusive). If not specified, the default is 1.
 - `step:` A snapping interval to which the value should be quantised. If not specified, the default is 0, which means the value is continuous.
 - `init:` The initial, or default value for a parameter. This should be between the `min` and `max` values. If not specified, the default is the same as `min`.
-- `boolean` If this flag is present (either just as `boolean` with no value, or explicitly `boolean: true` or `boolean: false`), it tells the host whether the parameter should be treated as a two-position switch. If so, the host may want to show the user a button rather than a slider. If you set this flag, it's best to not set the `min`, `max` or `step`, and the value will be toggled between 0 and 1 by default.
-- `hidden` If the `hidden` property is present, hosts should ignore this parameter and not show it to the user. (But don't be surprised if some hosts don't respect this flag).
+- `boolean:` If this flag is present (either just as `boolean` with no value, or explicitly `boolean: true` or `boolean: false`), it tells the host whether the parameter should be treated as a two-position switch. If so, the host may want to show the user a button rather than a slider. If you set this flag, it's best to not set the `min`, `max` or `step`, and the value will be toggled between 0 and 1 by default.
+- `hidden:` If the `hidden` property is present, hosts should ignore this parameter and not show it to the user. (But don't be surprised if some hosts don't respect this flag).
 - `automatable:` Tells the host whether to allow this parameter to be automated. If not specified, the default is `true`. (It'd be optimistic to expect all hosts to recognise this flag).
 - `text:` This can be used for two main purposes:
   - To give more control over the exact number formatting for displaying the value. The string provided is preprocessed like a very minimal printf, where a few substitutions are made before printing it:

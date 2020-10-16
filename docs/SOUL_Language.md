@@ -170,9 +170,9 @@ SOUL largely follows familiar C/Java/Javascript conventions for numeric values:
 
 #### String literals
 
-SOUL supports very basic string literal functionality, allowing literals to be passed around as instances of the `string` type. String literals are written as double-quoted strings using the standard JSON rules for formatting escape sequences within them.
+SOUL supports very basic string functionality, allowing string literals to be passed around as instances of the `string` type. Literals are written as double-quoted strings using the standard JSON rules for escape sequences.
 
-e.g. `string s = "Hello World\n";`
+e.g. `string s = "Hello World \uD83D\uDE42\n";  // Hello World 🙂`
 
 #### Structures
 
@@ -1179,29 +1179,29 @@ The language doesn't currently support
 
 A set of built-in functions are provided which take *types* as parameters rather than values, and which perform compile-time operations on the types. These are:
 
-| function              | operation                                                                            |
-|-----------------------|--------------------------------------------------------------------------------------|
-| `type(T)`             | given an endpoint or value, this evaluates to its type                               |
-| `size(T)`             | returns the number of elements in a vector or array                                  |
-| `elementType(T)`      | returns the type of a vector or array's elements, e.g. `elementType(int[4]) == int`  |
-| `primitiveType(T)`    | returns the scalar type of a primitive or vector, e.g. `primitiveType(int<4>) -> int`|
-| `isStruct(T)`         | returns `true` if the type is a structure                                            |
-| `isArray(T)`          | returns `true` if the type is an array (either fixed-size or dynamic)                |
-| `isDynamicArray(T)`   | returns `true` if the type is an unsized array                                       |
-| `isFixedSizeArray(T)` | returns `true` if the type is a fixed-size array                                     |
-| `isVector(T)`         | returns `true` if the type is a vector                                               |
-| `isPrimitive(T)`      | returns `true` if the type is a primitive                                            |
-| `isFloat(T)`          | returns `true` if the type is a float32 or float64                                   |
-| `isFloat32(T)`        | returns `true` if the type is a float32                                              |
-| `isFloat64(T)`        | returns `true` if the type is a float64                                              |
-| `isInt(T)`            | returns `true` if the type is an int32 or int64                                      |
-| `isInt32(T)`          | returns `true` if the type is an int32                                               |
-| `isInt64(T)`          | returns `true` if the type is an int64                                               |
-| `isScalar(T)`         | returns `true` if the type is a scalar type (i.e. a vector or primitive of integer floating points) |
-| `isString(T)`         | returns `true` if the type is a string                                               |
-| `isBool(T)`           | returns `true` if the type is a bool                                                 |
-| `isReference(T)`      | returns `true` if the type is a reference                                            |
-| `isConst(T)`          | returns `true` if the type is a constant                                             |
+| Function              | Operation                                                                                  |
+|-----------------------|--------------------------------------------------------------------------------------------|
+| `type(T)`             | given an endpoint or value, this evaluates to its type                                     |
+| `size(T)`             | returns the number of elements in a vector or array                                        |
+| `elementType(T)`      | returns the type of a vector or array's elements, e.g. `elementType(int[4]) == int`        |
+| `primitiveType(T)`    | returns the scalar type of a primitive or vector, e.g. `primitiveType(int<4>) -> int`      |
+| `isStruct(T)`         | returns `true` if the type is a structure                                                  |
+| `isArray(T)`          | returns `true` if the type is an array (either fixed-size or dynamic)                      |
+| `isDynamicArray(T)`   | returns `true` if the type is an unsized array                                             |
+| `isFixedSizeArray(T)` | returns `true` if the type is a fixed-size array                                           |
+| `isVector(T)`         | returns `true` if the type is a vector                                                     |
+| `isPrimitive(T)`      | returns `true` if the type is a primitive                                                  |
+| `isFloat(T)`          | returns `true` if the type is a float32 or float64                                         |
+| `isFloat32(T)`        | returns `true` if the type is a float32                                                    |
+| `isFloat64(T)`        | returns `true` if the type is a float64                                                    |
+| `isInt(T)`            | returns `true` if the type is an int32 or int64                                            |
+| `isInt32(T)`          | returns `true` if the type is an int32                                                     |
+| `isInt64(T)`          | returns `true` if the type is an int64                                                     |
+| `isScalar(T)`         | returns `true` if the type is a scalar type (i.e. a vector or primitive of a numeric type) |
+| `isString(T)`         | returns `true` if the type is a string                                                     |
+| `isBool(T)`           | returns `true` if the type is a bool                                                       |
+| `isReference(T)`      | returns `true` if the type is a reference                                                  |
+| `isConst(T)`          | returns `true` if the type is a constant                                                   |
 
 Note that these functions can be applied to a type name or a value, and can be called in the standard syntax, or applied with the dot operator, e.g.
 
