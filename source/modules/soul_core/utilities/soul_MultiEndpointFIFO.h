@@ -103,7 +103,7 @@ private:
 
         void write (const void* source, size_t size)
         {
-            total += size;
+            total += static_cast<uint32_t> (size);
 
             if (! overflowed())
             {
