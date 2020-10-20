@@ -331,12 +331,6 @@ private:
             {
                 if (matchIf (Keyword::struct_))         { parseStructDeclaration();  continue; }
 
-                if (matchIf (Keyword::namespace_))
-                {
-                    parseNamespaceDecl (*module);
-                    continue;
-                }
-
                 if (matchIf (Keyword::graph))
                 {
                     if (ns == nullptr)
@@ -366,6 +360,7 @@ private:
             if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);        continue; }
             if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);       continue; }
             if (matchIf (Keyword::event))           { parseEventFunction();                continue; }
+            if (matchIf (Keyword::namespace_))      { parseNamespaceDecl (*module);        continue; }
 
             if (matchesAny (Keyword::input, Keyword::output))
                 throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()
