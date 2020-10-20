@@ -77,14 +77,27 @@ private:
 */
 struct EndpointHandle
 {
-    static EndpointHandle create (uint32_t rawHandle)   { EndpointHandle h; h.handle = rawHandle; return h; }
-    uint32_t getRawHandle() const                       { return handle; }
+    static EndpointHandle create (EndpointType type, uint32_t rawHandle)
+    {
+        SOUL_ASSERT ((rawHandle >> 24) == 0);
+        EndpointHandle h;
+        h.handle = rawHandle | (static_cast<uint32_t> (type) << 24);
+        return h;
+    }
 
-    operator bool() const   { return handle != 0; }
-    bool isValid() const    { return handle != 0; }
+    uint32_t getRawHandle() const                       { return handle & 0xffffff; }
 
-    bool operator== (EndpointHandle other) const     { return other.handle == handle; }
-    bool operator!= (EndpointHandle other) const     { return other.handle != handle; }
+    operator bool() const                               { return handle != 0; }
+    bool isValid() const                                { return handle != 0; }
+
+    bool operator== (EndpointHandle other) const        { return other.handle == handle; }
+    bool operator!= (EndpointHandle other) const        { return other.handle != handle; }
+
+    EndpointType getType() const                        { return static_cast<EndpointType> (handle >> 24); }
+
+    bool isValue() const                                { return getType() == EndpointType::value; }
+    bool isStream() const                               { return getType() == EndpointType::stream; }
+    bool isEvent() const                                { return getType() == EndpointType::event; }
 
 private:
     uint32_t handle = 0;

@@ -65,10 +65,10 @@ static inline SessionState stringToSessionState (std::string_view state)
 
 enum class EndpointType
 {
-    unknown,
-    stream,
-    value,
-    event
+    unknown  = 0,
+    stream   = 1,
+    value    = 2,
+    event    = 3
 };
 
 static constexpr const char* endpointTypeToString (EndpointType type)
