@@ -423,8 +423,13 @@ private:
                     return allocator.allocate<AST::NamespaceRef> (qi.context, *n);
 
                 if (auto na = cast<AST::NamespaceAliasDeclaration> (item))
+                {
                     if (na->isResolved())
                         return allocator.allocate<AST::NamespaceRef> (qi.context, *na->resolvedNamespace);
+
+                    if (na->targetNamespace == &qi)
+                        qi.context.throwError (Errors::circularNamespaceAlias (qi.path));
+                }
 
                 if (auto p = cast<AST::ProcessorInstance> (item))
                     return allocator.allocate<AST::ProcessorInstanceRef> (qi.context, *p);

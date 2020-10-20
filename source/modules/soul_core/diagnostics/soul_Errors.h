@@ -303,6 +303,7 @@ namespace soul
     X(missingAnnotationValue,               "Missing annotation value") \
     X(emptyFunction,                        "Function $0$ is empty") \
     X(tooManyNamespaceInstances,            "Exceeded the maximum number of specialised namespace instances ($0$) - possible namespace recursion") \
+    X(circularNamespaceAlias,               "Circular reference in namespace alias definition $Q0$") \
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \
