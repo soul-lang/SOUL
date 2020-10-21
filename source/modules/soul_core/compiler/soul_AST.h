@@ -1143,8 +1143,8 @@ struct AST
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
-        pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessor (source); }
-        pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessor (dest); }
+        pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessorInstance (source); }
+        pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessorInstance (dest); }
 
         std::string getSourceEndpointName()                     { return getEndpointName (source, true); }
         std::string getDestEndpointName()                       { return getEndpointName (dest, false); }
@@ -1185,12 +1185,12 @@ struct AST
             return found->name.toString();
         }
 
-        static pool_ptr<ProcessorInstance> getProcessor (Expression& e)
+        static pool_ptr<ProcessorInstance> getProcessorInstance (Expression& e)
         {
             if (auto pr = cast<ProcessorInstanceRef> (e))    return pr->processorInstance;
-            if (auto er = cast<ConnectionEndpointRef> (e))   return er->parentProcessorInstance != nullptr ? getProcessor (*er->parentProcessorInstance) : nullptr;
-            if (auto ar = cast<ArrayElementRef> (e))         return getProcessor (*ar->object);
-            if (auto dot = cast<DotOperator> (e))            return getProcessor (dot->lhs);
+            if (auto er = cast<ConnectionEndpointRef> (e))   return er->parentProcessorInstance != nullptr ? getProcessorInstance (*er->parentProcessorInstance) : nullptr;
+            if (auto ar = cast<ArrayElementRef> (e))         return getProcessorInstance (*ar->object);
+            if (auto dot = cast<DotOperator> (e))            return getProcessorInstance (dot->lhs);
 
             return {};
         }

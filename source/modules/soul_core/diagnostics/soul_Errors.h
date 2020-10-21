@@ -141,7 +141,7 @@ namespace soul
     X(badTypeForPrimitiveType,              "'primitiveType' can only be applied to a vector or primitive type") \
     X(cannotReadFromOutput,                 "Cannot read from an output") \
     X(cannotReadFromEventInput,             "Event inputs must be handled in event callback functions, they cannot be read as expressions") \
-    X(cannotUseProcessorAsOutput,           "Cannot use a processor name as a value") \
+    X(cannotUseProcessorAsValue,            "Cannot use a processor name as a value") \
     X(cannotUseProcessorAsType,             "Cannot use a processor name as a type") \
     X(cannotCastBetween,                    "Cannot convert type $Q0$ to $Q1$") \
     X(cannotCastValue,                      "Cannot convert $0$ ($Q1$) to $Q2$") \

@@ -87,7 +87,7 @@ struct SanityCheckPass  final
                     e.context.throwError (Errors::cannotReadFromEventInput());
 
             if (is_type<AST::ProcessorRef> (e) || is_type<AST::ProcessorInstanceRef> (e))
-                e.context.throwError (Errors::cannotUseProcessorAsOutput());
+                e.context.throwError (Errors::cannotUseProcessorAsValue());
 
             e.context.throwError (Errors::expectedValue());
         }

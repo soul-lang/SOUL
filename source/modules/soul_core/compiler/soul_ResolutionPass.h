@@ -522,7 +522,7 @@ private:
                         }
 
                         if (canResolveProcessorInstance)
-                            if (auto p = cast<AST::Processor> (search.itemsFound.front()))
+                            if (auto p = cast<AST::ProcessorBase> (search.itemsFound.front()))
                                 return resolveProcessorInstance (call, *p);
                     }
                 }
@@ -535,16 +535,30 @@ private:
             return call;
         }
 
-        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
+        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::Context& context, AST::ProcessorBase& p, pool_ptr<AST::Expression> arguments)
         {
-            auto& i = allocator.allocate<AST::ProcessorInstance> (call.context);
+            auto& i = allocator.allocate<AST::ProcessorInstance> (context);
             auto name = currentGraph->makeUniqueName ("_instance_" + p.name.toString());
-            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (call.context, IdentifierPath (allocator.get (name)));
-            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (call.context, p);
-            i.specialisationArgs = call.arguments;
+            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (context, IdentifierPath (allocator.get (name)));
+            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (context, p);
+            i.specialisationArgs = arguments;
             i.isImplicitlyCreated = true;
             currentGraph->addProcessorInstance (i);
-            return allocator.allocate<AST::ProcessorInstanceRef> (call.context, i);
+            return allocator.allocate<AST::ProcessorInstanceRef> (context, i);
+        }
+
+        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
+        {
+            return resolveProcessorInstance (call.context, p, call.arguments);
+        }
+
+        void resolveProcessorToProcessorInstance (pool_ref<AST::Expression>& e)
+        {
+            if (is_type<AST::ProcessorRef> (e) || is_type<AST::ProcessorBase> (e))
+            {
+                ++itemsReplaced;
+                e = resolveProcessorInstance (e->context, *e->getAsProcessor(), {});
+            }
         }
 
         AST::Expression& visit (AST::ArrayElementRef& s) override
@@ -597,6 +611,8 @@ private:
             currentConnection = c;
             super::visit (c);
             currentConnection = oldParentConn;
+            resolveProcessorToProcessorInstance (c.source);
+            resolveProcessorToProcessorInstance (c.dest);
             return c;
         }
 
@@ -1832,7 +1848,10 @@ private:
                             if (! AST::isResolvedAsValue (arg.get()))
                             {
                                 if (ignoreErrors)
+                                {
+                                    ++numFails;
                                     return call;
+                                }
 
                                 SanityCheckPass::throwErrorIfNotReadableValue (arg);
                             }
