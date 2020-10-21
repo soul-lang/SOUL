@@ -376,10 +376,15 @@ struct AST
             IdentifierPath partiallyQualifiedPath;
             bool stopAtFirstScopeWithResults = false;
             int requiredNumFunctionArgs = -1;
-            bool findVariables = true, findTypes = true, findFunctions = true,
-                 findProcessorsAndNamespaces = true, findProcessorInstances = false,
-                 findEndpoints = true,
-                 onlyFindLocalVariables = false;
+
+            bool findVariables           = true,
+                 findTypes               = true,
+                 findFunctions           = true,
+                 findNamespaces          = true,
+                 findProcessors          = true,
+                 findProcessorInstances  = false,
+                 findEndpoints           = true,
+                 onlyFindLocalVariables  = false;
 
             void addResult (ASTObject& o)
             {
@@ -465,7 +470,9 @@ struct AST
             search.findVariables = false;
             search.findTypes = false;
             search.findFunctions = false;
-            search.findProcessorsAndNamespaces = true;
+            search.findNamespaces = true;
+            search.findProcessors = true;
+            search.findProcessorInstances = false;
             search.findEndpoints = false;
 
             performFullNameSearch (search, nullptr);
@@ -614,11 +621,26 @@ struct AST
             if (search.findEndpoints)
                 search.addFirstWithName (getEndpoints(), targetName);
 
-            if (search.findProcessorsAndNamespaces)
+            if (search.findNamespaces || search.findProcessors)
             {
-                search.addFirstWithName (getSubModules(),       targetName);
-                search.addFirstWithName (getNamespaceAliases(), targetName);
-                search.addFirstWithName (getProcessorAliases(), targetName);
+                for (auto& m : getSubModules())
+                {
+                    if (m->name == targetName)
+                    {
+                        if ((search.findNamespaces && m->isNamespace())
+                             || (search.findProcessors && (m->isProcessor() || m->isGraph())))
+                        {
+                            search.addResult (m);
+                            break;
+                        }
+                    }
+                }
+
+                if (search.findNamespaces)
+                    search.addFirstWithName (getNamespaceAliases(), targetName);
+
+                if (search.findProcessors)
+                    search.addFirstWithName (getProcessorAliases(), targetName);
             }
         }
 
@@ -775,7 +797,9 @@ struct AST
 
             for (auto& i : processorInstances)
                 if (*i->instanceName == *newInstance.instanceName)
-                    newInstance.instanceName->context.throwError (Errors::nameInUse (newInstance.instanceName->path));
+                    newInstance.instanceName->context.throwError (newInstance.isImplicitlyCreated
+                                                                    ? Errors::cannotReuseImplicitProcessorInstance()
+                                                                    : Errors::nameInUse (newInstance.instanceName->path));
 
             processorInstances.push_back (newInstance);
         }
@@ -1198,7 +1222,8 @@ struct AST
         pool_ptr<QualifiedIdentifier> instanceName;
         pool_ptr<Expression> targetProcessor, specialisationArgs,
                              clockMultiplierRatio, clockDividerRatio, arraySize;
-        bool wasCreatedImplicitly = false;
+        bool isIntermediateConnection = false;
+        bool isImplicitlyCreated = false;
     };
 
     //==============================================================================

@@ -249,6 +249,7 @@ namespace soul
     X(expected1or2Args,                     "Expected 1 or 2 arguments") \
     X(wrongNumArgsForProcessor,             "Wrong number of arguments to instantiate processor $Q0$") \
     X(wrongNumArgsForNamespace,             "Wrong number of arguments to instantiate namespace $Q0$") \
+    X(cannotReuseImplicitProcessorInstance, "An implicitly-created processor cannot be used more than once: create a named instance instead") \
     X(cannotResolveFunctionOrCast,          "Could not resolve function or cast") \
     X(voidFunctionCannotReturnValue,        "A void function cannot return a value") \
     X(functionReturnTypeCannotBeConst,      "Function return type cannot be const") \

@@ -1837,7 +1837,9 @@ private:
             search.stopAtFirstScopeWithResults = true;
             search.findTypes = false;
             search.findFunctions = false;
-            search.findProcessorsAndNamespaces = false;
+            search.findNamespaces = false;
+            search.findProcessors = false;
+            search.findProcessorInstances = false;
             search.findEndpoints = false;
             search.onlyFindLocalVariables = true;
 

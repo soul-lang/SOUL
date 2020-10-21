@@ -391,7 +391,8 @@ private:
             search.findVariables = true;
             search.findTypes = true;
             search.findFunctions = false;
-            search.findProcessorsAndNamespaces = true;
+            search.findNamespaces = true;
+            search.findProcessors = true;
             search.findProcessorInstances = (parsingProcessorInstance == 0);
             search.findEndpoints = true;
 
@@ -486,13 +487,17 @@ private:
 
                 if (auto name = cast<AST::QualifiedIdentifier> (call.nameOrType))
                 {
+                    bool canResolveProcessorInstance = (parsingProcessorInstance != 0 || currentConnection != nullptr);
+
                     AST::Scope::NameSearch search;
                     search.partiallyQualifiedPath = name->path;
                     search.stopAtFirstScopeWithResults = true;
                     search.findVariables = false;
                     search.findTypes = true;
                     search.findFunctions = false;
-                    search.findProcessorsAndNamespaces = parsingProcessorInstance != 0;
+                    search.findNamespaces = canResolveProcessorInstance;
+                    search.findProcessors = canResolveProcessorInstance;
+                    search.findProcessorInstances = false;
                     search.findEndpoints = false;
 
                     if (auto scope = name->getParentScope())
@@ -511,13 +516,13 @@ private:
                                 return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), *call.arguments);
                             }
 
-                            if (auto p = e->getAsProcessor())
-                                if (parsingProcessorInstance != 0)
+                            if (canResolveProcessorInstance)
+                                if (auto p = e->getAsProcessor())
                                     return resolveProcessorInstance (call, *p);
                         }
 
-                        if (auto p = cast<AST::Processor> (search.itemsFound.front()))
-                            if (parsingProcessorInstance != 0)
+                        if (canResolveProcessorInstance)
+                            if (auto p = cast<AST::Processor> (search.itemsFound.front()))
                                 return resolveProcessorInstance (call, *p);
                     }
                 }
@@ -537,6 +542,7 @@ private:
             i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (call.context, IdentifierPath (allocator.get (name)));
             i.targetProcessor = allocator.allocate<AST::ProcessorRef> (call.context, p);
             i.specialisationArgs = call.arguments;
+            i.isImplicitlyCreated = true;
             currentGraph->addProcessorInstance (i);
             return allocator.allocate<AST::ProcessorInstanceRef> (call.context, i);
         }
@@ -616,7 +622,9 @@ private:
                         search.findVariables = false;
                         search.findTypes = false;
                         search.findFunctions = false;
-                        search.findProcessorsAndNamespaces = false;
+                        search.findNamespaces = false;
+                        search.findProcessors = false;
+                        search.findProcessorInstances = false;
                         search.findEndpoints = true;
 
                         processor->performFullNameSearch (search, nullptr);
@@ -699,7 +707,7 @@ private:
             {
                 if (i->targetProcessor->getAsProcessor() == processor)
                 {
-                    if (! i->wasCreatedImplicitly)
+                    if (! i->isIntermediateConnection)
                         c.throwError (Errors::cannotUseProcessorInLet (processor.name));
 
                     return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
@@ -709,7 +717,7 @@ private:
             auto& i = allocator.allocate<AST::ProcessorInstance> (c);
             i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (processor.name));
             i.targetProcessor = allocator.allocate<AST::ProcessorRef> (c, processor);
-            i.wasCreatedImplicitly = true;
+            i.isIntermediateConnection = true;
             graph.addProcessorInstance (i);
             return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
         }
@@ -1626,7 +1634,7 @@ private:
                 auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
                 SanityCheckPass::RecursiveGraphDetector::check (graph);
 
-                if (! instance.wasCreatedImplicitly)
+                if (! instance.isIntermediateConnection)
                     if (! graph.getMatchingSubModules (instance.instanceName->path).empty())
                         instance.context.throwError (Errors::alreadyProcessorWithName (instance.instanceName->path));
 
@@ -2008,7 +2016,9 @@ private:
             search.findVariables = false;
             search.findTypes = false;
             search.findFunctions = true;
-            search.findProcessorsAndNamespaces = false;
+            search.findNamespaces = false;
+            search.findProcessors = false;
+            search.findProcessorInstances = false;
             search.findEndpoints = false;
 
             call.getParentScope()->performFullNameSearch (search, nullptr);
@@ -2079,7 +2089,9 @@ private:
             search.findVariables = true;
             search.findTypes = true;
             search.findFunctions = true;
-            search.findProcessorsAndNamespaces = true;
+            search.findNamespaces = true;
+            search.findProcessors = true;
+            search.findProcessorInstances = false;
             search.findEndpoints = true;
 
             if (auto scope = name.getParentScope())
