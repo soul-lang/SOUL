@@ -39,7 +39,6 @@ graph PadSynth  [[main]]
 
     let
     {
-        delay = Delay (20000, 0.5f);
         oscillators = Oscillators;
         dryWetMixer = soul::mixers::DynamicMix (float, 100.0f);
     }
@@ -48,7 +47,7 @@ graph PadSynth  [[main]]
     {
         midiIn -> oscillators.midiIn;
 
-        oscillators -> delay -> Reverb.audioIn;
+        oscillators -> Delay (20000, 0.5f) -> Reverb.audioIn;
 
         oscillators -> dryWetMixer.in1;
         Reverb      -> dryWetMixer.in2;
@@ -803,9 +802,7 @@ graph Oscillators
     let
     {
         midiParser = soul::midi::MPEParser;
-
         voices = Voice[8];
-        voiceAllocator = soul::voice_allocators::Basic(8);
     }
 
     connection
@@ -833,7 +830,7 @@ graph Oscillators
         filterEnvMod        -> voices.filterEnvMod;
         filterCutoffTrack   -> voices.filterCutoffTrack;
 
-        midiParser -> voiceAllocator -> voices.eventIn;
+        midiParser -> soul::voice_allocators::Basic(8) -> voices.eventIn;
 
         voices -> audioOut;
     }

@@ -414,8 +414,8 @@ private:
 
                 if (auto p = cast<AST::ProcessorBase> (item))
                 {
-                    if (currentConnection != nullptr)
-                        return getOrCreateImplicitProcessorInstance (qi.context, *p);
+                    if (currentConnectionEndpoint != nullptr)
+                        return getOrCreateImplicitProcessorInstance (qi.context, *p, {});
 
                     return allocator.allocate<AST::ProcessorRef> (qi.context, *p);
                 }
@@ -487,7 +487,7 @@ private:
 
                 if (auto name = cast<AST::QualifiedIdentifier> (call.nameOrType))
                 {
-                    bool canResolveProcessorInstance = (parsingProcessorInstance != 0 || currentConnection != nullptr);
+                    bool canResolveProcessorInstance = (parsingProcessorInstance != 0 || currentConnectionEndpoint != nullptr);
 
                     AST::Scope::NameSearch search;
                     search.partiallyQualifiedPath = name->path;
@@ -535,30 +535,51 @@ private:
             return call;
         }
 
-        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::Context& context, AST::ProcessorBase& p, pool_ptr<AST::Expression> arguments)
+        AST::ProcessorInstanceRef& getOrCreateImplicitProcessorInstance (AST::Context& c,
+                                                                         AST::ProcessorBase& processor,
+                                                                         pool_ptr<AST::Expression> arguments)
         {
-            auto& i = allocator.allocate<AST::ProcessorInstance> (context);
-            auto name = currentGraph->makeUniqueName ("_instance_" + p.name.toString());
-            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (context, IdentifierPath (allocator.get (name)));
-            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (context, p);
+            auto signature = ASTUtilities::getSpecialisationSignature (processor.specialisationParams,
+                                                                       AST::CommaSeparatedList::getAsExpressionList (arguments));
+
+            for (auto i : currentGraph->processorInstances)
+            {
+                if (i->targetProcessor->getAsProcessor() == processor
+                     && signature == ASTUtilities::getSpecialisationSignature (processor.specialisationParams,
+                                                                               AST::CommaSeparatedList::getAsExpressionList (i->specialisationArgs)))
+                {
+                    if (i->implicitInstanceSource == nullptr)
+                        c.throwError (Errors::cannotUseProcessorInLet (processor.name));
+
+                    if (i->implicitInstanceSource != currentConnectionEndpoint)
+                        c.throwError (Errors::cannotReuseImplicitProcessorInstance());
+
+                    return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
+                }
+            }
+
+            auto& i = allocator.allocate<AST::ProcessorInstance> (c);
+
+            if (arguments == nullptr)
+            {
+                i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (processor.name));
+            }
+            else
+            {
+                auto name = currentGraph->makeUniqueName ("_instance_" + processor.name.toString());
+                i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (allocator.get (name)));
+            }
+
+            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (c, processor);
             i.specialisationArgs = arguments;
-            i.isImplicitlyCreated = true;
+            i.implicitInstanceSource = currentConnectionEndpoint;
             currentGraph->addProcessorInstance (i);
-            return allocator.allocate<AST::ProcessorInstanceRef> (context, i);
+            return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
         }
 
         AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
         {
-            return resolveProcessorInstance (call.context, p, call.arguments);
-        }
-
-        void resolveProcessorToProcessorInstance (pool_ref<AST::Expression>& e)
-        {
-            if (is_type<AST::ProcessorRef> (e) || is_type<AST::ProcessorBase> (e))
-            {
-                ++itemsReplaced;
-                e = resolveProcessorInstance (e->context, *e->getAsProcessor(), {});
-            }
+            return getOrCreateImplicitProcessorInstance (call.context, p, call.arguments);
         }
 
         AST::Expression& visit (AST::ArrayElementRef& s) override
@@ -605,14 +626,27 @@ private:
             return {};
         }
 
+        void visitConnectionEndpoint (AST::Connection::SharedEndpoint& endpoint)
+        {
+            auto oldEndpoint = currentConnectionEndpoint;
+            currentConnectionEndpoint = endpoint;
+            replaceExpression (endpoint.endpoint);
+
+            if (is_type<AST::ProcessorRef> (endpoint.endpoint) || is_type<AST::ProcessorBase> (endpoint.endpoint))
+            {
+                ++itemsReplaced;
+                endpoint.endpoint = getOrCreateImplicitProcessorInstance (endpoint.endpoint->context,
+                                                                          *endpoint.endpoint->getAsProcessor(), {});
+            }
+
+            currentConnectionEndpoint = oldEndpoint;
+        }
+
         AST::Connection& visit (AST::Connection& c) override
         {
-            auto oldParentConn = currentConnection;
-            currentConnection = c;
-            super::visit (c);
-            currentConnection = oldParentConn;
-            resolveProcessorToProcessorInstance (c.source);
-            resolveProcessorToProcessorInstance (c.dest);
+            visitConnectionEndpoint (c.source);
+            visitConnectionEndpoint (c.dest);
+            replaceExpression (c.delayLength);
             return c;
         }
 
@@ -626,7 +660,7 @@ private:
             if (failIfNotResolved (d.lhs))
                 return result;
 
-            if (currentConnection != nullptr)
+            if (currentConnectionEndpoint != nullptr)
             {
                 if (auto processorInstance = cast<AST::ProcessorInstanceRef> (d.lhs))
                 {
@@ -680,14 +714,14 @@ private:
             }
             else if (d.lhs->isOutputEndpoint())
             {
-                if (currentConnection != nullptr || d.rhs.path == "type")
+                if (currentConnectionEndpoint != nullptr || d.rhs.path == "type")
                     return d;
 
                 d.context.throwError (Errors::noSuchOperationOnEndpoint());
             }
             else if (AST::isResolvedAsProcessor (d.lhs.get()))
             {
-                if (currentConnection != nullptr)
+                if (currentConnectionEndpoint != nullptr)
                     return d;
 
                 d.context.throwError (Errors::noSuchOperationOnProcessor());
@@ -715,29 +749,6 @@ private:
             return result;
         }
 
-        AST::ProcessorInstanceRef& getOrCreateImplicitProcessorInstance (const AST::Context& c, AST::ProcessorBase& processor)
-        {
-            auto& graph = *cast<AST::Graph> (currentConnection->context.parentScope->findProcessor());
-
-            for (auto i : graph.processorInstances)
-            {
-                if (i->targetProcessor->getAsProcessor() == processor)
-                {
-                    if (! i->isIntermediateConnection)
-                        c.throwError (Errors::cannotUseProcessorInLet (processor.name));
-
-                    return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
-                }
-            }
-
-            auto& i = allocator.allocate<AST::ProcessorInstance> (c);
-            i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (processor.name));
-            i.targetProcessor = allocator.allocate<AST::ProcessorRef> (c, processor);
-            i.isIntermediateConnection = true;
-            graph.addProcessorInstance (i);
-            return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
-        }
-
         AST::ProcessorInstance& visit (AST::ProcessorInstance& i) override
         {
             ++parsingProcessorInstance;
@@ -756,7 +767,7 @@ private:
         }
 
         pool_ptr<AST::Statement> currentStatement;
-        pool_ptr<AST::Connection> currentConnection;
+        pool_ptr<AST::Connection::SharedEndpoint> currentConnectionEndpoint;
         pool_ptr<AST::Graph> currentGraph;
         int parsingProcessorInstance = 0;
         uint32_t numVariablesResolved = 0;
@@ -1490,20 +1501,6 @@ private:
         using ArgList = decltype(AST::CommaSeparatedList::items);
         using ParamList = decltype(AST::ModuleBase::specialisationParams);
 
-        template <typename ModuleType>
-        static auto getSpecialisationArgs (ModuleType& instance)
-        {
-            if (auto csl = cast<AST::CommaSeparatedList> (instance.specialisationArgs))
-                return csl->items;
-
-            ArgList args;
-
-            if (instance.specialisationArgs != nullptr)
-                args.push_back (*instance.specialisationArgs);
-
-            return args;
-        }
-
         bool canResolveSpecialisationArg (AST::Expression& arg, AST::ASTObject& param) const
         {
             if (auto u = cast<AST::UsingDeclaration> (param))
@@ -1640,7 +1637,7 @@ private:
                 if (p->owningInstance == instance)
                     return instance;
 
-                auto specialisationArgs = getSpecialisationArgs (instance);
+                auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (instance.specialisationArgs);
                 auto numArgs = specialisationArgs.size();
                 auto target = pool_ref<AST::ProcessorBase> (*p);
 
@@ -1650,9 +1647,9 @@ private:
                 auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
                 SanityCheckPass::RecursiveGraphDetector::check (graph);
 
-                if (! instance.isIntermediateConnection)
+                if (! instance.isImplicitlyCreated())
                     if (! graph.getMatchingSubModules (instance.instanceName->path).empty())
-                        instance.context.throwError (Errors::alreadyProcessorWithName (instance.instanceName->path));
+                        instance.context.throwError (Errors::alreadyProcessorWithName (instance.getReadableName()));
 
                 if (! canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))
                 {
@@ -1687,6 +1684,7 @@ private:
                 }
 
                 target->owningInstance = instance;
+                target->originalBeforeSpecialisation = p;
                 instance.targetProcessor = allocator.allocate<AST::ProcessorRef> (instance.context, target);
                 instance.specialisationArgs = nullptr;
                 ++itemsReplaced;
@@ -1722,7 +1720,7 @@ private:
             if (instance.targetNamespace == nullptr)
                 return instance;
 
-            auto specialisationArgs = getSpecialisationArgs (instance);
+            auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (instance.specialisationArgs);
             auto numArgs = specialisationArgs.size();
 
             if (auto target = instance.targetNamespace->getAsNamespace())
@@ -1747,44 +1745,6 @@ private:
             return instance;
         }
 
-        static std::string getSpecialisationKey (const ArgList& args, const ParamList& params)
-        {
-            std::stringstream key;
-
-            for (size_t i = 0; i < args.size(); ++i)
-            {
-                auto& arg = args[i].get();
-                auto& param = params[i];
-
-                if (auto u = cast<AST::UsingDeclaration> (param))
-                {
-                    if (arg.resolveAsType().isStruct())
-                        key << "," << std::to_string ((size_t) arg.resolveAsType().getStruct().get());
-                    else
-                        key << "," << arg.resolveAsType().getShortIdentifierDescription();
-
-                    continue;
-                }
-
-                if (auto v = cast<AST::VariableDeclaration> (param))
-                {
-                    auto& value = arg.getAsConstant()->value;
-                    key << "," << std::string (static_cast<const char*> (value.getPackedData()), value.getPackedDataSize());
-                    continue;
-                }
-
-                if (auto v = cast<AST::NamespaceAliasDeclaration> (param))
-                {
-                    key << "," << std::to_string ((size_t) v->resolvedNamespace.get());
-                    continue;
-                }
-
-                SOUL_ASSERT_FALSE;
-            }
-
-            return key.str();
-        }
-
         AST::Namespace& getOrAddNamespaceSpecialisation (AST::Namespace& namespaceToClone, const ArgList& specialisationArgs)
         {
             SOUL_ASSERT (namespaceToClone.specialisationParams.size() == specialisationArgs.size());
@@ -1793,7 +1753,7 @@ private:
             if (specialisationArgs.empty())
                 return namespaceToClone;
 
-            auto instanceKey = getSpecialisationKey (specialisationArgs, namespaceToClone.specialisationParams);
+            auto instanceKey = ASTUtilities::getSpecialisationSignature (namespaceToClone.specialisationParams, specialisationArgs);
 
             for (auto i : namespaceToClone.namespaceInstances)
                 if (i.key == instanceKey)
@@ -2324,11 +2284,9 @@ private:
             AST::TypeArray types;
 
             for (auto t : resolvedGenericFunction.genericSpecialisations)
-            {
                 types.push_back (t->resolveAsType());
-            }
 
-            return ASTUtilities::getIDStringForTypeArray (types);
+            return ASTUtilities::getTypeArraySignature (types);
         }
 
         pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call,
@@ -2343,7 +2301,7 @@ private:
 
             if (findGenericFunctionTypes (call, genericFunction, callerArgumentTypes, resolvedTypes, shouldIgnoreErrors))
             {
-                auto callerSignatureID = ASTUtilities::getIDStringForTypeArray (resolvedTypes);
+                auto callerSignatureID = ASTUtilities::getTypeArraySignature (resolvedTypes);
 
                 for (auto& f : parentScope->getFunctions())
                     if (f->originalGenericFunction == genericFunction && getIDStringForFunction (f) == callerSignatureID)

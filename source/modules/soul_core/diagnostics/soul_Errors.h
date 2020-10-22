@@ -116,7 +116,6 @@ namespace soul
     X(cannotFindMainProcessor,              "Cannot find a main processor or graph to use") \
     X(multipleProcessorsMarkedAsMain,       "Multiple processors were marked as 'main'") \
     X(onlyOneHeartFileAllowed,              "When compiling HEART code, only a single module must be provided") \
-    X(cannotUseProcessorInLet,              "The processor $Q0$ cannot be used in a 'let' statement if it is also used directly in a connection") \
     X(duplicateTypesInList,                 "Duplicate types found in type list: $0$ and $1$") \
     X(unresolvedAnnotation,                 "Cannot resolve constant value in annotation") \
     X(illegalTypeForEndpoint,               "Only primitives or vectors supported by this endpoint type") \
@@ -249,6 +248,7 @@ namespace soul
     X(expected1or2Args,                     "Expected 1 or 2 arguments") \
     X(wrongNumArgsForProcessor,             "Wrong number of arguments to instantiate processor $Q0$") \
     X(wrongNumArgsForNamespace,             "Wrong number of arguments to instantiate namespace $Q0$") \
+    X(cannotUseProcessorInLet,              "The processor $Q0$ cannot be used in a 'let' statement if it is also used directly in a connection") \
     X(cannotReuseImplicitProcessorInstance, "An implicitly-created processor cannot be used more than once: create a named instance instead") \
     X(cannotResolveFunctionOrCast,          "Could not resolve function or cast") \
     X(voidFunctionCannotReturnValue,        "A void function cannot return a value") \

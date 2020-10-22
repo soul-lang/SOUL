@@ -338,8 +338,8 @@ struct ASTVisitor
 
     virtual void visit (AST::Connection& c)
     {
-        visitObject (c.source);
-        visitObject (c.dest);
+        visitObject (c.source.endpoint);
+        visitObject (c.dest.endpoint);
         visitObjectIfNotNull (c.delayLength);
     }
 
@@ -806,8 +806,8 @@ struct RewritingASTVisitor
 
     virtual AST::Connection& visit (AST::Connection& c)
     {
-        replaceExpression (c.source);
-        replaceExpression (c.dest);
+        replaceExpression (c.source.endpoint);
+        replaceExpression (c.dest.endpoint);
         replaceExpression (c.delayLength);
         return c;
     }

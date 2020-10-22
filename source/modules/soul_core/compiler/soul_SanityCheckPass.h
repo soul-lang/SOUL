@@ -260,7 +260,7 @@ struct SanityCheckPass  final
         {
             if (! f->isGeneric())
             {
-                auto newSig = ASTUtilities::getFunctionSignatureId (f);
+                auto newSig = ASTUtilities::getFunctionSignature (f);
 
                 if (contains (functionSigs, newSig))
                     f->context.throwError (Errors::duplicateFunction());
@@ -576,7 +576,7 @@ private:
                                     addConnection (*src, *dst, c);
                 }
 
-                static std::string getProcessorName (const AST::ProcessorInstance& p)  { return p.instanceName->path.toString(); }
+                static std::string getProcessorName (const AST::ProcessorInstance& p)  { return p.getReadableName(); }
                 static const AST::Context& getContext (const AST::Connection& c)       { return c.context; }
             };
 

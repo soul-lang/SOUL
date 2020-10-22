@@ -20,14 +20,13 @@ graph SOUL909  [[ main ]]
     let
     {
         voices          = DrumHitPlayer[8];
-        voiceAllocator  = soul::voice_allocators::Basic(8);
         smoothedGain    = soul::gain::SmoothedGainParameter (0.5f);
         gainProcessor   = soul::gain::DynamicGain (float<2>);
     }
 
     connection
     {
-        midiIn -> soul::midi::MPEParser -> voiceAllocator -> voices -> gainProcessor.in;
+        midiIn -> soul::midi::MPEParser -> soul::voice_allocators::Basic(8) -> voices -> gainProcessor.in;
         smoothedGain.gain -> gainProcessor.gain;
         gainProcessor -> audioOut;
     }

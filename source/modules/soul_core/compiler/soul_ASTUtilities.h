@@ -155,14 +155,16 @@ struct ASTUtilities
         return allocator.allocate<AST::OutputEndpointRef> (c, e);
     }
 
-    static std::string getIDStringForTypeArray (const AST::TypeArray& types)
+    static std::string getSignatureString (const void* o)   { return choc::text::createHexString (reinterpret_cast<std::uintptr_t> (o)); }
+
+    static std::string getTypeArraySignature (const AST::TypeArray& types)
     {
         auto result = std::to_string (types.size());
 
         for (auto& t : types)
         {
             if (t.isStruct())
-                result += "_" + std::to_string ((size_t) t.getStruct().get());
+                result += "_" + getSignatureString (t.getStruct().get());
             else
                 result += "_" + t.withConstAndRefFlags (false, false).getShortIdentifierDescription();
         }
@@ -170,14 +172,62 @@ struct ASTUtilities
         return result;
     }
 
-    static std::string getFunctionSignatureId (const AST::Function& f)
+    static std::string getFunctionSignature (const AST::Function& f)
     {
         AST::TypeArray types;
 
         for (auto& p : f.parameters)
-            types.push_back (p->getType().withConstAndRefFlags (false, false));
+            types.push_back (p->getType());
 
-        return f.name.toString() + "_" + getIDStringForTypeArray (types);
+        return f.name.toString() + "_" + getTypeArraySignature (types);
+    }
+
+    template <typename ArgList, typename ParamList>
+    static std::string getSpecialisationSignature (const ParamList& params, const ArgList& args)
+    {
+        std::stringstream key;
+
+        for (size_t i = 0; i < args.size(); ++i)
+        {
+            auto& arg = args[i].get();
+            auto& param = params[i];
+
+            if (i > 0)
+                key << ',';
+
+            if (auto u = cast<AST::UsingDeclaration> (param))
+            {
+                if (arg.resolveAsType().isStruct())
+                    key << getSignatureString (arg.resolveAsType().getStruct().get());
+                else
+                    key << arg.resolveAsType().getShortIdentifierDescription();
+
+                continue;
+            }
+
+            if (auto v = cast<AST::VariableDeclaration> (param))
+            {
+                auto& value = arg.getAsConstant()->value;
+                key << std::string (static_cast<const char*> (value.getPackedData()), value.getPackedDataSize());
+                continue;
+            }
+
+            if (auto v = cast<AST::NamespaceAliasDeclaration> (param))
+            {
+                key << getSignatureString (v->resolvedNamespace.get());
+                continue;
+            }
+
+            if (auto v = cast<AST::ProcessorAliasDeclaration> (param))
+            {
+                key << getSignatureString (v->targetProcessor.get());
+                continue;
+            }
+
+            SOUL_ASSERT_FALSE;
+        }
+
+        return key.str();
     }
 
 private:
@@ -270,8 +320,8 @@ private:
     }
 
     //==============================================================================
-    static AST::ConnectionEndpointRef& createConnectionEndpoint (AST::Allocator& allocator, const AST::Context& c,
-                                                                 pool_ptr<AST::ProcessorInstance> processor, const AST::EndpointDeclaration& endpoint)
+    static AST::Connection::SharedEndpoint& createConnectionEndpoint (AST::Allocator& allocator, const AST::Context& c,
+                                                                      pool_ptr<AST::ProcessorInstance> processor, const AST::EndpointDeclaration& endpoint)
     {
         pool_ptr<AST::ProcessorInstanceRef> processorRef;
 
@@ -279,7 +329,7 @@ private:
             processorRef = allocator.allocate<AST::ProcessorInstanceRef> (c, *processor);
 
         auto& name = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (endpoint.name));
-        return allocator.allocate<AST::ConnectionEndpointRef> (c, processorRef, name);
+        return allocator.allocate<AST::Connection::SharedEndpoint> (allocator.allocate<AST::ConnectionEndpointRef> (c, processorRef, name));
     }
 
     static void setupEndpointDetailsAndConnection (AST::Allocator& allocator,
@@ -403,7 +453,7 @@ private:
                             graph.endpoints.push_back (*parentEndpoint);
                         }
 
-                        auto& parent = createEndpointRef (allocator, {}, *parentEndpoint);
+                        auto& parent = allocator.allocate<AST::Connection::SharedEndpoint> (createEndpointRef (allocator, {}, *parentEndpoint));
                         auto& child = createConnectionEndpoint (allocator, {}, processorInstance, childEndpoint);
 
                         graph.connections.push_back (allocator.allocate<AST::Connection> (AST::Context(), InterpolationType::none,

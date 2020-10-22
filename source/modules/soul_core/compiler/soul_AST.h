@@ -368,6 +368,7 @@ struct AST
         virtual ArrayView<pool_ref<NamespaceAliasDeclaration>>  getNamespaceAliases() const     { return {}; }
         virtual ArrayView<pool_ref<ModuleBase>>                 getSubModules() const           { return {}; }
         virtual ArrayView<pool_ref<ProcessorAliasDeclaration>>  getProcessorAliases() const     { return {}; }
+        virtual ArrayView<pool_ref<ProcessorInstance>>          getProcessorInstances() const   { return {}; }
 
         //==============================================================================
         struct NameSearch
@@ -545,6 +546,10 @@ struct AST
                                                   if (a->name == name)
                                                       return true;
 
+                                              for (auto& p : getProcessorInstances())
+                                                  if (p->instanceName->path == name)
+                                                      return true;
+
                                               return false;
                                           });
         }
@@ -710,6 +715,7 @@ struct AST
         std::vector<pool_ref<EndpointDeclaration>> endpoints;
         Annotation annotation;
         pool_ptr<ProcessorInstance> owningInstance;
+        pool_ptr<ProcessorBase> originalBeforeSpecialisation;
     };
 
     //==============================================================================
@@ -774,16 +780,17 @@ struct AST
             specialisationParams.push_back (alias);
         }
 
-        void addSpecialisationParameter (UsingDeclaration&) override                         { SOUL_ASSERT_FALSE; }
-        void addSpecialisationParameter (NamespaceAliasDeclaration&) override                { SOUL_ASSERT_FALSE; }
+        void addSpecialisationParameter (UsingDeclaration&) override                            { SOUL_ASSERT_FALSE; }
+        void addSpecialisationParameter (NamespaceAliasDeclaration&) override                   { SOUL_ASSERT_FALSE; }
 
-        bool isGraph() const override                                                        { return true; }
+        bool isGraph() const override                                                           { return true; }
 
-        ArrayView<pool_ref<ProcessorAliasDeclaration>> getProcessorAliases() const override  { return processorAliases; }
-        ArrayView<pool_ref<VariableDeclaration>> getVariables() const override               { return constants; }
+        ArrayView<pool_ref<ProcessorAliasDeclaration>> getProcessorAliases() const override     { return processorAliases; }
+        ArrayView<pool_ref<VariableDeclaration>>       getVariables() const override            { return constants; }
+        ArrayView<pool_ref<ProcessorInstance>>         getProcessorInstances() const override   { return processorInstances; }
 
-        std::vector<pool_ref<VariableDeclaration>>& getStateVariableList() override          { return constants; }
-        std::vector<pool_ref<Function>>* getFunctionList() override                          { return {}; }
+        std::vector<pool_ref<VariableDeclaration>>&    getStateVariableList() override          { return constants; }
+        std::vector<pool_ref<Function>>*               getFunctionList() override               { return {}; }
 
         std::vector<pool_ref<ProcessorInstance>> processorInstances;
         std::vector<pool_ref<Connection>> connections;
@@ -797,7 +804,7 @@ struct AST
 
             for (auto& i : processorInstances)
                 if (*i->instanceName == *newInstance.instanceName)
-                    newInstance.instanceName->context.throwError (newInstance.isImplicitlyCreated
+                    newInstance.instanceName->context.throwError (newInstance.isImplicitlyCreated()
                                                                     ? Errors::cannotReuseImplicitProcessorInstance()
                                                                     : Errors::nameInUse (newInstance.instanceName->path));
 
@@ -1138,19 +1145,29 @@ struct AST
     //==============================================================================
     struct Connection  : public ASTObject
     {
+        // To allow a single AST object to be shared as an endpoint of multiple
+        // Connection objects, we use this class as an intermediate layer
+        struct SharedEndpoint
+        {
+            SharedEndpoint (Expression& e) : endpoint (e) {}
+            SharedEndpoint (const SharedEndpoint&) = delete;
+            SharedEndpoint& operator= (const SharedEndpoint&) = delete;
+            pool_ref<Expression> endpoint;
+        };
+
         Connection (const Context& c, InterpolationType interpolation,
-                    Expression& src, Expression& dst, pool_ptr<Expression> delay)
+                    SharedEndpoint& src, SharedEndpoint& dst, pool_ptr<Expression> delay)
             : ASTObject (ObjectType::Connection, c), interpolationType (interpolation),
               source (src), dest (dst), delayLength (delay) {}
 
-        pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessorInstance (source); }
-        pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessorInstance (dest); }
+        pool_ptr<ProcessorInstance> getSourceProcessor()        { return getProcessorInstance (source.endpoint); }
+        pool_ptr<ProcessorInstance> getDestProcessor()          { return getProcessorInstance (dest.endpoint); }
 
-        std::string getSourceEndpointName()                     { return getEndpointName (source, true); }
-        std::string getDestEndpointName()                       { return getEndpointName (dest, false); }
+        std::string getSourceEndpointName()                     { return getEndpointName (source.endpoint, true); }
+        std::string getDestEndpointName()                       { return getEndpointName (dest.endpoint, false); }
 
-        std::optional<size_t> getSourceEndpointIndex()          { return getEndpointIndex (source); }
-        std::optional<size_t> getDestEndpointIndex()            { return getEndpointIndex (dest); }
+        std::optional<size_t> getSourceEndpointIndex()          { return getEndpointIndex (source.endpoint); }
+        std::optional<size_t> getDestEndpointIndex()            { return getEndpointIndex (dest.endpoint); }
 
         static std::string getEndpointName (Expression& e, bool isSource)
         {
@@ -1211,7 +1228,8 @@ struct AST
         }
 
         InterpolationType interpolationType;
-        pool_ref<Expression> source, dest;
+        SharedEndpoint& source;
+        SharedEndpoint& dest;
         pool_ptr<Expression> delayLength;
     };
 
@@ -1222,8 +1240,25 @@ struct AST
         pool_ptr<QualifiedIdentifier> instanceName;
         pool_ptr<Expression> targetProcessor, specialisationArgs,
                              clockMultiplierRatio, clockDividerRatio, arraySize;
-        bool isIntermediateConnection = false;
-        bool isImplicitlyCreated = false;
+        pool_ptr<Connection::SharedEndpoint> implicitInstanceSource;
+
+        bool isImplicitlyCreated() const    { return implicitInstanceSource != nullptr; }
+
+        std::string getReadableName() const
+        {
+            if (isImplicitlyCreated() && targetProcessor != nullptr)
+            {
+                if (auto target = targetProcessor->getAsProcessor())
+                {
+                    if (auto original = target->originalBeforeSpecialisation)
+                        return original->name.toString();
+
+                    return target->name.toString();
+                }
+            }
+
+            return instanceName->path.toString();
+        }
     };
 
     //==============================================================================
@@ -2041,14 +2076,7 @@ struct AST
         bool isResolved() const override        { return false; }
         bool areAllArgumentsResolved() const    { return arguments == nullptr || arguments->isResolved(); }
         size_t getNumArguments() const          { return arguments == nullptr ? 0 : arguments->items.size(); }
-
-        TypeArray getArgumentTypes() const
-        {
-            if (arguments != nullptr)
-                return arguments->getListOfResultTypes();
-
-            return {};
-        }
+        TypeArray getArgumentTypes() const      { return CommaSeparatedList::getListOfResultTypes (arguments); }
 
         std::string getDescription (std::string name) const
         {
@@ -2142,12 +2170,26 @@ struct AST
             return true;
         }
 
-        TypeArray getListOfResultTypes() const
+        static auto getAsExpressionList (pool_ptr<Expression> expressionOrList)
+        {
+            if (auto csl = cast<CommaSeparatedList> (expressionOrList))
+                return csl->items;
+
+            decltype(AST::CommaSeparatedList::items) list;
+
+            if (expressionOrList != nullptr)
+                list.push_back (*expressionOrList);
+
+            return list;
+        }
+
+        static TypeArray getListOfResultTypes (pool_ptr<Expression> expressionOrList)
         {
             TypeArray types;
-            types.reserve (items.size());
+            auto list = getAsExpressionList (expressionOrList);
+            types.reserve (list.size());
 
-            for (auto& i : items)
+            for (auto& i : list)
                 types.push_back (i->getResultType());
 
             return types;

@@ -20,15 +20,13 @@ graph Piano  [[ main ]]
     let
     {
         voices          = Voice[8];
-        voiceAllocator  = soul::voice_allocators::Basic(8);
-        gainSmoother    = GainParameterRamp (1.0f);
         masterVolume    = soul::gain::DynamicGain (float);
     }
 
     connection
     {
-        midiIn -> soul::midi::MPEParser -> voiceAllocator -> voices -> masterVolume.in;
-        volume -> gainSmoother -> masterVolume.gain;
+        midiIn -> soul::midi::MPEParser -> soul::voice_allocators::Basic(8) -> voices -> masterVolume.in;
+        volume -> GainParameterRamp (1.0f) -> masterVolume.gain;
         masterVolume -> audioOut;
     }
 }

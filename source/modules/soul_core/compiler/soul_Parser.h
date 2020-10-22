@@ -559,12 +559,12 @@ private:
     {
         auto interpolationType = parseOptionalInterpolationType();
         auto context = getContext();
-        ArrayWithPreallocation<pool_ref<AST::Expression>, 8> sources, dests;
+        ArrayWithPreallocation<pool_ref<AST::Connection::SharedEndpoint>, 8> sources, dests;
         pool_ptr<AST::Expression> delayLength;
 
         for (;;)
         {
-            sources.push_back (parseExpression());
+            sources.push_back (allocator.allocate<AST::Connection::SharedEndpoint> (parseExpression()));
 
             if (! matchIf (Operator::comma))
                 break;
@@ -581,7 +581,7 @@ private:
                 auto errorPos = getContext();
 
                 if (auto e = tryToParseExpressionIgnoringErrors())
-                    dests.push_back (*e);
+                    dests.push_back (allocator.allocate<AST::Connection::SharedEndpoint> (*e));
                 else
                     errorPos.throwError (Errors::expectedProcessorOrEndpoint());
 
@@ -599,9 +599,9 @@ private:
             if (matches (Operator::rightArrow))
             {
                 if (dests.size() != 1)
-                    dests.back()->context.throwError (Errors::cannotChainConnectionWithMultiple());
+                    dests.back()->endpoint->context.throwError (Errors::cannotChainConnectionWithMultiple());
 
-                if (auto dot = cast<AST::DotOperator> (dests.back()))
+                if (auto dot = cast<AST::DotOperator> (dests.back()->endpoint))
                     dot->rhs.context.throwError (Errors::cannotNameEndpointInChain());
 
                 sources = dests;
