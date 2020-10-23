@@ -30,98 +30,105 @@ namespace soul
 */
 inline std::string dump (const choc::value::ValueView& c)
 {
-    if (c.isInt32())    { auto v = c.getInt32(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
-    if (c.isInt64())    { auto v = c.getInt64(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
-
-    auto printFloat32 = [] (float value) -> std::string
+    try
     {
-        if (value == 0)             return "0";
-        if (std::isnan (value))     return "_nan32";
-        if (std::isinf (value))     return value > 0 ? "_inf32" : "_ninf32";
+        if (c.isInt32())    { auto v = c.getInt32(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
+        if (c.isInt64())    { auto v = c.getInt64(); return v > 0xffff ? "0x" + choc::text::createHexString (v) : std::to_string (v); }
 
-        return choc::text::floatToString (value) + "f";
-    };
-
-    auto printFloat64 = [] (double value) -> std::string
-    {
-        if (value == 0)             return "0";
-        if (std::isnan (value))     return "_nan64";
-        if (std::isinf (value))     return value > 0 ? "_inf64" : "_ninf64";
-
-        return choc::text::floatToString (value);
-    };
-
-    if (c.isFloat32())  return printFloat32 (c.getFloat32());
-    if (c.isFloat64())  return printFloat64 (c.getFloat64());
-    if (c.isBool())     return c.getBool() ? "true" : "false";
-    if (c.isString())   return std::string (c.getString());
-    if (c.isVoid())     return "void";
-
-    if (c.isVector())
-    {
-        std::string s ("vector (");
-        auto num = c.size();
-
-        for (uint32_t i = 0; i < num; ++i)
+        auto printFloat32 = [] (float value) -> std::string
         {
-            if (i != 0)
-                s += ", ";
+            if (value == 0)             return "0";
+            if (std::isnan (value))     return "_nan32";
+            if (std::isinf (value))     return value > 0 ? "_inf32" : "_ninf32";
 
-            s += dump (c[i]);
-        }
+            return choc::text::floatToString (value) + "f";
+        };
 
-        return s + ")";
-    }
-
-    if (c.isArray())
-    {
-        std::string s ("array (");
-        auto num = c.size();
-
-        for (uint32_t i = 0; i < num; ++i)
+        auto printFloat64 = [] (double value) -> std::string
         {
-            if (i != 0)
-                s += ", ";
+            if (value == 0)             return "0";
+            if (std::isnan (value))     return "_nan64";
+            if (std::isinf (value))     return value > 0 ? "_inf64" : "_ninf64";
 
-            s += dump (c[i]);
-        }
+            return choc::text::floatToString (value);
+        };
 
-        return s + ")";
-    }
+        if (c.isFloat32())  return printFloat32 (c.getFloat32());
+        if (c.isFloat64())  return printFloat64 (c.getFloat64());
+        if (c.isBool())     return c.getBool() ? "true" : "false";
+        if (c.isString())   return std::string (c.getString());
+        if (c.isVoid())     return "void";
 
-    if (c.isObject())
-    {
-        auto s = std::string ("object ") + c.getObjectClassName() + " {";
-        auto num = c.size();
-
-        for (uint32_t i = 0; i < num; ++i)
+        if (c.isVector())
         {
-            if (i != 0)
-                s += ", ";
-            else
-                s += " ";
+            std::string s ("vector (");
+            auto num = c.size();
 
-            auto m = c.getObjectMemberAt(i);
-            s += std::string (m.name) + " = " + dump (m.value);
-        }
-
-        s += " }";
-
-        if (num == 1 && c.getObjectClassName() == "midi::Message")
-        {
-            auto m = c.getObjectMemberAt (0);
-
-            if (std::strcmp (m.name, "midiBytes") == 0 && m.value.isInt32())
+            for (uint32_t i = 0; i < num; ++i)
             {
-                auto v = m.value.getInt32();
+                if (i != 0)
+                    s += ", ";
 
-                s += " = " + choc::midi::ShortMessage ((uint8_t) (v >> 16),
-                                                       (uint8_t) (v >> 8),
-                                                       (uint8_t) v).getDescription();
+                s += dump (c[i]);
             }
+
+            return s + ")";
         }
 
-        return s;
+        if (c.isArray())
+        {
+            std::string s ("array (");
+            auto num = c.size();
+
+            for (uint32_t i = 0; i < num; ++i)
+            {
+                if (i != 0)
+                    s += ", ";
+
+                s += dump (c[i]);
+            }
+
+            return s + ")";
+        }
+
+        if (c.isObject())
+        {
+            auto s = std::string ("object ") + c.getObjectClassName() + " {";
+            auto num = c.size();
+
+            for (uint32_t i = 0; i < num; ++i)
+            {
+                if (i != 0)
+                    s += ", ";
+                else
+                    s += " ";
+
+                auto m = c.getObjectMemberAt(i);
+                s += std::string (m.name) + " = " + dump (m.value);
+            }
+
+            s += " }";
+
+            if (num == 1 && c.getObjectClassName() == "midi::Message")
+            {
+                auto m = c.getObjectMemberAt (0);
+
+                if (std::strcmp (m.name, "midiBytes") == 0 && m.value.isInt32())
+                {
+                    auto v = m.value.getInt32();
+
+                    s += " = " + choc::midi::ShortMessage ((uint8_t) (v >> 16),
+                                                           (uint8_t) (v >> 8),
+                                                           (uint8_t) v).getDescription();
+                }
+            }
+
+            return s;
+        }
+    }
+    catch (choc::value::Error e)
+    {
+        return e.description;
     }
 
     return "?";
