@@ -391,12 +391,13 @@ public:
     bool isArray() const noexcept               { return type.isArray(); }
 
     //==============================================================================
-    int32_t           getInt32() const;     /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
-    int64_t           getInt64() const;     /**< Retrieves the value if this is an int64, otherwise throws an Error exception. */
-    float             getFloat32() const;   /**< Retrieves the value if this is a float, otherwise throws an Error exception. */
-    double            getFloat64() const;   /**< Retrieves the value if this is a double, otherwise throws an Error exception. */
-    bool              getBool() const;      /**< Retrieves the value if this is a bool, otherwise throws an Error exception. */
-    std::string_view  getString() const;    /**< Retrieves the value if this is a string, otherwise throws an Error exception. */
+    int32_t                   getInt32() const;          /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
+    int64_t                   getInt64() const;          /**< Retrieves the value if this is an int64, otherwise throws an Error exception. */
+    float                     getFloat32() const;        /**< Retrieves the value if this is a float, otherwise throws an Error exception. */
+    double                    getFloat64() const;        /**< Retrieves the value if this is a double, otherwise throws an Error exception. */
+    bool                      getBool() const;           /**< Retrieves the value if this is a bool, otherwise throws an Error exception. */
+    std::string_view          getString() const;         /**< Retrieves the value if this is a string, otherwise throws an Error exception. */
+    StringDictionary::Handle  getStringHandle() const;   /**< Retrieves the value if this is a string handle, otherwise throws an Error exception. */
 
     explicit operator int32_t() const            { return getInt32(); }      /**< If the object is not an int32, this will throw an Error. */
     explicit operator int64_t() const            { return getInt64(); }      /**< If the object is not an int64, this will throw an Error. */
@@ -486,6 +487,7 @@ public:
 
     //==============================================================================
     ValueView withDictionary (StringDictionary* newDictionary)      { return ValueView (type, data, newDictionary); }
+    StringDictionary* getDictionary() const                         { return stringDictionary; }
 
     void* getRawData()                   { return data; }
     const void* getRawData() const       { return data; }
@@ -613,12 +615,13 @@ public:
     bool isArray() const                        { return value.isArray(); }
 
     //==============================================================================
-    int32_t           getInt32() const          { return value.getInt32(); }      /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
-    int64_t           getInt64() const          { return value.getInt64(); }      /**< Retrieves the value if this is an int64, otherwise throws an Error exception. */
-    float             getFloat32() const        { return value.getFloat32(); }    /**< Retrieves the value if this is a float, otherwise throws an Error exception. */
-    double            getFloat64() const        { return value.getFloat64(); }    /**< Retrieves the value if this is a double, otherwise throws an Error exception. */
-    bool              getBool() const           { return value.getBool(); }       /**< Retrieves the value if this is a bool, otherwise throws an Error exception. */
-    std::string_view  getString() const         { return value.getString(); }     /**< Retrieves the value if this is a string, otherwise throws an Error exception. */
+    int32_t                   getInt32() const          { return value.getInt32(); }        /**< Retrieves the value if this is an int32, otherwise throws an Error exception. */
+    int64_t                   getInt64() const          { return value.getInt64(); }        /**< Retrieves the value if this is an int64, otherwise throws an Error exception. */
+    float                     getFloat32() const        { return value.getFloat32(); }      /**< Retrieves the value if this is a float, otherwise throws an Error exception. */
+    double                    getFloat64() const        { return value.getFloat64(); }      /**< Retrieves the value if this is a double, otherwise throws an Error exception. */
+    bool                      getBool() const           { return value.getBool(); }         /**< Retrieves the value if this is a bool, otherwise throws an Error exception. */
+    std::string_view          getString() const         { return value.getString(); }       /**< Retrieves the value if this is a string, otherwise throws an Error exception. */
+    StringDictionary::Handle  getStringHandle() const   { return value.getStringHandle(); } /**< Retrieves the value if this is a string handle, otherwise throws an Error exception. */
 
     explicit operator int32_t() const           { return value.getInt32(); }      /**< If the object is not an int32, this will throw an Error. */
     explicit operator int64_t() const           { return value.getInt64(); }      /**< If the object is not an int64, this will throw an Error. */
@@ -1777,12 +1780,16 @@ template <typename PrimitiveType> void ValueView::set (PrimitiveType v)
     setUnchecked (v);
 }
 
-inline std::string_view ValueView::getString() const
+inline StringDictionary::Handle ValueView::getStringHandle() const
 {
     check (type.isString(), "Value is not a string");
-    auto handle = StringDictionary::Handle { readContentAs<decltype (StringDictionary::Handle::handle)>() };
+    return StringDictionary::Handle { readContentAs<decltype (StringDictionary::Handle::handle)>() };
+}
+
+inline std::string_view ValueView::getString() const
+{
     check (stringDictionary != nullptr, "No string dictionary supplied");
-    return stringDictionary->getStringForHandle (handle);
+    return stringDictionary->getStringForHandle (getStringHandle());
 }
 
 inline uint32_t ValueView::size() const             { return type.getNumElements(); }
