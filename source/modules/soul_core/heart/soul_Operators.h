@@ -77,7 +77,7 @@ namespace UnaryOp
 
     inline bool isTypeSuitable (Op op, const Type& type)
     {
-        if (! type.isPrimitive())
+        if (! type.isPrimitiveOrVector())
             return false;
 
         if (op == Op::negate)       return type.isInteger() || type.isFloatingPoint();

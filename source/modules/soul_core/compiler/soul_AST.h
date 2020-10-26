@@ -2210,12 +2210,6 @@ struct AST
 
         Type getResultType() const override
         {
-            if (operation == UnaryOp::Op::logicalNot)
-                return PrimitiveType::bool_;
-
-            if (operation == UnaryOp::Op::bitwiseNot)
-                return PrimitiveType::int32;
-
             return source->getResultType();
         }
 
