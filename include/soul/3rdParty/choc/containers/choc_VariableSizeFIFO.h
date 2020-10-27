@@ -84,12 +84,13 @@ struct VariableSizeFIFO
     /** Allows access to all the available item in the FIFO via a callback.
         If there are any pending items in the FIFO, the handleItem function
         will be called for each of them. Then, when no more are available, the itemsComplete
-        function is called. HandleItem must be a functor or lambda which can be called
+        function is called before the space is freed up for re-use by incoming data.
+        HandleItem must be a functor or lambda which can be called
         as handleItems (const void* data, uint32_t size). ItemsComplete must be a functor
         which takes no arguments and returns void.
     */
     template <typename HandleItem, typename ItemsComplete>
-    void popAllAvailable (HandleItem&& handleItem, ItemsComplete&& itemsComplete);
+    void popAllAvailable (HandleItem&&, ItemsComplete&&);
 
     /** Returns the number of used bytes in the FIFO. */
     uint32_t getUsedSpace() const;
@@ -204,25 +205,27 @@ template <typename HandleItem, typename ItemsComplete>
 void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem, ItemsComplete&& itemsComplete)
 {
     auto originalWritePos = writePos.load();
+    auto newReadPos = readPos.load();
 
-    while (readPos != originalWritePos)
+    while (newReadPos != originalWritePos)
     {
-        auto itemData = buffer.data() + static_cast<int32_t> (readPos);
+        auto itemData = buffer.data() + static_cast<int32_t> (newReadPos);
         ItemHeader itemSize;
         std::memcpy (std::addressof (itemSize), itemData, headerSize);
 
         if (itemSize != 0)
         {
             handleItem (static_cast<void*> (itemData + headerSize), itemSize);
-            readPos = (readPos + itemSize + headerSize) % capacity;
+            newReadPos = (newReadPos + itemSize + headerSize) % capacity;
         }
         else
         {
-            readPos = 0;
+            newReadPos = 0;
         }
     }
 
     itemsComplete();
+    readPos = newReadPos;
 }
 
 
