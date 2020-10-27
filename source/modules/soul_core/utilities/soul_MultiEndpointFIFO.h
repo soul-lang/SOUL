@@ -201,7 +201,7 @@ private:
                 scratch.write (text.data(), len);
                 char nullTerm = 0;
                 scratch.write (std::addressof (nullTerm), 1u);
-                stringEntryOffset += len + 1;
+                stringEntryOffset += static_cast<uint32_t> (len + 1);
 
                 v.set (newHandles[numStrings++]);
             }
