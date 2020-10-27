@@ -71,7 +71,8 @@ struct MultiEndpointFIFO
     }
 
     template <typename HandleStartOfChunk, typename HandleItem, typename HandleEndOfChunk>
-    bool iterateChunks (uint32_t numFrames, uint64_t startFrameNumber,
+    bool iterateChunks (uint64_t startFrameNumber,
+                        uint32_t totalFramesNeeded, uint32_t maxFramesPerChunk,
                         HandleStartOfChunk&& handleStartOfChunk,
                         HandleItem&& handleItem,
                         HandleEndOfChunk&& handleEndOfChunk)
@@ -92,7 +93,7 @@ struct MultiEndpointFIFO
                               },
                               [&]
                               {
-                                  processChunks (incomingItems.data(), numItems, numFrames,
+                                  processChunks (incomingItems.data(), numItems, totalFramesNeeded, maxFramesPerChunk,
                                                  handleStartOfChunk, handleItem, handleEndOfChunk);
                               });
 
@@ -290,14 +291,15 @@ private:
     }
 
     template <typename HandleItem, typename HandleStartOfChunk, typename HandleEndOfChunk>
-    void processChunks (Item* items, uint32_t numItems, uint32_t totalFrames,
+    void processChunks (Item* items, uint32_t numItems,
+                        uint32_t totalFrames, uint32_t maxFramesPerChunk,
                         HandleStartOfChunk&& handleStartOfChunk,
                         HandleItem&& handleItem,
                         HandleEndOfChunk&& handleEndOfChunk)
     {
         for (uint32_t frame = 0; frame < totalFrames;)
         {
-            auto nextChunkStart = findOffsetOfNextItemAfter (items, numItems, frame, totalFrames);
+            auto nextChunkStart = findOffsetOfNextItemAfter (items, numItems, frame, std::min (totalFrames, frame + maxFramesPerChunk));
             auto numFramesToDo = nextChunkStart - frame;
 
             handleStartOfChunk (numFramesToDo);
@@ -318,6 +320,7 @@ private:
                             item.value = item.value.getElementRange (amountToTrim, item.numFrames - amountToTrim);
                             itemStart = frame;
                             item.numFrames -= amountToTrim;
+                            item.startFrame += amountToTrim;
                         }
 
                         if (itemEnd > nextChunkStart)
