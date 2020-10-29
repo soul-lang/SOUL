@@ -65,6 +65,7 @@ EndpointID findFirstOutputOfType (VenueOrPerformer& p, EndpointType t)
 
 bool isMIDIMessageStruct (const choc::value::Type&);
 bool isMIDIEventEndpoint (const EndpointDetails&);
+bool isMIDIEventEndpoint (const Endpoint&);
 Type createMIDIEventEndpointType();
 bool isParameterInput (const EndpointDetails&);
 bool isConsoleEndpoint (const std::string& endpointName);

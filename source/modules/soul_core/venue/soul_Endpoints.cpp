@@ -46,6 +46,14 @@ bool isMIDIEventEndpoint (const EndpointDetails& details)
             && ! isConsoleEndpoint (details.name);
 }
 
+bool isMIDIEventEndpoint (const Endpoint& details)
+{
+    return isEvent (details.type)
+            && details.valueTypes.size() == 1
+            && isMIDIMessageStruct (details.valueTypes.front())
+            && ! isConsoleEndpoint (details.name);
+}
+
 Type createMIDIEventEndpointType()
 {
     StructurePtr s (*new Structure ("Message", nullptr));
