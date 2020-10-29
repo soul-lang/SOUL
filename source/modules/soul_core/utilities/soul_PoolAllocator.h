@@ -260,7 +260,7 @@ private:
     };
 
     static constexpr const size_t poolSize = 1024 * 64 - 32;
-    static constexpr const size_t poolItemAlignment = 8;
+    static constexpr const size_t poolItemAlignment = 16;
     static constexpr const size_t itemHeaderSize = offsetof (PoolItem, item);
 
     struct Pool
