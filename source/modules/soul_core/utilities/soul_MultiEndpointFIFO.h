@@ -30,8 +30,15 @@ namespace soul
 */
 struct MultiEndpointFIFO
 {
-    MultiEndpointFIFO()      { reset (256 * 1024, 2048); }
-    ~MultiEndpointFIFO() = default;
+    MultiEndpointFIFO()
+    {
+        reset (256 * 1024, 2048);
+    }
+
+    ~MultiEndpointFIFO()
+    {
+        incomingItems.clear();
+    }
 
     void reset (uint32_t fifoSize, uint32_t maxNumIncomingItems)
     {
@@ -79,6 +86,7 @@ struct MultiEndpointFIFO
     {
         uint32_t numItems = 0;
         bool success = true;
+        localAllocator.reset();
 
         fifo.popAllAvailable ([&] (const void* data, uint32_t size)
                               {
@@ -124,6 +132,7 @@ struct MultiEndpointFIFO
 
 private:
     static constexpr uint32_t maxItemSize = 8192;
+    static constexpr size_t localAllocationSpace = 65536;
 
     choc::fifo::VariableSizeFIFO fifo;
 
@@ -164,6 +173,43 @@ private:
             }
         }
     };
+
+    struct LocalAllocator  : public choc::value::Allocator
+    {
+        LocalAllocator()  { pool.resize (localAllocationSpace); }
+        void reset()      { position = 0; }
+
+        void* allocate (size_t size) override
+        {
+            lastAllocationPosition = position;
+            auto result = pool.data() + position;
+            auto newSize = position + ((size + 15u) & ~15u);
+
+            if (newSize > pool.size())
+                throw choc::value::Error { "Out of local scratch space" };
+
+            position = newSize;
+            return result;
+        }
+
+        void* resizeIfPossible (void* data, size_t requiredSize) override
+        {
+            if (pool.data() + lastAllocationPosition == data)
+            {
+                position = lastAllocationPosition;
+                return allocate (requiredSize);
+            }
+
+            return {};
+        }
+
+        void free (void*) noexcept override {}
+
+        std::vector<char> pool;
+        size_t position = 0, lastAllocationPosition = 0;
+    };
+
+    LocalAllocator localAllocator;
 
     struct DictionaryBuilder
     {
@@ -234,7 +280,7 @@ private:
     template <typename DestType> void read (choc::value::InputData& reader, DestType& d)
     {
         if (reader.start + sizeof (d) > reader.end)
-            throw choc::value::Error { nullptr };
+            throw choc::value::Error { "Malformed data" };
 
         std::memcpy (std::addressof (d), reader.start, sizeof (d));
         reader.start += sizeof (d);
@@ -253,7 +299,7 @@ private:
                 item.startFrame = static_cast<uint32_t> (time - startFrameNumber);
                 read (reader, item.endpoint);
 
-                auto type = choc::value::Type::deserialise (reader);
+                auto type = choc::value::Type::deserialise (reader, std::addressof (localAllocator));
                 auto dataSize = type.getValueDataSize();
 
                 if (reader.start + dataSize <= reader.end)

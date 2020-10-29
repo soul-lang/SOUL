@@ -172,18 +172,18 @@ struct FileList
         if (! externals.isObject())
             throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
 
-        externals.visitObjectMembers ([] (const std::string& memberName, const choc::value::ValueView&)
+        externals.visitObjectMembers ([] (std::string_view memberName, const choc::value::ValueView&)
         {
             auto name = choc::text::trim (memberName);
 
             Identifier::Pool tempAllocator;
-            auto path = IdentifierPath::fromString (tempAllocator, name);
+            auto path = IdentifierPath::fromString (tempAllocator, std::string (name));
 
             if (! path.isValid())
-                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (name));
+                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (std::string (name)));
 
             if (path.isUnqualified())
-                throwPatchLoadError ("The external symbol name " + quoteName (name) + " must include the name of the processor");
+                throwPatchLoadError ("The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor");
         });
     }
 

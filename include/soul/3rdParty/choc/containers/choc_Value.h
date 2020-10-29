@@ -67,6 +67,21 @@ struct InputData
     const uint8_t* end;
 };
 
+/** A custom allocator class which can be used to replace the normal heap allocator
+    for a Type object. This is mainly useful if you need to create and manipulate Type
+    and Value objects on a realtime thread and need a fast pool allocator.
+    If you pass a custom allocator to the Type class, you must make sure that its lifetime
+    is greater than that of the Types that are created (both directly and possibly indirectly
+    as nested sub-types).
+*/
+struct Allocator
+{
+    virtual ~Allocator() = default;
+    virtual void* allocate (size_t size) = 0;
+    virtual void* resizeIfPossible (void*, size_t requestedSize) = 0;
+    virtual void free (void*) noexcept = 0;
+};
+
 //==============================================================================
 /** A type class that can represent primitives, vectors, strings, arrays and objects.
 
@@ -90,8 +105,9 @@ class Type  final
 {
 public:
     Type() = default;
-    Type (Type&& other);
+    Type (Type&&);
     Type (const Type&);
+    Type (Allocator*, const Type&);  /**< Constructs a copy of another type, using a custom allocator (which may be nullptr). */
     Type& operator= (Type&&);
     Type& operator= (const Type&);
     ~Type() noexcept;
@@ -135,7 +151,7 @@ public:
     int getObjectMemberIndex (std::string_view name) const;
 
     /** Returns the class-name of this type if it's an object, or throws an Error if it's not. */
-    const std::string& getObjectClassName() const;
+    std::string_view getObjectClassName() const;
 
     bool operator== (const Type&) const;
     bool operator!= (const Type&) const;
@@ -185,12 +201,12 @@ public:
 
     //==============================================================================
     /** Returns a type representing an empty object, with the given class name. */
-    static Type createObject (std::string className);
+    static Type createObject (std::string_view className, Allocator* allocator = nullptr);
 
     /** Appends a member to an object type, with the given name and type. This will throw an Error if
         this isn't possible for some reason.
     */
-    void addObjectMember (std::string memberName, Type memberType);
+    void addObjectMember (std::string_view memberName, Type memberType);
 
     //==============================================================================
     /** Returns the size in bytes needed to store a value of this type. */
@@ -226,7 +242,7 @@ public:
         The InputData object will be left pointing to any remaining data after the type has been read.
         @see serialise
     */
-    static Type deserialise (InputData&);
+    static Type deserialise (InputData&, Allocator* allocator = nullptr);
 
     /** Returns a representation of this type in the form of a Value. @see fromValue */
     Value toValue() const;
@@ -261,6 +277,7 @@ private:
     struct SerialisationHelpers;
     struct ComplexArray;
     struct Object;
+    template <typename ObjectType> struct AllocatedVector;
 
     struct Vector
     {
@@ -297,12 +314,14 @@ private:
 
     MainType mainType = MainType::void_;
     Content content;
+    Allocator* allocator = nullptr;
 
     template <typename... Types> bool isType (Types... types) const noexcept   { return ((mainType == types) || ...); }
     template <typename Type> static constexpr MainType selectMainType();
 
     explicit Type (MainType);
     explicit Type (MainType vectorElementType, uint32_t);
+    void allocateCopy (const Type&);
     void deleteAllocatedObjects() noexcept;
     ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
 };
@@ -372,6 +391,7 @@ public:
 
     ValueView (const ValueView&) = default;
     ValueView& operator= (const ValueView&) = default;
+    ValueView& operator= (ValueView&&) = default;
 
     //==============================================================================
     const Type& getType() const                 { return type; }
@@ -456,7 +476,7 @@ public:
     /** Returns the class name of this object.
         This will throw an error if the value is not an object.
     */
-    const std::string& getObjectClassName() const;
+    std::string_view getObjectClassName() const;
 
     /** Returns the name and value of a member by index.
         This will throw an error if the value is not an object of if the index is out of range. (Use
@@ -515,7 +535,7 @@ private:
 */
 struct MemberNameAndType
 {
-    std::string name;
+    std::string_view name;
     Type type;
 };
 
@@ -597,7 +617,7 @@ public:
         This will throw an Error if this isn't possible for some reason (e.g. if the value isn't an object)
     */
     template <typename MemberType, typename... Others>
-    void addMember (std::string name, MemberType value, Others&&...);
+    void addMember (std::string_view name, MemberType value, Others&&...);
 
     //==============================================================================
     bool isVoid() const                         { return value.isVoid(); }
@@ -675,7 +695,7 @@ public:
     /** Returns the class name of this object.
         This will throw an error if the value is not an object.
     */
-    const std::string& getObjectClassName() const                       { return value.getObjectClassName(); }
+    std::string_view getObjectClassName() const                         { return value.getObjectClassName(); }
 
     /** Returns the name and value of a member by index.
         This will throw an error if the value is not an object of if the index is out of range. (Use
@@ -750,7 +770,7 @@ private:
     //==============================================================================
     void appendData (const void*, size_t);
     void appendValue (ValueView);
-    void appendMember (std::string&&, Type&&, const void*, size_t);
+    void appendMember (std::string_view, Type&&, const void*, size_t);
     void importStringHandles (ValueView&, const StringDictionary& old);
 
     struct SimpleStringDictionary  : public StringDictionary
@@ -829,11 +849,11 @@ static ValueView create2DArrayView (ElementType* targetData, uint32_t numArrayEl
 
 
 /** Returns a Value which is a new empty object. */
-static Value createObject (std::string className);
+static Value createObject (std::string_view className);
 
 /** Returns a Value which is a new object, with some member values set. */
 template <typename... Members>
-static Value createObject (std::string className, Members&&... members);
+static Value createObject (std::string_view className, Members&&... members);
 
 
 //==============================================================================
@@ -859,7 +879,120 @@ namespace
     template <typename TargetType> void writeUnaligned (void* dest, TargetType src)    { memcpy (dest, std::addressof (src), sizeof (TargetType)); }
 
     static constexpr const char* serialisedClassMemberName = "$class";
+
+    static inline void* allocateBytes (Allocator* a, size_t size)
+    {
+        if (a != nullptr)
+            return a->allocate (size);
+
+        return new char[size];
+    }
+
+    static inline void* resizeAllocationIfPossible (Allocator* a, void* data, size_t size)
+    {
+        if (a != nullptr)
+            return a->resizeIfPossible (data, size);
+
+        return {};
+    }
+
+    static inline void freeBytes (Allocator* a, void* data) noexcept
+    {
+        if (a != nullptr)
+            return a->free (data);
+
+        delete[] static_cast<char*> (data);
+    }
+
+    template <typename ObjectType, typename... Args>
+    ObjectType* allocateObject (Allocator* a, Args&&... args) { return new (allocateBytes (a, sizeof (ObjectType))) ObjectType (std::forward<Args> (args)...); }
+
+    template <typename ObjectType>
+    void freeObject (Allocator* a, ObjectType* t)  { if (t != nullptr) { static_cast<ObjectType*>(t)->~ObjectType(); freeBytes (a, t); } }
+
+    static inline std::string_view allocateString (Allocator* a, std::string_view s)
+    {
+        auto size = s.length();
+        auto data = static_cast<char*> (allocateBytes (a, size + 1));
+        std::memcpy (data, s.data(), size);
+        data[size] = 0;
+        return { data, size };
+    }
+
+    static inline void freeString (Allocator* a, std::string_view s) noexcept
+    {
+        freeBytes (a, const_cast<char*> (s.data()));
+    }
 }
+
+// This as a minimal replacement for std::vector (necessary because of custom allocators)
+template <typename ObjectType>
+struct Type::AllocatedVector
+{
+    AllocatedVector (Allocator* a) : allocator (a) {}
+    AllocatedVector (AllocatedVector&&) = delete;
+    AllocatedVector (const AllocatedVector&) = delete;
+
+    ~AllocatedVector() noexcept
+    {
+        for (decltype (size) i = 0; i < size; ++i)
+            items[i].~ObjectType();
+
+        freeBytes (allocator, items);
+    }
+
+    ObjectType* begin() const                   { return items; }
+    ObjectType* end() const                     { return items + size; }
+    bool empty() const                          { return size == 0; }
+    ObjectType& front() const                   { return *items; }
+    ObjectType& back() const                    { return items[size - 1]; }
+    ObjectType& operator[] (uint32_t i) const   { return items[i]; }
+
+    void push_back (ObjectType&& o)
+    {
+        reserve (size + 1);
+        new (items + size) ObjectType (std::move (o));
+        ++size;
+    }
+
+    bool operator== (const AllocatedVector& other) const
+    {
+        if (size != other.size)
+            return false;
+
+        for (decltype (size) i = 0; i < size; ++i)
+            if (! (items[i] == other.items[i]))
+                return false;
+
+        return true;
+    }
+
+    void reserve (uint32_t needed)
+    {
+        if (capacity < needed)
+        {
+            needed = (needed + 7u) & ~7u;
+            auto bytesNeeded = sizeof (ObjectType) * needed;
+
+            if (auto reallocated = static_cast<ObjectType*> (resizeAllocationIfPossible (allocator, items, bytesNeeded)))
+            {
+                items = reallocated;
+            }
+            else
+            {
+                auto newItems = static_cast<ObjectType*> (allocateBytes (allocator, bytesNeeded));
+                std::memcpy (newItems, items, size * sizeof (ObjectType));
+                items = newItems;
+            }
+
+            capacity = needed;
+        }
+    }
+
+    ObjectType* items = nullptr;
+    uint32_t size = 0, capacity = 0;
+    Allocator* const allocator;
+};
 
 inline size_t Type::Vector::getElementSize() const    { return getPrimitiveSize (elementType); }
 inline size_t Type::Vector::getValueDataSize() const  { return getElementSize() * numElements; }
@@ -914,6 +1047,18 @@ inline bool Type::PrimitiveArray::operator== (const PrimitiveArray& other) const
 
 struct Type::ComplexArray
 {
+    ComplexArray() = delete;
+    ComplexArray (Allocator* a) : groups (a) {}
+    ComplexArray (const ComplexArray&) = delete;
+
+    ComplexArray (Allocator* a, const ComplexArray& other) : groups (a)
+    {
+        groups.reserve (other.groups.size);
+
+        for (auto& g : other.groups)
+            groups.push_back ({ a, g });
+    }
+
     uint32_t size() const
     {
         uint32_t total = 0;
@@ -939,10 +1084,10 @@ struct Type::ComplexArray
         throwError ("Index out of range");
     }
 
-    ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const
+    ElementTypeAndOffset getElementRangeInfo (Allocator* a, uint32_t start, uint32_t length) const
     {
         ElementTypeAndOffset info { Type (MainType::complexArray), 0 };
-        info.elementType.content.complexArray = new ComplexArray();
+        info.elementType.content.complexArray = allocateObject<ComplexArray> (a, a);
         auto& destGroups = info.elementType.content.complexArray->groups;
 
         for (auto& g : groups)
@@ -965,11 +1110,11 @@ struct Type::ComplexArray
 
             if (length <= groupLen)
             {
-                destGroups.push_back ({ length, g.elementType });
+                destGroups.push_back ({ length, Type (a, g.elementType) });
                 return info;
             }
 
-            destGroups.push_back ({ groupLen, g.elementType });
+            destGroups.push_back ({ groupLen, Type (a, g.elementType) });
             length -= groupLen;
         }
 
@@ -1023,17 +1168,21 @@ struct Type::ComplexArray
     }
 
     bool operator== (const ComplexArray& other) const   { return groups == other.groups; }
-    bool isArrayOfVectors() const                       { return groups.size() == 1 && groups.front().elementType.isVector(); }
-    bool isUniform() const                              { return groups.empty() || groups.size() == 1; }
+    bool isArrayOfVectors() const                       { return groups.size == 1 && groups.front().elementType.isVector(); }
+    bool isUniform() const                              { return groups.empty() || groups.size == 1; }
 
     Type getUniformType() const
     {
-        check (groups.size() == 1, "This array does not contain a single element type");
+        check (groups.size == 1, "This array does not contain a single element type");
         return groups.front().elementType;
     }
 
     struct RepeatedGroup
     {
+        RepeatedGroup (RepeatedGroup&&) = default;
+        RepeatedGroup (uint32_t reps, Type&& element) : repetitions (reps), elementType (std::move (element)) {}
+        RepeatedGroup (Allocator* a, const RepeatedGroup& other) : repetitions (other.repetitions), elementType (a, other.elementType) {}
+
         uint32_t repetitions;
         Type elementType;
 
@@ -1041,13 +1190,33 @@ struct Type::ComplexArray
                                                                    && elementType == other.elementType; }
     };
 
-    std::vector<RepeatedGroup> groups;
+    AllocatedVector<RepeatedGroup> groups;
 };
 
 struct Type::Object
 {
-    std::string className;
-    std::vector<MemberNameAndType> members;
+    Object() = delete;
+    Object (const Object&) = delete;
+    Object (Allocator* a, std::string_view name) : className (allocateString (a, name)), members (a) {}
+
+    Object (Allocator* a, const Object& other) : className (allocateString (a, other.className)), members (a)
+    {
+        members.reserve (other.members.size);
+
+        for (auto& m : other.members)
+            members.push_back ({ allocateString (a, m.name), Type (a, m.type) });
+    }
+
+    ~Object() noexcept
+    {
+        freeString (members.allocator, className);
+
+        for (auto& m : members)
+            freeString (members.allocator, m.name);
+    }
+
+    std::string_view className;
+    AllocatedVector<MemberNameAndType> members;
 
     size_t getValueDataSize() const
     {
@@ -1072,7 +1241,7 @@ struct Type::Object
     {
         size_t offset = 0;
 
-        for (size_t i = 0; i < members.size(); ++i)
+        for (uint32_t i = 0; i < members.size; ++i)
         {
             if (i == index)
                 return { members[i].type, offset };
@@ -1088,10 +1257,10 @@ struct Type::Object
         if (className != other.className)
             return false;
 
-        if (members.size() != other.members.size())
+        if (members.size != other.members.size)
             return false;
 
-        for (size_t i = 0; i < members.size(); ++i)
+        for (uint32_t i = 0; i < members.size; ++i)
             if (members[i].name != other.members[i].name
                     || members[i].type != other.members[i].type)
                 return false;
@@ -1100,22 +1269,28 @@ struct Type::Object
     }
 };
 
-inline Type::Type (Type&& other) : mainType (other.mainType), content (other.content)
+inline Type::Type (Type&& other) : mainType (other.mainType), content (other.content), allocator (other.allocator)
 {
     other.mainType = MainType::void_;
 }
 
+inline void Type::allocateCopy (const Type& other)
+{
+    if (isType (MainType::complexArray))   content.complexArray = allocateObject<ComplexArray> (allocator, allocator, *other.content.complexArray);
+    else if (isObject())                   content.object = allocateObject<Object> (allocator, allocator, *other.content.object);
+    else                                   content = other.content;
+}
+
 inline Type::Type (const Type& other) : mainType (other.mainType)
 {
-    if (isType (MainType::complexArray))   content.complexArray = new ComplexArray (*other.content.complexArray);
-    else if (isObject())                   content.object = new Object (*other.content.object);
-    else                                   content = other.content;
+    allocateCopy (other);
 }
 
 inline Type& Type::operator= (Type&& other)
 {
     mainType = other.mainType;
     content = other.content;
+    allocator = other.allocator;
     other.mainType = MainType::void_;
     return *this;
 }
@@ -1124,11 +1299,7 @@ inline Type& Type::operator= (const Type& other)
 {
     deleteAllocatedObjects();
     mainType = other.mainType;
-
-    if (isType (MainType::complexArray))   content.complexArray = new ComplexArray (*other.content.complexArray);
-    else if (isObject())                   content.object = new Object (*other.content.object);
-    else                                   content = other.content;
-
+    allocateCopy (other);
     return *this;
 }
 
@@ -1140,6 +1311,11 @@ inline Type::Type (MainType vectorElementType, uint32_t size)  : mainType (MainT
     content.vector = { vectorElementType, size };
 }
 
+inline Type::Type (Allocator* a, const Type& other)  : allocator (a)
+{
+    operator= (other);
+}
+
 inline Type::~Type() noexcept
 {
     deleteAllocatedObjects();
@@ -1149,8 +1325,8 @@ inline void Type::deleteAllocatedObjects() noexcept
 {
     if (static_cast<int8_t> (mainType) < 0)
     {
-        if (isType (MainType::complexArray))   delete content.complexArray;
-        else if (isType (MainType::object))    delete content.object;
+        if (isType (MainType::complexArray))   freeObject (allocator, content.complexArray);
+        else if (isType (MainType::object))    freeObject (allocator, content.object);
     }
 }
 
@@ -1163,7 +1339,7 @@ inline uint32_t Type::getNumElements() const
     if (isVector())                         return content.vector.numElements;
     if (isType (MainType::primitiveArray))  return content.primitiveArray.numElements;
     if (isType (MainType::complexArray))    return content.complexArray->size();
-    if (isObject())                         return static_cast<uint32_t> (content.object->members.size());
+    if (isObject())                         return static_cast<uint32_t> (content.object->members.size);
     if (isPrimitive() || isString())        return 1;
 
     throwError ("This type doesn't have sub-elements");
@@ -1188,7 +1364,7 @@ inline Type Type::getArrayElementType (uint32_t index) const
 inline const MemberNameAndType& Type::getObjectMember (uint32_t index) const
 {
     check (isObject(), "This type is not an object");
-    check (index < content.object->members.size(), "Index out of range");
+    check (index < content.object->members.size, "Index out of range");
     return content.object->members[index];
 }
 
@@ -1270,7 +1446,7 @@ inline Type Type::createArray (Type elementType, uint32_t numElements)
     }
 
     Type t (MainType::complexArray);
-    t.content.complexArray = new ComplexArray();
+    t.content.complexArray = allocateObject<ComplexArray> (t.allocator, t.allocator);
     t.content.complexArray->groups.push_back ({ numElements, std::move (elementType) });
     return t;
 }
@@ -1312,7 +1488,7 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
         }
 
         mainType = MainType::complexArray;
-        auto newArray = new ComplexArray();
+        auto newArray = allocateObject<ComplexArray> (allocator, allocator);
         newArray->groups.push_back ({ content.primitiveArray.numElements, content.primitiveArray.getElementType() });
         content.complexArray = newArray;
     }
@@ -1324,21 +1500,21 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
     content.complexArray->addElements (std::move (elementType), numElementsToAdd);
 }
 
-inline Type Type::createObject (std::string className)
+inline Type Type::createObject (std::string_view className, Allocator* a)
 {
     Type t (MainType::object);
-    t.content.object = new Object();
-    t.content.object->className = std::move (className);
+    t.allocator = a;
+    t.content.object = allocateObject<Object> (a, a, className);
     return t;
 }
 
-inline void Type::addObjectMember (std::string memberName, Type memberType)
+inline void Type::addObjectMember (std::string_view memberName, Type memberType)
 {
     check (getObjectMemberIndex (memberName) < 0, "This object already contains a member with the given name");
-    content.object->members.push_back ({ std::move (memberName), std::move (memberType) });
+    content.object->members.push_back ({ allocateString (allocator, memberName), std::move (memberType) });
 }
 
-inline const std::string& Type::getObjectClassName() const
+inline std::string_view Type::getObjectClassName() const
 {
     check (isObject(), "This type is not an object");
     return content.object->className;
@@ -1399,7 +1575,7 @@ inline ElementTypeAndOffset Type::getElementRangeInfo (uint32_t start, uint32_t 
 {
     if (isType (MainType::vector))          return content.vector.getElementRangeInfo (start, length);
     if (isType (MainType::primitiveArray))  return content.primitiveArray.getElementRangeInfo (start, length);
-    if (isType (MainType::complexArray))    return content.complexArray->getElementRangeInfo (start, length);
+    if (isType (MainType::complexArray))    return content.complexArray->getElementRangeInfo (allocator, start, length);
 
     throwError ("Invalid type");
 }
@@ -1460,7 +1636,7 @@ struct Type::SerialisationHelpers
         }
     }
 
-    static std::string readNullTerminatedString (InputData& source)
+    static std::string_view readNullTerminatedString (InputData& source)
     {
         auto start = source.start, end = source.end;
 
@@ -1469,8 +1645,7 @@ struct Type::SerialisationHelpers
             if (*p == 0)
             {
                 source.start = p + 1;
-                return std::string (reinterpret_cast<const char*> (start),
-                                    reinterpret_cast<const char*> (p));
+                return { reinterpret_cast<const char*> (start), static_cast<size_t> (p - start) };
             }
         }
 
@@ -1530,7 +1705,7 @@ struct Type::SerialisationHelpers
         void writeArray (const ComplexArray& a)
         {
             writeType (EncodedType::array);
-            writeInt (static_cast<uint32_t> (a.groups.size()));
+            writeInt (a.groups.size);
 
             for (auto& g : a.groups)
             {
@@ -1542,7 +1717,7 @@ struct Type::SerialisationHelpers
         void writeObject (const Object& o)
         {
             writeType (EncodedType::object);
-            writeInt (static_cast<uint32_t> (o.members.size()));
+            writeInt (o.members.size);
             writeString (o.className);
 
             for (auto& m : o.members)
@@ -1554,13 +1729,14 @@ struct Type::SerialisationHelpers
 
         void writeType (EncodedType t)            { writeByte (static_cast<uint8_t> (t)); }
         void writeByte (uint8_t byte)             { out.write (&byte, 1); }
-        void writeString (const std::string& s)   { out.write (std::addressof (s[0]), s.length()); writeByte (0); }
+        void writeString (std::string_view s)     { out.write (s.data(), s.length()); writeByte (0); }
         void writeInt (uint32_t value)            { writeVariableLengthInt (out, value); }
     };
 
     struct Reader
     {
         InputData& source;
+        Allocator* allocatorToUse;
 
         Type readType()
         {
@@ -1605,6 +1781,7 @@ struct Type::SerialisationHelpers
         Type readArray()
         {
             auto t = createEmptyArray();
+            t.allocator = allocatorToUse;
             auto numGroups = readInt();
             uint32_t elementCount = 0;
 
@@ -1622,7 +1799,7 @@ struct Type::SerialisationHelpers
         Type readObject()
         {
             auto numMembers = readInt();
-            auto t = createObject (readNullTerminatedString (source));
+            auto t = createObject (readNullTerminatedString (source), allocatorToUse);
 
             for (uint32_t i = 0; i < numMembers; ++i)
             {
@@ -1653,9 +1830,9 @@ void Type::serialise (OutputStream& out) const
     w.writeType (*this);
 }
 
-inline Type Type::deserialise (InputData& input)
+inline Type Type::deserialise (InputData& input, Allocator* a)
 {
-    SerialisationHelpers::Reader r { input };
+    SerialisationHelpers::Reader r { input, a };
     return r.readType();
 }
 
@@ -1820,13 +1997,13 @@ inline ValueView ValueView::operator[] (std::string_view name) const
     return ValueView (std::move (info.elementType), data + info.offset, stringDictionary);
 }
 
-inline const std::string& ValueView::getObjectClassName() const   { return type.getObjectClassName(); }
+inline std::string_view ValueView::getObjectClassName() const   { return type.getObjectClassName(); }
 
 inline MemberNameAndValue ValueView::getObjectMemberAt (uint32_t index) const
 {
     auto& member = type.getObjectMember (index);
     auto info = type.getElementTypeAndOffset (index);
-    return { member.name.c_str(), ValueView (std::move (info.elementType), data + info.offset, stringDictionary) };
+    return { member.name.data(), ValueView (std::move (info.elementType), data + info.offset, stringDictionary) };
 }
 
 inline bool ValueView::hasObjectMember (std::string_view name) const
@@ -2137,29 +2314,29 @@ void Value::addArrayElement (ElementType v)
     }
 }
 
-inline Value createObject (std::string className)
+inline Value createObject (std::string_view className)
 {
-    return Value (Type::createObject (std::move (className)));
+    return Value (Type::createObject (className));
 }
 
 template <typename... Members>
-inline Value createObject (std::string className, Members&&... members)
+inline Value createObject (std::string_view className, Members&&... members)
 {
     static_assert ((sizeof...(members) & 1) == 0, "The member arguments must be a sequence of name, value pairs");
 
-    auto v = createObject (std::move (className));
+    auto v = createObject (className);
     v.addMember (std::forward<Members> (members)...);
     return v;
 }
 
-inline void Value::appendMember (std::string&& name, Type&& type, const void* data, size_t size)
+inline void Value::appendMember (std::string_view name, Type&& type, const void* data, size_t size)
 {
-    value.type.addObjectMember (std::move (name), std::move (type));
+    value.type.addObjectMember (name, std::move (type));
     appendData (data, size);
 }
 
 template <typename MemberType, typename... Others>
-void Value::addMember (std::string name, MemberType v, Others&&... others)
+void Value::addMember (std::string_view name, MemberType v, Others&&... others)
 {
     static_assert ((sizeof...(others) & 1) == 0, "The arguments must be a sequence of name, value pairs");
 
@@ -2168,19 +2345,19 @@ void Value::addMember (std::string name, MemberType v, Others&&... others)
 
     if constexpr (isValueType<MemberType>())
     {
-        value.type.addObjectMember (std::move (name), v.getType());
+        value.type.addObjectMember (name, v.getType());
         appendValue (v);
     }
     else if constexpr (isStringType<MemberType>())
     {
         auto stringHandle = dictionary.getHandleForString (v);
-        appendMember (std::move (name), Type::createString(), std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
+        appendMember (name, Type::createString(), std::addressof (stringHandle.handle), sizeof (stringHandle.handle));
     }
-    else if constexpr (matchesType<MemberType, int32_t>())   { appendMember (std::move (name), Type::createInt32(),   std::addressof (v), sizeof (v)); }
-    else if constexpr (matchesType<MemberType, int64_t>())   { appendMember (std::move (name), Type::createInt64(),   std::addressof (v), sizeof (v)); }
-    else if constexpr (matchesType<MemberType, float>())     { appendMember (std::move (name), Type::createFloat32(), std::addressof (v), sizeof (v)); }
-    else if constexpr (matchesType<MemberType, double>())    { appendMember (std::move (name), Type::createFloat64(), std::addressof (v), sizeof (v)); }
-    else if constexpr (matchesType<MemberType, bool>())      { uint8_t b = v ? 1 : 0; appendMember (std::move (name), Type::createBool(), std::addressof (b), sizeof (b)); }
+    else if constexpr (matchesType<MemberType, int32_t>())   { appendMember (name, Type::createInt32(),   std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, int64_t>())   { appendMember (name, Type::createInt64(),   std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, float>())     { appendMember (name, Type::createFloat32(), std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, double>())    { appendMember (name, Type::createFloat64(), std::addressof (v), sizeof (v)); }
+    else if constexpr (matchesType<MemberType, bool>())      { uint8_t b = v ? 1 : 0; appendMember (name, Type::createBool(), std::addressof (b), sizeof (b)); }
 
     if constexpr (sizeof...(others) != 0)
         addMember (std::forward<Others> (others)...);
@@ -2228,7 +2405,7 @@ inline Value Value::deserialise (InputData& input)
         v.dictionary.strings.reserve (numStrings);
 
         for (uint32_t i = 0; i < numStrings; ++i)
-            v.dictionary.strings.push_back (Type::SerialisationHelpers::readNullTerminatedString (input));
+            v.dictionary.strings.push_back (std::string (Type::SerialisationHelpers::readNullTerminatedString (input)));
     }
 
     Type::SerialisationHelpers::expect (input.end == input.start);
@@ -2306,11 +2483,11 @@ inline Type Type::fromValue (const ValueView& value)
        throwError ("This value doesn't match the format generated by Type::toValue()");
     };
 
-    auto fromObject = [] (const ValueView& v, std::string className) -> Type
+    auto fromObject = [] (const ValueView& v, std::string_view className) -> Type
     {
-        auto o = createObject (std::move (className));
+        auto o = createObject (className);
 
-        v.visitObjectMembers ([&o] (const std::string& name, const ValueView& mv)
+        v.visitObjectMembers ([&o] (std::string_view name, const ValueView& mv)
         {
             if (name != serialisedClassMemberName)
                 o.addObjectMember (name, fromValue (mv));
@@ -2321,7 +2498,7 @@ inline Type Type::fromValue (const ValueView& value)
 
     if (value.isObject())
     {
-        auto& name = value.getObjectClassName();
+        auto name = value.getObjectClassName();
 
         if (name == "void")     return {};
         if (name == "int32")    return Type::createInt32();
@@ -2332,7 +2509,7 @@ inline Type Type::fromValue (const ValueView& value)
         if (name == "string")   return Type::createString();
         if (name == "vector")   return fromVector (fromValue (value["type"]), value["size"].get<uint32_t>());
         if (name == "array")    return fromArray (value);
-        if (name == "object")   return fromObject (value, value[serialisedClassMemberName].get<std::string>());
+        if (name == "object")   return fromObject (value, value[serialisedClassMemberName].get<std::string_view>());
     }
 
     throwError ("This value doesn't match the format generated by Type::toValue()");
