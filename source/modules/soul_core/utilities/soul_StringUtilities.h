@@ -40,7 +40,7 @@ static inline bool contains (const std::string& text, const StringType& substrin
 bool startsWith (const std::string& text, char possibleStart);
 bool startsWith (const std::string& text, const char* possibleStart);
 bool startsWith (const std::string& text, const std::string& possibleStart);
-bool endsWith (const std::string& text, const std::string& possibleEnd);
+bool endsWith (std::string_view text, std::string_view possibleEnd);
 
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
 std::string removeCharacter (std::string s, char charToRemove);

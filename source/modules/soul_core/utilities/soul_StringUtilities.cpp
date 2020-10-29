@@ -89,7 +89,7 @@ bool startsWith (const std::string& text, const std::string& possibleStart)
             && startsWith (text, possibleStart.c_str());
 }
 
-bool endsWith (const std::string& text, const std::string& possibleEnd)
+bool endsWith (std::string_view text, std::string_view possibleEnd)
 {
     auto textLen = text.length();
     auto endLen = possibleEnd.length();

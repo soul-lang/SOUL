@@ -93,7 +93,7 @@ inline std::string dump (const choc::value::ValueView& c)
 
         if (c.isObject())
         {
-            auto s = std::string ("object ") + c.getObjectClassName() + " {";
+            auto s = "object " + std::string (c.getObjectClassName()) + " {";
             auto num = c.size();
 
             for (uint32_t i = 0; i < num; ++i)
@@ -163,7 +163,9 @@ inline std::string dump (const choc::value::Type& type)
                 s += ", ";
 
             auto m = type.getObjectMember (i);
-            s += dump (m.type) + " " + m.name;
+            s += dump (m.type);
+            s += " ";
+            s += m.name;
         }
 
         return s + " }";
