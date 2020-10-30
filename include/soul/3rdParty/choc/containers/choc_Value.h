@@ -980,9 +980,9 @@ struct Type::AllocatedVector
             }
             else
             {
-                auto newItems = static_cast<ObjectType*> (allocateBytes (allocator, bytesNeeded));
+                auto newItems = allocateBytes (allocator, bytesNeeded);
                 std::memcpy (newItems, items, size * sizeof (ObjectType));
-                items = newItems;
+                items = static_cast<ObjectType*> (newItems);
             }
 
             capacity = needed;
@@ -1179,6 +1179,7 @@ struct Type::ComplexArray
 
     struct RepeatedGroup
     {
+        RepeatedGroup (const RepeatedGroup&) = delete;
         RepeatedGroup (RepeatedGroup&&) = default;
         RepeatedGroup (uint32_t reps, Type&& element) : repetitions (reps), elementType (std::move (element)) {}
         RepeatedGroup (Allocator* a, const RepeatedGroup& other) : repetitions (other.repetitions), elementType (a, other.elementType) {}
