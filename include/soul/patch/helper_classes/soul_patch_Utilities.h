@@ -120,12 +120,13 @@ inline std::string loadVirtualFileAsString (VirtualFile& f, std::string& error)
 
     if (error.empty())
     {
-        auto invalidUTF8 = choc::text::findInvalidUTF8Data (data.data(), data.size());
+        if (auto d = data.data()) // the nullptr check here avoids a sanitiser false-alarm
+        {
+            if (auto invalidUTF8 = choc::text::findInvalidUTF8Data (d, data.size()))
+                error = "Invalid UTF8 data at offset " + std::to_string (invalidUTF8 - d);
 
-        if (invalidUTF8 == nullptr)
             return data;
-
-        error = "Invalid UTF8 data";
+        }
     }
 
     return {};
