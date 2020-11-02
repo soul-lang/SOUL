@@ -2484,6 +2484,16 @@ private:
         AST::Allocator& allocator;
         AST::ModuleBase& module;
 
+        AST::EndpointDeclaration& visit (AST::EndpointDeclaration& e) override
+        {
+            super::visit (e);
+
+            if (e.isResolved())
+                e.getDetails().checkDataTypesValid (e.context);
+
+            return e;
+        }
+
         AST::Function& visit (AST::Function& f) override
         {
             if (f.isGeneric())

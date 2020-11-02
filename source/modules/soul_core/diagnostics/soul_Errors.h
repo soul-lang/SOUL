@@ -119,6 +119,7 @@ namespace soul
     X(duplicateTypesInList,                 "Duplicate types found in type list: $0$ and $1$") \
     X(unresolvedAnnotation,                 "Cannot resolve constant value in annotation") \
     X(illegalTypeForEndpoint,               "Only primitives or vectors supported by this endpoint type") \
+    X(illegalTypeForEndpointArray,          "Endpoint arrays do not support array data types") \
     X(voidCannotBeUsedForEndpoint,          "void is not a valid endpoint type") \
     X(noMultipleTypesOnEndpoint,            "Multiple data types not supported by this endpoint type") \
     X(endpointHasMultipleTypes,             "This endpoint has more than one type") \

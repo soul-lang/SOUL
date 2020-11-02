@@ -949,16 +949,21 @@ struct AST
                     context.throwError (Errors::illegalTypeForEndpoint());
             }
 
+            auto types = getResolvedDataTypes();
+
             if (dataTypes.size() > 1)
             {
-                auto types = getResolvedDataTypes();
-
                 for (size_t i = 1; i < types.size(); ++i)
                     for (size_t j = 0; j < i; ++j)
                         if (types[i].isEqual (types[j], Type::ignoreVectorSize1))
                             context.throwError (Errors::duplicateTypesInList (types[j].getDescription(),
                                                                               types[i].getDescription()));
             }
+
+            if (arraySize != nullptr)
+                for (auto t : types)
+                    if (t.isArray())
+                        context.throwError (Errors::illegalTypeForEndpointArray());
         }
 
         bool isResolved() const
