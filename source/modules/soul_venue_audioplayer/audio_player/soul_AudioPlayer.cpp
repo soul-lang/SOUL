@@ -57,7 +57,56 @@ public:
         bool isMIDI = false;
     };
 
-    using RenderContext = AudioMIDIWrapper::RenderContext;
+    struct RenderContext
+    {
+        uint64_t totalFramesRendered = 0;
+        choc::buffer::ChannelArrayView<const float> inputChannels;
+        choc::buffer::ChannelArrayView<float> outputChannels;
+        const MIDIEvent* midiIn;
+        MIDIEvent* midiOut;
+        uint32_t frameOffset = 0, midiInCount = 0, midiOutCount = 0, midiOutCapacity = 0;
+
+        template <typename RenderBlockFn>
+        void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render)
+        {
+            auto framesRemaining = inputChannels.getNumFrames();
+            auto context = *this;
+
+            while (framesRemaining != 0)
+            {
+                auto framesToDo = std::min (maxFramesPerBlock, framesRemaining);
+                context.midiIn = midiIn;
+                context.midiInCount = 0;
+
+                while (midiInCount != 0)
+                {
+                    auto time = midiIn->frameIndex;
+
+                    if (time > frameOffset)
+                    {
+                        framesToDo = std::min (framesToDo, time - frameOffset);
+                        break;
+                    }
+
+                    ++midiIn;
+                    --midiInCount;
+                    context.midiInCount++;
+                }
+
+                context.inputChannels  = inputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
+                context.outputChannels = outputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
+
+                render (context);
+
+                frameOffset += framesToDo;
+                framesRemaining -= framesToDo;
+                context.totalFramesRendered += framesToDo;
+                context.frameOffset += framesToDo;
+            }
+
+            midiOutCount = context.midiOutCount;
+        }
+    };
 
     //==============================================================================
     struct AudioPlayerSession   : public Venue::Session
@@ -367,7 +416,7 @@ public:
             }
         }
 
-        void processBlock (AudioMIDIWrapper::RenderContext context)
+        void processBlock (RenderContext context)
         {
             SOUL_ASSERT (maxBlockSize > 0);
             auto maxFramesPerBlock = std::min (512u, maxBlockSize);

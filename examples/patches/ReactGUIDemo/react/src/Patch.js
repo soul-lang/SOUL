@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import ParameterControl from './ParameterControl';
-import { View, Text, } from 'juce-blueprint';
+import LevelMeter from './LevelMeter';
+import { View, Text, EventBridge } from 'juce-blueprint';
 
 
 class Patch extends Component {
@@ -19,6 +20,7 @@ class Patch extends Component {
   render() {
     return (
       <View {...styles.container}>
+        <LevelMeter {...styles.meter} />
         <View {...styles.paramHolder}>
           { this.paramIDs.map (paramID => (
             <ParameterControl paramID={paramID} key={paramID} {...styles.paramControl}/>
@@ -34,8 +36,11 @@ const styles = {
     'width': '100%',
     'height': '100%',
     'background-color': 'ff17191f',
-    'justify-content': 'center',
+    'flex-direction': 'row',
+    'flex-wrap': 'wrap',
+    'justify-content': 'space-around',
     'align-items': 'center',
+    'padding': '5px',
   },
   paramHolder: {
     'flex': 1.0,
@@ -45,6 +50,11 @@ const styles = {
     'align-items': 'flex-start',
     'align-content': 'flex-start',
     'padding': '4%',
+  },
+  meter: {
+    'flex': 1.0,
+    'width': 100.0,
+    'height': 25.0,
   },
 };
 

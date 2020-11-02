@@ -124,8 +124,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
                   const BuildSettings& settings,
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
-                  ExternalDataProvider* externalDataProvider,
-                  ConsoleMessageHandler* consoleHandler)
+                  ExternalDataProvider* externalDataProvider)
     {
         if (performer == nullptr)
             return messageList.addError ("Failed to initialise JIT engine", {});
@@ -144,7 +143,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
             return messageList.addError ("Failed to load program", {});
 
         createBusesAndEventEndpoints();
-        createRenderOperations (consoleHandler);
+        createRenderOperations();
         resolveExternalVariables (externalDataProvider);
 
         if (! performer->link (messageList, settings, CacheConverter::create (cache).get()))
@@ -157,11 +156,10 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     void compile (const BuildSettings& settings,
                   CompilerCache* cache,
                   SourceFilePreprocessor* preprocessor,
-                  ExternalDataProvider* externalDataProvider,
-                  ConsoleMessageHandler* consoleHandler)
+                  ExternalDataProvider* externalDataProvider)
     {
         soul::CompileMessageList messageList;
-        compile (messageList, settings, cache, preprocessor, externalDataProvider, consoleHandler);
+        compile (messageList, settings, cache, preprocessor, externalDataProvider);
 
         compileMessages.reserve (messageList.messages.size());
 
@@ -358,42 +356,16 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         return endpointHolders.back().desc;
     }
 
-    template <typename DebugHandler>
-    static void printConsoleMessage (const std::string& endpointName, uint64_t eventTime, double sampleRate,
-                                     const choc::value::ValueView& eventData, DebugHandler&& handler)
-    {
-        if (isConsoleEndpoint (endpointName))
-            handler (eventTime, endpointName.c_str(), dump (eventData).c_str());
-        else
-            handler (eventTime, endpointName.c_str(), (endpointName + "  " + choc::text::floatToString (eventTime / sampleRate, 3)
-                                                         + ": " + dump (eventData) + "\n").c_str());
-    }
-
-    void createRenderOperations (ConsoleMessageHandler* consoleHandler)
+    void createRenderOperations()
     {
         parameters.clear();
         checkSampleRateAndBlockSize();
 
-        decltype (wrapper)::HandleUnusedEventFn handleUnusedEvents;
-        auto sampleRate = config.sampleRate;
-
-        if (consoleHandler != nullptr)
-        {
-            handleUnusedEvents = [consoleHandler, sampleRate] (uint64_t eventTime, const std::string& endpointName, const choc::value::ValueView& eventData) -> bool
-                                 {
-                                     printConsoleMessage (endpointName, eventTime, sampleRate, eventData,
-                                                          [consoleHandler] (uint64_t time, const char* name, const char* message)
-                                                          { consoleHandler->handleConsoleMessage (time, name, message); });
-                                     return true;
-                                 };
-        }
-
-        wrapper.buildRenderingPipeline ((uint32_t) config.maxFramesPerBlock,
-                                        [] (const EndpointDetails& endpoint) -> uint32_t
-                                        {
-                                            return checkRampLength (endpoint.annotation.getValue ("rampFrames"));
-                                        },
-                                        std::move (handleUnusedEvents));
+        wrapper.prepare ((uint32_t) config.maxFramesPerBlock,
+                         [] (const EndpointDetails& endpoint) -> uint32_t
+                         {
+                             return checkRampLength (endpoint.annotation.getValue ("rampFrames"));
+                         });
 
         auto paramEndpoints = wrapper.getParameterEndpoints();
         parameters.reserve (paramEndpoints.size());
@@ -417,7 +389,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     bool sendInputEvent (EndpointHandle handle, const choc::value::ValueView& event) override
     {
         if (handle < endpointHolders.size())
-            return wrapper.inputEventQueue.pushEvent (endpointHolders[handle].handle, event);
+            return wrapper.postInputEvent (endpointHolders[handle].handle, event);
 
         return false;
     }
@@ -431,35 +403,55 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
              || rc.numOutputChannels != wrapper.getExpectedNumOutputChannels())
             return RenderResult::wrongNumberOfChannels;
 
+        auto midiInStart = reinterpret_cast<const MIDIEvent*> (rc.incomingMIDI);
+        auto midiOutStart = reinterpret_cast<MIDIEvent*> (rc.outgoingMIDI);
+        auto midiOut = MIDIEventOutputList { midiOutStart, rc.maximumMIDIMessagesOut };
+
         wrapper.render (choc::buffer::createChannelArrayView (rc.inputChannels, rc.numInputChannels, rc.numFrames),
                         choc::buffer::createChannelArrayView (rc.outputChannels, rc.numOutputChannels, rc.numFrames),
-                        reinterpret_cast<const MIDIEvent*> (rc.incomingMIDI),
-                        reinterpret_cast<MIDIEvent*> (rc.outgoingMIDI),
-                        rc.numMIDIMessagesIn,
-                        rc.maximumMIDIMessagesOut,
-                        rc.numMIDIMessagesOut);
+                        { midiInStart, midiInStart + rc.numMIDIMessagesIn },
+                        midiOut);
 
+        rc.numMIDIMessagesOut = static_cast<uint32_t> (midiOut.start - midiOutStart);
         return RenderResult::ok;
+    }
+
+    void handleOutgoingEvents (void* userContext,
+                               HandleOutgoingEventFn* handleEvent,
+                               HandleConsoleMessageFn* handleConsoleMessage) override
+    {
+        wrapper.deliverOutgoingEvents ([=] (uint64_t frameIndex, const std::string& endpointName, const choc::value::ValueView& eventData)
+        {
+            if (isConsoleEndpoint (endpointName))
+            {
+                if (handleConsoleMessage != nullptr)
+                    handleConsoleMessage (userContext, frameIndex, dump (eventData).c_str());
+            }
+            else if (handleEvent != nullptr)
+            {
+                handleEvent (userContext, frameIndex, endpointName.c_str(), eventData);
+            }
+        });
     }
 
     void applyNewTimeSignature (TimeSignature newTimeSig) override
     {
-        wrapper.timelineEvents.applyNewTimeSignature (newTimeSig);
+        wrapper.timelineEventEndpointList.applyNewTimeSignature (newTimeSig);
     }
 
     void applyNewTempo (float newBPM) override
     {
-        wrapper.timelineEvents.applyNewTempo (newBPM);
+        wrapper.timelineEventEndpointList.applyNewTempo (newBPM);
     }
 
     void applyNewTransportState (TransportState newState) override
     {
-        wrapper.timelineEvents.applyNewTransportState (newState);
+        wrapper.timelineEventEndpointList.applyNewTransportState (newState);
     }
 
     void applyNewTimelinePosition (TimelinePosition newPosition) override
     {
-        wrapper.timelineEvents.applyNewTimelinePosition (newPosition);
+        wrapper.timelineEventEndpointList.applyNewTimelinePosition (newPosition);
     }
 
     //==============================================================================

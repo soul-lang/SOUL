@@ -40,6 +40,11 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
     BlueprintEditorComponent (soul::patch::SOULPatchAudioProcessor& p, const soul::patch::VirtualFile::Ptr& v)
         : juce::AudioProcessorEditor (p), patch (p), view (v)
     {
+        patch.handleOutgoingEvent = [this] (uint64_t frame, const char* endpointName, const choc::value::ValueView& eventData)
+        {
+            handleOutgoingEvent (frame, endpointName, eventData);
+        };
+
         initialiseParameterList();
         registerBindings();
 
@@ -71,6 +76,7 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
 
     ~BlueprintEditorComponent() override
     {
+        patch.handleOutgoingEvent = {};
         patch.editorBeingDeleted (this);
         setLookAndFeel (nullptr);
     }
@@ -101,7 +107,6 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
     void resized() override
     {
         reactRootComponent.setBounds (getLocalBounds());
-
         patch.storeEditorSize (ids.viewSize, { getWidth(), getHeight() });
     }
 
@@ -150,6 +155,7 @@ private:
         addMethodBinding<1> ("getParameterValue",             &BlueprintEditorComponent::getParameterValue);
         addMethodBinding<1> ("getParameterState",             &BlueprintEditorComponent::getParameterState);
         addMethodBinding<1> ("injectLiveMIDIMessage",         &BlueprintEditorComponent::injectLiveMIDIMessage);
+        addMethodBinding<2> ("sendInputEvent",                &BlueprintEditorComponent::sendInputEvent);
     }
 
     void initialiseParameterList()
@@ -166,6 +172,14 @@ private:
             params[i++]->valueChangedCallback = [handle, dirtyList = std::addressof (dirtyParameterList)] (float) { dirtyList->markAsDirty (handle); };
             dirtyParameterList.markAsDirty (handle);
         }
+    }
+
+    void handleOutgoingEvent (uint64_t frame, std::string_view endpointName, const choc::value::ValueView& eventData)
+    {
+        reactRootComponent.dispatchEvent ("outgoingEvent",
+                                          juce::var (static_cast<juce::int64> (frame)),
+                                          juce::var (juce::String (endpointName.data(), endpointName.size())),
+                                          valueToVar (eventData));
     }
 
     juce::var getPatchDescription() const
@@ -361,6 +375,12 @@ private:
         patch.injectMIDIMessage (static_cast<uint8_t> (shortMIDIBytes >> 16),
                                  static_cast<uint8_t> (shortMIDIBytes >> 8),
                                  static_cast<uint8_t> (shortMIDIBytes));
+        return juce::var::undefined();
+    }
+
+    juce::var sendInputEvent (const juce::String& endpointID, const juce::var& value)
+    {
+        patch.sendInputEvent (endpointID.toStdString(), value);
         return juce::var::undefined();
     }
 

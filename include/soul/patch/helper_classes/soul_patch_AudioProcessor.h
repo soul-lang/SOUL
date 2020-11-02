@@ -36,7 +36,8 @@ namespace patch
 */
 struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                                     private juce::Thread,
-                                    private juce::AsyncUpdater
+                                    private juce::AsyncUpdater,
+                                    private juce::Timer
 {
     /** Creates a SOULPatchAudioProcessor from a PatchInstance.
 
@@ -55,14 +56,12 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                              soul::patch::CompilerCache::Ptr compilerCache = {},
                              soul::patch::SourceFilePreprocessor::Ptr sourcePreprocessor = {},
                              soul::patch::ExternalDataProvider::Ptr externalDataProvider = {},
-                             soul::patch::ConsoleMessageHandler::Ptr consoleMessageHandler = {},
                              int millisecondsBetweenFileChangeChecks = 1000)
        : juce::Thread ("SOUL Compiler"),
          patch (std::move (patchToLoad)),
          cache (std::move (compilerCache)),
          preprocessor (std::move (sourcePreprocessor)),
          externalData (std::move (externalDataProvider)),
-         consoleHandler (std::move (consoleMessageHandler)),
          millisecsBetweenFileChecks (millisecondsBetweenFileChangeChecks <= 0 ? -1 : millisecondsBetweenFileChangeChecks)
     {
         jassert (patch != nullptr);
@@ -72,6 +71,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     ~SOULPatchAudioProcessor() override
     {
         stopThread (100000);
+        stopTimer();
         player = {};
         patch = {};
     }
@@ -97,6 +97,9 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     */
     std::function<void()> askHostToReinitialise;
 
+    std::function<void(uint64_t frameIndex, const char*)> handleConsoleMessage;
+    std::function<void(uint64_t frameIndex, const char* endpointName, const choc::value::ValueView& eventData)> handleOutgoingEvent;
+
     //==============================================================================
     /** This method should be called by the host when the processor is not being
         run, in response to the askHostToReinitialise function. It causes a refresh
@@ -109,6 +112,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         name = desc->name;
         description = desc->description;
         isInstrument = desc->isInstrument;
+        stopTimer();
 
         if (replacementPlayer != nullptr)
         {
@@ -117,6 +121,8 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
             player = std::move (replacementPlayer);
             setLatencySamples (static_cast<int> (player->getLatencySamples()));
             refreshParameterList();
+            refreshInputEventList();
+            startTimerHz (50);
         }
     }
 
@@ -162,7 +168,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         d.fileOrIdentifier    = String::Ptr (instance.getLocation()->getAbsolutePath());
         d.lastFileModTime     = juce::Time (instance.getLastModificationTime());
         d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
-        d.uid                 = (int) juce::String (desc->UID).hash();
+        d.uid                 = static_cast<int> (juce::String (desc->UID).hash());
         d.isInstrument        = desc->isInstrument;
 
         return d;
@@ -181,6 +187,16 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                                           String::Ptr (p->getProperty ("group")));
 
         setParameterTree (std::move (treeBuilder.tree));
+    }
+
+    void refreshInputEventList()
+    {
+        inputEventDetails.clear();
+
+        if (player != nullptr)
+            for (auto& e : player->getInputEventEndpoints())
+                if (e.numValueTypes == 1)
+                    inputEventDetails[e.ID.toString<std::string>()] = { e.handle, e.valueTypes[0].get() };
     }
 
     //==============================================================================
@@ -364,6 +380,20 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     {
         auto message = choc::midi::ShortMessage (byte0, byte1, byte2);
         midiCollector.addMessageToQueue (juce::MidiMessage (message.data, message.length(), 0.0));
+    }
+
+    bool sendInputEvent (const std::string& endpointID, const juce::var& value)
+    {
+        if (player != nullptr)
+        {
+            auto h = inputEventDetails.find (endpointID);
+
+            if (h != inputEventDetails.end())
+                return player->sendInputEvent (h->second.handle,
+                                               varToValue (h->second.valueType, value));
+        }
+
+        return false;
     }
 
     //==============================================================================
@@ -708,7 +738,6 @@ private:
     soul::patch::CompilerCache::Ptr cache;
     soul::patch::SourceFilePreprocessor::Ptr preprocessor;
     soul::patch::ExternalDataProvider::Ptr externalData;
-    soul::patch::ConsoleMessageHandler::Ptr consoleHandler;
     soul::patch::PatchPlayer::Ptr replacementPlayer;
 
     juce::String name, description;
@@ -722,10 +751,34 @@ private:
     int numPatchInputChannels = 0, numPatchOutputChannels = 0;
     std::function<void(juce::AudioBuffer<float>&)> preprocessInputData, postprocessOutputData;
     juce::MidiMessageCollector midiCollector;
-
     const int millisecsBetweenFileChecks;
-
     juce::ValueTree lastValidState;
+
+    struct InputEventEndpoint
+    {
+        EndpointHandle handle;
+        choc::value::Type valueType;
+    };
+
+    std::unordered_map<std::string, InputEventEndpoint> inputEventDetails;
+
+    static void handleEvent (void* context, uint64_t frameIndex, const char* endpointName, const choc::value::ValueView& eventData)
+    {
+        if (auto& fn = static_cast<SOULPatchAudioProcessor*> (context)->handleOutgoingEvent)
+            fn (frameIndex, endpointName, eventData);
+    }
+
+    static void handleConsole (void* context, uint64_t frameIndex, const char* message)
+    {
+        if (auto& fn = static_cast<SOULPatchAudioProcessor*> (context)->handleConsoleMessage)
+            fn (frameIndex, message);
+    }
+
+    void timerCallback() override
+    {
+        if (player != nullptr)
+            player->handleOutgoingEvents (this, handleEvent, handleConsole);
+    }
 
     //==============================================================================
     struct PlayheadState
@@ -836,8 +889,7 @@ private:
                     if (player == nullptr || player->needsRebuilding (currentConfig))
                     {
                         auto newPlayer = soul::patch::PatchPlayer::Ptr (patch->compileNewPlayer (currentConfig, cache.get(),
-                                                                                                 preprocessor.get(), externalData.get(),
-                                                                                                 consoleHandler.get()));
+                                                                                                 preprocessor.get(), externalData.get()));
 
                         if (threadShouldExit())
                             return;

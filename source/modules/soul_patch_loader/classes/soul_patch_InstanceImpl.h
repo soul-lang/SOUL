@@ -83,8 +83,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration& config,
                                    CompilerCache* cache,
                                    SourceFilePreprocessor* preprocessor,
-                                   ExternalDataProvider* externalDataProvider,
-                                   ConsoleMessageHandler* consoleHandler) override
+                                   ExternalDataProvider* externalDataProvider) override
     {
         PatchPlayer::Ptr patch;
 
@@ -98,7 +97,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
             buildSettings.sampleRate = config.sampleRate;
             buildSettings.maxBlockSize = config.maxFramesPerBlock;
 
-            patchImpl->compile (buildSettings, cache, preprocessor, externalDataProvider, consoleHandler);
+            patchImpl->compile (buildSettings, cache, preprocessor, externalDataProvider);
         }
         catch (const PatchLoadError& e)
         {

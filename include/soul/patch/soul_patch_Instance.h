@@ -101,24 +101,6 @@ public:
 
 //==============================================================================
 /**
-    Allows the caller to supply a custom class to receive console messages that are
-    sent as output events from the patch processor.
-
-    If one of these objects is provided to the PatchInstance::compileNewPlayer() method,
-    then it will be called with any messages.
-*/
-class ConsoleMessageHandler  : public RefCountedBase
-{
-public:
-    using Ptr = RefCountingPtr<ConsoleMessageHandler>;
-
-    /** Called when a message is sent to the console by the program. */
-    virtual void handleConsoleMessage (uint64_t sampleCount, const char* endpointName, const char* message) = 0;
-};
-
-
-//==============================================================================
-/**
     Represents an instance of a SOUL patch.
 
     When you have a PatchInstance, you can use it to compile PatchPlayer objects which
@@ -158,8 +140,7 @@ public:
     virtual PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration&,
                                            CompilerCache* cacheToUse,
                                            SourceFilePreprocessor* preprocessor,
-                                           ExternalDataProvider* externalDataProvider,
-                                           ConsoleMessageHandler* consoleHandler) = 0;
+                                           ExternalDataProvider* externalDataProvider) = 0;
 };
 
 

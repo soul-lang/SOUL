@@ -275,9 +275,30 @@ public:
     /** Renders the next block of audio.
         The RenderContext object provides all the necessary input/output audio and
         MIDI data that is needed.
+
+        Note that any events or console messages which were dispatched during this call
+        will have been queued, and the caller must arrange for them to be delivered
+        by calling handleOutgoingEvents(), either synchronously on this thread, or
+        periodically on another thread.
     */
     virtual RenderResult render (RenderContext&) = 0;
 
+    //==============================================================================
+    /** Used in handleOutgoingEvents. */
+    using HandleOutgoingEventFn  = void(void* userContext, uint64_t frameIndex, const char* endpointName, const choc::value::ValueView&);
+    /** Used in handleOutgoingEvents. */
+    using HandleConsoleMessageFn = void(void* userContext, uint64_t frameIndex, const char* message);
+
+    /**
+        Flushes any outgoing event and console messages that are currently queued.
+        This must be called periodically if the patch is generating events, otherwise
+        the FIFO will overflow.
+    */
+    virtual void handleOutgoingEvents (void* userContext,
+                                       HandleOutgoingEventFn* handleEvent,
+                                       HandleConsoleMessageFn* handleConsoleMessage) = 0;
+
+    //==============================================================================
     /** Sends a time-signature to the patch.
         A host must call this on the audio thread, before a call to render().
         It should avoid calling it except when the value has actually changed.

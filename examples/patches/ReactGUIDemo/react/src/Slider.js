@@ -65,7 +65,7 @@ class Slider extends Component {
     let dy = e.y - this._mouseDownY;
 
     // Delta
-    let dm = dx + dy;
+    let dm = dx - dy;
     const range = (this.paramState.max - this.paramState.min);
     const sensitivity = (range / 200.0);
     const value = Math.max (this.paramState.min, Math.min (this.paramState.max, this._valueAtDragStart + dm * sensitivity));

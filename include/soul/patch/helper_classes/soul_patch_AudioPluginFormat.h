@@ -63,9 +63,6 @@ public:
         return library->library != nullptr;
     }
 
-    /** Gives the format a console handler object that it should use when creating patch instances. */
-    void setConsoleMessageHandler (ConsoleMessageHandler::Ptr newHandler)   { consoleMessageHandler = newHandler; }
-
     static juce::String getFormatName()         { return SOULPatchAudioProcessor::getPluginFormatName(); }
     juce::String getName() const override       { return getFormatName(); }
 
@@ -77,7 +74,7 @@ public:
 
         if (auto instance = library->createInstance (desc))
         {
-            auto p = std::make_unique<SOULPatchAudioProcessor> (instance, cache, preprocessor, nullptr, consoleMessageHandler);
+            auto p = std::make_unique<SOULPatchAudioProcessor> (instance, cache, preprocessor, nullptr);
 
             auto* rawPatchPointer = p.get();
             auto reinitCallback = reinitialiseCallback;
@@ -170,7 +167,6 @@ private:
     std::function<void(SOULPatchAudioProcessor&)> reinitialiseCallback;
     CompilerCache::Ptr cache;
     SourceFilePreprocessor::Ptr preprocessor;
-    ConsoleMessageHandler::Ptr consoleMessageHandler;
     SOULPatchAudioProcessor::CreatePatchGUIEditorFn createCustomGUIFn;
 
     static void recursivePatchSearch (juce::StringArray& results, const juce::File& dir, bool recursive)

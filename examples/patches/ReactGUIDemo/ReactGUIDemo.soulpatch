@@ -9,7 +9,7 @@
         "manufacturer":     "soul.dev",
         "isInstrument":     true,
 
-        "source":           "../PadSynth/PadSynth.soul",
+        "source":           "ReactDemoSynth.soul",
         "view":             "react/build/main.js"
     }
 }

@@ -1,4 +1,3 @@
-
 /*
     _____ _____ _____ __
    |   __|     |  |  |  |      The SOUL language
@@ -22,6 +21,294 @@
 namespace soul
 {
 
+struct MIDIEventInputList
+{
+    const MIDIEvent* listStart = nullptr;
+    const MIDIEvent* listEnd = nullptr;
+
+    const MIDIEvent* begin() const      { return listStart; }
+    const MIDIEvent* end() const        { return listEnd; }
+
+    MIDIEventInputList removeEventsBefore (uint32_t frameIndex)
+    {
+        auto i = listStart;
+
+        while (i != listEnd && i->frameIndex < frameIndex)
+            ++i;
+
+        auto oldStart = listStart;
+        listStart = i;
+        return { oldStart, i };
+    }
+};
+
+//==============================================================================
+struct MIDIEventOutputList
+{
+    MIDIEvent* start = nullptr;
+    uint32_t capacity = 0;
+
+    bool addEvent (MIDIEvent e)
+    {
+        if (capacity == 0)
+            return false;
+
+        *start++ = e;
+        --capacity;
+        return true;
+    }
+};
+
+//==============================================================================
+struct AudioInputList
+{
+    AudioInputList() = default;
+
+    void initialise (Performer& p, uint32_t maxBlockSize)
+    {
+        clear();
+
+        for (auto& e : getInputEndpointsOfType (p, InputEndpointType::audio))
+        {
+            auto numChannels = getNumAudioChannels (e);
+            const auto& frameType = e.getFrameType();
+            SOUL_ASSERT (numChannels != 0 && numChannels == frameType.getNumElements());
+            SOUL_ASSERT (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()));
+
+            inputs.push_back ({ p.getEndpointHandle (e.endpointID), totalNumChannels, numChannels, {} });
+
+            if (numChannels != 1)
+                inputs.back().interleaved.resize ({ numChannels, maxBlockSize });
+
+            totalNumChannels += numChannels;
+        }
+    }
+
+    void clear()
+    {
+        inputs.clear();
+        totalNumChannels = 0;
+    }
+
+    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, choc::buffer::ChannelArrayView<const float> inputChannels)
+    {
+        auto numFrames = inputChannels.getNumFrames();
+
+        for (auto& input : inputs)
+        {
+            if (input.numChannels == 1)
+            {
+                auto channel = inputChannels.getChannel (input.startChannelIndex);
+
+                fifo.addInputData (input.endpoint, time,
+                                   choc::value::createArrayView (const_cast<float*> (channel.data.data), numFrames));
+            }
+            else
+            {
+                copy (input.interleaved.getStart (numFrames),
+                      inputChannels.getChannelRange ({ input.startChannelIndex, input.startChannelIndex + input.numChannels }));
+
+                fifo.addInputData (input.endpoint, time,
+                                   choc::value::create2DArrayView (input.interleaved.getView().data.data,
+                                                                   numFrames, input.numChannels));
+            }
+        }
+    }
+
+    struct AudioInput
+    {
+        EndpointHandle endpoint;
+        uint32_t startChannelIndex, numChannels;
+        choc::buffer::InterleavedBuffer<float> interleaved;
+    };
+
+    std::vector<AudioInput> inputs;
+    uint32_t totalNumChannels = 0;
+};
+
+//==============================================================================
+struct AudioOutputList
+{
+    AudioOutputList() = default;
+
+    void initialise (Performer& p)
+    {
+        clear();
+
+        for (auto& e : getOutputEndpointsOfType (p, OutputEndpointType::audio))
+        {
+            auto numChannels = getNumAudioChannels (e);
+            const auto& frameType = e.getFrameType();
+            SOUL_ASSERT (numChannels != 0 && numChannels == frameType.getNumElements());
+            SOUL_ASSERT (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()));
+
+            outputs.push_back ({ p.getEndpointHandle (e.endpointID), totalNumChannels, numChannels });
+            totalNumChannels += numChannels;
+        }
+    }
+
+    void clear()
+    {
+        outputs.clear();
+        totalNumChannels = 0;
+    }
+
+    void handleOutputData (Performer& p, choc::buffer::ChannelArrayView<float> outputChannels)
+    {
+        for (auto& output : outputs)
+            copyIntersectionAndClearOutside (outputChannels.getChannelRange ({ output.startChannel, output.startChannel + output.numChannels }),
+                                             getChannelSetFromArray (p.getOutputStreamFrames (output.endpoint)));
+    }
+
+    struct AudioOutput
+    {
+        EndpointHandle endpoint;
+        uint32_t startChannel, numChannels;
+    };
+
+    uint32_t totalNumChannels = 0;
+    std::vector<AudioOutput> outputs;
+};
+
+//==============================================================================
+struct MIDIInputList
+{
+    MIDIInputList() = default;
+
+    void initialise (Performer& p)
+    {
+        clear();
+
+        for (auto& e : getInputEndpointsOfType (p, InputEndpointType::midi))
+            inputs.push_back ({ p.getEndpointHandle (e.endpointID),
+                                choc::value::Value (e.getSingleEventType()) });
+    }
+
+    void clear()
+    {
+        inputs.clear();
+    }
+
+    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, MIDIEventInputList midiEvents)
+    {
+        if (inputs.empty())
+            return;
+
+        for (auto e : midiEvents)
+        {
+            auto eventTime = time + e.frameIndex;
+
+            for (auto& input : inputs)
+            {
+                input.midiEvent.getObjectMemberAt (0).value.set (e.getPackedMIDIData());
+                fifo.addInputData (input.endpoint, eventTime, input.midiEvent);
+            }
+        }
+    }
+
+    struct MIDIInput
+    {
+        EndpointHandle endpoint;
+        choc::value::Value midiEvent;
+    };
+
+    std::vector<MIDIInput> inputs;
+};
+
+//==============================================================================
+struct MIDIOutputList
+{
+    MIDIOutputList() = default;
+
+    void initialise (Performer& p)
+    {
+        clear();
+
+        for (auto& e : getOutputEndpointsOfType (p, OutputEndpointType::midi))
+            outputs.push_back (p.getEndpointHandle (e.endpointID));
+    }
+
+    void clear()
+    {
+        outputs.clear();
+    }
+
+    void handleOutputData (Performer& p, uint32_t startFrame, MIDIEventOutputList& midiOut)
+    {
+        if (midiOut.capacity == 0)
+            return;
+
+        for (auto& output : outputs)
+        {
+            p.iterateOutputEvents (output, [=, &midiOut] (uint32_t frameOffset, const choc::value::ValueView& event) -> bool
+            {
+                return midiOut.addEvent (MIDIEvent::fromPackedMIDIData (startFrame + frameOffset,
+                                                                        event["midiBytes"].getInt32()));
+            });
+        }
+    }
+
+    std::vector<EndpointHandle> outputs;
+};
+
+//==============================================================================
+struct EventOutputList
+{
+    EventOutputList() = default;
+
+    void clear()
+    {
+        fifo.reset (128 * 1024, 4096);
+        endpointNames.clear();
+    }
+
+    void initialise (Performer& p)
+    {
+        for (auto& e : getOutputEndpointsOfType (p, OutputEndpointType::event))
+        {
+            if (! isMIDIEventEndpoint (e))
+            {
+                auto handle = p.getEndpointHandle (e.endpointID);
+                outputs.push_back (handle);
+                endpointNames[handle.getRawHandle()] = e.name;
+            }
+        }
+    }
+
+    bool postOutputEvents (Performer& p, uint64_t position)
+    {
+        bool success = true;
+
+        for (auto& output : outputs)
+        {
+            p.iterateOutputEvents (output, [&] (uint32_t frameOffset, const choc::value::ValueView& event) -> bool
+            {
+                if (! fifo.addInputData (output, position + frameOffset, event))
+                    success = false;
+
+                return true;
+            });
+        }
+
+        return success;
+    }
+
+    template <typename HandleEventFn>
+    void deliverPendingEvents (HandleEventFn&& handleEvent)
+    {
+        fifo.iterateAllAvailable ([&] (EndpointHandle endpoint, uint64_t time, const choc::value::ValueView& value)
+                                  {
+                                      auto name = endpointNames.find (endpoint.getRawHandle());
+                                      SOUL_ASSERT (name != endpointNames.end());
+                                      handleEvent (time, name->second, value);
+                                  });
+    }
+
+    std::vector<EndpointHandle> outputs;
+    MultiEndpointFIFO fifo;
+    std::unordered_map<uint32_t, std::string> endpointNames;
+};
+
 //==============================================================================
 /** Holds the values for a list of traditional float32 parameters, and efficiently
     allows them to be updated and for changed ones to be iterated.
@@ -32,46 +319,48 @@ struct ParameterStateList
 
     using GetRampLengthForSparseStreamFn = std::function<uint32_t(const EndpointDetails&)>;
 
-    void initialise (soul::Performer& performer,
-                     GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
+    void initialise (soul::Performer& performer, GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
     {
-        std::vector<std::function<void(float)>> parameterUpdateActions;
+        valueHolder = choc::value::createFloat32 (0);
 
-        for (auto& parameterInput : getInputEndpointsOfType (performer, InputEndpointType::parameter))
+        rampedValueHolder = choc::value::createObject (std::string (rampHolderName),
+                                                       "rampFrames", choc::value::createInt32 (0),
+                                                       "target", choc::value::createFloat32 (0));
+
+        rampFramesMember = rampedValueHolder.getObjectMemberAt (0).value;
+        rampTargetMember = rampedValueHolder.getObjectMemberAt (1).value;
+
         {
-            auto endpointHandle = performer.getEndpointHandle (parameterInput.endpointID);
-            auto floatValue = choc::value::createFloat32 (0);
+            auto params = getInputEndpointsOfType (performer, InputEndpointType::parameter);
 
-            if (isEvent (parameterInput))
-            {
-                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue] (float newValue) mutable
-                {
-                    floatValue.getViewReference().set (newValue);
-                    performer.addInputEvent (endpointHandle, floatValue);
-                });
-            }
-            else if (isStream (parameterInput))
-            {
-                SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
-                auto rampFrames = getRampLengthForSparseStreamFn (parameterInput);
+            parameters.clear();
+            parameters.reserve (params.size());
 
-                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue, rampFrames] (float newValue) mutable
-                {
-                    floatValue.getViewReference().set (newValue);
-                    performer.setSparseInputStreamTarget (endpointHandle, floatValue, rampFrames);
-                });
-            }
-            else if (isValue (parameterInput))
+            for (auto& parameterInput : params)
             {
-                parameterUpdateActions.push_back ([&performer, endpointHandle, floatValue] (float newValue) mutable
+                Parameter param;
+                param.endpoint = performer.getEndpointHandle (parameterInput.endpointID);
+
+                if (isStream (parameterInput))
                 {
-                    floatValue.getViewReference().set (newValue);
-                    performer.setInputValue (endpointHandle, floatValue);
-                });
+                    SOUL_ASSERT (getRampLengthForSparseStreamFn != nullptr);
+                    param.rampFrames = getRampLengthForSparseStreamFn (parameterInput);
+                }
+
+                parameters.push_back (param);
             }
         }
 
-        initialise (parameterUpdateActions);
+        std::vector<Parameter*> parameterPtrs;
+        parameterPtrs.reserve (parameters.size());
+
+        for (auto& p : parameters)
+            parameterPtrs.push_back (std::addressof (p));
+
+        auto dirtyHandles = dirtyList.initialise (parameterPtrs);
+
+        for (size_t i = 0; i < parameters.size(); ++i)
+            parameters[i].dirtyListHandle = dirtyHandles[i];
     }
 
     /** Sets the current value for a parameter, and if the value has changed, marks it as
@@ -96,122 +385,79 @@ struct ParameterStateList
         dirtyList.markAsDirty (parameters[parameterIndex].dirtyListHandle);
     }
 
-    /** Calls the action function for any parameters which have had their value
+    /** Pushes events for any endpoints which have had their value
         modified by setParameter() or markAsChanged().
     */
-    void performActionsForUpdatedParameters()
+    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
     {
         while (auto p = dirtyList.popNextDirtyObject())
-            p->action (p->currentValue);
-    }
-
-private:
-    struct Parameter
-    {
-        std::function<void(float)> action;
-        choc::fifo::DirtyList<Parameter>::Handle dirtyListHandle;
-        float currentValue = 0;
-    };
-
-    std::vector<Parameter> parameters;
-    choc::fifo::DirtyList<Parameter> dirtyList;
-
-    void initialise (ArrayView<std::function<void(float)>> parameterUpdateActions)
-    {
-        parameters.clear();
-        parameters.reserve (parameterUpdateActions.size());
-
-        for (auto& action : parameterUpdateActions)
-            parameters.push_back ({ action, {}, 0 });
-
-        std::vector<Parameter*> parameterPtrs;
-        parameterPtrs.reserve (parameters.size());
-
-        for (auto& p : parameters)
-            parameterPtrs.push_back (std::addressof (p));
-
-        auto dirtyHandles = dirtyList.initialise (parameterPtrs);
-
-        for (size_t i = 0; i < parameters.size(); ++i)
-            parameters[i].dirtyListHandle = dirtyHandles[i];
-    }
-};
-
-//==============================================================================
-/**
-*/
-struct InputEventQueue
-{
-    InputEventQueue() = default;
-
-    void initialise (soul::Performer& p, size_t maxQueueSize)
-    {
-        performer = std::addressof (p);
-        fifoSlots.resize (maxQueueSize);
-    }
-
-    void clear()
-    {
-        fifoPosition.reset();
-    }
-
-    bool pushEvent (EndpointHandle endpointHandle, const choc::value::ValueView& eventValue)
-    {
-        if (auto slot = fifoPosition.lockSlotForWriting())
         {
-            auto& event = fifoSlots[slot.index];
-            event.endpointHandle = endpointHandle;
-            event.event = eventValue;
-            fifoPosition.unlock (slot);
+            if (p->rampFrames == 0)
+            {
+                valueHolder.getViewReference().set (p->currentValue);
+                fifo.addInputData (p->endpoint, time, valueHolder);
+            }
+            else
+            {
+                rampFramesMember.set (static_cast<int32_t> (p->rampFrames));
+                rampTargetMember.set (p->currentValue);
+                fifo.addInputData (p->endpoint, time, rampedValueHolder);
+            }
+        }
+    }
+
+    static constexpr std::string_view rampHolderName { "_RampHolder" };
+
+    static bool setSparseValueIfRampedParameterChange (Performer& p, EndpointHandle endpoint, const choc::value::ValueView& v)
+    {
+        if (v.getType().isObject() && v.getType().getObjectClassName() == rampHolderName)
+        {
+            p.setSparseInputStreamTarget (endpoint, v.getObjectMemberAt (1).value,
+                                          static_cast<uint32_t> (v.getObjectMemberAt (0).value.getInt32()));
             return true;
         }
 
         return false;
     }
 
-    void processQueuedEvents (size_t maxNumToProcess)
-    {
-        for (;;)
-        {
-            if (auto slot = fifoPosition.lockSlotForReading())
-            {
-                auto& event = fifoSlots[slot.index];
-                performer->addInputEvent (event.endpointHandle, event.event);
-                fifoPosition.unlock (slot);
-
-                if (maxNumToProcess-- != 0)
-                    continue;
-            }
-
-            break;
-        }
-    }
-
 private:
-    //==============================================================================
-    struct Event
+    struct Parameter
     {
-        EndpointHandle endpointHandle;
-        choc::value::Value event;
+        choc::fifo::DirtyList<Parameter>::Handle dirtyListHandle = {};
+        soul::EndpointHandle endpoint;
+        float currentValue = 0;
+        uint32_t rampFrames = 0;
     };
 
-    std::vector<Event> fifoSlots;
-    choc::fifo::FIFOReadWritePosition<uint32_t, std::atomic<uint32_t>> fifoPosition;
-    soul::Performer* performer = nullptr;
+    std::vector<Parameter> parameters;
+    choc::fifo::DirtyList<Parameter> dirtyList;
+    choc::value::Value valueHolder, rampedValueHolder;
+    choc::value::ValueView rampFramesMember, rampTargetMember;
 };
 
-//==============================================================================
-struct TimelineEventCallbacks
-{
-    TimelineEventCallbacks() = default;
 
-    void initialise (Performer& p)
+//==============================================================================
+struct TimelineEventEndpointList
+{
+    TimelineEventEndpointList() = default;
+
+    void clear()
     {
-        performer = std::addressof (p);
         timeSigHandle = {};
         tempoHandle = {};
         transportHandle = {};
         positionHandle = {};
+
+        anyChanges = false;
+        sendTimeSig = false;
+        sendTempo = false;
+        sendTransport = false;
+        sendPosition = false;
+    }
+
+    void initialise (Performer& p)
+    {
+        clear();
 
         for (auto& e : getInputEndpointsOfType (p, InputEndpointType::event))
         {
@@ -273,7 +519,7 @@ struct TimelineEventCallbacks
         }
     }
 
-    void dispatchEventsNow()
+    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
     {
         if (anyChanges)
         {
@@ -282,30 +528,29 @@ struct TimelineEventCallbacks
             if (sendTimeSig)
             {
                 sendTimeSig = false;
-                performer->addInputEvent (timeSigHandle, newTimeSigValue);
+                fifo.addInputData (timeSigHandle, time, newTimeSigValue);
             }
 
             if (sendTempo)
             {
                 sendTempo = false;
-                performer->addInputEvent (tempoHandle, newTempoValue);
+                fifo.addInputData (tempoHandle, time, newTempoValue);
             }
 
             if (sendTransport)
             {
                 sendTransport = false;
-                performer->addInputEvent (transportHandle, newTransportValue);
+                fifo.addInputData (transportHandle, time, newTransportValue);
             }
 
             if (sendPosition)
             {
                 sendPosition = false;
-                performer->addInputEvent (positionHandle, newPositionValue);
+                fifo.addInputData (positionHandle, time, newPositionValue);
             }
         }
     }
 
-    soul::Performer* performer = nullptr;
     EndpointHandle timeSigHandle, tempoHandle, transportHandle, positionHandle;
 
     bool anyChanges = false;
@@ -320,7 +565,6 @@ struct TimelineEventCallbacks
     choc::value::Value newPositionValue  { TimelineEvents::createPositionValue() };
 };
 
-
 //==============================================================================
 /**
     A wrapper to simplify the job of rendering a Performer which only needs to deal
@@ -334,11 +578,13 @@ struct AudioMIDIWrapper
     void reset()
     {
         totalFramesRendered = 0;
-        preRenderOperations.clear();
-        postRenderOperations.clear();
-        inputEventQueue.clear();
-        numInputChannelsExpected = 0;
-        numOutputChannelsExpected = 0;
+        audioInputList.clear();
+        audioOutputList.clear();
+        midiInputList.clear();
+        midiOutputList.clear();
+        timelineEventEndpointList.clear();
+        eventOutputList.clear();
+        inputFIFO.reset (256 * maxInternalBlockSize, maxInternalBlockSize * 2);
         maxBlockSize = 0;
     }
 
@@ -349,234 +595,144 @@ struct AudioMIDIWrapper
     std::vector<EndpointDetails> getAudioOutputEndpoints()      { return getOutputEndpointsOfType (performer, OutputEndpointType::audio); }
     std::vector<EndpointDetails> getEventOutputEndpoints()      { return getOutputEndpointsOfType (performer, OutputEndpointType::event); }
 
-    using HandleUnusedEventFn = std::function<bool(uint64_t eventTime, const std::string& endpointName, const choc::value::ValueView&)>;
-
-    void buildRenderingPipeline (uint32_t processorMaxBlockSize,
-                                 ParameterStateList::GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn,
-                                 HandleUnusedEventFn&& handleUnusedEventFn)
+    void prepare (uint32_t processorMaxBlockSize,
+                  ParameterStateList::GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
     {
         reset();
         auto& perf = performer;
         SOUL_ASSERT (processorMaxBlockSize > 0);
-        maxBlockSize = std::min (512u, processorMaxBlockSize);
+        maxBlockSize = std::min (maxInternalBlockSize, processorMaxBlockSize);
 
-        inputEventQueue.initialise (perf, 1024);
+        audioInputList.initialise (perf, maxInternalBlockSize);
+        audioOutputList.initialise (perf);
+        midiInputList.initialise (perf);
+        midiOutputList.initialise (perf);
         parameterList.initialise (perf, std::move (getRampLengthForSparseStreamFn));
-        timelineEvents.initialise (perf);
-
-        for (auto& midiInput : getInputEndpointsOfType (performer, InputEndpointType::midi))
-        {
-            auto endpointHandle = perf.getEndpointHandle (midiInput.endpointID);
-            choc::value::Value midiEvent (midiInput.getSingleEventType());
-
-            preRenderOperations.push_back ([&perf, endpointHandle, midiEvent] (RenderContext& rc) mutable
-            {
-                for (uint32_t i = 0; i < rc.midiInCount; ++i)
-                {
-                    midiEvent.getObjectMemberAt (0).value.set (rc.midiIn[i].getPackedMIDIData());
-                    perf.addInputEvent (endpointHandle, midiEvent);
-                }
-            });
-        }
-
-        for (auto& audioInput : getAudioInputEndpoints())
-        {
-            auto numSourceChans = getNumAudioChannels (audioInput);
-            SOUL_ASSERT (numSourceChans != 0);
-            auto endpointHandle = perf.getEndpointHandle (audioInput.endpointID);
-            auto& frameType = audioInput.getFrameType();
-            auto startChannel = numInputChannelsExpected;
-            auto numChans = frameType.getNumElements();
-
-            if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
-            {
-                if (numChans == 1)
-                {
-                    preRenderOperations.push_back ([&perf, endpointHandle, startChannel] (RenderContext& rc)
-                    {
-                        auto channel = rc.inputChannels.getChannel (startChannel);
-                        perf.setNextInputStreamFrames (endpointHandle, choc::value::createArrayView (const_cast<float*> (channel.data.data),
-                                                                                                     channel.getNumFrames()));
-                    });
-                }
-                else
-                {
-                    choc::buffer::InterleavedBuffer<float> interleaved (numChans, maxBlockSize);
-
-                    preRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans, interleaved] (RenderContext& rc)
-                    {
-                        auto numFrames = rc.inputChannels.getNumFrames();
-
-                        copy (interleaved.getStart (numFrames),
-                              rc.inputChannels.getChannelRange ({ startChannel, startChannel + numChans }));
-
-                        perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.getView().data.data,
-                                                                                                       numFrames, interleaved.getNumChannels()));
-                    });
-                }
-            }
-            else
-            {
-                SOUL_ASSERT_FALSE;
-            }
-
-            numInputChannelsExpected += numSourceChans;
-        }
-
-        for (auto& outputEndpoint : perf.getOutputEndpoints())
-        {
-            if (isMIDIEventEndpoint (outputEndpoint))
-            {
-                auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
-
-                postRenderOperations.push_back ([&perf, endpointHandle] (RenderContext& rc)
-                {
-                    perf.iterateOutputEvents (endpointHandle, [&rc] (uint32_t frameOffset, const choc::value::ValueView& event) -> bool
-                    {
-                        if (rc.midiOutCount < rc.midiOutCapacity)
-                            rc.midiOut[rc.midiOutCount++] = MIDIEvent::fromPackedMIDIData (rc.frameOffset + frameOffset,
-                                                                                           event["midiBytes"].getInt32());
-
-                        return true;
-                    });
-                });
-            }
-            else if (auto numChans = getNumAudioChannels (outputEndpoint))
-            {
-                auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
-                auto& frameType = outputEndpoint.getFrameType();
-                auto startChannel = numOutputChannelsExpected;
-                numOutputChannelsExpected += numChans;
-
-                if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
-                {
-                    postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
-                    {
-                        copyIntersectionAndClearOutside (rc.outputChannels.getChannelRange ({ startChannel, startChannel + numChans }),
-                                                         getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
-                    });
-                }
-                else
-                {
-                    SOUL_ASSERT_FALSE;
-                }
-            }
-            else if (handleUnusedEventFn != nullptr && isEvent (outputEndpoint))
-            {
-                auto endpointHandle = perf.getEndpointHandle (outputEndpoint.endpointID);
-                auto endpointName = outputEndpoint.name;
-
-                postRenderOperations.push_back ([&perf, endpointHandle, handleUnusedEventFn, endpointName] (RenderContext& rc)
-                {
-                    perf.iterateOutputEvents (endpointHandle, [&] (uint32_t frameOffset, const choc::value::ValueView& eventData) -> bool
-                    {
-                        return handleUnusedEventFn (rc.totalFramesRendered + frameOffset, endpointName, eventData);
-                    });
-                });
-            }
-        }
+        timelineEventEndpointList.initialise (perf);
+        eventOutputList.initialise (perf);
     }
 
     void render (choc::buffer::ChannelArrayView<const float> input,
                  choc::buffer::ChannelArrayView<float> output,
-                 const MIDIEvent* midiIn,
-                 MIDIEvent* midiOut,
-                 uint32_t midiInCount,
-                 uint32_t midiOutCapacity,
-                 uint32_t& numMIDIOutMessages)
+                 MIDIEventInputList midiIn,
+                 MIDIEventOutputList& midiOut)
     {
-        SOUL_ASSERT (input.getNumFrames() == output.getNumFrames() && maxBlockSize != 0);
+        auto numFrames = output.getNumFrames();
 
-        RenderContext context { totalFramesRendered, input, output, midiIn, midiOut, 0, midiInCount, 0, midiOutCapacity };
+        if (numFrames > maxInternalBlockSize)
+            return renderInChunks (input, output, midiIn, midiOut);
 
-        context.iterateInBlocks (maxBlockSize, [&] (RenderContext& rc)
-        {
-            performer.prepare (rc.inputChannels.getNumFrames());
+        SOUL_ASSERT (input.getNumFrames() == numFrames && maxBlockSize != 0);
 
-            for (auto& op : preRenderOperations)
-                op (rc);
+        audioInputList.addToFIFO (inputFIFO, totalFramesRendered, input);
+        midiInputList.addToFIFO (inputFIFO, totalFramesRendered, midiIn);
+        parameterList.addToFIFO (inputFIFO, totalFramesRendered);
+        timelineEventEndpointList.addToFIFO (inputFIFO, totalFramesRendered);
+        uint32_t framesDone = 0;
 
-            parameterList.performActionsForUpdatedParameters();
-            inputEventQueue.processQueuedEvents (256);
-            timelineEvents.dispatchEventsNow();
+        inputFIFO.iterateChunks (totalFramesRendered,
+                                 numFrames, maxBlockSize,
+                                 [&] (uint32_t numFramesToDo)
+                                 {
+                                     performer.prepare (numFramesToDo);
+                                 },
+                                 [&] (EndpointHandle endpoint, uint64_t /*itemStart*/, const choc::value::ValueView& value)
+                                 {
+                                     deliverValueToEndpoint (endpoint, value);
+                                 },
+                                 [&] (uint32_t numFramesDone)
+                                 {
+                                     performer.advance();
+                                     audioOutputList.handleOutputData (performer, output.getFrameRange ({ framesDone, output.size.numFrames }));
+                                     midiOutputList.handleOutputData (performer, framesDone, midiOut);
+                                     eventOutputList.postOutputEvents (performer, totalFramesRendered + framesDone);
+                                     framesDone += numFramesDone;
+                                 });
 
-            performer.advance();
-
-            for (auto& op : postRenderOperations)
-                op (rc);
-        });
-
-        numMIDIOutMessages = context.midiOutCount;
-        totalFramesRendered += input.getNumFrames();
+        totalFramesRendered += framesDone;
     }
 
-    uint32_t getExpectedNumInputChannels() const     { return numInputChannelsExpected; }
-    uint32_t getExpectedNumOutputChannels() const    { return numOutputChannelsExpected; }
-
-    struct RenderContext
+    void renderInChunks (choc::buffer::ChannelArrayView<const float> input,
+                         choc::buffer::ChannelArrayView<float> output,
+                         MIDIEventInputList midiIn,
+                         MIDIEventOutputList& midiOut)
     {
-        uint64_t totalFramesRendered = 0;
-        choc::buffer::ChannelArrayView<const float> inputChannels;
-        choc::buffer::ChannelArrayView<float> outputChannels;
-        const MIDIEvent* midiIn;
-        MIDIEvent* midiOut;
-        uint32_t frameOffset = 0, midiInCount = 0, midiOutCount = 0, midiOutCapacity = 0;
+        auto numFramesRemaining = output.getNumFrames();
 
-        template <typename RenderBlockFn>
-        void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render)
+        for (uint32_t start = 0;;)
         {
-            auto framesRemaining = inputChannels.getNumFrames();
-            auto context = *this;
+            auto framesToDo = std::min (numFramesRemaining, maxInternalBlockSize);
+            auto endFrame = start + framesToDo;
 
-            while (framesRemaining != 0)
-            {
-                auto framesToDo = std::min (maxFramesPerBlock, framesRemaining);
-                context.midiIn = midiIn;
-                context.midiInCount = 0;
+            render (input.getFrameRange ({ start, endFrame }),
+                    output.getFrameRange ({ start, endFrame }),
+                    midiIn.removeEventsBefore (endFrame), midiOut);
 
-                while (midiInCount != 0)
-                {
-                    auto time = midiIn->frameIndex;
+            if (numFramesRemaining <= framesToDo)
+                break;
 
-                    if (time > frameOffset)
-                    {
-                        framesToDo = std::min (framesToDo, time - frameOffset);
-                        break;
-                    }
-
-                    ++midiIn;
-                    --midiInCount;
-                    context.midiInCount++;
-                }
-
-                context.inputChannels  = inputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
-                context.outputChannels = outputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
-
-                render (context);
-
-                frameOffset += framesToDo;
-                framesRemaining -= framesToDo;
-                context.totalFramesRendered += framesToDo;
-                context.frameOffset += framesToDo;
-            }
-
-            midiOutCount = context.midiOutCount;
+            start += framesToDo;
+            numFramesRemaining -= framesToDo;
         }
-    };
+    }
+
+    void deliverValueToEndpoint (EndpointHandle endpoint, const choc::value::ValueView& value)
+    {
+        switch (endpoint.getType())
+        {
+            case EndpointType::stream:
+                if (! ParameterStateList::setSparseValueIfRampedParameterChange (performer, endpoint, value))
+                    performer.setNextInputStreamFrames (endpoint, value);
+
+                break;
+
+            case EndpointType::event:
+                performer.addInputEvent (endpoint, value);
+                break;
+
+            case EndpointType::value:
+                performer.setInputValue (endpoint, value);
+                break;
+
+            case EndpointType::unknown:
+            default:
+                SOUL_ASSERT_FALSE;
+        }
+    }
+
+    uint32_t getExpectedNumInputChannels() const     { return audioInputList.totalNumChannels; }
+    uint32_t getExpectedNumOutputChannels() const    { return audioOutputList.totalNumChannels; }
+
+    bool postInputEvent (EndpointHandle endpoint, const choc::value::ValueView& value)
+    {
+        return inputFIFO.addInputData (endpoint, totalFramesRendered, value);
+    }
+
+    template <typename HandleEventFn>
+    void deliverOutgoingEvents (HandleEventFn&& handleEvent)
+    {
+        eventOutputList.deliverPendingEvents (handleEvent);
+    }
+
+    MultiEndpointFIFO inputFIFO;
 
     ParameterStateList parameterList;
-    InputEventQueue inputEventQueue;
-    TimelineEventCallbacks timelineEvents;
+    TimelineEventEndpointList timelineEventEndpointList;
 
 private:
     //==============================================================================
     Performer& performer;
 
+    AudioInputList   audioInputList;
+    MIDIInputList    midiInputList;
+    AudioOutputList  audioOutputList;
+    MIDIOutputList   midiOutputList;
+    EventOutputList  eventOutputList;
+
     uint64_t totalFramesRendered = 0;
-    std::vector<std::function<void(RenderContext&)>> preRenderOperations;
-    std::vector<std::function<void(RenderContext&)>> postRenderOperations;
-    uint32_t numInputChannelsExpected = 0, numOutputChannelsExpected = 0;
     uint32_t maxBlockSize = 0;
+
+    static constexpr uint32_t maxInternalBlockSize = 512;
 };
 
 }

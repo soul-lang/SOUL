@@ -315,6 +315,141 @@ struct VirtualFileInputStream   : public juce::InputStream
     juce::int64 position = 0, totalLength = 0;
 };
 
+//==============================================================================
+static inline juce::var valueToVar (const choc::value::ValueView& value)
+{
+    try
+    {
+        if (value.isInt32())    return value.getInt32();
+        if (value.isInt64())    return value.getInt64();
+        if (value.isFloat32())  return value.getFloat32();
+        if (value.isFloat64())  return value.getFloat64();
+        if (value.isBool())     return value.getBool();
+        if (value.isString())   return juce::String (std::string (value.getString()));
+
+        juce::var result;
+
+        if (value.isVector() || value.isArray())
+        {
+            auto num = value.size();
+            auto a = result.getArray();
+
+            for (uint32_t i = 0; i < num; ++i)
+                a->add (valueToVar (value[i]));
+        }
+        else if (value.isObject())
+        {
+            auto* object = new juce::DynamicObject();
+            result = object;
+            auto num = value.size();
+
+            for (uint32_t i = 0; i < num; ++i)
+            {
+                auto m = value.getObjectMemberAt(i);
+                object->setProperty (m.name, valueToVar (m.value));
+            }
+        }
+
+        return result;
+    }
+    catch (choc::value::Error) {}
+
+    return juce::var::undefined();
+}
+
+static inline choc::value::Value varToValue (const choc::value::Type& targetType, const juce::var& value)
+{
+    struct ConvertFunctions
+    {
+        [[noreturn]] static void cannotConvertToTarget()     { throw choc::value::Error { "Cannot convert to the target type" }; }
+
+        static choc::value::Value convert (const choc::value::Type& target, const juce::var& source)
+        {
+            if (source.isInt())
+            {
+                if (target.isInt32())   return choc::value::createInt32 (source);
+                if (target.isInt64())   return choc::value::createInt64 (source);
+                cannotConvertToTarget();
+            }
+
+            if (source.isDouble())
+            {
+                if (target.isFloat32())   return choc::value::createFloat32 (source);
+                if (target.isFloat64())   return choc::value::createFloat64 (source);
+                cannotConvertToTarget();
+            }
+
+            if (source.isBool())
+            {
+                if (target.isBool())
+                    return choc::value::createBool (source);
+
+                cannotConvertToTarget();
+            }
+
+            if (source.isString())
+            {
+                if (target.isString())
+                    return choc::value::createString (source.toString().toStdString());
+
+                cannotConvertToTarget();
+            }
+
+            if (source.isArray())
+            {
+                auto size = static_cast<uint32_t> (source.size());
+
+                if (target.isVector() && target.getNumElements() == size)
+                {
+                    auto elementType = target.getElementType();
+
+                    if (elementType.isInt32())    return choc::value::createVector (size, [&] (uint32_t i)  { return static_cast<int32_t> (convert (elementType, source[static_cast<int> (i)])); });
+                    if (elementType.isInt64())    return choc::value::createVector (size, [&] (uint32_t i)  { return static_cast<int64_t> (convert (elementType, source[static_cast<int> (i)])); });
+                    if (elementType.isFloat32())  return choc::value::createVector (size, [&] (uint32_t i)  { return static_cast<float>   (convert (elementType, source[static_cast<int> (i)])); });
+                    if (elementType.isFloat64())  return choc::value::createVector (size, [&] (uint32_t i)  { return static_cast<double>  (convert (elementType, source[static_cast<int> (i)])); });
+                    if (elementType.isBool())     return choc::value::createVector (size, [&] (uint32_t i)  { return static_cast<bool>    (convert (elementType, source[static_cast<int> (i)])); });
+                }
+
+                if (target.isArray() && target.getNumElements() == size)
+                    return choc::value::createArray (size, [&] (uint32_t i) { return convert (target.getArrayElementType(i), source[static_cast<int> (i)]); });
+
+                cannotConvertToTarget();
+            }
+
+            if (auto o = source.getDynamicObject())
+            {
+                if (target.isObject())
+                {
+                    auto& props = o->getProperties();
+                    auto numMembers = target.getNumElements();
+
+                    if (numMembers == static_cast<uint32_t> (props.size()))
+                    {
+                        auto result = choc::value::createObject (target.getObjectClassName());
+
+                        for (uint32_t i = 0; i < numMembers; ++i)
+                        {
+                            auto& m = target.getObjectMember (i);
+
+                            if (auto v = props.getVarPointer (juce::Identifier (juce::String::CharPointerType (m.name.data()),
+                                                                                juce::String::CharPointerType (m.name.data() + m.name.length()))))
+                                result.addMember (m.name, convert (m.type, *v));
+                            else
+                                cannotConvertToTarget();
+                        }
+
+                        return result;
+                    }
+                }
+            }
+
+            cannotConvertToTarget();
+        }
+    };
+
+    return ConvertFunctions::convert (targetType, value);
+}
+
 #endif
 
 } // namespace patch
