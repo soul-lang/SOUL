@@ -75,6 +75,8 @@ If nothing in this document seems particularly surprising or unusual, then we've
       - [Trigonometry](#trigonometry)
     - [Vector intrinsics](#vector-intrinsics)
   - [Built-in constants](#built-in-constants)
+      - [Global constants](#global-constants)
+      - [Processor constants](#processor-constants)
   - [Built-in library Functions](#built-in-library-functions)
   - [HEART](#heart)
 - [Creating unit-tests with the `.soultest` file format](#creating-unit-tests-with-the-soultest-file-format)
@@ -1458,12 +1460,27 @@ float<5> sines = myVector.sin();
 
 ### Built-in constants
 
-Within a processor or graph, the special keyword `processor` provides information about compile-time constants:
+##### Global constants
 
-- `processor.period` returns the duration in seconds of one sample (as a float64).
-- `processor.frequency` returns the number of samples per second (as a float64).
-- `processor.id` returns a unique int32 for each instance of a processor. (This is useful for things like seeding RNGs differently for each of an array of processors).
-- `processor.session` returns a unique int32 which is different each time the program runs.
+A few handy floating-point constants are defined (these have 64-bit precision but can be cast to a float32 if you need to):
+
+| Name    | Value                    |
+|---------|--------------------------|
+| `pi`    | Pi                       |
+| `twoPi` | 2 * Pi                   |
+| `nan`   | float NaN (Not A Number) |
+| `inf`   | float Inf (Infinity)     |
+
+##### Processor constants
+
+Within a processor or graph, the `processor` keyword provides some compile-time constants which describe properties of the current processor.
+
+| Name                  | Value                                                                                                                                             |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `processor.period`    | the duration in seconds of one frame (as a float64).                                                                                              |
+| `processor.frequency` | the number of frames per second (as a float64).                                                                                                   |
+| `processor.id`        | provides a unique `int32` for each instance of a processor. (Useful for things like seeding RNGs differently for each of an array of processors). |
+| `processor.session`   | a unique int32 which is different each time the program runs.                                                                                     |
 
 ### Built-in library Functions
 
