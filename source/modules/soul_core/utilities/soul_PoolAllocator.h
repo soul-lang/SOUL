@@ -252,24 +252,22 @@ public:
 private:
     using DestructorFn = void(void*);
 
+    static constexpr const size_t poolSize = 1024 * 64 - 32;
+    static constexpr const size_t poolItemAlignment = 16;
+
     struct PoolItem
     {
         size_t size;
         DestructorFn* destructor;
-        void* item;
+        alignas(poolItemAlignment) void* item;
     };
 
-    static constexpr const size_t poolSize = 1024 * 64 - 32;
-    static constexpr const size_t poolItemAlignment = 16;
     static constexpr const size_t itemHeaderSize = offsetof (PoolItem, item);
 
     struct Pool
     {
         Pool()
         {
-            // NB: this line should be redundant, but on some 32-bit ARM compilers the alignas seems
-            // to not be honoured correctly
-            nextSlot = static_cast<size_t> (getAlignedPointer<poolItemAlignment> (space.data()) - space.data());
             SOUL_ASSERT (isAlignedPointer<poolItemAlignment> (getNextAddress()));
         }
 
