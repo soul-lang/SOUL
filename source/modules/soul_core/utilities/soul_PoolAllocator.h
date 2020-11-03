@@ -265,7 +265,14 @@ private:
 
     struct Pool
     {
-        Pool() { SOUL_ASSERT (isAlignedPointer<poolItemAlignment> (getNextAddress())); }
+        Pool()
+        {
+            // NB: this line should be redundant, but on some 32-bit ARM compilers the alignas seems
+            // to not be honoured correctly
+            nextSlot = static_cast<size_t> (getAlignedPointer<poolItemAlignment> (space.data()) - space.data());
+            SOUL_ASSERT (isAlignedPointer<poolItemAlignment> (getNextAddress()));
+        }
+
         Pool (const Pool&) = delete;
         Pool (Pool&&) = delete;
 
