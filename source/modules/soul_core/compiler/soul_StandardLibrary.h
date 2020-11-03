@@ -54,6 +54,128 @@ inline const char* getSystemModuleCode (std::string_view moduleName)
     // in this code chunk below. This obviously needs to be run when the files change.
 
     // BEGIN_INCLUDED_LIBRARY_CODE
+    if (moduleName == "soul.complex")  return R"soul_code(
+namespace soul
+{
+    namespace complex_lib (using FloatType, int vectorSize)
+    {
+        namespace complex_element = complex_lib (FloatType, 1);
+
+        struct ComplexType
+        {
+            FloatType<vectorSize> real;
+            FloatType<vectorSize> imag;
+        }
+
+        ComplexType negate (ComplexType v)
+        {
+            ComplexType result;
+
+            result.real = 0.0f - v.real;
+            result.imag = 0.0f - v.imag;
+
+            return result;
+        }
+
+        ComplexType conj (ComplexType v)
+        {
+            ComplexType result;
+
+            result.real = v.real;
+            result.imag = 0.0f - v.imag;
+
+            return result;
+        }
+
+        ComplexType add (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real + right.real;
+            result.imag = left.imag + right.imag;
+
+            return result;
+        }
+
+        ComplexType subtract (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real - right.real;
+            result.imag = left.imag - right.imag;
+
+            return result;
+        }
+
+        ComplexType multiply (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real * right.real - left.imag * right.imag;
+            result.imag = left.real * right.imag + left.imag * right.real;
+
+            return result;
+        }
+
+        ComplexType divide (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            let c = right.conj();
+            result = multiply (left, c);
+            let scale = multiply (right, c).real;
+
+            result.real /= scale;
+            result.imag /= scale;
+
+            return result;
+        }
+
+        bool<vectorSize> equals (ComplexType left, ComplexType right)
+        {
+            var realComparison = left.real == right.real;
+            let imagComparison = left.imag == right.imag;
+
+)soul_code"
+R"soul_code(
+
+            for (wrap<vectorSize> i)
+                realComparison[i] = realComparison[i] && imagComparison[i];
+
+            return realComparison;
+        }
+
+        bool<vectorSize> notEquals (ComplexType left, ComplexType right)
+        {
+            var r = equals (left, right);
+
+            for (wrap<vectorSize> i)
+                r[i] = ! r[i];
+
+            return r;
+        }
+
+        complex_element::ComplexType getElement (ComplexType c, int element)
+        {
+            complex_element::ComplexType result;
+
+            result.real = c.real.at (element);
+            result.imag = c.imag.at (element);
+
+            return result;
+        }
+
+        complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
+        {
+            c.real.at (element) = value.real;
+            c.imag.at (element) = value.imag;
+
+            return value;
+        }
+    }
+}
+)soul_code";
+
     if (moduleName == "soul.noise")  return R"soul_code(
 /**
     This namespace contains some random number generation helpers.

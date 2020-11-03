@@ -62,6 +62,8 @@ namespace Token
     SOUL_DECLARE_TOKEN (literalInt64,   "$integer64")
     SOUL_DECLARE_TOKEN (literalFloat32, "$float32")
     SOUL_DECLARE_TOKEN (literalFloat64, "$float64")
+    SOUL_DECLARE_TOKEN (literalImag32,  "$imag32")
+    SOUL_DECLARE_TOKEN (literalImag64,  "$imag64")
     SOUL_DECLARE_TOKEN (literalString,  "$string literal")
     SOUL_DECLARE_TOKEN (identifier,     "$identifier")
 }
@@ -346,6 +348,8 @@ private:
 
     TokenType parseSuffixForFloatLiteral()
     {
+        if (input.advanceIfStartsWith ("if", "fi"))                 return Token::literalImag32;
+        if (input.advanceIfStartsWith ("i"))                        return Token::literalImag64;
         if (input.advanceIfStartsWith ("f64", "_f64"))              return Token::literalFloat64;
         if (input.advanceIfStartsWith ("f32", "_f32", "f", "_f"))   return Token::literalFloat32;
 

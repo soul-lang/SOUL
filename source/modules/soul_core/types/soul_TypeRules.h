@@ -50,6 +50,9 @@ struct TypeRules
             if (dest.isVoid() || source.isVoid())
                 return CastType::notPossible;
 
+            if (source.isComplex() && ! dest.isComplex())
+                return CastType::notPossible;
+
             if (dest.isInteger32() && source.isInteger64())
                 return CastType::primitiveNumericReduction;
 
@@ -63,6 +66,22 @@ struct TypeRules
             if (dest.isFloat64())
                 return source.isBool() ? CastType::primitiveNumericReduction
                                        : CastType::primitiveNumericLossless;
+
+            if (dest.isComplex32())
+            {
+                if (source.isComplex64())
+                    return CastType::primitiveNumericReduction;
+
+                return getCastType (PrimitiveType::float32, source);
+            }
+
+            if (dest.isComplex64())
+            {
+                if (source.isComplex32())
+                    return CastType::primitiveNumericLossless;
+
+                return getCastType (PrimitiveType::float64, source);
+            }
 
             if (dest.isBool())
                 return CastType::primitiveNumericReduction;
@@ -231,6 +250,15 @@ struct TypeRules
                 return static_cast<float> (value.getAsInt32()) == value.getAsFloat();
         }
 
+        if (dest.isComplex32())
+        {
+            if (type.isFloat64())
+                return static_cast<double> (value.getAsFloat()) == value.getAsDouble();
+
+            if (type.isInteger())
+                return value.getAsFloat() == static_cast<float> (value.getAsInt32());
+        }
+
         return false;
     }
 
@@ -326,6 +354,10 @@ struct TypeRules
             // Allow silent promotion of ints to float32s
             if (a.isPrimitiveFloat() && b.isInteger()) return { a, a };
             if (b.isPrimitiveFloat() && a.isInteger()) return { b, b };
+
+            // Allow silent promotion of ints to complex
+            if (a.isPrimitiveComplex() && b.isInteger()) return { a, a };
+            if (b.isPrimitiveComplex() && a.isInteger()) return { b, b };
         }
 
         return {};
@@ -345,11 +377,30 @@ struct TypeRules
         if (a.isStringLiteral() && b.isStringLiteral())
             return { PrimitiveType::bool_, a };
 
+        if (a.isComplex() || b.isComplex())
+        {
+            auto operandType = getTypesForArithmeticOp (a, b, true).operandType;
+
+            if (operandType.isValid()
+                && a.getVectorSize() == b.getVectorSize())
+            {
+                if (a.isVector() || b.isVector())
+                    return { Type::createVector (PrimitiveType::bool_, a.getVectorSize()), operandType };
+
+                return { PrimitiveType::bool_, operandType };
+            }
+
+            return {};
+        }
+
         return getTypesForComparisonOp (a, b);
     }
 
     static BinaryOperatorTypes getTypesForComparisonOp (const Type& a, const Type& b)
     {
+        if (a.isComplex() && b.isComplex())
+            return {};
+
         if (a.isBoundedInt())   return getTypesForComparisonOp (PrimitiveType::int32, b);
         if (b.isBoundedInt())   return getTypesForComparisonOp (a, PrimitiveType::int32);
 

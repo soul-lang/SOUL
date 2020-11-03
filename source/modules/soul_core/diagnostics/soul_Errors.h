@@ -105,6 +105,7 @@ namespace soul
     X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \
     X(unknownMemberInStruct,                "No member called $Q0$ found in struct $Q1$") \
+    X(unknownMemberInComplex,               "$1$ has no member called $Q0$") \
     X(notAProcessorOrGraph,                 "$Q0$ is not a processor or graph") \
     X(noSuchOperationOnEndpoint,            "No such operation is supported on an endpoint") \
     X(noSuchOperationOnProcessor,           "No such operation is supported on a processor") \

@@ -79,6 +79,7 @@ private:
             rebuildVariableUseCounts (module);
             tryPass<FunctionResolver> (runStats, true);
             tryPass<ConstantFolder> (runStats, true);
+
             rebuildVariableUseCounts (module);
 
             if (runStats.numReplaced == 0)
@@ -110,6 +111,7 @@ private:
         }
 
         FullResolver (*this).visitObject (module);
+
         module.isFullyResolved = true;
         return runStats;
     }
@@ -705,7 +707,16 @@ private:
                         return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, std::move (name));
 
                     if (! ignoreErrors)
-                        d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), name));
+                        d.rhs.context.throwError (Errors::unknownMemberInStruct (d.rhs.toString(), lhsType.getDescription()));
+                }
+                else if (lhsType.isComplex())
+                {
+                    auto name = d.rhs.path.toString();
+
+                    if (name == "real" || name == "imag")
+                        return allocator.allocate<AST::ComplexMemberRef> (d.context, d.lhs, lhsType, std::move (name));
+
+                    d.rhs.context.throwError (Errors::unknownMemberInComplex (d.rhs.toString(), lhsType.getDescription()));
                 }
 
                 if (d.rhs.path.isUnqualified())
@@ -2900,6 +2911,5 @@ private:
         }
     };
 };
-
 
 } // namespace soul

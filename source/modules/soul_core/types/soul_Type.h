@@ -45,6 +45,7 @@ struct Type  final
     bool isFloat32() const;
     bool isFloat64() const;
     bool isFloatingPoint() const;
+    bool isFixed() const;
     bool isComplex() const;
     bool isComplex32() const;
     bool isComplex64() const;
@@ -56,6 +57,7 @@ struct Type  final
     bool isPrimitiveOrVector() const;
     bool isPrimitiveFloat() const;
     bool isPrimitiveInteger() const;
+    bool isPrimitiveComplex() const;
     bool isPrimitiveBool() const;
     bool isVector() const;
     bool isVectorOfSize1() const;

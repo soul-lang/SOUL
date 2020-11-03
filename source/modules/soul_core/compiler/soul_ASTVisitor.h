@@ -190,6 +190,11 @@ struct ASTVisitor
         visitObject (s.object);
     }
 
+    virtual void visit (AST::ComplexMemberRef& s)
+    {
+        visitObject (s.object);
+    }
+
     virtual void visit (AST::PreOrPostIncOrDec& p)
     {
         visitObject (p.target);
@@ -627,6 +632,12 @@ struct RewritingASTVisitor
     }
 
     virtual AST::Expression& visit (AST::StructMemberRef& s)
+    {
+        replaceExpression (s.object);
+        return s;
+    }
+
+    virtual AST::Expression& visit (AST::ComplexMemberRef& s)
     {
         replaceExpression (s.object);
         return s;

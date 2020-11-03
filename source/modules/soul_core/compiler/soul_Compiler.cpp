@@ -79,6 +79,7 @@ void Compiler::addDefaultBuiltInLibrary()
         compile (getSystemModule ("soul.oscillators"));
         compile (getSystemModule ("soul.noise"));
         compile (getSystemModule ("soul.timeline"));
+        compile (getSystemModule ("soul.complex"));
     }
     catch (soul::AbortCompilationException)
     {
@@ -243,6 +244,7 @@ Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& pro
         CompileMessageHandler handler (messageList);
         ASTUtilities::resolveHoistedEndpoints (allocator, *topLevelNamespace);
         ASTUtilities::mergeDuplicateNamespaces (*topLevelNamespace);
+        ConvertComplexPass::run (allocator, *topLevelNamespace);
         ResolutionPass::run (allocator, *topLevelNamespace, true);
         ASTUtilities::removeModulesWithSpecialisationParams (*topLevelNamespace);
         ResolutionPass::run (allocator, *topLevelNamespace, false);

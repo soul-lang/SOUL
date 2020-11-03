@@ -44,6 +44,29 @@ struct Value::PackedData
             if (type.isBool())         return p.printBool (getAs<uint8_t>() != 0);
             if (type.isFloat32())      return p.printFloat32 (getAs<float>());
             if (type.isFloat64())      return p.printFloat64 (getAs<double>());
+            if (type.isComplex32() && ! isZero())
+            {
+                auto v = getAsComplex32();
+                p.beginArrayMembers (type);
+                p.printFloat32 (v.first);
+                p.printArrayMemberSeparator();
+                p.printFloat32 (v.second);
+                p.endStructMembers();
+
+                return;
+            }
+
+            if (type.isComplex64() && ! isZero())
+            {
+                auto v = getAsComplex64();
+                p.beginArrayMembers (type);
+                p.printFloat64 (v.first);
+                p.printArrayMemberSeparator();
+                p.printFloat64 (v.second);
+                p.endStructMembers();
+
+                return;
+            }
         }
 
         if (type.isBoundedInt())     return p.printInt32 (getAs<Type::BoundedIntSize>());
@@ -137,6 +160,35 @@ struct Value::PackedData
         return {};
     }
 
+    std::pair<float, float> getAsComplex32() const
+    {
+        if (type.isComplex32())        return getAs<std::pair<float, float>>();
+
+        auto c = getAsComplex64();
+
+        return { static_cast<float> (c.first), static_cast<float> (c.second) };
+    }
+
+    std::pair<double, double> getAsComplex64() const
+    {
+        SOUL_ASSERT (type.isPrimitive() || type.isVectorOfSize1());
+
+        if (type.isComplex64())
+        {
+            return getAs<std::pair<double, double>>();
+        }
+
+        if (type.isComplex32())
+        {
+            auto result = getAs<std::pair<float, float>>();
+
+            return { result.first, result.second };
+        }
+
+        return { getAsDouble(), 0.0 };
+    }
+
+
     int64_t getAsInt64() const
     {
         SOUL_ASSERT (type.isPrimitive() || type.isBoundedInt() || type.isVectorOfSize1());
@@ -184,6 +236,8 @@ struct Value::PackedData
             if (type.isFloat32())       return setAs ((float) other.getAsDouble());
             if (type.isFloat64())       return setAs (other.getAsDouble());
             if (type.isBool())          return setAs (other.getAsBool() ? (uint8_t) 1 : (uint8_t) 0);
+            if (type.isComplex32())     return setAs (other.getAsComplex32());
+            if (type.isComplex64())     return setAs (other.getAsComplex64());
 
             SOUL_ASSERT_FALSE;
         }
@@ -299,6 +353,8 @@ struct Value::PackedData
             if (type.isInteger64())      return negateAs<int64_t>();
             if (type.isFloat32())        return negateAs<float>();
             if (type.isFloat64())        return negateAs<double>();
+            if (type.isComplex32())      return negateAsComplex<float>();
+            if (type.isComplex64())      return negateAsComplex<double>();
         }
 
         SOUL_ASSERT_FALSE;
@@ -312,6 +368,18 @@ struct Value::PackedData
 
     template <typename Primitive>
     void negateAs() const                   { setAs (-getAs<Primitive>()); }
+
+    template <typename ComplexElementType>
+    void negateAsComplex() const
+    {
+        using ComplexType = std::pair<ComplexElementType, ComplexElementType>;
+
+        auto v = getAs<ComplexType>();
+        v.first = -v.first;
+        v.second = -v.second;
+
+        setAs <ComplexType> (v);
+    }
 
     void convertAllHandlesToPointers (ConstantTable& constantTable)
     {
@@ -433,6 +501,9 @@ Value::Value (float    v)  : Value (Type (PrimitiveType::float32))   { getData()
 Value::Value (double   v)  : Value (Type (PrimitiveType::float64))   { getData().setAs (v); }
 Value::Value (bool     v)  : Value (Type (PrimitiveType::bool_))     { getData().setAs (v ? (uint8_t) 1 : (uint8_t) 0); }
 
+Value::Value (float real, float imag)   : Value (Type (PrimitiveType::complex32))   { getData().setAs (std::pair<float, float> (real, imag)); }
+Value::Value (double real, double imag) : Value (Type (PrimitiveType::complex64))   { getData().setAs (std::pair<double, double> (real, imag)); }
+
 Value Value::createArrayOrVector (Type t, ArrayView<Value> elements)
 {
     Value v (std::move (t));
@@ -502,6 +573,8 @@ int32_t Value::getAsInt32() const                           { return (int32_t) g
 int64_t Value::getAsInt64() const                           { return getData().getAsInt64(); }
 StringDictionary::Handle Value::getStringLiteral() const    { return getData().getAs<StringDictionary::Handle>(); }
 ConstantTable::Handle Value::getUnsizedArrayContent() const { return getData().getAs<ConstantTable::Handle>(); }
+std::pair<float, float> Value::getAsComplex32() const       { return getData().getAsComplex32(); }
+std::pair<double, double> Value::getAsComplex64() const     { return getData().getAsComplex64(); }
 
 Value::operator float() const                               { return getAsFloat(); }
 Value::operator double() const                              { return getAsDouble(); }
@@ -587,7 +660,7 @@ void Value::copyValue (const Value& source)
 
 bool Value::canNegate() const
 {
-    return type.isFloatingPoint() || type.isInteger();
+    return type.isFloatingPoint() || type.isInteger() || type.isComplex();
 }
 
 Value Value::negated() const

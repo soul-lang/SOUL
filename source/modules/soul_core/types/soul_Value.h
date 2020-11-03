@@ -51,6 +51,8 @@ struct Value  final
     explicit Value (float);
     explicit Value (double);
     explicit Value (bool);
+    explicit Value (float, float);
+    explicit Value (double, double);
 
     static Value zeroInitialiser (Type);
     static Value createArrayOrVector (Type arrayOrVectorType, ArrayView<Value> elements);
@@ -75,6 +77,8 @@ struct Value  final
     bool getAsBool() const;
     float getAsFloat() const;
     double getAsDouble() const;
+    std::pair<float, float> getAsComplex32() const;
+    std::pair<double, double> getAsComplex64() const;
     int32_t getAsInt32() const;
     int64_t getAsInt64() const;
     StringDictionary::Handle getStringLiteral() const;

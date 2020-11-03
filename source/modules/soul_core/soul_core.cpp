@@ -74,6 +74,7 @@
 #include "compiler/soul_StandardLibrary.h"
 #include "compiler/soul_ASTVisitor.h"
 #include "compiler/soul_SanityCheckPass.h"
+#include "compiler/soul_ConvertComplexPass.h"
 #include "compiler/soul_Parser.h"
 #include "compiler/soul_ResolutionPass.h"
 #include "compiler/soul_HeartGenerator.h"

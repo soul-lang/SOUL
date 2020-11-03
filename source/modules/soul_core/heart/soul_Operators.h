@@ -80,7 +80,7 @@ namespace UnaryOp
         if (! type.isPrimitiveOrVector())
             return false;
 
-        if (op == Op::negate)       return type.isInteger() || type.isFloatingPoint();
+        if (op == Op::negate)       return type.isInteger() || type.isFloatingPoint() || type.isComplex();
         if (op == Op::bitwiseNot)   return type.isInteger();
         if (op == Op::logicalNot)   return type.isBool();
 
@@ -342,6 +342,42 @@ namespace BinaryOp
             }
 
             return true;
+        }
+
+        if (lhs.getType().isComplex32() || rhs.getType().isComplex32())
+        {
+            auto a = lhs.getAsComplex32();
+            auto b = rhs.getAsComplex32();
+
+            if (op == Op::add)                  { lhs = Value (a.first + b.first, a.second + b.second); return true; }
+            if (op == Op::subtract)             { lhs = Value (a.first - b.first, a.second - b.second); return true; }
+            if (op == Op::multiply)             { lhs = Value (a.first * b.first - a.second * b.second, a.first * b.second + a.second * b.first); return true; }
+            if (op == Op::divide)
+            {
+                auto scale = b.first * b.first + b.second * b.second;
+                lhs = Value ((a.first * b.first + a.second * b.second) / scale, (-a.first * b.second + a.second * b.first) / scale);
+                return true;
+            }
+
+            return {};
+        }
+
+        if (lhs.getType().isComplex64() || rhs.getType().isComplex64())
+        {
+            auto a = lhs.getAsComplex64();
+            auto b = rhs.getAsComplex64();
+
+            if (op == Op::add)                  { lhs = Value (a.first + b.first, a.second + b.second); return true; }
+            if (op == Op::subtract)             { lhs = Value (a.first - b.first, a.second - b.second); return true; }
+            if (op == Op::multiply)             { lhs = Value (a.first * b.first - a.second * b.second, a.first * b.second + a.second * b.first); return true; }
+            if (op == Op::divide)
+            {
+                auto scale = b.first * b.first + b.second * b.second;
+                lhs = Value ((a.first * b.first + a.second * b.second) / scale, (-a.first * b.second + a.second * b.first) / scale);
+                return true;
+            }
+
+            return {};
         }
 
         if (lhs.getType().isFloat64() || rhs.getType().isFloat64())

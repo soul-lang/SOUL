@@ -44,7 +44,7 @@ bool PrimitiveType::isInteger() const               { return type == Primitive::
 bool PrimitiveType::isInteger32() const             { return type == Primitive::int32; }
 bool PrimitiveType::isInteger64() const             { return type == Primitive::int64; }
 bool PrimitiveType::isBool() const                  { return type == Primitive::bool_; }
-bool PrimitiveType::canBeVectorElementType() const  { return isInteger() || isFloatingPoint() || isFixed() || isBool(); }
+bool PrimitiveType::canBeVectorElementType() const  { return isInteger() || isFloatingPoint() || isFixed() || isBool() || isComplex(); }
 bool PrimitiveType::canBeArrayElementType() const   { return isValid() && ! isVoid(); }
 
 const char* PrimitiveType::getDescription() const
@@ -107,7 +107,7 @@ Type::Type (PrimitiveType::Primitive t) : Type (PrimitiveType (t)) {}
 
 Type Type::parse (std::string text)
 {
-    return heart::Parser::parseType (CodeLocation::createFromString ({}, std::move (text)));
+    return heart::Parser::parsePrimitiveType (CodeLocation::createFromString ({}, std::move (text)));
 }
 
 //==============================================================================
@@ -192,6 +192,7 @@ bool Type::isFloat32() const              { return primitiveType.isFloat32(); }
 bool Type::isFloat64() const              { return primitiveType.isFloat64(); }
 bool Type::isFloatingPoint() const        { return primitiveType.isFloatingPoint(); }
 bool Type::isComplex() const              { return primitiveType.isComplex(); }
+bool Type::isFixed() const                { return primitiveType.isFixed(); }
 bool Type::isComplex32() const            { return primitiveType.isComplex32(); }
 bool Type::isComplex64() const            { return primitiveType.isComplex64(); }
 bool Type::isInteger() const              { return primitiveType.isInteger(); }
@@ -202,6 +203,7 @@ bool Type::isPrimitive() const            { return category == Category::primiti
 bool Type::isPrimitiveOrVector() const    { return isPrimitive() || isVector(); }
 bool Type::isPrimitiveInteger() const     { return isInteger() && isPrimitive(); }
 bool Type::isPrimitiveFloat() const       { return isFloatingPoint() && isPrimitive(); }
+bool Type::isPrimitiveComplex() const     { return isComplex() && isPrimitive(); }
 bool Type::isPrimitiveBool() const        { return isBool() && isPrimitive(); }
 bool Type::isVector() const               { return category == Category::vector; }
 bool Type::isVectorOfSize1() const        { return isVector() && boundingSize == 1; }

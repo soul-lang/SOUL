@@ -1,0 +1,136 @@
+/*
+    _____ _____ _____ __
+   |   __|     |  |  |  |      The SOUL language
+   |__   |  |  |  |  |  |__    Copyright (c) 2019 - ROLI Ltd.
+   |_____|_____|_____|_____|
+
+   The code in this file is provided under the terms of the ISC license:
+
+   Permission to use, copy, modify, and/or distribute this software for any purpose
+   with or without fee is hereby granted, provided that the above copyright notice and
+   this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD
+   TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN
+   NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+   DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
+   IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
+
+namespace soul
+{
+    namespace complex_lib (using FloatType, int vectorSize)
+    {
+        namespace complex_element = complex_lib (FloatType, 1);
+
+        struct ComplexType
+        {
+            FloatType<vectorSize> real;
+            FloatType<vectorSize> imag;
+        }
+
+        ComplexType negate (ComplexType v)
+        {
+            ComplexType result;
+
+            result.real = 0.0f - v.real;
+            result.imag = 0.0f - v.imag;
+
+            return result;
+        }
+
+        ComplexType conj (ComplexType v)
+        {
+            ComplexType result;
+
+            result.real = v.real;
+            result.imag = 0.0f - v.imag;
+
+            return result;
+        }
+
+        ComplexType add (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real + right.real;
+            result.imag = left.imag + right.imag;
+
+            return result;
+        }
+
+        ComplexType subtract (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real - right.real;
+            result.imag = left.imag - right.imag;
+
+            return result;
+        }
+
+        ComplexType multiply (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            result.real = left.real * right.real - left.imag * right.imag;
+            result.imag = left.real * right.imag + left.imag * right.real;
+
+            return result;
+        }
+
+        ComplexType divide (ComplexType left, ComplexType right)
+        {
+            ComplexType result;
+
+            let c = right.conj();
+            result = multiply (left, c);
+            let scale = multiply (right, c).real;
+
+            result.real /= scale;
+            result.imag /= scale;
+
+            return result;
+        }
+
+        bool<vectorSize> equals (ComplexType left, ComplexType right)
+        {
+            var realComparison = left.real == right.real;
+            let imagComparison = left.imag == right.imag;
+
+            for (wrap<vectorSize> i)
+                realComparison[i] = realComparison[i] && imagComparison[i];
+
+            return realComparison;
+        }
+
+        bool<vectorSize> notEquals (ComplexType left, ComplexType right)
+        {
+            var r = equals (left, right);
+
+            for (wrap<vectorSize> i)
+                r[i] = ! r[i];
+
+            return r;
+        }
+
+        complex_element::ComplexType getElement (ComplexType c, int element)
+        {
+            complex_element::ComplexType result;
+
+            result.real = c.real.at (element);
+            result.imag = c.imag.at (element);
+
+            return result;
+        }
+
+        complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
+        {
+            c.real.at (element) = value.real;
+            c.imag.at (element) = value.imag;
+
+            return value;
+        }
+    }
+}

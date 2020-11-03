@@ -1042,7 +1042,8 @@ private:
         if (matches (Operator::openParen))     return matchEndOfStatement (parseFactor());
 
         if (matchesAny (Token::literalInt32, Token::literalInt64, Token::literalFloat64,
-                        Token::literalFloat32, Token::literalString, Operator::minus))
+                        Token::literalFloat32, Token::literalString, Operator::minus,
+                        Token::literalImag32, Token::literalImag64))
             return parseExpressionAsStatement (false);
 
         {
@@ -1285,7 +1286,7 @@ private:
                 // Handle the annoying case where some sloppy coder has written a
                 // minus sign without a space after it, e.g. (x -1)
                 if ((matchesAny (Token::literalInt32, Token::literalInt64) && literalIntValue < 0)
-                     || (matchesAny (Token::literalFloat64, Token::literalFloat32) && literalDoubleValue < 0))
+                     || (matchesAny (Token::literalFloat64, Token::literalFloat32, Token::literalImag32, Token::literalImag64) && literalDoubleValue < 0))
                 {
                     auto context = getContext();
                     a = createBinaryOperator (context, a, parseMultiplyDivide(), BinaryOp::Op::add);
@@ -1336,6 +1337,8 @@ private:
         if (matches (Token::literalInt64))     return createLiteral (Value::createInt64 (literalIntValue));
         if (matches (Token::literalFloat64))   return createLiteral (Value (literalDoubleValue));
         if (matches (Token::literalFloat32))   return createLiteral (Value ((float) literalDoubleValue));
+        if (matches (Token::literalImag32))    return createLiteral (Value (0.0f, (float) literalDoubleValue));
+        if (matches (Token::literalImag64))    return createLiteral (Value (0.0, (double) literalDoubleValue));
         if (matches (Token::literalString))    return createLiteral (Value::createStringLiteral (allocator.stringDictionary.getHandleForString (currentStringValue)));
         if (matches (Keyword::true_))          return createLiteral (Value (true));
         if (matches (Keyword::false_))         return createLiteral (Value (false));
@@ -1658,15 +1661,18 @@ private:
     {
         auto context = getContext();
 
-        if (matchIf (Keyword::float_))   return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float32),  parseContext);
-        if (matchIf (Keyword::float32))  return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float32),  parseContext);
-        if (matchIf (Keyword::float64))  return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float64),  parseContext);
-        if (matchIf (Keyword::void_))    return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::void_),    parseContext);
-        if (matchIf (Keyword::int_))     return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int32),    parseContext);
-        if (matchIf (Keyword::int32))    return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int32),    parseContext);
-        if (matchIf (Keyword::int64))    return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int64),    parseContext);
-        if (matchIf (Keyword::bool_))    return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::bool_),    parseContext);
-        if (matchIf (Keyword::string))   return parseArrayTypeSuffixes (createConcreteType (context, Type::createStringLiteral()), parseContext);
+        if (matchIf (Keyword::float_))    return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float32),  parseContext);
+        if (matchIf (Keyword::float32))   return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float32),  parseContext);
+        if (matchIf (Keyword::float64))   return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::float64),  parseContext);
+        if (matchIf (Keyword::void_))     return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::void_),    parseContext);
+        if (matchIf (Keyword::int_))      return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int32),    parseContext);
+        if (matchIf (Keyword::int32))     return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int32),    parseContext);
+        if (matchIf (Keyword::int64))     return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::int64),    parseContext);
+        if (matchIf (Keyword::bool_))     return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::bool_),    parseContext);
+        if (matchIf (Keyword::complex))   return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::complex32),  parseContext);
+        if (matchIf (Keyword::complex32)) return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::complex32),  parseContext);
+        if (matchIf (Keyword::complex64)) return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::complex64),  parseContext);
+        if (matchIf (Keyword::string))    return parseArrayTypeSuffixes (createConcreteType (context, Type::createStringLiteral()), parseContext);
 
         if (matchIf (Keyword::const_))
         {
@@ -1683,12 +1689,6 @@ private:
             return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::fixed), parseContext);
         }
 
-        if (matchIf (Keyword::complex) || matchIf (Keyword::complex32) || matchIf (Keyword::complex64))
-        {
-            context.throwError (Errors::notYetImplemented ("Complex type support"));
-            return parseVectorOrArrayTypeSuffixes (createConcreteType (context, PrimitiveType::fixed), parseContext);
-        }
-
         if (matches (Token::identifier))
         {
             auto& qi = parseQualifiedIdentifier();
@@ -1702,6 +1702,7 @@ private:
 
         return {};
     }
+
 
     AST::ConcreteType& createConcreteType (const AST::Context& context, Type t)
     {

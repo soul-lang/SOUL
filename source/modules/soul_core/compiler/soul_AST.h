@@ -48,6 +48,7 @@ struct AST
         X(InPlaceOperator) \
         X(ArrayElementRef) \
         X(StructMemberRef) \
+        X(ComplexMemberRef) \
         X(StructDeclaration) \
         X(UsingDeclaration) \
         X(TernaryOp) \
@@ -2428,6 +2429,30 @@ struct AST
 
         pool_ref<Expression> object;
         StructurePtr structure;
+        std::string memberName;
+    };
+
+    struct ComplexMemberRef : public Expression
+    {
+        ComplexMemberRef (const Context& c, Expression& o, Type t, std::string member)
+            : Expression (ObjectType::ComplexMemberRef, c, ExpressionKind::value),
+              object (o), complexType (t), memberName (std::move (member))
+        {
+            SOUL_ASSERT (t.isComplex());
+            SOUL_ASSERT (isPossiblyValue (object.get()));
+
+            if (complexType.isVector())
+                memberType = Type::createVector (complexType.getElementType().isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64, complexType.getVectorSize());
+            else
+                memberType = complexType.isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64;
+        }
+
+        bool isResolved() const override        { return object->isResolved(); }
+        bool isAssignable() const override      { return object->isAssignable(); }
+        Type getResultType() const override     { return memberType; }
+
+        pool_ref<Expression> object;
+        Type complexType, memberType;
         std::string memberName;
     };
 

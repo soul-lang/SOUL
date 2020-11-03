@@ -131,9 +131,9 @@ struct heart::Parser   : public Tokeniser<DummyKeywordMatcher,
         return heart::Parser (code).parse();
     }
 
-    static Type parseType (const CodeLocation& code)
+    static Type parsePrimitiveType (const CodeLocation& code)
     {
-        return heart::Parser (code).readValueType();
+        return heart::Parser (code).readPrimitiveValueType();
     }
 
     [[noreturn]] void throwError (const CompileMessage& message) const override
@@ -1691,7 +1691,7 @@ private:
         return {};
     }
 
-    Type readValueType()
+    Type readPrimitiveValueType()
     {
         if (matchIf ("float32"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::float32);
         if (matchIf ("float64"))    return parseVectorOrArrayTypeSuffixes (PrimitiveType::float64);
@@ -1706,7 +1706,24 @@ private:
         if (matchIf ("wrap"))       return parseBoundedIntType (true);
         if (matchIf ("clamp"))      return parseBoundedIntType (false);
 
+        return {};
+    }
+
+    Type readValueType()
+    {
         auto errorPos = location;
+
+        auto t = readPrimitiveValueType();
+
+        if (t.isComplex())
+            errorPos.throwError (Errors::notYetImplemented("complex"));
+
+        if (t.isFixed())
+            errorPos.throwError (Errors::notYetImplemented("fixed"));
+
+        if (t.isValid())
+            return t;
+
         auto name = readQualifiedGeneralIdentifier();
 
         if (auto s = findStruct (name))
