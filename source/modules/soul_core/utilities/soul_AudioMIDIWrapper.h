@@ -221,35 +221,13 @@ struct TimelineEventCallbacks
 
                 if (type.isObject())
                 {
-                    if (matchesType (type, newTimeSigValue.getType()))     timeSigHandle   = p.getEndpointHandle (e.endpointID);
-                    if (matchesType (type, newTempoValue.getType()))       tempoHandle     = p.getEndpointHandle (e.endpointID);
-                    if (matchesType (type, newTransportValue.getType()))   transportHandle = p.getEndpointHandle (e.endpointID);
-                    if (matchesType (type, newPositionValue.getType()))    positionHandle  = p.getEndpointHandle (e.endpointID);
+                    if (TimelineEvents::isTimeSig (type))    timeSigHandle   = p.getEndpointHandle (e.endpointID);
+                    if (TimelineEvents::isTempo (type))      tempoHandle     = p.getEndpointHandle (e.endpointID);
+                    if (TimelineEvents::isTransport (type))  transportHandle = p.getEndpointHandle (e.endpointID);
+                    if (TimelineEvents::isPosition (type))   positionHandle  = p.getEndpointHandle (e.endpointID);
                 }
             }
         }
-    }
-
-    static bool matchesType (const choc::value::Type& t1, const choc::value::Type& t2)
-    {
-        auto numElements = t1.getNumElements();
-
-        if (numElements != t2.getNumElements())
-            return false;
-
-        if (! endsWith (t1.getObjectClassName(), t2.getObjectClassName()))
-            return false;
-
-        for (uint32_t i = 0; i < numElements; ++i)
-        {
-            auto& m1 = t1.getObjectMember (i);
-            auto& m2 = t2.getObjectMember (i);
-
-            if (m1.type != m2.type || m1.name != m2.name)
-                return false;
-        }
-
-        return true;
     }
 
     void applyNewTimeSignature (TimeSignature newTimeSig)
@@ -336,20 +314,10 @@ struct TimelineEventCallbacks
     bool sendTransport = false;
     bool sendPosition = false;
 
-    choc::value::Value newTimeSigValue   { choc::value::createObject ("TimeSignature",
-                                                                      "numerator", choc::value::createInt32 (0),
-                                                                      "denominator", choc::value::createInt32 (0)) };
-
-    choc::value::Value newTempoValue     { choc::value::createObject ("Tempo",
-                                                                      "bpm", choc::value::createFloat32 (0)) };
-
-    choc::value::Value newTransportValue { choc::value::createObject ("TransportState",
-                                                                      "state", choc::value::createInt32 (0)) };
-
-    choc::value::Value newPositionValue  { choc::value::createObject ("Position",
-                                                                      "currentFrame", choc::value::createInt64 (0),
-                                                                      "currentQuarterNote", choc::value::createFloat64 (0),
-                                                                      "lastBarStartQuarterNote", choc::value::createFloat64 (0)) };
+    choc::value::Value newTimeSigValue   { TimelineEvents::createTimeSigValue() };
+    choc::value::Value newTempoValue     { TimelineEvents::createTempoValue() };
+    choc::value::Value newTransportValue { TimelineEvents::createTransportValue() };
+    choc::value::Value newPositionValue  { TimelineEvents::createPositionValue() };
 };
 
 

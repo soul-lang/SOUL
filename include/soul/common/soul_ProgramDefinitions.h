@@ -134,6 +134,78 @@ struct MIDIEvent
     }
 };
 
+
+//==============================================================================
+/** Helpers to create objects that can be passed into endpoints for the various
+    timeline-related endpoints.
+*/
+struct TimelineEvents
+{
+    static choc::value::Value createTimeSigValue()
+    {
+        return choc::value::createObject ("TimeSignature",
+                                          "numerator", choc::value::createInt32 (0),
+                                          "denominator", choc::value::createInt32 (0));
+    }
+
+    static choc::value::Value createTempoValue()
+    {
+        return choc::value::createObject ("Tempo",
+                                          "bpm", choc::value::createFloat32 (0));
+    }
+
+    static choc::value::Value createTransportValue()
+    {
+        return choc::value::createObject ("TransportState",
+                                          "state", choc::value::createInt32 (0));
+    }
+
+    static choc::value::Value createPositionValue()
+    {
+        return choc::value::createObject ("Position",
+                                          "currentFrame", choc::value::createInt64 (0),
+                                          "currentQuarterNote", choc::value::createFloat64 (0),
+                                          "lastBarStartQuarterNote", choc::value::createFloat64 (0));
+    }
+
+    static bool isTimeSig   (const choc::value::Type& type)   { return matchesType (type, createTimeSigValue().getType()); }
+    static bool isTempo     (const choc::value::Type& type)   { return matchesType (type, createTempoValue().getType()); }
+    static bool isTransport (const choc::value::Type& type)   { return matchesType (type, createTransportValue().getType()); }
+    static bool isPosition  (const choc::value::Type& type)   { return matchesType (type, createPositionValue().getType()); }
+
+private:
+    static bool matchesType (const choc::value::Type& t1, const choc::value::Type& t2)
+    {
+        auto numElements = t1.getNumElements();
+
+        if (numElements != t2.getNumElements())
+            return false;
+
+        if (! (t1.isObject() && t2.isObject() && endsWith (t1.getObjectClassName(), t2.getObjectClassName())))
+            return false;
+
+        for (uint32_t i = 0; i < numElements; ++i)
+        {
+            auto& m1 = t1.getObjectMember (i);
+            auto& m2 = t2.getObjectMember (i);
+
+            if (m1.type != m2.type || m1.name != m2.name)
+                return false;
+        }
+
+        return true;
+    }
+
+    static bool endsWith (std::string_view text, std::string_view possibleEnd)
+    {
+        auto textLen = text.length();
+        auto endLen = possibleEnd.length();
+
+        return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
+    }
+};
+
+
 //==============================================================================
 /** Simple class to hold a time-signature. */
 struct TimeSignature
