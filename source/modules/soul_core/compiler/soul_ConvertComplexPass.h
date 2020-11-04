@@ -64,14 +64,9 @@ private:
 
     struct ComplexBase : public RewritingASTVisitor
     {
-    public:
-        ComplexBase (ConvertComplexPass& rp)
-            : allocator (rp.allocator), module (rp.module)
-        {
-        }
+        ComplexBase (ConvertComplexPass& rp) : allocator (rp.allocator), module (rp.module) {}
 
     protected:
-
         AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
         {
             auto sourceType = e.getResultType();
@@ -101,9 +96,7 @@ private:
                 return true;
 
             if (type.isArray() && type.getArrayElementType().isComplex())
-            {
                 return true;
-            }
 
             return false;
         }
@@ -111,7 +104,6 @@ private:
         AST::Allocator& allocator;
         AST::ModuleBase& module;
     };
-
 
     //==============================================================================
     struct ConvertComplexElementAccess  : ComplexBase
@@ -153,12 +145,8 @@ private:
             super::visit (t);
 
             if (requiresRemapping (t.targetType))
-            {
                 if (t.source->isResolved() && requiresRemapping (t.source->getResultType()))
-                {
                     return addCastIfRequired (t.source, t.targetType);
-                }
-            }
 
             return t;
         }
@@ -250,7 +238,6 @@ private:
         }
 
     private:
-
         pool_ref<AST::QualifiedIdentifier> getFunctionNameForOperator (AST::UnaryOperator& u)
         {
             std::string functionName;
@@ -260,7 +247,7 @@ private:
                 case UnaryOp::Op::negate:       functionName = "negate"; break;
 
                 default:
-                    u.context.throwError (soul::Errors::wrongTypeForUnary ());
+                    u.context.throwError (soul::Errors::wrongTypeForUnary());
             }
 
             return allocator.allocate<AST::QualifiedIdentifier> (u.context, soul::IdentifierPath::fromString (allocator.identifiers, functionName));
@@ -292,8 +279,7 @@ private:
     //==============================================================================
     struct ConvertComplexRemapTypes  : public ComplexBase
     {
-        ConvertComplexRemapTypes (ConvertComplexPass& rp)
-            : ComplexBase (rp)
+        ConvertComplexRemapTypes (ConvertComplexPass& rp)  : ComplexBase (rp)
         {
             soulLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul"));
         }
@@ -308,7 +294,7 @@ private:
             super::visit (t);
 
             if (requiresRemapping (t.type))
-                return *getRemappedType (t.context, t.type);
+                return getRemappedType (t.context, t.type);
 
             return t;
         }
@@ -319,16 +305,16 @@ private:
 
             if (requiresRemapping (t.targetType))
             {
-                auto remappedType = getRemappedType (t.context, t.targetType);
+                auto& remappedType = getRemappedType (t.context, t.targetType);
 
                 if (auto args = cast<AST::CommaSeparatedList> (t.source))
-                    return allocator.allocate<AST::CallOrCast> (*remappedType, args, false);
+                    return allocator.allocate<AST::CallOrCast> (remappedType, args, false);
 
                 auto& args = allocator.allocate<AST::CommaSeparatedList> (t.context);
                 args.items.push_back (t.source);
-                args.items.push_back (allocator.allocate<AST::Constant> (t.context, soul::Value (static_cast<int32_t> (0))));
+                args.items.push_back (allocator.allocate<AST::Constant> (t.context, soul::Value::createInt32 (0)));
 
-                return allocator.allocate<AST::CallOrCast> (*remappedType, args, false);
+                return allocator.allocate<AST::CallOrCast> (remappedType, args, false);
             }
 
             return t;
@@ -340,25 +326,22 @@ private:
 
             if (requiresRemapping (c.getResultType()))
             {
-                auto remappedType = getRemappedType (c.context, c.getResultType());
-
+                auto& remappedType = getRemappedType (c.context, c.getResultType());
                 auto& args = allocator.allocate<AST::CommaSeparatedList> (c.context);
-
                 auto resultType = c.getResultType();
 
                 if (c.getResultType().isComplex32())
                 {
                     if (resultType.isVector())
                     {
-                        std::vector<soul::Value> realValues;
-                        std::vector<soul::Value> imagValues;
+                        ArrayWithPreallocation<Value, 8> realValues, imagValues;
 
                         for (size_t i = 0; i < resultType.getVectorSize(); i++)
                         {
                             auto v = c.value.getSlice (i, i + 1).getAsComplex32();
 
-                            realValues.push_back (soul::Value (v.first));
-                            imagValues.push_back (soul::Value (v.second));
+                            realValues.push_back (soul::Value (v.real()));
+                            imagValues.push_back (soul::Value (v.imag()));
                         }
 
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float32, resultType.getVectorSize()), realValues)));
@@ -367,23 +350,22 @@ private:
                     else
                     {
                         auto v = c.value.getAsComplex32();
-                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.first)));
-                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.second)));
+                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.real())));
+                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.imag())));
                     }
                 }
                 else
                 {
                     if (resultType.isVector())
                     {
-                        std::vector<soul::Value> realValues;
-                        std::vector<soul::Value> imagValues;
+                        ArrayWithPreallocation<Value, 8> realValues, imagValues;
 
                         for (size_t i = 0; i < resultType.getVectorSize(); i++)
                         {
                             auto v = c.value.getSlice (i, i + 1).getAsComplex64();
 
-                            realValues.push_back (soul::Value (v.first));
-                            imagValues.push_back (soul::Value (v.second));
+                            realValues.push_back (soul::Value (v.real()));
+                            imagValues.push_back (soul::Value (v.imag()));
                         }
 
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float64, resultType.getVectorSize()), realValues)));
@@ -392,44 +374,35 @@ private:
                     else
                     {
                         auto v = c.value.getAsComplex64();
-                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.first)));
-                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.second)));
+                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.real())));
+                        args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.imag())));
                     }
                 }
 
-                return allocator.allocate<AST::CallOrCast> (*remappedType, args, false);
+                return allocator.allocate<AST::CallOrCast> (remappedType, args, false);
             }
 
             return c;
         }
 
     private:
-
         std::vector<std::string> createdNamespaceAliases;
 
-        AST::Expression* getRemappedType (AST::Context& context, const soul::Type& type)
+        AST::Expression& getRemappedType (AST::Context& context, const soul::Type& type)
         {
             if (type.isPrimitive())
-            {
-                return &getRemappedType (context, type.isComplex32(), 1, 0, type.isReference());
-            }
-            else if (type.isVector())
-            {
-                return &getRemappedType (context, type.isComplex32(), type.getVectorSize(), 0, type.isReference());
-            }
-            else if (type.isArray())
-            {
-                return &getRemappedType (context,
-                                         type.getArrayElementType().isComplex32(),
-                                         type.getArrayElementType().getVectorSize(),
-                                         type.getArraySize(),
-                                         type.isReference());
-            }
+                return getRemappedType (context, type.isComplex32(), 1, 0, type.isReference());
 
-            SOUL_ASSERT_FALSE;
-            return {};
+            if (type.isVector())
+                return getRemappedType (context, type.isComplex32(), type.getVectorSize(), 0, type.isReference());
+
+            SOUL_ASSERT (type.isArray());
+            return getRemappedType (context,
+                                    type.getArrayElementType().isComplex32(),
+                                    type.getArrayElementType().getVectorSize(),
+                                    type.getArraySize(),
+                                    type.isReference());
         }
-
 
         AST::Expression& getRemappedType (AST::Context& context, bool is32Bit, size_t vectorSize, size_t arraySize, bool isReference)
         {
@@ -448,19 +421,19 @@ private:
 
                 auto& n = allocator.allocate<AST::NamespaceAliasDeclaration> (context,
                                                                               allocator.get (namespaceAlias),
-                                                                              allocator.allocate<AST::QualifiedIdentifier> (context,  soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib")),
+                                                                              allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib")),
                                                                               specialisationArgs);
 
                 soulLib->namespaceAliases.push_back (n);
                 createdNamespaceAliases.push_back (namespaceAlias);
             }
 
-            pool_ref<AST::Expression> expr = allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers, namespacePath + "::ComplexType"));
+            pool_ref<AST::Expression> expr = allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers,
+                                                                                                                                      namespacePath + "::ComplexType"));
 
             if (arraySize != 0)
             {
                 auto& arraySizeConstant = allocator.allocate<AST::Constant> (context, soul::Value (static_cast<int32_t> (arraySize)));
-
                 expr = allocator.allocate<AST::SubscriptWithBrackets> (context, expr, arraySizeConstant);
             }
 
@@ -470,7 +443,7 @@ private:
             return expr;
         }
 
-        AST::ModuleBase* getModule (const soul::IdentifierPath& path)
+        AST::ModuleBase* getModule (const soul::IdentifierPath& path) const
         {
             AST::Scope::NameSearch search;
 

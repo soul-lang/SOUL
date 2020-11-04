@@ -349,15 +349,10 @@ namespace BinaryOp
             auto a = lhs.getAsComplex32();
             auto b = rhs.getAsComplex32();
 
-            if (op == Op::add)                  { lhs = Value (a.first + b.first, a.second + b.second); return true; }
-            if (op == Op::subtract)             { lhs = Value (a.first - b.first, a.second - b.second); return true; }
-            if (op == Op::multiply)             { lhs = Value (a.first * b.first - a.second * b.second, a.first * b.second + a.second * b.first); return true; }
-            if (op == Op::divide)
-            {
-                auto scale = b.first * b.first + b.second * b.second;
-                lhs = Value ((a.first * b.first + a.second * b.second) / scale, (-a.first * b.second + a.second * b.first) / scale);
-                return true;
-            }
+            if (op == Op::add)                  { lhs = Value (a + b); return true; }
+            if (op == Op::subtract)             { lhs = Value (a - b); return true; }
+            if (op == Op::multiply)             { lhs = Value (a * b); return true; }
+            if (op == Op::divide)               { lhs = Value (a / b); return true; }
 
             return {};
         }
@@ -367,15 +362,10 @@ namespace BinaryOp
             auto a = lhs.getAsComplex64();
             auto b = rhs.getAsComplex64();
 
-            if (op == Op::add)                  { lhs = Value (a.first + b.first, a.second + b.second); return true; }
-            if (op == Op::subtract)             { lhs = Value (a.first - b.first, a.second - b.second); return true; }
-            if (op == Op::multiply)             { lhs = Value (a.first * b.first - a.second * b.second, a.first * b.second + a.second * b.first); return true; }
-            if (op == Op::divide)
-            {
-                auto scale = b.first * b.first + b.second * b.second;
-                lhs = Value ((a.first * b.first + a.second * b.second) / scale, (-a.first * b.second + a.second * b.first) / scale);
-                return true;
-            }
+            if (op == Op::add)                  { lhs = Value (a + b); return true; }
+            if (op == Op::subtract)             { lhs = Value (a - b); return true; }
+            if (op == Op::multiply)             { lhs = Value (a * b); return true; }
+            if (op == Op::divide)               { lhs = Value (a / b); return true; }
 
             return {};
         }

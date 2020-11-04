@@ -51,8 +51,8 @@ struct Value  final
     explicit Value (float);
     explicit Value (double);
     explicit Value (bool);
-    explicit Value (float, float);
-    explicit Value (double, double);
+    explicit Value (std::complex<float>);
+    explicit Value (std::complex<double>);
 
     static Value zeroInitialiser (Type);
     static Value createArrayOrVector (Type arrayOrVectorType, ArrayView<Value> elements);
@@ -74,13 +74,13 @@ struct Value  final
     template <typename IntType>
     static Value createArrayIndex (IntType n)      { return createInt32 (Type::castToArraySize (n)); }
 
-    bool getAsBool() const;
-    float getAsFloat() const;
-    double getAsDouble() const;
-    std::pair<float, float> getAsComplex32() const;
-    std::pair<double, double> getAsComplex64() const;
+    bool    getAsBool() const;
+    float   getAsFloat() const;
+    double  getAsDouble() const;
     int32_t getAsInt32() const;
     int64_t getAsInt64() const;
+    std::complex<float>  getAsComplex32() const;
+    std::complex<double> getAsComplex64() const;
     StringDictionary::Handle getStringLiteral() const;
     ConstantTable::Handle getUnsizedArrayContent() const;
 

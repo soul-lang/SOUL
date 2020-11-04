@@ -1712,14 +1712,10 @@ private:
     Type readValueType()
     {
         auto errorPos = location;
-
         auto t = readPrimitiveValueType();
 
-        if (t.isComplex())
-            errorPos.throwError (Errors::notYetImplemented("complex"));
-
-        if (t.isFixed())
-            errorPos.throwError (Errors::notYetImplemented("fixed"));
+        if (t.isComplex())  errorPos.throwError (Errors::notYetImplemented ("complex"));
+        if (t.isFixed())    errorPos.throwError (Errors::notYetImplemented ("fixed"));
 
         if (t.isValid())
             return t;

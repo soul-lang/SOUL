@@ -1336,9 +1336,9 @@ private:
         if (matches (Token::literalInt32))     return createLiteral (Value::createInt32 (literalIntValue));
         if (matches (Token::literalInt64))     return createLiteral (Value::createInt64 (literalIntValue));
         if (matches (Token::literalFloat64))   return createLiteral (Value (literalDoubleValue));
-        if (matches (Token::literalFloat32))   return createLiteral (Value ((float) literalDoubleValue));
-        if (matches (Token::literalImag32))    return createLiteral (Value (0.0f, (float) literalDoubleValue));
-        if (matches (Token::literalImag64))    return createLiteral (Value (0.0, (double) literalDoubleValue));
+        if (matches (Token::literalFloat32))   return createLiteral (Value (static_cast<float> (literalDoubleValue)));
+        if (matches (Token::literalImag32))    return createLiteral (Value (std::complex (0.0f, static_cast<float> (literalDoubleValue))));
+        if (matches (Token::literalImag64))    return createLiteral (Value (std::complex (0.0, static_cast<double> (literalDoubleValue))));
         if (matches (Token::literalString))    return createLiteral (Value::createStringLiteral (allocator.stringDictionary.getHandleForString (currentStringValue)));
         if (matches (Keyword::true_))          return createLiteral (Value (true));
         if (matches (Keyword::false_))         return createLiteral (Value (false));

@@ -63,81 +63,51 @@ namespace soul
 
         struct ComplexType
         {
-            FloatType<vectorSize> real;
-            FloatType<vectorSize> imag;
+            FloatType<vectorSize> real, imag;
         }
 
         ComplexType negate (ComplexType v)
         {
-            ComplexType result;
-
-            result.real = 0.0f - v.real;
-            result.imag = 0.0f - v.imag;
-
-            return result;
+            return ComplexType (-v.real, -v.imag);
         }
 
         ComplexType conj (ComplexType v)
         {
-            ComplexType result;
-
-            result.real = v.real;
-            result.imag = 0.0f - v.imag;
-
-            return result;
+            return ComplexType (v.real, -v.imag);
         }
 
         ComplexType add (ComplexType left, ComplexType right)
         {
-            ComplexType result;
-
-            result.real = left.real + right.real;
-            result.imag = left.imag + right.imag;
-
-            return result;
+            return ComplexType (left.real + right.real,
+                                left.imag + right.imag);
         }
 
         ComplexType subtract (ComplexType left, ComplexType right)
         {
-            ComplexType result;
-
-            result.real = left.real - right.real;
-            result.imag = left.imag - right.imag;
-
-            return result;
+            return ComplexType (left.real - right.real,
+                                left.imag - right.imag);
         }
 
         ComplexType multiply (ComplexType left, ComplexType right)
         {
-            ComplexType result;
-
-            result.real = left.real * right.real - left.imag * right.imag;
-            result.imag = left.real * right.imag + left.imag * right.real;
-
-            return result;
+            return ComplexType (left.real * right.real - left.imag * right.imag,
+                                left.real * right.imag + left.imag * right.real);
         }
 
         ComplexType divide (ComplexType left, ComplexType right)
         {
-            ComplexType result;
-
             let c = right.conj();
-            result = multiply (left, c);
+            let result = multiply (left, c);
             let scale = multiply (right, c).real;
 
-            result.real /= scale;
-            result.imag /= scale;
-
-            return result;
+            return ComplexType (result.real / scale,
+                                result.imag / scale);
         }
 
         bool<vectorSize> equals (ComplexType left, ComplexType right)
         {
             var realComparison = left.real == right.real;
             let imagComparison = left.imag == right.imag;
-
-)soul_code"
-R"soul_code(
 
             for (wrap<vectorSize> i)
                 realComparison[i] = realComparison[i] && imagComparison[i];
@@ -155,14 +125,13 @@ R"soul_code(
             return r;
         }
 
+)soul_code"
+R"soul_code(
+
         complex_element::ComplexType getElement (ComplexType c, int element)
         {
-            complex_element::ComplexType result;
-
-            result.real = c.real.at (element);
-            result.imag = c.imag.at (element);
-
-            return result;
+            return complex_element::ComplexType (c.real.at (element),
+                                                 c.imag.at (element));
         }
 
         complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)

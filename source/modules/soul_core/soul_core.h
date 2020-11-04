@@ -62,6 +62,7 @@
 #include <cassert>
 #include <random>
 #include <optional>
+#include <complex>
 
 #include "utilities/soul_DebugUtilities.h"
 
