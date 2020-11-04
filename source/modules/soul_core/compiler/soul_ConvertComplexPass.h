@@ -23,7 +23,15 @@ namespace soul
 
 //==============================================================================
 /**
-    Converts the complex primitive into an implementation using 
+    Converts complex primitives into an implementation using the soul::complex_lib namespace
+    which contains a struct based complex number implementation.
+
+    The transformation is performed in multiple passes. Binary and Unary operators are replaced by calls to
+    associated methods in the namespace, and complex member references (e.g. real and imag) and mapped to the
+    appropriate struct members. Finally instantiations of the complex_lib namespace are added for the given data
+    type and vector size, and the complex types are replaced with the appropriate ComplexType structs
+
+    A subsequent resolution pass is required to resolve the identifiers added by this process.
 */
 struct ConvertComplexPass  final
 {
@@ -486,4 +494,3 @@ private:
 };
 
 } // namespace soul
-
