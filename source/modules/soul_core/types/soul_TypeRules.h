@@ -97,7 +97,7 @@ struct TypeRules
     {
         if (dest.isValid() && source.isValid())
         {
-            if (dest.isIdentical (source))
+            if (dest.isEqual (source, Type::ignoreReferences))
                 return CastType::identity;
 
             if (dest.isVoid() || source.isVoid())
@@ -109,6 +109,7 @@ struct TypeRules
             if (source.isEqual (dest, Type::ignoreConst))
                 if (! (dest.isReference() || source.isReference()))
                     return CastType::identity;
+
 
             if (dest.isArray())
             {
