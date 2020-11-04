@@ -882,10 +882,12 @@ namespace
 
     static inline void* allocateBytes (Allocator* a, size_t size)
     {
+       #ifndef __clang_analyzer__ // this avoids some false positives in the Clang analyser
         if (a != nullptr)
             return a->allocate (size);
 
-        return new char[size];
+        return std::malloc (size);
+       #endif
     }
 
     static inline void* resizeAllocationIfPossible (Allocator* a, void* data, size_t size)
@@ -893,7 +895,7 @@ namespace
         if (a != nullptr)
             return a->resizeIfPossible (data, size);
 
-        return {};
+        return std::realloc (data, size);
     }
 
     static inline void freeBytes (Allocator* a, void* data) noexcept
@@ -901,7 +903,7 @@ namespace
         if (a != nullptr)
             return a->free (data);
 
-        delete[] static_cast<char*> (data);
+        std::free (data);
     }
 
     template <typename ObjectType, typename... Args>
@@ -981,7 +983,11 @@ struct Type::AllocatedVector
             else
             {
                 auto newItems = allocateBytes (allocator, bytesNeeded);
-                std::memcpy (newItems, items, size * sizeof (ObjectType));
+
+                if (size != 0)
+                    std::memcpy (newItems, items, size * sizeof (ObjectType));
+
+                freeBytes (allocator, items);
                 items = static_cast<ObjectType*> (newItems);
             }
 
@@ -1484,7 +1490,7 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
 
         if (content.primitiveArray.numElements == 0)
         {
-            *this = createArray (elementType, numElementsToAdd);
+            *this = createArray (std::move (elementType), numElementsToAdd);
             return;
         }
 
