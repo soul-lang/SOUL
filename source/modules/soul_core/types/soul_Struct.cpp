@@ -152,5 +152,11 @@ bool Structure::containsMemberOfType (const Type& type, bool checkSubStructs) co
     return false;
 }
 
+void Structure::updateMemberType (std::string_view memberName, const Type& newType)
+{
+    auto index = getMemberIndex (memberName);
+    members[index].type = newType;
+}
+
 
 } // namespace soul

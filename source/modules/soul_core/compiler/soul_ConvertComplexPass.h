@@ -140,6 +140,18 @@ private:
             return a;
         }
 
+        AST::Statement& visit (AST::ReturnStatement& r) override
+        {
+            super::visit (r);
+
+            auto returnTypeExp = r.getParentFunction()->returnType;
+
+            if (AST::isResolvedAsType (returnTypeExp) && requiresRemapping (returnTypeExp->resolveAsType()))
+                r.returnValue = addCastIfRequired (*r.returnValue, returnTypeExp->resolveAsType());
+
+            return r;
+        }
+
         AST::Expression& visit (AST::TypeCast& t) override
         {
             super::visit (t);
@@ -289,14 +301,30 @@ private:
 
         AST::ModuleBase* soulLib;
 
+        AST::StructDeclaration* structDeclaration = nullptr;
+
         AST::Expression& visit (AST::ConcreteType& t) override
         {
             super::visit (t);
 
             if (requiresRemapping (t.type))
+            {
+                if (structDeclaration != nullptr)
+                    structDeclaration->structureMembersUpdated();
+
                 return getRemappedType (t.context, t.type);
+            }
 
             return t;
+        }
+
+        AST::StructDeclaration& visit (AST::StructDeclaration& s) override
+        {
+            structDeclaration = &s;
+            super::visit (s);
+            structDeclaration = nullptr;
+
+            return s;
         }
 
         AST::Expression& visit (AST::TypeCast& t) override
@@ -391,20 +419,21 @@ private:
         AST::Expression& getRemappedType (AST::Context& context, const soul::Type& type)
         {
             if (type.isPrimitive())
-                return getRemappedType (context, type.isComplex32(), 1, 0, type.isReference());
+                return getRemappedType (context, type.isComplex32(), 1, 0, type.isReference(), type.isConst());
 
             if (type.isVector())
-                return getRemappedType (context, type.isComplex32(), type.getVectorSize(), 0, type.isReference());
+                return getRemappedType (context, type.isComplex32(), type.getVectorSize(), 0, type.isReference(), type.isConst());
 
             SOUL_ASSERT (type.isArray());
             return getRemappedType (context,
                                     type.getArrayElementType().isComplex32(),
                                     type.getArrayElementType().getVectorSize(),
                                     type.getArraySize(),
-                                    type.isReference());
+                                    type.isReference(),
+                                    type.isConst());
         }
 
-        AST::Expression& getRemappedType (AST::Context& context, bool is32Bit, size_t vectorSize, size_t arraySize, bool isReference)
+        AST::Expression& getRemappedType (AST::Context& context, bool is32Bit, size_t vectorSize, size_t arraySize, bool isReference, bool isConst)
         {
             // Build the namespace path
             int bits = is32Bit ? 32 : 64;
@@ -439,6 +468,9 @@ private:
 
             if (isReference)
                 expr = allocator.allocate<AST::TypeMetaFunction> (context, expr, AST::TypeMetaFunction::Op::makeReference);
+
+            if (isConst)
+                expr = allocator.allocate<AST::TypeMetaFunction> (context, expr, AST::TypeMetaFunction::Op::makeConst);
 
             return expr;
         }

@@ -1413,7 +1413,20 @@ struct AST
                     structure->addMember (m.type->resolveAsType(), m.name.toString());
             }
 
+            if (structureUpdateRequired)
+            {
+                for (auto& m : members)
+                    structure->updateMemberType (m.name.toString(), m.type->resolveAsType());
+
+                structureUpdateRequired = false;
+            }
+
             return *structure;
+        }
+
+        void structureMembersUpdated()
+        {
+            structureUpdateRequired = true;
         }
 
     private:
@@ -1428,6 +1441,7 @@ struct AST
         mutable StructurePtr structure;
         ArrayWithPreallocation<Member, 16> members;
         mutable bool isBeingResolved = false;
+        mutable bool structureUpdateRequired = false;
     };
 
     struct UsingDeclaration  : public TypeDeclarationBase

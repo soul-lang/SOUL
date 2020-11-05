@@ -76,6 +76,7 @@ public:
 
     bool containsMemberOfType (const Type& type, bool checkSubStructs) const;
 
+    void updateMemberType (std::string_view memberName, const Type& newType);
 private:
     ArrayWithPreallocation<Member, 8> members;
 
