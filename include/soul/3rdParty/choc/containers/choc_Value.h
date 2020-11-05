@@ -313,7 +313,7 @@ private:
     };
 
     MainType mainType = MainType::void_;
-    Content content;
+    Content content = {};
     Allocator* allocator = nullptr;
 
     template <typename... Types> bool isType (Types... types) const noexcept   { return ((mainType == types) || ...); }
