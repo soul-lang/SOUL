@@ -320,7 +320,8 @@ private:
     template <typename Type> static constexpr MainType selectMainType();
 
     explicit Type (MainType);
-    explicit Type (MainType vectorElementType, uint32_t);
+    Type (MainType, Content, Allocator*);
+    Type (MainType vectorElementType, uint32_t);
     void allocateCopy (const Type&);
     void deleteAllocatedObjects() noexcept;
     ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
@@ -1025,14 +1026,11 @@ inline ElementTypeAndOffset Type::PrimitiveArray::getElementRangeInfo (uint32_t 
 {
     check (start < numElements && start + length <= numElements, "Illegal element range");
 
-    ElementTypeAndOffset info { Type (MainType::primitiveArray), 0 };
-    info.elementType.content.primitiveArray.elementType = elementType;
-    info.elementType.content.primitiveArray.numElements = length;
-    info.elementType.content.primitiveArray.numVectorElements = numVectorElements;
+    Content c;
+    c.primitiveArray = { elementType, length, numVectorElements };
 
-    info.offset = start * getPrimitiveSize (elementType) * (numVectorElements != 0 ? numVectorElements : 1);
-
-    return info;
+    return { Type (MainType::primitiveArray, c, nullptr),
+             start * getPrimitiveSize (elementType) * (numVectorElements != 0 ? numVectorElements : 1) };
 }
 
 inline ElementTypeAndOffset Type::PrimitiveArray::getElementInfo (uint32_t index) const
@@ -1311,7 +1309,8 @@ inline Type& Type::operator= (const Type& other)
     return *this;
 }
 
-inline Type::Type (MainType t)  : mainType (t) {}
+inline Type::Type (MainType t)  : mainType (t), content() {}
+inline Type::Type (MainType t, Content c, Allocator* a)  : mainType (t), content (c), allocator (a) {}
 
 inline Type::Type (MainType vectorElementType, uint32_t size)  : mainType (MainType::vector)
 {
@@ -1424,39 +1423,31 @@ Type Type::createVector (uint32_t numElements)
 
 inline Type Type::createEmptyArray()
 {
-    Type t (MainType::primitiveArray);
-    t.content.primitiveArray.elementType = MainType::void_;
-    t.content.primitiveArray.numElements = 0;
-    t.content.primitiveArray.numVectorElements = 0;
-    return t;
+    Content c;
+    c.primitiveArray = PrimitiveArray { MainType::void_, 0, 0 };
+    return Type (MainType::primitiveArray, c, nullptr);
 }
 
 inline Type Type::createArray (Type elementType, uint32_t numElements)
 {
     check (numElements < maxNumArrayElements, "Too many array elements");
+    Content c;
 
     if (elementType.isPrimitive())
     {
-        Type t (MainType::primitiveArray);
-        t.content.primitiveArray.elementType = elementType.mainType;
-        t.content.primitiveArray.numElements = numElements;
-        t.content.primitiveArray.numVectorElements = 0;
-        return t;
+        c.primitiveArray = { elementType.mainType, numElements, 0 };
+        return Type (MainType::primitiveArray, c, nullptr);
     }
 
     if (elementType.isVector())
     {
-        Type t (MainType::primitiveArray);
-        t.content.primitiveArray.elementType = elementType.content.vector.elementType;
-        t.content.primitiveArray.numElements = numElements;
-        t.content.primitiveArray.numVectorElements = elementType.content.vector.numElements;
-        return t;
+        c.primitiveArray = { elementType.content.vector.elementType, numElements, elementType.content.vector.numElements };
+        return Type (MainType::primitiveArray, c, nullptr);
     }
 
-    Type t (MainType::complexArray);
-    t.content.complexArray = allocateObject<ComplexArray> (t.allocator, t.allocator);
-    t.content.complexArray->groups.push_back ({ numElements, std::move (elementType) });
-    return t;
+    c.complexArray = allocateObject<ComplexArray> (elementType.allocator, elementType.allocator);
+    c.complexArray->groups.push_back ({ numElements, std::move (elementType) });
+    return Type (MainType::complexArray, c, nullptr);
 }
 
 template <typename PrimitiveType>
@@ -1470,11 +1461,10 @@ Type Type::createArrayOfVectors (uint32_t numArrayElements, uint32_t numVectorEl
 {
     constexpr auto elementType = selectMainType<PrimitiveType>();
     static_assert (elementType != MainType::void_, "The element type needs to be one of the supported primitive types");
-    Type t (MainType::primitiveArray);
-    t.content.primitiveArray.elementType = elementType;
-    t.content.primitiveArray.numElements = numArrayElements;
-    t.content.primitiveArray.numVectorElements = numVectorElements;
-    return t;
+
+    Content c;
+    c.primitiveArray = { elementType, numArrayElements, numVectorElements };
+    return Type (MainType::primitiveArray, c, nullptr);
 }
 
 inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
@@ -1510,10 +1500,7 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
 
 inline Type Type::createObject (std::string_view className, Allocator* a)
 {
-    Type t (MainType::object);
-    t.allocator = a;
-    t.content.object = allocateObject<Object> (a, a, className);
-    return t;
+    return Type (MainType::object, Content { allocateObject<Object> (a, a, className) }, a);
 }
 
 inline void Type::addObjectMember (std::string_view memberName, Type memberType)
