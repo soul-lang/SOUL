@@ -320,8 +320,8 @@ static inline juce::var valueToVar (const choc::value::ValueView& value)
 {
     try
     {
-        if (value.isInt32())    return value.getInt32();
-        if (value.isInt64())    return value.getInt64();
+        if (value.isInt32())    return static_cast<int> (value.getInt32());
+        if (value.isInt64())    return static_cast<juce::int64> (value.getInt64());
         if (value.isFloat32())  return value.getFloat32();
         if (value.isFloat64())  return value.getFloat64();
         if (value.isBool())     return value.getBool();
@@ -367,8 +367,8 @@ static inline choc::value::Value varToValue (const choc::value::Type& targetType
         {
             if (source.isInt())
             {
-                if (target.isInt32())   return choc::value::createInt32 (source);
-                if (target.isInt64())   return choc::value::createInt64 (source);
+                if (target.isInt32())   return choc::value::createInt32 (static_cast<int> (source));
+                if (target.isInt64())   return choc::value::createInt64 (static_cast<juce::int64> (source));
                 cannotConvertToTarget();
             }
 
