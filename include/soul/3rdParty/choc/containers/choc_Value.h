@@ -1295,6 +1295,7 @@ inline Type::Type (const Type& other) : mainType (other.mainType)
 
 inline Type& Type::operator= (Type&& other)
 {
+    deleteAllocatedObjects();
     mainType = other.mainType;
     content = other.content;
     allocator = other.allocator;

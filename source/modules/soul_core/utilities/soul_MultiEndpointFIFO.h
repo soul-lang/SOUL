@@ -32,13 +32,11 @@ struct MultiEndpointFIFO
 {
     MultiEndpointFIFO()
     {
+        incomingItemAllocator = std::make_unique<LocalAllocator<incomingItemAllocationSpace>>();
         reset (256 * 1024, 2048);
     }
 
-    ~MultiEndpointFIFO()
-    {
-        incomingItems.clear();
-    }
+    ~MultiEndpointFIFO() = default;
 
     void reset (uint32_t fifoSize, uint32_t maxNumIncomingItems)
     {
@@ -61,22 +59,23 @@ struct MultiEndpointFIFO
         if (! type.isVoid())
             scratch.write (value.getRawData(), type.getValueDataSize());
 
-        if (! scratch.overflowed())
+        if (scratch.overflowed())
+            return false;
+
+        if (value.getType().usesStrings())
         {
-            if (value.getType().usesStrings())
-            {
-                choc::value::ValueView v (value.getType(), startOfValueData, value.getDictionary());
+            LocalAllocator<maxItemSize> localSpace;
+            choc::value::ValueView v (choc::value::Type (std::addressof (localSpace), value.getType()),
+                                      startOfValueData, value.getDictionary());
 
-                if (! DictionaryBuilder (scratch).write (v))
-                    return false;
-            }
-
-            return fifo.push (scratch.space, scratch.total);
+            if (! DictionaryBuilder (scratch).write (v))
+                return false;
         }
 
-        return false;
+        return fifo.push (scratch.space, scratch.total);
     }
 
+    /** Note that these iterate functions may only be called by a single thread. */
     template <typename HandleStartOfChunk, typename HandleItem, typename HandleEndOfChunk>
     bool iterateChunks (uint64_t startFrameNumber,
                         uint32_t totalFramesNeeded, uint32_t maxFramesPerChunk,
@@ -86,7 +85,7 @@ struct MultiEndpointFIFO
     {
         uint32_t numItems = 0;
         bool success = true;
-        localAllocator.reset();
+        incomingItemAllocator->reset();
 
         fifo.popAllAvailable ([&] (const void* data, uint32_t size)
                               {
@@ -105,9 +104,15 @@ struct MultiEndpointFIFO
                                                  handleStartOfChunk, handleItem, handleEndOfChunk);
                               });
 
+        // the values are all still referencing our local allocator space, which will be overwritten
+        // soon, so need to make sure they're not left pointing to it..
+        for (uint32_t i = 0; i < numItems; ++i)
+            incomingItems[i].value = {};
+
         return success;
     }
 
+    /** Note that these iterate functions may only be called by a single thread. */
     template <typename HandleItem>
     bool iterateAllAvailable (HandleItem&& handleItem)
     {
@@ -130,12 +135,10 @@ struct MultiEndpointFIFO
         return success;
     }
 
+    static constexpr uint32_t maxItemSize = 4096;
+    static constexpr size_t incomingItemAllocationSpace = 65536;
+
 private:
-    static constexpr uint32_t maxItemSize = 8192;
-    static constexpr size_t localAllocationSpace = 65536;
-
-    choc::fifo::VariableSizeFIFO fifo;
-
     struct IncomingStringDictionary  : public choc::value::StringDictionary
     {
         Handle getHandleForString (std::string_view) override               { SOUL_ASSERT_FALSE; return {}; }
@@ -151,8 +154,6 @@ private:
         choc::value::ValueView value;
         IncomingStringDictionary dictionary;
     };
-
-    std::vector<Item> incomingItems;
 
     struct ScratchWriter
     {
@@ -174,10 +175,13 @@ private:
         }
     };
 
+    template <size_t totalSize>
     struct LocalAllocator  : public choc::value::Allocator
     {
-        LocalAllocator()  { pool.resize (localAllocationSpace); }
-        void reset()      { position = 0; }
+        LocalAllocator() = default;
+        ~LocalAllocator() override = default;
+
+        void reset()    { position = 0; }
 
         void* allocate (size_t size) override
         {
@@ -205,11 +209,13 @@ private:
 
         void free (void*) noexcept override {}
 
-        std::vector<char> pool;
         size_t position = 0, lastAllocationPosition = 0;
+        std::array<char, totalSize> pool;
     };
 
-    LocalAllocator localAllocator;
+    choc::fifo::VariableSizeFIFO fifo;
+    std::unique_ptr<LocalAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
+    std::vector<Item> incomingItems;
 
     struct DictionaryBuilder
     {
@@ -299,7 +305,7 @@ private:
                 item.startFrame = static_cast<uint32_t> (time - startFrameNumber);
                 read (reader, item.endpoint);
 
-                auto type = choc::value::Type::deserialise (reader, std::addressof (localAllocator));
+                auto type = choc::value::Type::deserialise (reader, incomingItemAllocator.get());
                 auto dataSize = type.getValueDataSize();
 
                 if (reader.start + dataSize <= reader.end)
@@ -370,13 +376,13 @@ private:
                         }
 
                         if (itemEnd > nextChunkStart)
-                            handleItem (item.endpoint, itemStart, item.value.getElementRange (0, nextChunkStart - itemStart));
+                            handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value.getElementRange (0, nextChunkStart - itemStart)));
                         else
-                            handleItem (item.endpoint, itemStart, item.value);
+                            handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
                     }
                     else
                     {
-                        handleItem (item.endpoint, itemStart, item.value);
+                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
                     }
                 }
             }
