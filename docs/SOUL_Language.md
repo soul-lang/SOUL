@@ -147,6 +147,9 @@ The primitive types currently supported are:
 - `float32` - 32-bit float type
 - `float64` - 64-bit float type
 - `float` - fastest floating-point type that provides at least 32-bit precision
+- `complex32` - 32-bit complex type
+- `complex64` - 64-bit complex type
+- `complex` - fastest complex type that provides at least 32-bit precision
 - `wrap<size>` - a range-constrained `int32` type. The `size` value must be a compile-time constant, and operations on this type are guaranteed to result in values where 0 <= x < size. If incrementing or decrementing it, out-of-range values will wrap around.
 - `clamp<size>` - similar to `wrap<size>` but out-of-range values are clamped rather than wrapped
 - `string` - a character literal. These can be passed around but no operations which could incur runtime allocation are possible (i.e. concatenation, etc), and slicing/indexing is not supported - the main purpose of string literals and this type is for use in debug logging functions.
@@ -167,6 +170,8 @@ SOUL largely follows familiar C/Java/Javascript conventions for numeric values:
     For a 32-bit float, you can use either `f` or `f32` as the suffix, e.g. `123.0f` or `123.0f32`.
     For 64-bit floats, either write it without a suffix, or use `f64`, `123.0` or `123.0f64`
     For readability, you can also add an underscore before any of these suffixes, e.g. `123.0_f64`
+- ##### Complex numbers
+    Complex numbers are made from a real and imaginary component. The real component uses the same syntax as the assocated floating point formats (so `f` or `f32` to indicate a 32 bit floating point value) whilst imaginary numbers are specified using the `fi` or `f32i` suffix for 32 bit imaginary components, or `i` or `f64i` for 64 bit imaginary components. Complex constants with both real and imaginary components can be declared by adding these components together, for example `1.2f + 3.4fi`
 - ##### Boolean
     `true` and `false` are built-in keywords
 
@@ -306,6 +311,20 @@ Dynamic slices are handled internally as a "fat pointer", i.e. a pointer + size,
 - A dynamic slice can only refer to data whose lifetime is permanent for the run of the program - currently that means only state variable and externals can be converted to a dynamic slice. Local fixed-size arrays cannot be referenced by a slice, although in the future there'll be some circumstances where this rule can be relaxed if smarter compilers are able to prove that the data's lifetime will outlive the slice object.
 
 Slices may be left uninitialised, in which case they have a size of zero and any access will return a value of 0 (in whatever element type they're using).
+
+#### Complex components
+
+As complex numbers are primitives, vectors and arrays of complex numbers can be constructed. The real and imaginary components of the complex number can be retrieved using the `.real` and `.imag` accessors respectively. For a complex vector, these accessors will return a vector of real or imaginary components.
+
+```C++
+let c = 1.0f + 2.0fi;       // c is a complex32 with real: 1.0f, imag: 2.0f
+let d = c * c;              // d is a complex32 with real: -3.0f, imag: 4.0f
+let e = d.real;             // e is a float32 with value -3.0f
+let f = d.imag;             // f is a float32 with value 4.0f
+
+complex64<4> g = 1.0;       // vector of 4 complex64 with real: 1.0, imag: 0.0
+let h = g.real;             // vector of 4 float64 all with value 1.0
+```
 
 #### 'External' variables
 

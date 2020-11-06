@@ -348,10 +348,10 @@ private:
 
     TokenType parseSuffixForFloatLiteral()
     {
-        if (input.advanceIfStartsWith ("if", "fi"))                 return Token::literalImag32;
-        if (input.advanceIfStartsWith ("i"))                        return Token::literalImag64;
-        if (input.advanceIfStartsWith ("f64", "_f64"))              return Token::literalFloat64;
-        if (input.advanceIfStartsWith ("f32", "_f32", "f", "_f"))   return Token::literalFloat32;
+        if (input.advanceIfStartsWith ("f32i", "_f32i", "fi"))    return Token::literalImag32;
+        if (input.advanceIfStartsWith ("f64i", "_f64i", "i"))     return Token::literalImag64;
+        if (input.advanceIfStartsWith ("f64", "_f64"))            return Token::literalFloat64;
+        if (input.advanceIfStartsWith ("f32", "_f32", "f", "_f")) return Token::literalFloat32;
 
         return Token::literalFloat64;
     }
