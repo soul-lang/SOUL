@@ -102,9 +102,11 @@ private:
     }
 
     heart::Variable& createVariableDeclaration (AST::VariableDeclaration& v,
-                                                heart::Variable::Role role)
+                                                heart::Variable::Role role,
+                                                bool canBeReference)
     {
-        auto& av = module.allocate<heart::Variable> (v.context.location, v.getType(),
+        auto& av = module.allocate<heart::Variable> (v.context.location,
+                                                     canBeReference ? v.getType() : v.getType().removeReferenceIfPresent(),
                                                      convertIdentifier (v.name), role);
         v.generatedVariable = av;
 
@@ -118,7 +120,7 @@ private:
     heart::Variable& addExternalVariable (AST::VariableDeclaration& v)
     {
         SOUL_ASSERT (v.isExternal);
-        auto& hv = createVariableDeclaration (v, heart::Variable::Role::external);
+        auto& hv = createVariableDeclaration (v, heart::Variable::Role::external, false);
         module.stateVariables.add (hv);
         return hv;
     }
@@ -399,7 +401,7 @@ private:
 
         for (auto p : f.parameters)
         {
-            auto& v = createVariableDeclaration (p, heart::Variable::Role::parameter);
+            auto& v = createVariableDeclaration (p, heart::Variable::Role::parameter, true);
 
             if (af.functionType.isEvent() && v.getType().isNonConstReference())
                 p->context.throwError (Errors::eventParamsCannotBeNonConstReference());
@@ -897,12 +899,12 @@ private:
 
                 // Skip writing constant or unwritten-to variables to the state
                 if (! (v.numWrites == 0 && (type.isPrimitive() || type.isBoundedInt())))
-                    module.stateVariables.add (createVariableDeclaration (v, heart::Variable::Role::state));
+                    module.stateVariables.add (createVariableDeclaration (v, heart::Variable::Role::state, false));
             }
         }
         else
         {
-            auto& target = createVariableDeclaration (v, heart::Variable::Role::mutableLocal);
+            auto& target = createVariableDeclaration (v, heart::Variable::Role::mutableLocal, false);
 
             if (v.initialValue != nullptr)
                 visitWithDestination (target, *v.initialValue);

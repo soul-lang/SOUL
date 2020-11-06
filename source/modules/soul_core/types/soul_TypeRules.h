@@ -106,10 +106,19 @@ struct TypeRules
             if ((dest.isPrimitive() || dest.isVectorOfSize1()) && source.isPrimitive() && ! dest.isReference())
                 return getCastType (dest.getPrimitiveType(), source.getPrimitiveType());
 
-            if (source.isEqual (dest, Type::ignoreConst))
-                if (! (dest.isReference() || source.isReference()))
-                    return CastType::identity;
-
+            if (! dest.isReference())
+            {
+                if (source.isReference())
+                {
+                    if (source.isConst() && source.isEqual (dest, Type::ignoreConst | Type::ignoreReferences))
+                        return CastType::identity;
+                }
+                else
+                {
+                    if (source.isEqual (dest, Type::ignoreConst))
+                        return CastType::identity;
+                }
+            }
 
             if (dest.isArray())
             {
