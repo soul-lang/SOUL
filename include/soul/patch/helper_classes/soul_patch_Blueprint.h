@@ -68,9 +68,21 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
             reactRootComponent.evaluate (fileToLoad);
             reactRootComponent.enableHotReloading();
         }
-        catch (const blueprint::EcmascriptEngine::Error&)
+        catch (const blueprint::EcmascriptEngine::Error& e)
         {
             failedToLoad = true;
+            std::cerr << e.context << std::endl
+                      << e.stack << std::endl;
+        }
+        catch (const std::logic_error& e)
+        {
+            failedToLoad = true;
+            std::cerr << e.what() << std::endl;
+        }
+        catch (...)
+        {
+            failedToLoad = true;
+            jassertfalse; // maybe need to add handling for some other kind of error?
         }
     }
 
