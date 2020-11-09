@@ -579,9 +579,12 @@ private:
             return allocator.allocate<AST::ProcessorInstanceRef> (c, i);
         }
 
-        AST::ProcessorInstanceRef& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
+        AST::Expression& resolveProcessorInstance (AST::CallOrCast& call, AST::ProcessorBase& p)
         {
-            return getOrCreateImplicitProcessorInstance (call.context, p, call.arguments);
+            if (p.specialisationParams.size() == call.getNumArguments())
+                return getOrCreateImplicitProcessorInstance (call.context, p, call.arguments);
+
+            return call;
         }
 
         AST::Expression& visit (AST::ArrayElementRef& s) override

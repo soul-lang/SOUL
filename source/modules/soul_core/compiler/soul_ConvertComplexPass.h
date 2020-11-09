@@ -146,7 +146,9 @@ private:
 
             auto returnTypeExp = r.getParentFunction()->returnType;
 
-            if (AST::isResolvedAsType (returnTypeExp) && requiresRemapping (returnTypeExp->resolveAsType()))
+            if (AST::isResolvedAsType (returnTypeExp)
+                 && requiresRemapping (returnTypeExp->resolveAsType())
+                 && r.returnValue->isResolved())
                 r.returnValue = addCastIfRequired (*r.returnValue, returnTypeExp->resolveAsType());
 
             return r;

@@ -186,6 +186,7 @@ struct ASTUtilities
     static std::string getSpecialisationSignature (const ParamList& params, const ArgList& args)
     {
         std::stringstream key;
+        SOUL_ASSERT (args.size() == params.size());
 
         for (size_t i = 0; i < args.size(); ++i)
         {
