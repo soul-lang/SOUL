@@ -600,13 +600,19 @@ private:
 
             if (auto c = cast<AST::TypeCast> (e))
             {
-                auto numArgs = c->getNumArguments();
-                SOUL_ASSERT (numArgs != 0);
+                SOUL_ASSERT (c->getNumArguments() != 0);
 
-                if (numArgs > 1)
-                    return createAggregateWithInitialisers (*c);
+                pool_ref<AST::Expression> source = c->source;
 
-                auto& sourceExp = evaluateAsExpression (c->source);
+                if (auto list = cast<AST::CommaSeparatedList> (c->source))
+                {
+                    if (list->items.size() != 1)
+                        return createAggregateWithInitialisers (*c);
+
+                    source = list->items.front();
+                }
+
+                auto& sourceExp = evaluateAsExpression (source);
                 const auto& sourceType = sourceExp.getType();
 
                 if (TypeRules::canCastTo (c->targetType, sourceType))

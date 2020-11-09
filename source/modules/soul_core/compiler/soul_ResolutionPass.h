@@ -510,13 +510,7 @@ private:
                         if (auto e = cast<AST::Expression> (search.itemsFound.front()))
                         {
                             if (AST::isResolvedAsType (e))
-                            {
-                                if (auto list = cast<AST::CommaSeparatedList> (call.arguments))
-                                    if (list->items.size() == 1)
-                                        return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), list->items.front());
-
                                 return allocator.allocate<AST::TypeCast> (call.context, e->resolveAsType(), *call.arguments);
-                            }
 
                             if (canResolveProcessorInstance)
                                 if (auto p = e->getAsProcessor())
