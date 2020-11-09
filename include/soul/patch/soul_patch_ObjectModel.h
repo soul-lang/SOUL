@@ -94,8 +94,8 @@ struct String  : public RefCountedBase
 template <typename Type>
 struct Span
 {
-    const Type* vectorStart;
-    const Type* vectorEnd;
+    const Type* vectorStart = nullptr;
+    const Type* vectorEnd = nullptr;
 
     const Type* begin() const                  { return vectorStart; }
     const Type* end() const                    { return vectorEnd; }
