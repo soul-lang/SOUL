@@ -245,7 +245,6 @@ Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& pro
         ASTUtilities::resolveHoistedEndpoints (allocator, *topLevelNamespace);
         ASTUtilities::mergeDuplicateNamespaces (*topLevelNamespace);
         ConvertComplexPass::run (allocator, *topLevelNamespace);
-        ResolutionPass::run (allocator, *topLevelNamespace, true);
         ASTUtilities::removeModulesWithSpecialisationParams (*topLevelNamespace);
         ResolutionPass::run (allocator, *topLevelNamespace, false);
         ASTUtilities::connectAnyChildEndpointsNeedingToBeExposed (allocator, processorToRun);

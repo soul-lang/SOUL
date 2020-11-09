@@ -31,7 +31,8 @@ namespace soul
     appropriate struct members. Finally instantiations of the complex_lib namespace are added for the given data
     type and vector size, and the complex types are replaced with the appropriate ComplexType structs
 
-    A subsequent resolution pass is required to resolve the identifiers added by this process.
+    A subsequent resolution pass is required to resolve the identifiers added by this process, and then any affected
+    structs are regenerated to have the correct members.
 */
 struct ConvertComplexPass  final
 {
@@ -59,7 +60,7 @@ private:
     {
         ConvertComplexOperators (*this).visitObject (module);
         ConvertComplexElementAccess (*this).visitObject (module);
-        ConvertComplexRemapTypes (*this).visitObject (module);
+        ConvertComplexRemapTypes (*this).run();
     }
 
     struct ComplexBase : public RewritingASTVisitor
@@ -298,11 +299,21 @@ private:
             soulLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul"));
         }
 
+        void run()
+        {
+            visitObject (module);
+            ResolutionPass::run (allocator, module, true);
+
+            for (auto s : structsToUpdate)
+                s->updateStructureMembers();
+        }
+
         using super = RewritingASTVisitor;
         static inline constexpr const char* getPassName()  { return "ConvertComplexRemapTypes"; }
 
         AST::ModuleBase* soulLib;
 
+        std::vector<AST::StructDeclaration*> structsToUpdate;
         AST::StructDeclaration* structDeclaration = nullptr;
 
         AST::Expression& visit (AST::ConcreteType& t) override
@@ -312,7 +323,7 @@ private:
             if (requiresRemapping (t.type))
             {
                 if (structDeclaration != nullptr)
-                    structDeclaration->structureMembersUpdated();
+                    structsToUpdate.push_back (structDeclaration);
 
                 return getRemappedType (t.context, t.type);
             }
@@ -322,6 +333,9 @@ private:
 
         AST::StructDeclaration& visit (AST::StructDeclaration& s) override
         {
+            if (s.name.toString() == "PoleZeroPair")
+                s.name.toString();
+            
             structDeclaration = &s;
             super::visit (s);
             structDeclaration = nullptr;
