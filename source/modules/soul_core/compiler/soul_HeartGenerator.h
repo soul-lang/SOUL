@@ -554,8 +554,8 @@ private:
             auto& sourceExp = evaluateAsConstantExpression (c->source);
             const auto& sourceType = sourceExp.getType();
 
-            if (TypeRules::canCastTo (c->targetType, sourceType))
-                return builder.createCastIfNeeded (sourceExp, c->targetType);
+            SanityCheckPass::expectCastPossible (c->source->context, c->targetType, sourceType);
+            return builder.createCastIfNeeded (sourceExp, c->targetType);
         }
 
         e.context.throwError (Errors::expectedConstant());
