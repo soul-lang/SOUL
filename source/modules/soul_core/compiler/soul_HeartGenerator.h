@@ -551,6 +551,16 @@ private:
 
         if (auto c = cast<AST::TypeCast> (e))
         {
+            if (auto csl = cast<AST::CommaSeparatedList> (c->source))
+            {
+                if (csl->isCompileTimeConstant()
+                     && c->targetType.isFixedSizeAggregate()
+                     && c->targetType.getNumAggregateElements() == csl->items.size())
+                {
+                    return convertListToConstantValue (c->context, c->targetType, *csl);
+                }
+            }
+
             auto& sourceExp = evaluateAsConstantExpression (c->source);
             const auto& sourceType = sourceExp.getType();
 
@@ -690,6 +700,30 @@ private:
             e.context.throwError (Errors::expectedExpressionOfType (targetType.getDescription()));
 
         return builder.createCastIfNeeded (resolved, targetType);
+    }
+
+    heart::Expression& convertListToConstantValue (const AST::Context& context, const Type& targetType, AST::CommaSeparatedList& list)
+    {
+        auto v = Value::zeroInitialiser (targetType);
+        size_t index = 0;
+
+        for (auto& item : AST::CommaSeparatedList::getAsExpressionList (list))
+        {
+            if (auto constItem = item->getAsConstant())
+            {
+                auto elementType = targetType.isStruct() ? targetType.getStructRef().getMemberType (index)
+                                                         : targetType.getElementType();
+
+                SanityCheckPass::expectSilentCastPossible (item->context, elementType, *constItem);
+                v.modifySubElementInPlace (index++, constItem->value.castToTypeExpectingSuccess (elementType));
+            }
+            else
+            {
+                item->context.throwError (Errors::expectedConstant());
+            }
+        }
+
+        return module.allocator.allocate<heart::Constant> (context.location, v);
     }
 
     heart::StructElement& createStructSubElement (AST::StructMemberRef& member, heart::Expression& source)
