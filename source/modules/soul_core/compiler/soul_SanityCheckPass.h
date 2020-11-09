@@ -147,6 +147,8 @@ struct SanityCheckPass  final
             context.throwError (Errors::cannotCastListToType (targetType.getDescription()));
         }
 
+        throwErrorIfNotReadableValue (source);
+
         if (! source.canSilentlyCastTo (targetType))
         {
             if (auto c = source.getAsConstant())
@@ -598,10 +600,11 @@ private:
             if (! f.isGeneric())
             {
                 for (auto& p : f.parameters)
-                    if (p->getType().isVoid())
+                    if (AST::isResolvedAsType (p->declaredType) && p->getType().isVoid())
                         p->context.throwError (Errors::parameterCannotBeVoid());
 
                 super::visit (f);
+                throwErrorIfNotReadableType (*f.returnType);
             }
         }
 
@@ -612,8 +615,12 @@ private:
             recursiveTypeDeclVisitStack.pop();
 
             for (auto& m : s.getMembers())
+            {
+                throwErrorIfNotReadableType (m.type);
+
                 if (m.type->getConstness() == AST::Constness::definitelyConst)
                     m.type->context.throwError (Errors::memberCannotBeConst());
+            }
         }
 
         void visit (AST::UsingDeclaration& u) override

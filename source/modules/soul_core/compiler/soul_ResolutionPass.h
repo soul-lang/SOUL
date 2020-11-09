@@ -2533,7 +2533,7 @@ private:
             super::visit (r);
 
             auto returnTypeExp = r.getParentFunction()->returnType;
-            SOUL_ASSERT (AST::isResolvedAsType (returnTypeExp));
+            SanityCheckPass::throwErrorIfNotReadableType (*returnTypeExp);
             auto returnType = returnTypeExp->resolveAsType();
 
             if (r.returnValue != nullptr)
