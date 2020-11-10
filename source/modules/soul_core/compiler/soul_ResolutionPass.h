@@ -1113,6 +1113,27 @@ private:
 
                 return allocator.allocate<AST::Constant> (expr.context, Value::createArrayOrVector (targetType, elementValues));
             }
+            else if (targetType.isComplex())
+            {
+                if (numArgs != 2)
+                    expr.context.throwError (Errors::wrongNumberOfComplexInitialisers());
+
+                auto real = list.items[0]->getAsConstant();
+                auto imag = list.items[1]->getAsConstant();
+
+                auto attributeType = Type (targetType.isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64);
+
+                SanityCheckPass::expectSilentCastPossible (real->context, attributeType, *real);
+                SanityCheckPass::expectSilentCastPossible (imag->context, attributeType, *imag);
+
+                auto realValue = real->value.castToTypeExpectingSuccess (attributeType);
+                auto imagValue = imag->value.castToTypeExpectingSuccess (attributeType);
+
+                auto value = targetType.isComplex32() ? Value (std::complex<float> (realValue.getAsFloat(), imagValue.getAsFloat()))
+                                                      : Value (std::complex<double> (realValue.getAsDouble(), imagValue.getAsDouble()));
+
+                return allocator.allocate<AST::Constant> (expr.context, value);
+            }
 
             if (numArgs > 1)
                 expr.context.throwError (Errors::wrongTypeForInitialiseList());

@@ -222,6 +222,7 @@ namespace soul
     X(eventFunctionInvalidType,             "Event $Q0$ does not support type $Q1$") \
     X(eventFunctionInvalidArguments,        "Event function arguments invalid") \
     X(eventParamsCannotBeNonConstReference, "Event parameters cannot be non-const references") \
+    X(wrongNumberOfComplexInitialisers,     "Too many initialisers for complex number") \
     X(wrongTypeForInitialiseList,           "You can only create a multi-value initialiser list for an array, vector or struct") \
     X(wrongTypeForArrayElement,             "Cannot create an array with this element type") \
     X(wrongTypeForVectorElement,            "Cannot create a vector with elements that are not primitive types") \
