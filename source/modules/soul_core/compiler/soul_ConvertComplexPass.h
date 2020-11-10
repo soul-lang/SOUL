@@ -343,7 +343,7 @@ private:
         {
             if (s.name.toString() == "PoleZeroPair")
                 s.name.toString();
-            
+
             structDeclaration = &s;
             super::visit (s);
             structDeclaration = nullptr;

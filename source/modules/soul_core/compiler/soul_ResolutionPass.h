@@ -1123,7 +1123,7 @@ private:
 
                 if (real == nullptr || imag == nullptr)
                     return expr;
-                
+
                 auto attributeType = Type (targetType.isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64);
 
                 SanityCheckPass::expectSilentCastPossible (real->context, attributeType, *real);
