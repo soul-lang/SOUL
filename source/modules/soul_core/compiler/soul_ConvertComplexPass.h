@@ -44,78 +44,153 @@ struct ConvertComplexPass  final
 private:
     ConvertComplexPass (AST::Allocator& a, AST::ModuleBase& m) : allocator (a), module (m)
     {
-        intrinsicsNamespacePath = IdentifierPath::fromString (allocator.identifiers, getIntrinsicsNamespaceName());
     }
 
     AST::Allocator& allocator;
     AST::ModuleBase& module;
-    IdentifierPath intrinsicsNamespacePath;
+
+    struct Transformations
+    {
+        AST::Expression& getTransformedExpression (AST::Expression& original)
+        {
+            auto i = objects.find (&original);
+
+            if (i != objects.end())
+                return *cast<AST::Expression> (*i->second);
+
+            return original;
+        }
+
+        AST::Statement& getTransformedStatement (AST::Statement& original)
+        {
+            auto i = objects.find (&original);
+
+            if (i != objects.end())
+                return *cast<AST::Statement> (*i->second);
+
+            return original;
+        }
+
+        void addTransformation (AST::ASTObject& original, AST::ASTObject& replacement)
+        {
+            objects[&original] = &replacement;
+        }
+
+        std::unordered_map<AST::ASTObject*, AST::ASTObject*> objects;
+    };
+
+    Transformations transformations;
 
     static AST::QualifiedIdentifier& identifierFromString (AST::Allocator& allocator, AST::Context& context, const std::string& s)
     {
         return allocator.allocate<AST::QualifiedIdentifier> (context,  soul::IdentifierPath::fromString (allocator.identifiers, s));
     }
 
+    static bool requiresRemapping (const soul::Type& type)
+    {
+        if (type.isComplex())
+            return true;
+
+        if (type.isVector() && type.getVectorElementType().isComplex())
+            return true;
+
+        if (type.isArray() && type.getArrayElementType().isComplex())
+            return true;
+
+        return false;
+    }
+
+    static bool requiresRemapping (soul::pool_ptr<soul::AST::Expression> expr)
+    {
+        if (auto csl = cast<AST::CommaSeparatedList> (expr))
+            return false;
+
+        return requiresRemapping (expr->getResultType());
+    }
+
     void run()
     {
-        ConvertComplexOperators (*this).visitObject (module);
+        BuildTransformations (*this).visitObject (module);
+        ApplyTransformations (*this).visitObject (module);
+        transformations.objects.clear();
+
         ConvertComplexElementAccess (*this).visitObject (module);
+
         ConvertComplexRemapTypes (*this).run();
     }
 
     struct ComplexBase : public RewritingASTVisitor
     {
-        ComplexBase (ConvertComplexPass& rp) : allocator (rp.allocator), module (rp.module) {}
+        ComplexBase (ConvertComplexPass& rp) : allocator (rp.allocator), module (rp.module), transformations (rp.transformations) {}
 
     protected:
         AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
         {
+            auto& transformedExpression = transformations.getTransformedExpression (e);
             auto sourceType = e.getResultType();
 
             if (sourceType.isEqual (targetType, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
-                return e;
+                return transformedExpression;
 
             if (sourceType.isComplex())
             {
                 // Cast the real/imaginary components to the targetType
                 auto& args = allocator.allocate<AST::CommaSeparatedList> (e.context);
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, e, identifierFromString (allocator, e.context, "real")));
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, e, identifierFromString (allocator, e.context, "imag")));
+                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "real")));
+                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "imag")));
 
                 return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), args);
             }
 
-            return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), e);
-        }
-
-        static bool requiresRemapping (const soul::Type& type)
-        {
-            if (type.isComplex())
-                return true;
-
-            if (type.isVector() && type.getVectorElementType().isComplex())
-                return true;
-
-            if (type.isArray() && type.getArrayElementType().isComplex())
-                return true;
-
-            return false;
-        }
-
-        static bool requiresRemapping (soul::pool_ptr<soul::AST::Expression> expr)
-        {
-            if (auto csl = cast<AST::CommaSeparatedList> (expr))
-                return false;
-
-            return requiresRemapping (expr->getResultType());
+            return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), transformedExpression);
         }
 
         AST::Allocator& allocator;
         AST::ModuleBase& module;
+        Transformations& transformations;
     };
 
     //==============================================================================
-    struct ConvertComplexElementAccess  : ComplexBase
+    struct ApplyTransformations : public ComplexBase
+    {
+        ApplyTransformations (ConvertComplexPass& rp) : ComplexBase (rp) {}
+
+        using super = RewritingASTVisitor;
+
+        AST::Expression& visit (AST::UnaryOperator& u) override
+        {
+            super::visit (u);
+            return transformations.getTransformedExpression (u);
+        }
+
+        AST::Expression& visit (AST::BinaryOperator& b) override
+        {
+            super::visit (b);
+            return transformations.getTransformedExpression (b);
+        }
+
+        AST::Expression& visit (AST::ComplexMemberRef& s) override
+        {
+            super::visit (s);
+            return transformations.getTransformedExpression (s);
+        }
+
+        AST::Statement& visit (AST::ReturnStatement& r) override
+        {
+            super::visit (r);
+            return transformations.getTransformedStatement (r);
+        }
+
+        AST::Expression& visit (AST::TypeCast& t) override
+        {
+            super::visit (t);
+            return transformations.getTransformedExpression (t);
+        }
+
+    };
+
+    //==============================================================================
+    struct ConvertComplexElementAccess  : public ComplexBase
     {
         ConvertComplexElementAccess (ConvertComplexPass& rp) : ComplexBase (rp) {}
 
@@ -149,31 +224,6 @@ private:
             return a;
         }
 
-        AST::Statement& visit (AST::ReturnStatement& r) override
-        {
-            super::visit (r);
-
-            auto returnTypeExp = r.getParentFunction()->returnType;
-
-            if (AST::isResolvedAsType (returnTypeExp)
-                 && requiresRemapping (returnTypeExp->resolveAsType())
-                 && r.returnValue->isResolved())
-                r.returnValue = addCastIfRequired (*r.returnValue, returnTypeExp->resolveAsType());
-
-            return r;
-        }
-
-        AST::Expression& visit (AST::TypeCast& t) override
-        {
-            super::visit (t);
-
-            if (requiresRemapping (t.targetType))
-                if (t.source->isResolved() && requiresRemapping (t.source))
-                    return addCastIfRequired (t.source, t.targetType);
-
-            return t;
-        }
-
         AST::Expression& visit (AST::ArrayElementRef& r) override
         {
             super::visit (r);
@@ -194,29 +244,35 @@ private:
     };
 
     //==============================================================================
-    struct ConvertComplexOperators  : public ComplexBase
+    struct BuildTransformations  : public ComplexBase
     {
-        ConvertComplexOperators (ConvertComplexPass& rp) : ComplexBase (rp) {}
+        BuildTransformations (ConvertComplexPass& rp) : ComplexBase (rp) {}
 
         using super = RewritingASTVisitor;
         static inline constexpr const char* getPassName()  { return "ConvertComplexOperators"; }
 
+
         AST::Expression& visit (AST::ComplexMemberRef& s) override
         {
-            super::visit (s);
-
             if (auto v = cast<AST::ArrayElementRef> (s.object))
             {
                 if (! v->object->isResolved() || v->object->getResultType().isVector())
                 {
                     // Convert a[b].c to a.c[b]
                     auto& memberRef = allocator.allocate<AST::DotOperator> (s.context, *v->object, identifierFromString (allocator, s.context, s.memberName));
-                    return allocator.allocate<AST::ArrayElementRef> (s.context, memberRef, v->startIndex, v->endIndex, v->isSlice);
+
+                    transformations.addTransformation (s, allocator.allocate<AST::ArrayElementRef> (s.context, memberRef, v->startIndex, v->endIndex, v->isSlice));
+                    return s;
                 }
+            }
+            else
+            {
+                super::visit (s);
             }
 
             // Convert back to a dot operator, so that the subsequent resolution pass will convert it to the right struct member access
-            return allocator.allocate<AST::DotOperator> (s.context, s.object, identifierFromString (allocator, s.context, s.memberName));
+            transformations.addTransformation (s, allocator.allocate<AST::DotOperator> (s.context, s.object, identifierFromString (allocator, s.context, s.memberName)));
+            return s;
         }
 
         AST::Expression& visit (AST::UnaryOperator& u) override
@@ -232,7 +288,7 @@ private:
                     auto& args = allocator.allocate<AST::CommaSeparatedList> (u.context);
                     args.items.push_back (u.source);
 
-                    return allocator.allocate<AST::CallOrCast> (functionName, args, true);
+                    transformations.addTransformation (u, allocator.allocate<AST::CallOrCast> (functionName, args, true));
                 }
             }
 
@@ -253,11 +309,41 @@ private:
                     args.items.push_back (addCastIfRequired (b.lhs, b.getOperandType()));
                     args.items.push_back (addCastIfRequired (b.rhs, b.getOperandType()));
 
-                    return allocator.allocate<AST::CallOrCast> (functionName, args, true);
+                    transformations.addTransformation (b, allocator.allocate<AST::CallOrCast> (functionName, args, true));
                 }
             }
 
             return b;
+        }
+
+        AST::Statement& visit (AST::ReturnStatement& r) override
+        {
+            super::visit (r);
+
+            auto returnTypeExp = r.getParentFunction()->returnType;
+
+            if (AST::isResolvedAsType (returnTypeExp)
+                 && requiresRemapping (returnTypeExp->resolveAsType())
+                 && r.returnValue->isResolved())
+            {
+                auto& returnStatement = allocator.allocate<AST::ReturnStatement> (r.context);
+                returnStatement.returnValue = addCastIfRequired (*r.returnValue, returnTypeExp->resolveAsType());
+
+                transformations.addTransformation (r, returnStatement);
+            }
+
+            return r;
+        }
+
+        AST::Expression& visit (AST::TypeCast& t) override
+        {
+            super::visit (t);
+
+            if (requiresRemapping (t.targetType))
+                if (t.source->isResolved() && requiresRemapping (t.source))
+                    transformations.addTransformation (t, addCastIfRequired (t.source, t.targetType));
+
+            return t;
         }
 
     private:
@@ -341,9 +427,6 @@ private:
 
         AST::StructDeclaration& visit (AST::StructDeclaration& s) override
         {
-            if (s.name.toString() == "PoleZeroPair")
-                s.name.toString();
-
             structDeclaration = &s;
             super::visit (s);
             structDeclaration = nullptr;
