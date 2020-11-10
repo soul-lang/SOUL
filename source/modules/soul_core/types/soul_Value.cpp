@@ -236,7 +236,7 @@ struct Value::PackedData
 
         if (type.isArrayOrVector())
         {
-            if (other.type.isPrimitive() || other.type.isVectorOfSize1())
+            if (! (other.type.isArrayOrVector() && other.type.getArrayOrVectorSize() == type.getArrayOrVectorSize()))
             {
                 for (ArrayIterator dst (*this); dst.next();)
                     dst.get().setFrom (other);

@@ -142,6 +142,9 @@ struct TypeRules
                     if (elementCast == CastType::identity)                    return CastType::identity;
                 }
 
+                if (source.isStruct() && dest.isFixedSizeArray() && dest.getArrayElementType().isIdentical (source))
+                    return CastType::valueToArray;
+
                 return CastType::notPossible;
             }
 
