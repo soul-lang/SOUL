@@ -892,7 +892,7 @@ private:
         }
 
         expect (Operator::closeParen);
-        f.block = parseBlock (f);
+        f.block = parseBracedBlock (f);
     }
 
     //==============================================================================
@@ -1006,12 +1006,12 @@ private:
         }
 
         if (! matchIf (Operator::semicolon))
-            f.block = parseBlock (f);
+            f.block = parseBracedBlock (f);
 
         return f;
     }
 
-    AST::Block& parseBlock (pool_ptr<AST::Function> ownerFunction)
+    AST::Block& parseBracedBlock (pool_ptr<AST::Function> ownerFunction)
     {
         expect (Operator::openBrace);
         auto& newBlock = allocate<AST::Block> (getContext(), ownerFunction);
@@ -1023,9 +1023,20 @@ private:
         return newBlock;
     }
 
+    AST::Block& parseStatementAsNewBlock()
+    {
+        if (matches (Operator::openBrace))
+            return parseBracedBlock ({});
+
+        auto& newBlock = allocate<AST::Block> (getContext(), nullptr);
+        ScopedScope scope (*this, newBlock);
+        newBlock.addStatement (parseStatement());
+        return newBlock;
+    }
+
     AST::Statement& parseStatement()
     {
-        if (matches (Operator::openBrace))     return parseBlock ({});
+        if (matches (Operator::openBrace))     return parseBracedBlock ({});
         if (matchIf (Keyword::if_))            return parseIf();
         if (matchIf (Keyword::while_))         return parseWhileLoop();
         if (matchIf (Keyword::for_))           return parseForLoop();
@@ -1508,11 +1519,11 @@ private:
         bool isConst = matchIf (Keyword::const_);
         expect (Operator::openParen);
         auto& condition = matchCloseParen (parseExpression());
-        auto& trueBranch = parseStatement();
+        auto& trueBranch = parseStatementAsNewBlock();
         pool_ptr<AST::Statement> falseBranch;
 
         if (matchIf (Keyword::else_))
-            falseBranch = parseStatement();
+            falseBranch = parseStatementAsNewBlock();
 
         return allocate<AST::IfStatement> (context, isConst, condition, trueBranch, falseBranch);
     }
@@ -1938,7 +1949,7 @@ private:
         if (matchIf (Operator::openParen))
             loopStatement.numIterations = matchCloseParen (parseExpression());
 
-        loopStatement.body = parseStatement();
+        loopStatement.body = parseStatementAsNewBlock();
         return loopStatement;
     }
 
@@ -1948,7 +1959,7 @@ private:
 
         expect (Operator::openParen);
         loopStatement.condition = matchCloseParen (parseExpression());
-        loopStatement.body = parseStatement();
+        loopStatement.body = parseStatementAsNewBlock();
 
         return loopStatement;
     }
