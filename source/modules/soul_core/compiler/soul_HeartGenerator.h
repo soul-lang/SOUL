@@ -462,7 +462,13 @@ private:
     heart::Expression& getAsReference (AST::Expression& e, bool isConstRef)
     {
         if (auto v = cast<AST::VariableRef> (e))
-            return v->variable->getGeneratedVariable();
+        {
+            if (v->variable->generatedVariable != nullptr)
+                return v->variable->getGeneratedVariable();
+
+            if (isConstRef)
+                return evaluateAsConstantExpression (*v);
+        }
 
         if (auto member = cast<AST::StructMemberRef> (e))
             return createStructSubElement (*member, getAsReference (member->object, isConstRef));

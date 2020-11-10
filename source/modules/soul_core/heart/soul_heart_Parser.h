@@ -1151,10 +1151,10 @@ private:
             throwError (Errors::illegalSliceSize());
 
         auto& s = module->allocate<heart::ArrayElement> (location, lhs, (size_t) start, (size_t) end);
-        return parseVariableSuffixes (state, s);
+        return parseSuffixOperators (state, s);
     }
 
-    heart::Expression& parseVariableSuffixes (const FunctionParseState& state, heart::Expression& lhs)
+    heart::Expression& parseSuffixOperators (const FunctionParseState& state, heart::Expression& lhs)
     {
         if (matchIf (HEARTOperator::dot))
         {
@@ -1166,7 +1166,7 @@ private:
             auto& structure = lhs.getType().getStructRef();
 
             if (structure.hasMemberWithName (member))
-                return parseVariableSuffixes (state, module->allocate<heart::StructElement> (location, lhs, member));
+                return parseSuffixOperators (state, module->allocate<heart::StructElement> (location, lhs, member));
 
             throwError (Errors::unknownMemberInStruct (member, structure.getName()));
         }
@@ -1210,14 +1210,14 @@ private:
                 throwError (Errors::nonIntegerArrayIndex());
 
             if (matchAndReplaceIf (HEARTOperator::closeDoubleBracket, HEARTOperator::closeBracket))
-                return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
+                return parseSuffixOperators (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
 
             expect (HEARTOperator::closeBracket);
 
             if (! lhs.getType().isArrayOrVector())
                 location.throwError (Errors::expectedArrayOrVector());
 
-            return parseVariableSuffixes (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
+            return parseSuffixOperators (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
         }
 
         return lhs;
@@ -1291,7 +1291,7 @@ private:
             auto name = readQualifiedVariableIdentifier();
 
             if (auto v = findVariable (state, name))
-                return parseVariableSuffixes (state, *v);
+                return parseSuffixOperators (state, *v);
 
             errorPos.throwError (Errors::unresolvedSymbol (name));
         }
@@ -1299,7 +1299,7 @@ private:
         if (matches (Token::identifier))
         {
             if (matchIf ("cast"))
-                return parseCast (state);
+                return parseSuffixOperators (state, parseCast (state));
 
             auto infOrNaN = parseNaNandInfinityTokens();
 
@@ -1358,7 +1358,7 @@ private:
             if (auto v = findVariable (state, currentStringValue))
             {
                 skip();
-                return parseVariableSuffixes (state, *v);
+                return parseSuffixOperators (state, *v);
             }
         }
 
@@ -1391,7 +1391,7 @@ private:
     heart::Expression& parseConstantAsExpression (const FunctionParseState& state, const Type& requiredType)
     {
         auto c = parseConstant (requiredType, true);
-        return parseVariableSuffixes (state, program.getAllocator().allocateConstant (c));
+        return parseSuffixOperators (state, program.getAllocator().allocateConstant (c));
     }
 
     Value castValue (const Value& v, const Type& destType)
