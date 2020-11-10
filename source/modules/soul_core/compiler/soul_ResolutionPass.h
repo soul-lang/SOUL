@@ -1121,6 +1121,9 @@ private:
                 auto real = list.items[0]->getAsConstant();
                 auto imag = list.items[1]->getAsConstant();
 
+                if (real == nullptr || imag == nullptr)
+                    return expr;
+                
                 auto attributeType = Type (targetType.isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64);
 
                 SanityCheckPass::expectSilentCastPossible (real->context, attributeType, *real);

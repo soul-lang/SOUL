@@ -102,6 +102,14 @@ private:
             return false;
         }
 
+        static bool requiresRemapping (soul::pool_ptr<soul::AST::Expression> expr)
+        {
+            if (auto csl = cast<AST::CommaSeparatedList> (expr))
+                return false;
+
+            return requiresRemapping (expr->getResultType());
+        }
+
         AST::Allocator& allocator;
         AST::ModuleBase& module;
     };
@@ -160,7 +168,7 @@ private:
             super::visit (t);
 
             if (requiresRemapping (t.targetType))
-                if (t.source->isResolved() && requiresRemapping (t.source->getResultType()))
+                if (t.source->isResolved() && requiresRemapping (t.source))
                     return addCastIfRequired (t.source, t.targetType);
 
             return t;
