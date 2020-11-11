@@ -111,51 +111,18 @@ private:
     void run()
     {
         BuildTransformations (*this).visitObject (module);
-        ApplyTransformations (*this).visitObject (module);
-        transformations.objects.clear();
-
-        ConvertComplexElementAccess (*this).visitObject (module);
-
+        ApplyTransformations (transformations).visitObject (module);
         ConvertComplexRemapTypes (*this).run();
     }
 
-    struct ComplexBase : public RewritingASTVisitor
-    {
-        ComplexBase (ConvertComplexPass& rp) : allocator (rp.allocator), module (rp.module), transformations (rp.transformations) {}
-
-    protected:
-        AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
-        {
-            auto& transformedExpression = transformations.getTransformedExpression (e);
-            auto sourceType = e.getResultType();
-
-            if (sourceType.isEqual (targetType, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
-                return transformedExpression;
-
-            if (sourceType.isComplex())
-            {
-                // Cast the real/imaginary components to the targetType
-                auto& args = allocator.allocate<AST::CommaSeparatedList> (e.context);
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "real")));
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "imag")));
-
-                return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), args);
-            }
-
-            return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), transformedExpression);
-        }
-
-        AST::Allocator& allocator;
-        AST::ModuleBase& module;
-        Transformations& transformations;
-    };
-
     //==============================================================================
-    struct ApplyTransformations : public ComplexBase
+    struct ApplyTransformations : public RewritingASTVisitor
     {
-        ApplyTransformations (ConvertComplexPass& rp) : ComplexBase (rp) {}
+        ApplyTransformations (Transformations& t) : transformations (t) {}
 
         using super = RewritingASTVisitor;
+
+        Transformations& transformations;
 
         AST::Expression& visit (AST::UnaryOperator& u) override
         {
@@ -187,72 +154,31 @@ private:
             return transformations.getTransformedExpression (t);
         }
 
-    };
-
-    //==============================================================================
-    struct ConvertComplexElementAccess  : public ComplexBase
-    {
-        ConvertComplexElementAccess (ConvertComplexPass& rp) : ComplexBase (rp) {}
-
-        using super = RewritingASTVisitor;
-        static inline constexpr const char* getPassName()  { return "ConvertComplexElementAccess"; }
-
         AST::Expression& visit (AST::Assignment& a) override
         {
-            if (a.isResolved() && requiresRemapping (a.getResultType()))
-            {
-                a.newValue = addCastIfRequired (a.newValue, a.getResultType());
-
-                if (auto v = cast<AST::ArrayElementRef> (a.target))
-                {
-                    if (v->object->getResultType().isVector())
-                    {
-                        auto& functionName = allocator.allocate<AST::QualifiedIdentifier> (a.context, soul::IdentifierPath::fromString (allocator.identifiers, "setElement"));
-                        auto& args = allocator.allocate<AST::CommaSeparatedList> (a.context);
-                        args.items.push_back (*v->object);
-                        args.items.push_back (*v->startIndex);
-                        args.items.push_back (a.newValue);
-
-                        auto& call = allocator.allocate<AST::CallOrCast> (functionName, args, true);
-
-                        return super::visit (call);
-                    }
-                }
-            }
-
             super::visit (a);
-            return a;
+            return transformations.getTransformedExpression (a);
         }
 
         AST::Expression& visit (AST::ArrayElementRef& r) override
         {
             super::visit (r);
-
-            if (r.isResolved() && requiresRemapping (r.getResultType()) && r.object->getResultType().isVector())
-            {
-                // Convert this to a method call
-                auto& functionName = allocator.allocate<AST::QualifiedIdentifier> (r.context, soul::IdentifierPath::fromString (allocator.identifiers, "getElement"));
-                auto& args = allocator.allocate<AST::CommaSeparatedList> (r.context);
-                args.items.push_back (*r.object);
-                args.items.push_back (*r.startIndex);
-
-                return allocator.allocate<AST::CallOrCast> (functionName, args, true);
-            }
-
-            return r;
+            return transformations.getTransformedExpression (r);
         }
     };
 
     //==============================================================================
-    struct BuildTransformations  : public ComplexBase
+    struct BuildTransformations  : public ASTVisitor
     {
-        BuildTransformations (ConvertComplexPass& rp) : ComplexBase (rp) {}
+        BuildTransformations (ConvertComplexPass& rp) : allocator (rp.allocator), module (rp.module), transformations (rp.transformations) {}
 
-        using super = RewritingASTVisitor;
-        static inline constexpr const char* getPassName()  { return "ConvertComplexOperators"; }
+        using super = ASTVisitor;
+        static inline constexpr const char* getPassName()  { return "BuildTransformations"; }
+        AST::Allocator& allocator;
+        AST::ModuleBase& module;
+        Transformations& transformations;
 
-
-        AST::Expression& visit (AST::ComplexMemberRef& s) override
+        void visit (AST::ComplexMemberRef& s) override
         {
             if (auto v = cast<AST::ArrayElementRef> (s.object))
             {
@@ -262,7 +188,7 @@ private:
                     auto& memberRef = allocator.allocate<AST::DotOperator> (s.context, *v->object, identifierFromString (allocator, s.context, s.memberName));
 
                     transformations.addTransformation (s, allocator.allocate<AST::ArrayElementRef> (s.context, memberRef, v->startIndex, v->endIndex, v->isSlice));
-                    return s;
+                    return;
                 }
             }
             else
@@ -272,12 +198,11 @@ private:
 
             // Convert back to a dot operator, so that the subsequent resolution pass will convert it to the right struct member access
             transformations.addTransformation (s, allocator.allocate<AST::DotOperator> (s.context, s.object, identifierFromString (allocator, s.context, s.memberName)));
-            return s;
         }
 
-        AST::Expression& visit (AST::UnaryOperator& u) override
+        void visit (AST::UnaryOperator& u) override
         {
-            RewritingASTVisitor::visit (u);
+            super::visit (u);
 
             if (u.isResolved())
             {
@@ -291,13 +216,11 @@ private:
                     transformations.addTransformation (u, allocator.allocate<AST::CallOrCast> (functionName, args, true));
                 }
             }
-
-            return u;
         }
 
-        AST::Expression& visit (AST::BinaryOperator& b) override
+        void visit (AST::BinaryOperator& b) override
         {
-            RewritingASTVisitor::visit (b);
+            super::visit (b);
 
             if (b.isResolved())
             {
@@ -312,11 +235,9 @@ private:
                     transformations.addTransformation (b, allocator.allocate<AST::CallOrCast> (functionName, args, true));
                 }
             }
-
-            return b;
         }
 
-        AST::Statement& visit (AST::ReturnStatement& r) override
+        void visit (AST::ReturnStatement& r) override
         {
             super::visit (r);
 
@@ -331,22 +252,85 @@ private:
 
                 transformations.addTransformation (r, returnStatement);
             }
-
-            return r;
         }
 
-        AST::Expression& visit (AST::TypeCast& t) override
+        void visit (AST::TypeCast& t) override
         {
             super::visit (t);
 
             if (requiresRemapping (t.targetType))
                 if (t.source->isResolved() && requiresRemapping (t.source))
                     transformations.addTransformation (t, addCastIfRequired (t.source, t.targetType));
+        }
 
-            return t;
+        void visit (AST::Assignment& a) override
+        {
+            if (a.isResolved() && requiresRemapping (a.getResultType()))
+            {
+                a.newValue = addCastIfRequired (a.newValue, a.getResultType());
+
+                if (auto v = cast<AST::ArrayElementRef> (a.target))
+                {
+                    if (v->object->getResultType().isVector())
+                    {
+                        super::visitObject (a.newValue);
+
+                        auto& functionName = allocator.allocate<AST::QualifiedIdentifier> (a.context, soul::IdentifierPath::fromString (allocator.identifiers, "setElement"));
+                        auto& args = allocator.allocate<AST::CommaSeparatedList> (a.context);
+                        args.items.push_back (*v->object);
+                        args.items.push_back (*v->startIndex);
+                        args.items.push_back (addCastIfRequired (a.newValue, v->object->getResultType().getVectorElementType()));
+
+                        auto& call = allocator.allocate<AST::CallOrCast> (functionName, args, true);
+
+                        transformations.addTransformation (a, call);
+                        return;
+                    }
+                }
+            }
+
+            super::visit (a);
+        }
+
+        void visit (AST::ArrayElementRef& r) override
+        {
+            super::visit (r);
+
+            if (r.isResolved() && requiresRemapping (r.getResultType()) && r.object->getResultType().isVector())
+            {
+                // Convert this to a method call
+                auto& functionName = allocator.allocate<AST::QualifiedIdentifier> (r.context, soul::IdentifierPath::fromString (allocator.identifiers, "getElement"));
+                auto& args = allocator.allocate<AST::CommaSeparatedList> (r.context);
+                args.items.push_back (*r.object);
+                args.items.push_back (*r.startIndex);
+
+                transformations.addTransformation (r, allocator.allocate<AST::CallOrCast> (functionName, args, true));
+            }
         }
 
     private:
+
+        AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
+        {
+            auto& transformedExpression = transformations.getTransformedExpression (e);
+            auto sourceType = e.getResultType();
+
+            if (sourceType.isEqual (targetType, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
+                return transformedExpression;
+
+            if (sourceType.isComplex())
+            {
+                // Cast the real/imaginary components to the targetType
+                auto& args = allocator.allocate<AST::CommaSeparatedList> (e.context);
+                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "real")));
+                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "imag")));
+
+                return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), args);
+            }
+
+            return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), transformedExpression);
+        }
+
         pool_ref<AST::QualifiedIdentifier> getFunctionNameForOperator (AST::UnaryOperator& u)
         {
             std::string functionName;
@@ -386,9 +370,9 @@ private:
     };
 
     //==============================================================================
-    struct ConvertComplexRemapTypes  : public ComplexBase
+    struct ConvertComplexRemapTypes  : public RewritingASTVisitor
     {
-        ConvertComplexRemapTypes (ConvertComplexPass& rp)  : ComplexBase (rp)
+        ConvertComplexRemapTypes (ConvertComplexPass& p)  : allocator (p.allocator), module (p.module)
         {
             soulLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul"));
         }
@@ -405,6 +389,8 @@ private:
         using super = RewritingASTVisitor;
         static inline constexpr const char* getPassName()  { return "ConvertComplexRemapTypes"; }
 
+        AST::Allocator& allocator;
+        AST::ModuleBase& module;
         AST::ModuleBase* soulLib;
 
         std::vector<AST::StructDeclaration*> structsToUpdate;
