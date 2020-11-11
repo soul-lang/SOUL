@@ -652,6 +652,40 @@ struct AudioMIDIWrapper
         totalFramesRendered += framesDone;
     }
 
+    uint32_t getExpectedNumInputChannels() const     { return audioInputList.totalNumChannels; }
+    uint32_t getExpectedNumOutputChannels() const    { return audioOutputList.totalNumChannels; }
+
+    bool postInputEvent (EndpointHandle endpoint, const choc::value::ValueView& value)
+    {
+        return inputFIFO.addInputData (endpoint, totalFramesRendered, value);
+    }
+
+    template <typename HandleEventFn>
+    void deliverOutgoingEvents (HandleEventFn&& handleEvent)
+    {
+        eventOutputList.deliverPendingEvents (handleEvent);
+    }
+
+    ParameterStateList parameterList;
+    TimelineEventEndpointList timelineEventEndpointList;
+
+private:
+    //==============================================================================
+    Performer& performer;
+
+    MultiEndpointFIFO inputFIFO;
+
+    AudioInputList   audioInputList;
+    MIDIInputList    midiInputList;
+    AudioOutputList  audioOutputList;
+    MIDIOutputList   midiOutputList;
+    EventOutputList  eventOutputList;
+
+    uint64_t totalFramesRendered = 0;
+    uint32_t maxBlockSize = 0;
+
+    static constexpr uint32_t maxInternalBlockSize = 512;
+
     void renderInChunks (choc::buffer::ChannelArrayView<const float> input,
                          choc::buffer::ChannelArrayView<float> output,
                          MIDIEventInputList midiIn,
@@ -699,40 +733,6 @@ struct AudioMIDIWrapper
                 SOUL_ASSERT_FALSE;
         }
     }
-
-    uint32_t getExpectedNumInputChannels() const     { return audioInputList.totalNumChannels; }
-    uint32_t getExpectedNumOutputChannels() const    { return audioOutputList.totalNumChannels; }
-
-    bool postInputEvent (EndpointHandle endpoint, const choc::value::ValueView& value)
-    {
-        return inputFIFO.addInputData (endpoint, totalFramesRendered, value);
-    }
-
-    template <typename HandleEventFn>
-    void deliverOutgoingEvents (HandleEventFn&& handleEvent)
-    {
-        eventOutputList.deliverPendingEvents (handleEvent);
-    }
-
-    MultiEndpointFIFO inputFIFO;
-
-    ParameterStateList parameterList;
-    TimelineEventEndpointList timelineEventEndpointList;
-
-private:
-    //==============================================================================
-    Performer& performer;
-
-    AudioInputList   audioInputList;
-    MIDIInputList    midiInputList;
-    AudioOutputList  audioOutputList;
-    MIDIOutputList   midiOutputList;
-    EventOutputList  eventOutputList;
-
-    uint64_t totalFramesRendered = 0;
-    uint32_t maxBlockSize = 0;
-
-    static constexpr uint32_t maxInternalBlockSize = 512;
 };
 
 }

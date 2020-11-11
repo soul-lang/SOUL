@@ -54,7 +54,7 @@ struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
 
         virtual void render (choc::buffer::ChannelArrayView<const float> input,
                              choc::buffer::ChannelArrayView<float> output,
-                             const MIDIEvent* midiIn, uint32_t midiInCount) = 0;
+                             MIDIEventInputList) = 0;
 
         virtual void renderStarting (double sampleRate, uint32_t blockSize) = 0;
         virtual void renderStopped() = 0;
@@ -182,7 +182,7 @@ private:
             if (callback != nullptr)
                 callback->render (choc::buffer::createChannelArrayView (inputChannelData,  (uint32_t) numInputChannels,  (uint32_t) numFrames),
                                   choc::buffer::createChannelArrayView (outputChannelData, (uint32_t) numOutputChannels, (uint32_t) numFrames),
-                                  inputMIDIBuffer.data(), static_cast<uint32_t> (inputMIDIBuffer.size()));
+                                  { inputMIDIBuffer.data(), inputMIDIBuffer.data() + inputMIDIBuffer.size() });
         }
 
         totalFramesProcessed += static_cast<uint64_t> (numFrames);

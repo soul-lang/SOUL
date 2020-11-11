@@ -566,12 +566,12 @@ private:
 
     void render (choc::buffer::ChannelArrayView<const float> input,
                  choc::buffer::ChannelArrayView<float> output,
-                 const MIDIEvent* midiIn,
-                 uint32_t midiInCount) override
+                 MIDIEventInputList midiIn) override
     {
         std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
 
-        auto context = RenderContext { 0, input, output, midiIn, nullptr, 0, midiInCount, 0, 0 };
+        auto context = RenderContext { 0, input, output, midiIn.listStart, nullptr, 0,
+                                       static_cast<uint32_t> (midiIn.listEnd - midiIn.listStart), 0, 0 };
 
         for (auto& s : activeSessions)
             s->processBlock (context);
