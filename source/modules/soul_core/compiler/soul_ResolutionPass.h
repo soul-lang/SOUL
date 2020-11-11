@@ -1251,7 +1251,7 @@ private:
                 auto type = s.lhs->resolveAsType();
 
                 if (! type.canBeVectorElementType())
-                    s.lhs->context.throwError (Errors::wrongTypeForVectorElement());
+                    s.rhs->context.throwError (Errors::wrongTypeForVectorElement());
 
                 if (AST::isResolvedAsValue (s.rhs))
                 {
