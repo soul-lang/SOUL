@@ -91,9 +91,6 @@ private:
         if (type.isComplex())
             return true;
 
-        if (type.isVector() && type.getVectorElementType().isComplex())
-            return true;
-
         if (type.isArray() && type.getArrayElementType().isComplex())
             return true;
 
@@ -313,6 +310,10 @@ private:
         AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
         {
             auto& transformedExpression = transformations.getTransformedExpression (e);
+
+            if (auto l = cast<AST::CommaSeparatedList> (e))
+                return transformedExpression;
+
             auto sourceType = e.getResultType();
 
             if (sourceType.isEqual (targetType, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
@@ -468,6 +469,19 @@ private:
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float32, resultType.getVectorSize()), realValues)));
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float32, resultType.getVectorSize()), imagValues)));
                     }
+                    else if (resultType.isArray())
+                    {
+                        for (size_t i = 0; i < resultType.getArraySize(); i++)
+                        {
+                            auto v = c.value.getSlice (i, i + 1).getAsComplex32();
+
+                            auto& item = allocator.allocate<AST::CommaSeparatedList> (c.context);
+                            item.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.real())));
+                            item.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.imag())));
+
+                            args.items.push_back (item);
+                        }
+                    }
                     else
                     {
                         auto v = c.value.getAsComplex32();
@@ -491,6 +505,19 @@ private:
 
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float64, resultType.getVectorSize()), realValues)));
                         args.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value::createArrayOrVector (soul::Type::createVector (PrimitiveType::float64, resultType.getVectorSize()), imagValues)));
+                    }
+                    else if (resultType.isArray())
+                    {
+                        for (size_t i = 0; i < resultType.getArraySize(); i++)
+                        {
+                            auto v = c.value.getSlice (i, i + 1).getAsComplex64();
+
+                            auto& item = allocator.allocate<AST::CommaSeparatedList> (c.context);
+                            item.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.real())));
+                            item.items.push_back (allocator.allocate<AST::Constant> (c.context, soul::Value (v.imag())));
+
+                            args.items.push_back (item);
+                        }
                     }
                     else
                     {

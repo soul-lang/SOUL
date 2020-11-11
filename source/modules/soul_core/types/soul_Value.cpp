@@ -169,8 +169,6 @@ struct Value::PackedData
 
     std::complex<double> getAsComplex64() const
     {
-        SOUL_ASSERT (type.isPrimitive() || type.isVectorOfSize1());
-
         if (type.isComplex64())  return getAs<std::complex<double>>();
         if (type.isComplex32())  return getAs<std::complex<float>>();
 
