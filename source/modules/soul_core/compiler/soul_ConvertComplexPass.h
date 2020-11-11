@@ -312,7 +312,10 @@ private:
             auto& transformedExpression = transformations.getTransformedExpression (e);
 
             if (auto l = cast<AST::CommaSeparatedList> (e))
+            {
+                SanityCheckPass::expectSilentCastPossible (e.context, targetType, *l);
                 return transformedExpression;
+            }
 
             auto sourceType = e.getResultType();
 
