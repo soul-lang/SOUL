@@ -663,6 +663,7 @@ struct AST
         std::vector<pool_ref<UsingDeclaration>> usings;
         std::vector<pool_ref<NamespaceAliasDeclaration>> namespaceAliases;
         std::vector<pool_ref<StructDeclaration>> structures;
+        std::vector<pool_ref<StaticAssertion>> staticAssertions;
 
         std::function<ModuleBase&(AST::Allocator&, AST::Namespace& parentNamespace, const std::string& newName)> createClone;
 
@@ -2507,6 +2508,9 @@ struct AST
             : Expression (ObjectType::StaticAssertion, c, ExpressionKind::unknown),
               condition (failureCondition), errorMessage (std::move (error))
         {
+            if (errorMessage.empty())
+                errorMessage = "static_assert failed";
+
             SOUL_ASSERT (isPossiblyValue (condition.get()));
         }
 

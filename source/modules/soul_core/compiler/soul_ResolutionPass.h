@@ -1921,7 +1921,7 @@ private:
                         return createAdvanceCall (call);
 
                     if (name->path.isUnqualifiedName ("static_assert"))
-                        return createStaticAssert (call);
+                        return ASTUtilities::createStaticAssertion (call.context, allocator, call.arguments->items);
 
                     if (name->path.isUnqualifiedName ("at"))
                         return createAtCall (call);
@@ -2275,32 +2275,6 @@ private:
             if (c.getNumArguments() != 0)   c.context.throwError (Errors::advanceHasNoArgs());
 
             return allocator.allocate<AST::AdvanceClock> (c.context);
-        }
-
-        AST::StaticAssertion& createStaticAssert (AST::CallOrCast& c)
-        {
-            auto numArgs = c.getNumArguments();
-
-            if (numArgs != 1 && numArgs != 2)
-                c.context.throwError (Errors::expected1or2Args());
-
-            std::string error = "static_assert failed";
-
-            if (numArgs == 2)
-                error = getErrorMessageArgument (c.arguments->items[1]);
-
-            return allocator.allocate<AST::StaticAssertion> (c.context, c.arguments->items.front(), error);
-        }
-
-        std::string_view getErrorMessageArgument (AST::Expression& e)
-        {
-            if (AST::isResolvedAsConstant (e))
-                if (auto c = e.getAsConstant())
-                    if (c->value.getType().isStringLiteral())
-                        return allocator.stringDictionary.getStringForHandle (c->value.getStringLiteral());
-
-            e.context.throwError (Errors::expectedStringLiteralAsArg2());
-            return {};
         }
 
         AST::Expression& createAtCall (AST::CallOrCast& call)

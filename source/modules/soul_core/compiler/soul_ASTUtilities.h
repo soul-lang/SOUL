@@ -239,6 +239,34 @@ struct ASTUtilities
         return key.str();
     }
 
+    static AST::StaticAssertion& createStaticAssertion (const AST::Context& context, AST::Allocator& allocator,
+                                                        ArrayView<pool_ref<AST::Expression>> args)
+    {
+        auto numArgs = args.size();
+
+        if (numArgs != 1 && numArgs != 2)
+            context.throwError (Errors::expected1or2Args());
+
+        auto getError = [&] () -> std::string_view
+        {
+            if (numArgs == 2)
+            {
+                auto& e = args[1].get();
+
+                if (AST::isResolvedAsConstant (e))
+                    if (auto c = e.getAsConstant())
+                        if (c->value.getType().isStringLiteral())
+                            return allocator.stringDictionary.getStringForHandle (c->value.getStringLiteral());
+
+                e.context.throwError (Errors::expectedStringLiteralAsArg2());
+            }
+
+            return {};
+        };
+
+        return allocator.allocate<AST::StaticAssertion> (context, args.front(), std::string (getError()));
+    }
+
 private:
     static void mergeNamespaces (AST::Namespace& target, AST::Namespace& source)
     {

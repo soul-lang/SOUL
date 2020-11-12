@@ -381,7 +381,7 @@ private:
         bool isExternal = matchIf (Keyword::external);
 
         if (matches ("static_assert"))
-            declarationContext.throwError (Errors::staticAssertionNotAllowed());
+            return parseStaticAssert();
 
         auto type = tryParsingType (ParseTypeContext::variableType);
 
@@ -458,6 +458,16 @@ private:
         }
 
         giveErrorOnSemicolon();
+    }
+
+    void parseStaticAssert()
+    {
+        auto context = getContext();
+        skip();
+        expect (Operator::openParen);
+        auto& args = parseCommaSeparatedListOfExpressions (false, false);
+        expect (Operator::semicolon);
+        module->staticAssertions.push_back (ASTUtilities::createStaticAssertion (context, allocator, args.items));
     }
 
     //==============================================================================

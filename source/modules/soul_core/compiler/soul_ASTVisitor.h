@@ -95,6 +95,7 @@ struct ASTVisitor
         visitObjectIfNotNull (p.latency);
         visitArray (p.functions);
         visitArray (p.namespaceAliases);
+        visitArray (p.staticAssertions);
     }
 
     virtual void visit (AST::Graph& g)
@@ -106,6 +107,7 @@ struct ASTVisitor
         visitArray (g.connections);
         visitArray (g.constants);
         visitArray (g.namespaceAliases);
+        visitArray (g.staticAssertions);
     }
 
     virtual void visit (AST::Namespace& n)
@@ -116,6 +118,7 @@ struct ASTVisitor
         visitArray (n.constants);
         visitArray (n.functions);
         visitArray (n.namespaceAliases);
+        visitArray (n.staticAssertions);
     }
 
     virtual void visit (AST::Block& b)
@@ -518,6 +521,7 @@ struct RewritingASTVisitor
         replaceArray      (p.functions);
         replaceExpression (p.latency);
         visitArray        (p.namespaceAliases);
+        visitArray        (p.staticAssertions);
 
         return p;
     }
@@ -531,6 +535,7 @@ struct RewritingASTVisitor
         visitArray   (g.connections);
         visitArray   (g.constants);
         visitArray   (g.namespaceAliases);
+        visitArray   (g.staticAssertions);
 
         return g;
     }
@@ -543,6 +548,7 @@ struct RewritingASTVisitor
         visitArray   (n.constants);
         replaceArray (n.functions);
         visitArray   (n.namespaceAliases);
+        visitArray   (n.staticAssertions);
 
         return n;
     }
