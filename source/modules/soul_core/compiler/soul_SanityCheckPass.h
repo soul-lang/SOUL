@@ -33,8 +33,12 @@ struct SanityCheckPass  final
         checkOverallStructure (module);
     }
 
-    /** After the AST is resolved, this pass checks for more subtle errors */
-    static void runPostResolution (AST::ModuleBase& module)
+    static void runPostResolutionChecks (AST::ModuleBase& module)
+    {
+        PostResolutionChecks().ASTVisitor::visitObject (module);
+    }
+
+    static void runPreHEARTGenChecks (AST::ModuleBase& module)
     {
         runEventFunctionChecker (module);
         runDuplicateNameChecker (module);
@@ -214,6 +218,16 @@ struct SanityCheckPass  final
     {
         if (type.isFixedSizeAggregate() && type.getNumAggregateElements() != numberAvailable)
             c.throwError (Errors::wrongNumArgsForAggregate (type.getDescription()));
+    }
+
+    static void throwErrorForBinaryOperatorTypes (AST::BinaryOperator& b)
+    {
+        if (b.lhs->getResultType().isArray() && b.rhs->getResultType().isArray())
+            b.context.throwError (Errors::cannotOperateOnArrays (getSymbol (b.operation)));
+
+        b.context.throwError (Errors::illegalTypesForBinaryOperator (getSymbol (b.operation),
+                                                                     b.lhs->getResultType().getDescription(),
+                                                                     b.rhs->getResultType().getDescription()));
     }
 
     static int64_t checkDelayLineLength (const AST::Context& context, const Value& v)
@@ -514,6 +528,18 @@ private:
     {
         using super = ASTVisitor;
 
+        void visit (AST::QualifiedIdentifier& qi) override
+        {
+            super::visit (qi);
+            qi.context.throwError (Errors::unresolvedSymbol (qi.path));
+        }
+
+        void visit (AST::CallOrCast& c) override
+        {
+            super::visit (c);
+            c.context.throwError (Errors::cannotResolveFunctionOrCast());
+        }
+
         void visit (AST::VariableDeclaration& v) override
         {
             super::visit (v);
@@ -554,7 +580,8 @@ private:
             super::visit (g);
 
             for (auto input : g.endpoints)
-                input->getDetails().checkDataTypesValid (input->context);
+                if (input->isResolved())
+                    input->getDetails().checkDataTypesValid (input->context);
 
             for (auto& v : g.constants)
                 if (! v->isCompileTimeConstant())
@@ -635,13 +662,32 @@ private:
         void visit (AST::EndpointDeclaration& e) override
         {
             super::visit (e);
-            checkArraySize (e.getDetails().arraySize, AST::maxEndpointArraySize);
+
+            if (heart::isReservedFunctionName (e.name))
+                e.context.throwError (Errors::invalidEndpointName (e.name));
+
+            if (e.isResolved())
+            {
+                e.getDetails().checkDataTypesValid (e.context);
+                checkArraySize (e.getDetails().arraySize, AST::maxEndpointArraySize);
+            }
         }
 
         void visit (AST::ProcessorInstance& i) override
         {
             super::visit (i);
             checkArraySize (i.arraySize, AST::maxProcessorArraySize);
+
+            if (i.clockMultiplierRatio != nullptr)   validateClockRatio (*i.clockMultiplierRatio);
+            if (i.clockDividerRatio != nullptr)      validateClockRatio (*i.clockDividerRatio);
+        }
+
+        static void validateClockRatio (AST::Expression& ratio)
+        {
+            if (auto c = ratio.getAsConstant())
+                heart::getClockRatioFromValue (ratio.context, c->value);
+            else
+                ratio.context.throwError (Errors::ratioMustBeConstant());
         }
 
         void visit (AST::Connection& c) override
@@ -657,12 +703,16 @@ private:
             }
         }
 
-        void visit (AST::UnaryOperator& u) override
+        void visit (AST::Assignment& a) override
         {
-            super::visit (u);
+            super::visit (a);
 
-            if (! UnaryOp::isTypeSuitable (u.operation, u.source->getResultType()))
-                u.source->context.throwError (Errors::wrongTypeForUnary());
+            if (! a.target->isAssignable())
+                a.context.throwError (Errors::operatorNeedsAssignableTarget ("="));
+
+            expectSilentCastPossible (a.context,
+                                      a.target->getResultType().withConstAndRefFlags (false, false),
+                                      a.newValue);
         }
 
         void visitObject (AST::Statement& t) override
@@ -679,9 +729,52 @@ private:
             super::visitObject (t);
         }
 
+        void visit (AST::PreOrPostIncOrDec& p) override
+        {
+            super::visit (p);
+
+            auto getOperatorName = [] (const AST::PreOrPostIncOrDec& pp)  { return pp.isIncrement ? "++" : "--"; };
+
+            if (! p.target->isAssignable())
+                p.context.throwError (Errors::operatorNeedsAssignableTarget (getOperatorName (p)));
+
+            auto type = p.target->getResultType();
+
+            if (type.isBool() || ! (type.isPrimitive() || type.isBoundedInt()))
+                p.context.throwError (Errors::illegalTypeForOperator (getOperatorName (p)));
+        }
+
+        void visit (AST::IfStatement& i) override
+        {
+            if (i.isConstIf)
+                i.condition->context.throwError (Errors::expectedConstant());
+
+            super::visit (i);
+        }
+
+        void visit (AST::UnaryOperator& u) override
+        {
+            super::visit (u);
+
+            if (! UnaryOp::isTypeSuitable (u.operation, u.source->getResultType()))
+                u.source->context.throwError (Errors::wrongTypeForUnary());
+        }
+
         void visit (AST::BinaryOperator& b) override
         {
             super::visit (b);
+
+            throwErrorIfNotReadableValue (b.rhs);
+
+            if (b.isOutputEndpoint())
+                return;
+
+            throwErrorIfNotReadableValue (b.lhs);
+
+            auto operandType = b.getOperandType();
+
+            if (! operandType.isValid())
+                throwErrorForBinaryOperatorTypes (b);
 
             if (BinaryOp::isComparisonOperator (b.operation))
             {
@@ -698,6 +791,195 @@ private:
                 if (result != 0)
                     b.context.throwError (result > 0 ? Errors::comparisonAlwaysTrue()
                                                      : Errors::comparisonAlwaysFalse());
+            }
+        }
+
+        void visit (AST::TernaryOp& t) override
+        {
+            super::visit (t);
+            throwErrorIfNotReadableValue (t.condition);
+            throwErrorIfNotReadableValue (t.trueBranch);
+            throwErrorIfNotReadableValue (t.falseBranch);
+            expectSilentCastPossible (t.context, Type (PrimitiveType::bool_), t.condition);
+        }
+
+        void visit (AST::TypeCast& c) override
+        {
+            super::visit (c);
+            SOUL_ASSERT (c.getNumArguments() != 0); // should have already been caught by the constant folder
+
+            if (c.targetType.isUnsizedArray())
+                c.context.throwError (Errors::notYetImplemented ("cast to unsized arrays"));
+
+            if (auto list = cast<AST::CommaSeparatedList> (c.source))
+            {
+                auto numArgs = list->items.size();
+
+                if (numArgs != 1)
+                    throwErrorIfWrongNumberOfElements (c.context, c.targetType, numArgs);
+            }
+        }
+
+        void visit (AST::ReturnStatement& r) override
+        {
+            super::visit (r);
+
+            auto returnTypeExp = r.getParentFunction()->returnType;
+            throwErrorIfNotReadableType (*returnTypeExp);
+            auto returnType = returnTypeExp->resolveAsType();
+
+            if (r.returnValue != nullptr)
+                expectSilentCastPossible (r.context, returnType, *r.returnValue);
+            else if (! returnType.isVoid())
+                r.context.throwError (Errors::voidFunctionCannotReturnValue());
+        }
+
+        void visit (AST::LoopStatement& loop) override
+        {
+            super::visit (loop);
+
+            if (loop.numIterations != nullptr)
+            {
+                if (auto c = loop.numIterations->getAsConstant())
+                    if (c->value.getAsInt64() <= 0)
+                        loop.numIterations->context.throwError (Errors::negativeLoopCount());
+
+                expectSilentCastPossible (loop.numIterations->context,
+                                          Type (PrimitiveType::int64), *loop.numIterations);
+            }
+        }
+
+        static Type getDataTypeOfArrayRefLHS (AST::ASTObject& o)
+        {
+            if (auto e = cast<AST::EndpointDeclaration> (o))
+                if (e->isResolved())
+                    return e->getDetails().getSampleArrayTypes().front();
+
+            if (auto e = cast<AST::Expression> (o))
+            {
+                if (auto endpoint = e->getAsEndpoint())
+                    if (endpoint->isResolved())
+                        return endpoint->getDetails().getSampleArrayTypes().front();
+
+                return e->getResultType();
+            }
+
+            return {};
+        }
+
+        void visit (AST::ArrayElementRef& s) override
+        {
+            super::visit (s);
+
+            auto lhsType = getDataTypeOfArrayRefLHS (*s.object);
+
+            if (! lhsType.isArrayOrVector())
+            {
+                if (AST::isResolvedAsEndpoint (s.object))
+                    s.object->context.throwError (Errors::cannotUseBracketOnEndpoint());
+
+                s.object->context.throwError (Errors::expectedArrayOrVectorForBracketOp());
+            }
+
+            if (auto startIndexConst = s.startIndex->getAsConstant())
+            {
+                auto startIndex = TypeRules::checkAndGetArrayIndex (s.startIndex->context, startIndexConst->value);
+
+                if (! (lhsType.isUnsizedArray() || lhsType.isValidArrayOrVectorIndex (startIndex)))
+                    s.startIndex->context.throwError (Errors::indexOutOfRange());
+
+                if (s.isSlice)
+                {
+                    if (lhsType.isUnsizedArray())
+                        s.startIndex->context.throwError (Errors::notYetImplemented ("Slices of dynamic arrays"));
+
+                    if (! lhsType.getElementType().isPrimitive())
+                        s.startIndex->context.throwError (Errors::notYetImplemented ("Slices of non-primitive arrays"));
+
+                    if (s.endIndex != nullptr)
+                    {
+                        if (auto endIndexConst = s.endIndex->getAsConstant())
+                        {
+                            auto endIndex = TypeRules::checkAndGetArrayIndex (s.endIndex->context, endIndexConst->value);
+
+                            if (! lhsType.isValidArrayOrVectorRange (startIndex, endIndex))
+                                s.endIndex->context.throwError (Errors::illegalSliceSize());
+                        }
+                        else
+                        {
+                            s.endIndex->context.throwError (Errors::notYetImplemented ("Dynamic slice indexes"));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (s.isSlice)
+                    s.startIndex->context.throwError (Errors::notYetImplemented ("Dynamic slice indexes"));
+
+                throwErrorIfNotReadableValue (*s.startIndex);
+                auto indexType = s.startIndex->getResultType();
+
+                if (lhsType.isUnsizedArray())
+                {
+                    if (! (indexType.isInteger() || indexType.isBoundedInt()))
+                        s.startIndex->context.throwError (Errors::nonIntegerArrayIndex());
+                }
+                else
+                {
+                    expectSilentCastPossible (s.startIndex->context,
+                                              Type (PrimitiveType::int64), *s.startIndex);
+                }
+            }
+        }
+
+        void visit (AST::WriteToEndpoint& w) override
+        {
+            super::visit (w);
+
+            throwErrorIfNotReadableValue (w.value);
+            auto& topLevelWrite = ASTUtilities::getTopLevelWriteToEndpoint (w);
+
+            // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
+            if (auto outputEndpoint = cast<AST::OutputEndpointRef> (topLevelWrite.target))
+            {
+                expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getSampleArrayTypes(), w.value);
+                return;
+            }
+
+            if (auto arraySubscript = cast<AST::ArrayElementRef> (topLevelWrite.target))
+            {
+                if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
+                {
+                    expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getResolvedDataTypes(), w.value);
+                    return;
+                }
+            }
+
+            w.context.throwError (Errors::targetMustBeOutput());
+            return;
+        }
+
+        void visit (AST::Annotation& a) override
+        {
+            super::visit (a);
+
+            for (auto& property : a.properties)
+                checkPropertyValue (property.value);
+        }
+
+        static void checkPropertyValue (AST::Expression& value)
+        {
+            if (! value.isCompileTimeConstant())
+                value.context.throwError (Errors::propertyMustBeConstant());
+
+            if (auto constValue = value.getAsConstant())
+            {
+                auto type = constValue->getResultType();
+
+                if (! (type.isPrimitiveFloat() || type.isPrimitiveInteger()
+                        || type.isPrimitiveBool() || type.isStringLiteral()))
+                    value.context.throwError (Errors::illegalPropertyType());
             }
         }
 

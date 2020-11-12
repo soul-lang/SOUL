@@ -957,14 +957,14 @@ struct AST
                 for (size_t i = 1; i < types.size(); ++i)
                     for (size_t j = 0; j < i; ++j)
                         if (types[i].isEqual (types[j], Type::ignoreVectorSize1))
-                            context.throwError (Errors::duplicateTypesInList (types[j].getDescription(),
-                                                                              types[i].getDescription()));
+                            dataTypes[j]->context.throwError (Errors::duplicateTypesInList (types[j].getDescription(),
+                                                                                            types[i].getDescription()));
             }
 
             if (arraySize != nullptr)
-                for (auto t : types)
-                    if (t.isArray())
-                        context.throwError (Errors::illegalTypeForEndpointArray());
+                for (size_t i = 0; i < types.size(); ++i)
+                    if (types[i].isArray())
+                        dataTypes[i]->context.throwError (Errors::illegalTypeForEndpointArray());
         }
 
         bool isResolved() const

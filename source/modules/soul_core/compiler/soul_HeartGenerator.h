@@ -32,7 +32,7 @@ struct HEARTGenerator  : public ASTVisitor
                        uint32_t maxNestedExpressionDepth = 255)
     {
         for (auto& m : sourceModules)
-            SanityCheckPass::runPostResolution (m);
+            SanityCheckPass::runPreHEARTGenChecks (m);
 
         std::vector<HEARTGenerator> generators;
 

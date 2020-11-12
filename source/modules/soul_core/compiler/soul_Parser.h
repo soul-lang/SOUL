@@ -733,6 +733,7 @@ private:
 
     void parseInputOrOutputName (AST::EndpointDeclaration& e)
     {
+        e.context = getContext();
         e.name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
 
         if (matchIf (Operator::openBracket))

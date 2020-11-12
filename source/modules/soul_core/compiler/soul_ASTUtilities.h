@@ -83,6 +83,14 @@ struct ASTUtilities
                   [] (pool_ref<AST::ModuleBase>& m) { return ! m->getSpecialisationParameters().empty(); });
     }
 
+    static AST::WriteToEndpoint& getTopLevelWriteToEndpoint (AST::WriteToEndpoint& ws)
+    {
+        if (auto chainedWrite = cast<AST::WriteToEndpoint> (ws.target))
+            return getTopLevelWriteToEndpoint (*chainedWrite);
+
+        return ws;
+    }
+
     static void resolveHoistedEndpoints (AST::Allocator& allocator, AST::ModuleBase& module)
     {
         for (auto& m : module.getSubModules())
