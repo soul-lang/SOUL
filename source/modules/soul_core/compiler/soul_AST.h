@@ -1712,6 +1712,7 @@ struct AST
             isScalar,
             isString,
             isBool,
+            isComplex,
             isReference,
             isConst
         };
@@ -1752,6 +1753,7 @@ struct AST
             if (name == "isScalar")         return Op::isScalar;
             if (name == "isString")         return Op::isString;
             if (name == "isBool")           return Op::isBool;
+            if (name == "isComplex")        return Op::isComplex;
             if (name == "isReference")      return Op::isReference;
             if (name == "isConst")          return Op::isConst;
 
@@ -1786,6 +1788,7 @@ struct AST
                 case Op::isScalar:          return inputType.isScalar();
                 case Op::isString:          return inputType.isStringLiteral();
                 case Op::isBool:            return inputType.isBool();
+                case Op::isComplex:         return inputType.isComplex();
                 case Op::isReference:       return inputType.isReference();
                 case Op::isConst:           return inputType.isConst();
 
@@ -1855,7 +1858,7 @@ struct AST
         {
             if (operation == Op::size)           return canTakeSizeOf (sourceType);
             if (operation == Op::makeConst)      return ! sourceType.isConst();
-            if (operation == Op::elementType)    return sourceType.isArrayOrVector();
+            if (operation == Op::elementType)    return sourceType.isArrayOrVector() || sourceType.isComplex();
             if (operation == Op::primitiveType)  return ! (sourceType.isArray() || sourceType.isStruct());
 
             return true;
@@ -1926,6 +1929,7 @@ struct AST
                 case Op::isScalar:
                 case Op::isString:
                 case Op::isBool:
+                case Op::isComplex:
                 case Op::isReference:
                 case Op::isConst:
                     return PrimitiveType::bool_;

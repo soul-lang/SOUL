@@ -431,8 +431,10 @@ Type Type::withConstAndRefFlags (bool shouldBeConst, bool shouldBeRef) const
 
 Type Type::getElementType() const
 {
-    if (isArray())    return getArrayElementType();
-    if (isVector())   return getVectorElementType();
+    if (isArray())      return getArrayElementType();
+    if (isVector())     return getVectorElementType();
+    if (isComplex32())  return PrimitiveType::float32;
+    if (isComplex64())  return PrimitiveType::float64;
 
     SOUL_ASSERT_FALSE;
     return {};
