@@ -19,27 +19,85 @@
 */
 
 /**
-    This namespace contains various simple oscillators, including sine, square,
-    sawtooth and triangle wave generators.
+    This namespace contains various simple oscillators
 */
-namespace soul::oscillator
+namespace soul::oscillators
 {
+    using PhaseType = float32;  // TODO: this should probably be a defaulted namespace parameterisation
+    let minFreqHz = 0.0;
+    let maxFreqHz = 22000.0;
+    let initFreqHz = 1000.0;
+
     //==============================================================================
-    /** A sinewave oscillator.
-        This processor has inputs which can be sent events to change its frequency and gain level.
+    /** A unipolar ramp (phasor) oscillator.
+        This is a non-bandlimited oscillator that will cause aliasing!
     */
-    processor Sine (using SampleType, float initialFrequency, float initialOutputLevel)
+    namespace phasor
+    {
+        struct State
+        {
+            PhaseType phase; // range 0 - 1
+            PhaseType phaseIncrement;
+        }
+
+        void reset (State& s)
+        {
+            s.phase = PhaseType();
+        }
+
+        void update (State& s, float64 samplePeriod, float64 freqHz)
+        {
+            s.phaseIncrement = PhaseType (samplePeriod * freqHz);
+        }
+
+        PhaseType process (State& s)
+        {
+            s.phase += s.phaseIncrement;
+
+            while (s.phase >= PhaseType (1.0))
+                s.phase -= PhaseType (1.0);
+
+            return s.phase;
+        }
+
+        processor Processor (using SampleType, float initialFrequency)
+        {
+            output stream SampleType out;
+
+            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+
+            event frequencyIn (float v) { s.update (processor.period, v); }
+
+            State s;
+
+            void init()
+            { 
+                s.update (processor.period, initialFrequency);
+            }
+
+            void run()
+            {
+                loop
+                {
+                    out << SampleType (s.process());
+                    advance();
+                }
+            }
+        }
+    }
+   
+    //==============================================================================
+    /** A simple sinewave oscillator.
+    */
+    processor Sine (using SampleType, float initialFrequency)
     {
         output stream SampleType out;
 
-        input event float frequency; /**< Send these events to change the frequency */
-        input event float level;     /**< Send these events to change the gain level */
+        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
 
-        event frequency (float newFrequency)    { phaseIncrement = float (newFrequency * twoPi * processor.period); }
-        event level (float newLevel)            { gain = newLevel; }
+        event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
         var phaseIncrement = float (initialFrequency * twoPi * processor.period);
-        var gain = initialOutputLevel;
 
         void run()
         {
@@ -47,7 +105,7 @@ namespace soul::oscillator
 
             loop
             {
-                out << SampleType (gain * sin (phase));
+                out << sin (phase);
                 phase = addModulo2Pi (phase, phaseIncrement);
                 advance();
             }
@@ -55,150 +113,106 @@ namespace soul::oscillator
     }
 
     //==============================================================================
-    /** A sawtooth oscillator.
-        This processor has inputs which can be sent events to change its frequency and gain level.
+    /** A semi band-limited oscillator with Sawtooth, Square and Triangle wave shapes
+        using the PolyBLEP (Polynomial Band-Limited Step) technique.
+        You may want to oversample this oscillator, in order to reduce aliasing
     */
-    processor Sawtooth (using SampleType, float initialFrequency, float initialOutputLevel)
-    {
-        output stream SampleType out;
-
-        input event float frequency; /**< Send these events to change the frequency */
-        input event float level;     /**< Send these events to change the gain level */
-
-        event frequency (float newFrequency)    { phaseIncrement = float (newFrequency * processor.period); }
-        event level (float newLevel)            { gain = newLevel; }
-
-        var phaseIncrement = float (initialFrequency * processor.period);
-        var gain = initialOutputLevel;
-
-        void run()
-        {
-            float phase;
-
-            loop
-            {
-                out << SampleType (gain * polyblep::sawtooth (phase, phaseIncrement));
-                phase += phaseIncrement;
-
-                while (phase >= 1.0f)
-                    phase -= 1.0f;
-
-                advance();
-            }
-        }
-    }
-
-    //==============================================================================
-    /** A square-wave oscillator.
-        This processor has inputs which can be sent events to change its frequency and gain level.
-    */
-    processor Square (using SampleType, float initialFrequency, float initialOutputLevel)
-    {
-        output stream SampleType out;
-
-        input event float frequency; /**< Send these events to change the frequency */
-        input event float level;     /**< Send these events to change the gain level */
-
-        event frequency (float newFrequency)    { phaseIncrement = float (newFrequency * processor.period); }
-        event level (float newLevel)            { gain = newLevel; }
-
-        var phaseIncrement = float (initialFrequency * processor.period);
-        var gain = initialOutputLevel;
-
-        void run()
-        {
-            float phase;
-
-            loop
-            {
-                out << SampleType (gain * polyblep::square (phase, phaseIncrement));
-                phase += phaseIncrement;
-
-                while (phase >= 1.0f)
-                    phase -= 1.0f;
-
-                advance();
-            }
-        }
-    }
-
-    //==============================================================================
-    /** A triangle oscillator.
-        This processor has inputs which can be sent events to change its frequency and gain level.
-    */
-    processor Triangle (using SampleType, float initialFrequency, float initialOutputLevel)
-    {
-        output stream SampleType out;
-
-        input event float frequency; /**< Send these events to change the frequency */
-        input event float level;     /**< Send these events to change the gain level */
-
-        event frequency (float newFrequency)    { phaseIncrement = float (newFrequency * processor.period); }
-        event level (float newLevel)            { gain = newLevel; }
-
-        var phaseIncrement = float (initialFrequency * processor.period);
-        var gain = initialOutputLevel;
-
-        void run()
-        {
-            float phase;
-            float currentValue = 1.0f;
-
-            loop
-            {
-                currentValue += 4.0f * phaseIncrement * polyblep::square (phase, phaseIncrement);
-                out << SampleType (gain * currentValue);
-                phase += phaseIncrement;
-
-                while (phase >= 1.0f)
-                    phase -= 1.0f;
-
-                advance();
-            }
-        }
-    }
-
-    //==============================================================================
-    /** Some PolyBLEP (Polynomial Band-Limited Step) functions, mainly for use by the oscillator classes. */
-    namespace polyblep
+    namespace poly_blep (using SampleType)
     {
         //==============================================================================
-        /** A simple PolyBLEP (Polynomial Band-Limited Step) function.
-            This expects the phase to be in the range 0 -> 1
-        */
-        Type polyblep<Type> (Type phase, Type phaseIncrement)
+        /** PolyBLEP shaper functions */
+        namespace shapers
         {
-            if (phase < phaseIncrement)
+            PhaseType polyblep (PhaseType phase, PhaseType phaseIncrement)
             {
-                phase /= phaseIncrement;
-                return (phase + phase) - (phase * phase) - Type (1);
+                if (phase < phaseIncrement)
+                {
+                    phase /= phaseIncrement;
+                    return (phase + phase) - (phase * phase) - PhaseType (1);
+                }
+
+                if (phase > PhaseType (1) - phaseIncrement)
+                {
+                    phase = (phase - PhaseType (1)) / phaseIncrement;
+                    return (phase * phase) + (phase + phase) + PhaseType (1);
+                }
+
+                return PhaseType (0);
             }
 
-            if (phase > Type (1) - phaseIncrement)
+            PhaseType sawtooth (phasor::State& s)
             {
-                phase = (phase - Type (1)) / phaseIncrement;
-                return (phase * phase) + (phase + phase) + Type (1);
+                return PhaseType (-1) + (PhaseType (2) * s.phase) - polyblep (s.phase, s.phaseIncrement);
             }
 
-            return Type (0);
+            PhaseType square (phasor::State& s)
+            {
+                return (s.phase < PhaseType (0.5) ? PhaseType (-1) : PhaseType (1))
+                        - polyblep (s.phase, s.phaseIncrement)
+                        + polyblep (fmod (s.phase + PhaseType (0.5), PhaseType (1)), s.phaseIncrement);
+            }
         }
 
-        /** Uses a PolyBLEP (Polynomial Band-Limited Step) to calculate a sawtooth wave.
-            This expects the phase to be in the range 0 -> 1
-        */
-        Type sawtooth<Type> (Type phase, Type phaseIncrement)
+        namespace Shape
         {
-            return Type (-1) + (Type (2) * phase) - polyblep (phase, phaseIncrement);
+            let Sawtooth = 0;
+            let Triangle = 1;
+            let Square   = 2;
         }
 
-        /** Uses a PolyBLEP (Polynomial Band-Limited Step) to calculate a square wave.
-            This expects the phase to be in the range 0 -> 1
+        //==============================================================================
+        /** A semi band-limited oscillator using the PolyBLEP technique
         */
-        Type square<Type> (Type phase, Type phaseIncrement)
+        processor Processor (int initialShape, float initialFrequency)
         {
-            return (phase < Type (0.5f) ? Type (-1) : Type (1))
-                    - polyblep (phase, phaseIncrement)
-                    + polyblep (fmod (phase + Type (0.5f), Type (1)), phaseIncrement);
+            output stream SampleType out;
+
+            input event
+            {
+                float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
+                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+            }
+
+            event shapeIn (float v)         { shape = wrap<3> (floor (v)); triAccumulator = 1.0f; s.reset(); }
+            event frequencyIn  (float v)    { s.update (processor.period, v); }
+
+            phasor::State s;
+            
+            wrap<3> shape = wrap<3> (initialShape);
+            PhaseType triAccumulator = 1.0f;
+
+            void init()
+            {
+                s.update (processor.period, initialFrequency);
+            }
+
+            void run()
+            {
+                float32 y = 0.0f;
+
+                loop
+                {
+                    if (shape == Shape::Sawtooth)
+                    {
+                        y = shapers::sawtooth (s);
+                    }
+                    else if (shape == Shape::Triangle)
+                    {
+                        triAccumulator += 4.0f * s.phaseIncrement * shapers::square (s);
+                        y = triAccumulator;
+                    }
+                    else if (shape == Shape::Square)
+                    {
+                        y = shapers::square (s);
+                    }
+
+                    s.process();
+
+                    out << y;
+
+                    advance();
+                }
+            }
         }
     }
 }
