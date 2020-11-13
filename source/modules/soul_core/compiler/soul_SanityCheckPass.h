@@ -1001,7 +1001,7 @@ private:
             {
                 if (outputEndpoint->isResolved())
                     expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getSampleArrayTypes(), w.value);
-                
+
                 return;
             }
 

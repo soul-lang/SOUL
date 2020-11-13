@@ -1062,7 +1062,7 @@ namespace soul::oscillators
             State s;
 
             void init()
-            { 
+            {
                 s.update (processor.period, initialFrequency);
             }
 
@@ -1076,7 +1076,7 @@ namespace soul::oscillators
             }
         }
     }
-   
+
     //==============================================================================
     /** A simple sinewave oscillator.
     */
@@ -1174,7 +1174,7 @@ R"soul_code(
             event frequencyIn  (float v)    { s.update (processor.period, v); }
 
             phasor::State s;
-            
+
             wrap<3> shape = wrap<3> (initialShape);
             PhaseType triAccumulator = 1.0f;
 
