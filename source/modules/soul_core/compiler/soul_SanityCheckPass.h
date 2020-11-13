@@ -35,6 +35,7 @@ struct SanityCheckPass  final
 
     static void runPostResolutionChecks (AST::ModuleBase& module)
     {
+        checkOverallStructure (module);
         PostResolutionChecks().ASTVisitor::visitObject (module);
     }
 
@@ -87,8 +88,9 @@ struct SanityCheckPass  final
                 e.context.throwError (Errors::cannotReadFromOutput());
 
             if (auto input = cast<AST::InputEndpointRef> (e))
-                if (isEvent (input->input->getDetails()))
-                    e.context.throwError (Errors::cannotReadFromEventInput());
+                if (input->isResolved())
+                    if (isEvent (input->input->getDetails()))
+                        e.context.throwError (Errors::cannotReadFromEventInput());
 
             if (is_type<AST::ProcessorRef> (e) || is_type<AST::ProcessorInstanceRef> (e))
                 e.context.throwError (Errors::cannotUseProcessorAsValue());
@@ -286,6 +288,44 @@ struct SanityCheckPass  final
         }
     }
 
+    static void checkEndpointDataTypes (AST::EndpointDeclaration& endpoint)
+    {
+        if (endpoint.isUnresolvedChildReference())
+            return;
+
+        auto& details = endpoint.getDetails();
+        auto& types = details.dataTypes;
+
+        for (auto& t : types)
+            throwErrorIfNotReadableType (t);
+
+        auto resolvedTypes = details.getResolvedDataTypes();
+        SOUL_ASSERT (resolvedTypes.size() == types.size());
+
+        if (isStream (details.endpointType))
+        {
+            SOUL_ASSERT (types.size() == 1);
+            auto dataType = resolvedTypes.front();
+
+            if (! (dataType.isPrimitive() || dataType.isVector()))
+                types.front()->context.throwError (Errors::illegalTypeForEndpoint());
+        }
+
+        if (types.size() > 1)
+        {
+            for (size_t i = 1; i < types.size(); ++i)
+                for (size_t j = 0; j < i; ++j)
+                    if (resolvedTypes[i].isEqual (resolvedTypes[j], Type::ignoreVectorSize1))
+                        types[j]->context.throwError (Errors::duplicateTypesInList (resolvedTypes[j].getDescription(),
+                                                                                    resolvedTypes[i].getDescription()));
+        }
+
+        if (details.arraySize != nullptr)
+            for (size_t i = 0; i < types.size(); ++i)
+                if (resolvedTypes[i].isArray())
+                    types[i]->context.throwError (Errors::illegalTypeForEndpointArray());
+    }
+
     //==============================================================================
     struct RecursiveGraphDetector
     {
@@ -361,12 +401,29 @@ private:
                 }
             }
 
+            // If the processor has non-event I/O then we need a run processor
             if (numRunFunctions == 0)
             {
-                // If the processor has non-event I/O then we need a run processor
-                for (auto e : processorOrGraph.getEndpoints())
-                    if (! (e->isUnresolvedChildReference() || isEvent (e->getDetails())))
-                        processor->context.throwError (Errors::processorNeedsRunFunction());
+                auto areAllEndpointsResolved = [&]
+                {
+                    for (auto e : processorOrGraph.getEndpoints())
+                        if (! e->isResolved())
+                            return false;
+
+                    return true;
+                };
+
+                auto hasAnEventEndpoint = [&]
+                {
+                    for (auto e : processorOrGraph.getEndpoints())
+                        if (isEvent (e->getDetails()))
+                            return true;
+
+                    return false;
+                };
+
+                if (areAllEndpointsResolved() && ! hasAnEventEndpoint())
+                    processor->context.throwError (Errors::processorNeedsRunFunction());
             }
 
             if (numRunFunctions > 1)
@@ -568,7 +625,7 @@ private:
             checkForDuplicateFunctions (p.functions);
 
             for (auto input : p.endpoints)
-                input->getDetails().checkDataTypesValid (input->context);
+                checkEndpointDataTypes (input.get());
 
             for (auto& v : p.stateVariables)
                 if (v->initialValue != nullptr && ! v->initialValue->isCompileTimeConstant())
@@ -580,8 +637,7 @@ private:
             super::visit (g);
 
             for (auto input : g.endpoints)
-                if (input->isResolved())
-                    input->getDetails().checkDataTypesValid (input->context);
+                checkEndpointDataTypes (input.get());
 
             for (auto& v : g.constants)
                 if (! v->isCompileTimeConstant())
@@ -668,7 +724,7 @@ private:
 
             if (e.isResolved())
             {
-                e.getDetails().checkDataTypesValid (e.context);
+                checkEndpointDataTypes (e);
                 checkArraySize (e.getDetails().arraySize, AST::maxEndpointArraySize);
             }
         }
@@ -943,7 +999,9 @@ private:
             // Either an OutputEndpointRef, or an ArrayElementRef of an OutputEndpointRef
             if (auto outputEndpoint = cast<AST::OutputEndpointRef> (topLevelWrite.target))
             {
-                expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getSampleArrayTypes(), w.value);
+                if (outputEndpoint->isResolved())
+                    expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getSampleArrayTypes(), w.value);
+                
                 return;
             }
 
@@ -951,7 +1009,9 @@ private:
             {
                 if (auto outputEndpoint = cast<AST::OutputEndpointRef> (arraySubscript->object))
                 {
-                    expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getResolvedDataTypes(), w.value);
+                    if (outputEndpoint->isResolved())
+                        expectSilentCastPossible (w.context, outputEndpoint->output->getDetails().getResolvedDataTypes(), w.value);
+
                     return;
                 }
             }

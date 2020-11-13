@@ -129,12 +129,12 @@ struct AST
     static bool isPossiblyValue (pool_ptr<Expression> e)         { return e != nullptr && isPossiblyValue (*e); }
     static bool isPossiblyEndpoint (pool_ptr<Expression> e)      { return e != nullptr && isPossiblyEndpoint (*e); }
 
-    static bool isResolvedAsType (Expression& e)                 { return e.isResolved() && e.kind == ExpressionKind::type; }
-    static bool isResolvedAsValue (Expression& e)                { return e.isResolved() && e.kind == ExpressionKind::value; }
+    static bool isResolvedAsType (Expression& e)                 { return e.kind == ExpressionKind::type && e.isResolved(); }
+    static bool isResolvedAsValue (Expression& e)                { return e.kind == ExpressionKind::value && e.isResolved(); }
     static bool isResolvedAsConstant (Expression& e)             { return isResolvedAsValue (e) && e.getAsConstant() != nullptr; }
-    static bool isResolvedAsEndpoint (Expression& e)             { return e.isResolved() && e.kind == ExpressionKind::endpoint; }
+    static bool isResolvedAsEndpoint (Expression& e)             { return e.kind == ExpressionKind::endpoint && e.isResolved(); }
     static bool isResolvedAsOutput (Expression& e)               { return e.isResolved() && e.isOutputEndpoint(); }
-    static bool isResolvedAsProcessor (Expression& e)            { return e.isResolved() && e.kind == ExpressionKind::processor; }
+    static bool isResolvedAsProcessor (Expression& e)            { return e.kind == ExpressionKind::processor && e.isResolved(); }
 
     static bool isResolvedAsType (pool_ptr<Expression> e)        { return e != nullptr && isResolvedAsType (*e); }
     static bool isResolvedAsValue (pool_ptr<Expression> e)       { return e != nullptr && isResolvedAsValue (*e); }
@@ -939,34 +939,6 @@ struct AST
         const EndpointType endpointType;
         ArrayWithPreallocation<pool_ref<Expression>, 2> dataTypes;
         pool_ptr<Expression> arraySize;
-
-        void checkDataTypesValid (const Context& context)
-        {
-            if (isStream (endpointType))
-            {
-                SOUL_ASSERT (dataTypes.size() == 1);
-                auto dataType = getResolvedDataTypes().front();
-
-                if (! (dataType.isPrimitive() || dataType.isVector()))
-                    context.throwError (Errors::illegalTypeForEndpoint());
-            }
-
-            auto types = getResolvedDataTypes();
-
-            if (dataTypes.size() > 1)
-            {
-                for (size_t i = 1; i < types.size(); ++i)
-                    for (size_t j = 0; j < i; ++j)
-                        if (types[i].isEqual (types[j], Type::ignoreVectorSize1))
-                            dataTypes[j]->context.throwError (Errors::duplicateTypesInList (types[j].getDescription(),
-                                                                                            types[i].getDescription()));
-            }
-
-            if (arraySize != nullptr)
-                for (size_t i = 0; i < types.size(); ++i)
-                    if (types[i].isArray())
-                        dataTypes[i]->context.throwError (Errors::illegalTypeForEndpointArray());
-        }
 
         bool isResolved() const
         {
