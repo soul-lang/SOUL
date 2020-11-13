@@ -205,10 +205,6 @@ private:
         {
             auto& identifier = parseQualifiedIdentifier();
             auto specialisationArgs = parseSpecialisationArgs();
-
-            if (matchIf (Operator::openParen))
-                specialisationArgs = parseParenthesisedExpression();
-
             expect (Operator::semicolon);
             auto& alias = allocate<AST::NamespaceAliasDeclaration> (context, name, identifier, specialisationArgs);
             parentModule.namespaceAliases.push_back (alias);
@@ -588,12 +584,7 @@ private:
 
             for (;;)
             {
-                auto errorPos = getContext();
-
-                if (auto e = tryToParseExpressionIgnoringErrors())
-                    dests.push_back (allocator.allocate<AST::Connection::SharedEndpoint> (*e));
-                else
-                    errorPos.throwError (Errors::expectedProcessorOrEndpoint());
+                dests.push_back (allocator.allocate<AST::Connection::SharedEndpoint> (parseConnectionPoint()));
 
                 if (! matchIf (Operator::comma))
                     break;
@@ -621,6 +612,36 @@ private:
 
             break;
         }
+    }
+
+    AST::Expression& parseConnectionPoint()
+    {
+        auto errorPos = getContext();
+        auto startPos = getCurrentTokeniserPosition();
+
+        if (auto e = tryToParseExpressionIgnoringErrors())
+            return *e;
+
+        resetPosition (startPos);
+
+        if (! matches (Token::identifier))
+            errorPos.throwError (Errors::expectedProcessorOrEndpoint());
+
+        auto& processorName = parseQualifiedIdentifier();
+        pool_ptr<AST::CommaSeparatedList> args;
+
+        if (auto specialisationArgs = parseSpecialisationArgs())
+        {
+            args = cast<AST::CommaSeparatedList> (specialisationArgs);
+
+            if (args == nullptr)
+            {
+                args = allocate<AST::CommaSeparatedList> (specialisationArgs->context);
+                args->items.push_back (*specialisationArgs);
+            }
+        }
+
+        return allocate<AST::CallOrCast> (processorName, args, false);
     }
 
     InterpolationType parseOptionalInterpolationType()
