@@ -1391,6 +1391,9 @@ struct AST
 
         void updateStructureMembers()
         {
+            if (structure == nullptr)
+                return;
+            
             for (auto& m : members)
                 structure->updateMemberType (m.name.toString(), m.type->resolveAsType());
         }
