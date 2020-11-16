@@ -2216,7 +2216,7 @@ struct AST
         }
 
         bool isOutputEndpoint() const override      { return operation == BinaryOp::Op::leftShift && lhs->isOutputEndpoint(); }
-        bool isResolved() const override            { return isResolvedAsValue (lhs.get()) && isResolvedAsValue (rhs.get()); }
+        bool isResolved() const override            { return isResolvedAsValue (lhs.get()) && isResolvedAsValue (rhs.get()) && getResultType().isValid(); }
         bool isCompileTimeConstant() const override { return lhs->isCompileTimeConstant() && rhs->isCompileTimeConstant(); }
         Type getOperandType() const                 { resolveOpTypes(); return resolvedOpTypes.operandType; }
         Type getResultType() const override         { resolveOpTypes(); return resolvedOpTypes.resultType; }
@@ -2236,7 +2236,7 @@ struct AST
         {
             if (! resolvedOpTypes.resultType.isValid())
             {
-                SOUL_ASSERT (isResolved());
+                SOUL_ASSERT (isResolvedAsValue (lhs.get()) && isResolvedAsValue (rhs.get()));
                 resolvedOpTypes = BinaryOp::getTypes (operation, lhs->getResultType(), rhs->getResultType());
             }
         }

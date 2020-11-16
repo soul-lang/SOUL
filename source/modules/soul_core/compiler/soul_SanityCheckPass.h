@@ -163,8 +163,9 @@ struct SanityCheckPass  final
                                                                            c->value.getType().getDescription(),
                                                                            targetType.getDescription()));
 
-            context.throwError (Errors::cannotImplicitlyCastType (source.getResultType().getDescription(),
-                                                                  targetType.getDescription()));
+            auto resultType = source.getResultType();
+            SOUL_ASSERT (resultType.isValid());
+            context.throwError (Errors::cannotImplicitlyCastType (resultType.getDescription(), targetType.getDescription()));
         }
     }
 
