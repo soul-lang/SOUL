@@ -1598,13 +1598,22 @@ private:
         void resolveVariableDeclarationInitialValue (AST::VariableDeclaration& v, const Type& type)
         {
             if (AST::isResolvedAsValue (v.initialValue))
-                SanityCheckPass::expectSilentCastPossible (v.initialValue->context, type, *v.initialValue);
+            {
+                if (! v.initialValue->getResultType().isIdentical (type))
+                {
+                    SanityCheckPass::expectSilentCastPossible (v.initialValue->context, type, *v.initialValue);
+                    v.initialValue = allocator.allocate<AST::TypeCast> (v.initialValue->context, type, *v.initialValue);
+                }
 
-            if (! (AST::isResolvedAsValue (v.initialValue) && v.initialValue->getResultType().isIdentical (type)))
+                v.declaredType = {};
+                ++itemsReplaced;
+            }
+            else if (is_type<AST::CommaSeparatedList> (v.initialValue))
+            {
                 v.initialValue = allocator.allocate<AST::TypeCast> (v.initialValue->context, type, *v.initialValue);
-
-            v.declaredType = {};
-            ++itemsReplaced;
+                v.declaredType = {};
+                ++itemsReplaced;
+            }
         }
 
         SanityCheckPass::RecursiveTypeDeclVisitStack recursiveTypeDeclVisitStack;
