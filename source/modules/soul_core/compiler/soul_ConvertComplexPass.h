@@ -88,13 +88,7 @@ private:
 
     static bool requiresRemapping (const soul::Type& type)
     {
-        if (type.isComplex())
-            return true;
-
-        if (type.isArray() && type.getArrayElementType().isComplex())
-            return true;
-
-        return false;
+        return type.isComplex();
     }
 
     static bool requiresRemapping (soul::pool_ptr<soul::AST::Expression> expr)
@@ -323,12 +317,6 @@ private:
         {
             auto& transformedExpression = transformations.getTransformedExpression (e);
 
-            if (auto l = cast<AST::CommaSeparatedList> (e))
-            {
-                SanityCheckPass::expectSilentCastPossible (e.context, targetType, *l);
-                return transformedExpression;
-            }
-
             auto sourceType = e.getResultType();
 
             if (sourceType.isEqual (targetType, Type::ComparisonFlags::ignoreConst | Type::ComparisonFlags::ignoreReferences))
@@ -391,6 +379,7 @@ private:
         ConvertComplexRemapTypes (ConvertComplexPass& p)  : allocator (p.allocator), module (p.module)
         {
             complexLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib"));
+            SOUL_ASSERT (complexLib != nullptr);
         }
 
         void run()
@@ -404,7 +393,7 @@ private:
 
         AST::Allocator& allocator;
         AST::ModuleBase& module;
-        AST::ModuleBase* complexLib;
+        pool_ptr<AST::ModuleBase> complexLib;
 
         AST::Expression& visit (AST::ConcreteType& t) override
         {
@@ -575,8 +564,10 @@ private:
             return allocator.allocate<AST::ConcreteType> (context, complexType);
         }
 
-        AST::ModuleBase* getModule (const soul::IdentifierPath& path) const
+        pool_ptr<AST::ModuleBase> getModule (const soul::IdentifierPath& path) const
         {
+            pool_ptr<AST::ModuleBase> result;
+
             AST::Scope::NameSearch search;
 
             search.partiallyQualifiedPath = path;
@@ -589,11 +580,10 @@ private:
                 auto item = search.itemsFound.front();
 
                 if (auto e = cast<AST::ModuleBase> (item))
-                    return e.get();
+                    result = e;
             }
 
-            SOUL_ASSERT_FALSE;
-            return {};
+            return result;
         }
 
         Type getComplexType (AST::Context& context, bool is32Bit, size_t vectorSize)
