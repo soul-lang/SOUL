@@ -36,18 +36,18 @@ namespace soul
 */
 struct ConvertComplexPass  final
 {
-    static void run (AST::Allocator& a, AST::ModuleBase& m)
+    static void run (AST::Allocator& a, AST::Namespace& m)
     {
         ConvertComplexPass (a, m).run();
     }
 
 private:
-    ConvertComplexPass (AST::Allocator& a, AST::ModuleBase& m) : allocator (a), module (m)
+    ConvertComplexPass (AST::Allocator& a, AST::Namespace& m) : allocator (a), module (m)
     {
     }
 
     AST::Allocator& allocator;
-    AST::ModuleBase& module;
+    AST::Namespace& module;
 
     struct Transformations
     {
@@ -107,9 +107,21 @@ private:
 
     void run()
     {
+        resetResolutionFlag (module);
         BuildTransformations (*this).visitObject (module);
         ApplyTransformations (transformations).visitObject (module);
         ConvertComplexRemapTypes (*this).run();
+        ASTUtilities::removeModulesWithSpecialisationParams (module);
+        ResolutionPass::run (allocator, module, false);
+    }
+
+    void resetResolutionFlag (AST::ModuleBase& m)
+    {
+        m.isFullyResolved = false;
+
+        if (auto n = cast<AST::Namespace> (m))
+            for (auto& childModule : n->getSubModules())
+                resetResolutionFlag (childModule);
     }
 
     //==============================================================================
@@ -378,16 +390,13 @@ private:
     {
         ConvertComplexRemapTypes (ConvertComplexPass& p)  : allocator (p.allocator), module (p.module)
         {
-            soulLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul"));
+            complexLib = getModule (soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib"));
         }
 
         void run()
         {
             visitObject (module);
             ResolutionPass::run (allocator, module, true);
-
-            for (auto s : structsToUpdate)
-                s->updateStructureMembers();
         }
 
         using super = RewritingASTVisitor;
@@ -395,31 +404,25 @@ private:
 
         AST::Allocator& allocator;
         AST::ModuleBase& module;
-        AST::ModuleBase* soulLib;
-
-        std::vector<AST::StructDeclaration*> structsToUpdate;
-        AST::StructDeclaration* structDeclaration = nullptr;
+        AST::ModuleBase* complexLib;
 
         AST::Expression& visit (AST::ConcreteType& t) override
         {
             super::visit (t);
 
             if (requiresRemapping (t.type))
-            {
-                if (structDeclaration != nullptr)
-                    structsToUpdate.push_back (structDeclaration);
-
                 return getRemappedType (t.context, t.type);
-            }
 
             return t;
         }
 
         AST::StructDeclaration& visit (AST::StructDeclaration& s) override
         {
-            structDeclaration = &s;
+            auto r = itemsReplaced;
             super::visit (s);
-            structDeclaration = nullptr;
+
+            if (r != itemsReplaced)
+                s.updateStructureMembers();
 
             return s;
         }
@@ -537,7 +540,7 @@ private:
         }
 
     private:
-        std::vector<std::string> createdNamespaceAliases;
+        std::unordered_map<std::string, Type> complexTypes;
 
         AST::Expression& getRemappedType (AST::Context& context, const soul::Type& type)
         {
@@ -558,44 +561,18 @@ private:
 
         AST::Expression& getRemappedType (AST::Context& context, bool is32Bit, size_t vectorSize, size_t arraySize, bool isReference, bool isConst)
         {
-            // Build the namespace path
-            int bits = is32Bit ? 32 : 64;
-
-            std::string namespaceAlias = "complex_lib" + std::to_string (bits) + "_" + std::to_string (vectorSize);
-            std::string namespacePath = "soul::" + namespaceAlias;
-
-            if (! soul::contains (createdNamespaceAliases, namespaceAlias))
-            {
-                // Create the namespace alias
-                auto& specialisationArgs = allocator.allocate<AST::CommaSeparatedList> (context);
-                specialisationArgs.items.push_back (allocator.allocate<AST::ConcreteType> (context, is32Bit ? PrimitiveType::float32 : PrimitiveType::float64));
-                specialisationArgs.items.push_back (allocator.allocate<AST::Constant> (context, soul::Value (static_cast<int32_t> (vectorSize))));
-
-                auto& n = allocator.allocate<AST::NamespaceAliasDeclaration> (context,
-                                                                              allocator.get (namespaceAlias),
-                                                                              allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib")),
-                                                                              specialisationArgs);
-
-                soulLib->namespaceAliases.push_back (n);
-                createdNamespaceAliases.push_back (namespaceAlias);
-            }
-
-            pool_ref<AST::Expression> expr = allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers,
-                                                                                                                                      namespacePath + "::ComplexType"));
+            auto complexType = getComplexType (context, is32Bit, vectorSize);
 
             if (arraySize != 0)
-            {
-                auto& arraySizeConstant = allocator.allocate<AST::Constant> (context, soul::Value (static_cast<int32_t> (arraySize)));
-                expr = allocator.allocate<AST::SubscriptWithBrackets> (context, expr, arraySizeConstant);
-            }
+                complexType = complexType.createArray (arraySize);
 
             if (isReference)
-                expr = allocator.allocate<AST::TypeMetaFunction> (context, expr, AST::TypeMetaFunction::Op::makeReference);
+                complexType = complexType.createReference();
 
             if (isConst)
-                expr = allocator.allocate<AST::TypeMetaFunction> (context, expr, AST::TypeMetaFunction::Op::makeConst);
+                complexType = complexType.createConst();
 
-            return expr;
+            return allocator.allocate<AST::ConcreteType> (context, complexType);
         }
 
         AST::ModuleBase* getModule (const soul::IdentifierPath& path) const
@@ -617,6 +594,37 @@ private:
 
             SOUL_ASSERT_FALSE;
             return {};
+        }
+
+        Type getComplexType (AST::Context& context, bool is32Bit, size_t vectorSize)
+        {
+            int bits = is32Bit ? 32 : 64;
+            std::string namespaceAlias = "c" + std::to_string (bits) + "_" + std::to_string (vectorSize);
+
+            auto i = complexTypes.find (namespaceAlias);
+
+            if (i != complexTypes.end())
+                return i->second;
+
+            // Create the namespace alias
+            auto& specialisationArgs = allocator.allocate<AST::CommaSeparatedList> (context);
+            specialisationArgs.items.push_back (allocator.allocate<AST::ConcreteType> (context, is32Bit ? PrimitiveType::float32 : PrimitiveType::float64));
+            specialisationArgs.items.push_back (allocator.allocate<AST::Constant> (context, soul::Value (static_cast<int32_t> (vectorSize))));
+
+            auto& n = allocator.allocate<AST::NamespaceAliasDeclaration> (context,
+                                                                          allocator.get (namespaceAlias),
+                                                                          allocator.allocate<AST::QualifiedIdentifier> (context, soul::IdentifierPath::fromString (allocator.identifiers, "soul::complex_lib::imp")),
+                                                                          specialisationArgs);
+
+            complexLib->namespaceAliases.push_back (n);
+            complexLib->isFullyResolved = false;
+            ResolutionPass::run (allocator, *complexLib, true);
+
+            auto complexType = n.resolvedNamespace->structures.front()->resolveAsType();
+
+            complexTypes[namespaceAlias] = complexType;
+
+            return complexType;
         }
     };
 };

@@ -57,89 +57,92 @@ inline const char* getSystemModuleCode (std::string_view moduleName)
     if (moduleName == "soul.complex")  return R"soul_code(
 namespace soul
 {
-    namespace complex_lib (using FloatType, int vectorSize)
+    namespace complex_lib
     {
-        namespace complex_element = complex_lib (FloatType, 1);
-
-        struct ComplexType
+        namespace imp (using FloatType, int vectorSize)
         {
-            FloatType<vectorSize> real, imag;
-        }
+            namespace complex_element = imp (FloatType, 1);
 
-        ComplexType negate (ComplexType v)
-        {
-            return ComplexType (-v.real, -v.imag);
-        }
+            struct ComplexType
+            {
+                FloatType<vectorSize> real, imag;
+            }
 
-        ComplexType conj (ComplexType v)
-        {
-            return ComplexType (v.real, -v.imag);
-        }
+            ComplexType negate (ComplexType v)
+            {
+                return ComplexType (-v.real, -v.imag);
+            }
 
-        ComplexType add (ComplexType left, ComplexType right)
-        {
-            return ComplexType (left.real + right.real,
-                                left.imag + right.imag);
-        }
+            ComplexType conj (ComplexType v)
+            {
+                return ComplexType (v.real, -v.imag);
+            }
 
-        ComplexType subtract (ComplexType left, ComplexType right)
-        {
-            return ComplexType (left.real - right.real,
-                                left.imag - right.imag);
-        }
+            ComplexType add (ComplexType left, ComplexType right)
+            {
+                return ComplexType (left.real + right.real,
+                                    left.imag + right.imag);
+            }
 
-        ComplexType multiply (ComplexType left, ComplexType right)
-        {
-            return ComplexType (left.real * right.real - left.imag * right.imag,
-                                left.real * right.imag + left.imag * right.real);
-        }
+            ComplexType subtract (ComplexType left, ComplexType right)
+            {
+                return ComplexType (left.real - right.real,
+                                    left.imag - right.imag);
+            }
 
-        ComplexType divide (ComplexType left, ComplexType right)
-        {
-            let c = right.conj();
-            let result = multiply (left, c);
-            let scale = multiply (right, c).real;
+            ComplexType multiply (ComplexType left, ComplexType right)
+            {
+                return ComplexType (left.real * right.real - left.imag * right.imag,
+                                    left.real * right.imag + left.imag * right.real);
+            }
 
-            return ComplexType (result.real / scale,
-                                result.imag / scale);
-        }
+            ComplexType divide (ComplexType left, ComplexType right)
+            {
+                let c = right.conj();
+                let result = multiply (left, c);
+                let scale = multiply (right, c).real;
 
-        bool<vectorSize> equals (ComplexType left, ComplexType right)
-        {
-            var realComparison = left.real == right.real;
-            let imagComparison = left.imag == right.imag;
+                return ComplexType (result.real / scale,
+                                    result.imag / scale);
+            }
 
-            for (wrap<vectorSize> i)
-                realComparison[i] = realComparison[i] && imagComparison[i];
+            bool<vectorSize> equals (ComplexType left, ComplexType right)
+            {
+                var realComparison = left.real == right.real;
+                let imagComparison = left.imag == right.imag;
 
-            return realComparison;
-        }
+                for (wrap<vectorSize> i)
+                    realComparison[i] = realComparison[i] && imagComparison[i];
 
-        bool<vectorSize> notEquals (ComplexType left, ComplexType right)
-        {
-            var r = equals (left, right);
-
-            for (wrap<vectorSize> i)
-                r[i] = ! r[i];
-
-            return r;
-        }
+                return realComparison;
+            }
 
 )soul_code"
 R"soul_code(
 
-        complex_element::ComplexType getElement (ComplexType c, int element)
-        {
-            return complex_element::ComplexType (c.real.at (element),
-                                                 c.imag.at (element));
-        }
+            bool<vectorSize> notEquals (ComplexType left, ComplexType right)
+            {
+                var r = equals (left, right);
 
-        complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
-        {
-            c.real.at (element) = value.real;
-            c.imag.at (element) = value.imag;
+                for (wrap<vectorSize> i)
+                    r[i] = ! r[i];
 
-            return value;
+                return r;
+            }
+
+            complex_element::ComplexType getElement (ComplexType c, int element)
+            {
+                return complex_element::ComplexType (c.real.at (element),
+                                                    c.imag.at (element));
+            }
+
+            complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
+            {
+                c.real.at (element) = value.real;
+                c.imag.at (element) = value.imag;
+
+                return value;
+            }
         }
     }
 }
@@ -1203,10 +1206,10 @@ R"soul_code(
                         y = shapers::square (s);
                     }
 
+                    s.process();
+
 )soul_code"
 R"soul_code(
-
-                    s.process();
 
                     out << y;
 
