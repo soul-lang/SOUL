@@ -283,6 +283,11 @@ struct ASTVisitor
             visitObject (m.type);
     }
 
+    virtual void visit (AST::StructDeclarationRef& s)
+    {
+        visitObject (s.structure);
+    }
+
     virtual void visit (AST::UsingDeclaration& u)
     {
         visitObjectIfNotNull (u.targetType);
@@ -747,6 +752,12 @@ struct RewritingASTVisitor
         for (auto& m : s.getMembers())
             replaceExpression (m.type);
 
+        return s;
+    }
+
+    virtual AST::StructDeclarationRef& visit (AST::StructDeclarationRef& s)
+    {
+        visitObject (s.structure);
         return s;
     }
 

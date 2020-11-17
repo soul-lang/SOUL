@@ -470,6 +470,9 @@ private:
             {
                 auto item = search.itemsFound.front();
 
+                if (auto s = cast<AST::StructDeclaration> (item))
+                    return allocator.allocate<AST::StructDeclarationRef> (qi.context, *s);
+
                 if (auto e = cast<AST::Expression> (item))
                     return *e;
 

@@ -50,6 +50,7 @@ struct AST
         X(StructMemberRef) \
         X(ComplexMemberRef) \
         X(StructDeclaration) \
+        X(StructDeclarationRef) \
         X(UsingDeclaration) \
         X(TernaryOp) \
         X(UnaryOperator) \
@@ -1393,7 +1394,7 @@ struct AST
         {
             if (structure == nullptr)
                 return;
-            
+
             for (auto& m : members)
                 structure->updateMemberType (m.name.toString(), m.type->resolveAsType());
         }
@@ -1502,6 +1503,21 @@ struct AST
         pool_ptr<ProcessorBase> getAsProcessor() const override    { return processorInstance.targetProcessor->getAsProcessor(); }
 
         ProcessorInstance& processorInstance;
+    };
+
+    struct StructDeclarationRef  : public Expression
+    {
+        StructDeclarationRef (const Context& c, StructDeclaration& s)
+           : Expression (ObjectType::StructDeclarationRef, c, ExpressionKind::type), structure (s)
+        {
+        }
+
+        bool isResolved() const override                        { return structure.isResolved(); }
+        pool_ptr<StructDeclaration> getAsStruct() override      { return structure.getAsStruct(); }
+        Constness getConstness() const override                 { return structure.getConstness(); }
+        Type resolveAsType() const override                     { return structure.resolveAsType(); }
+
+        StructDeclaration& structure;
     };
 
     //==============================================================================

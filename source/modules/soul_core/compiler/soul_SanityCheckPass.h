@@ -301,15 +301,19 @@ struct SanityCheckPass  final
             throwErrorIfNotReadableType (t);
 
         auto resolvedTypes = details.getResolvedDataTypes();
-        SOUL_ASSERT (resolvedTypes.size() == types.size());
+        SOUL_ASSERT (types.size() != 0 && resolvedTypes.size() == types.size());
+        auto dataType = resolvedTypes.front();
 
         if (isStream (details.endpointType))
         {
             SOUL_ASSERT (types.size() == 1);
-            auto dataType = resolvedTypes.front();
 
             if (! (dataType.isPrimitive() || dataType.isVector()))
                 types.front()->context.throwError (Errors::illegalTypeForEndpoint());
+        }
+        else
+        {
+            checkTypeSupportedForExternalEvents (types.front()->context, dataType);
         }
 
         if (types.size() > 1)
@@ -325,6 +329,19 @@ struct SanityCheckPass  final
             for (size_t i = 0; i < types.size(); ++i)
                 if (resolvedTypes[i].isArray())
                     types[i]->context.throwError (Errors::illegalTypeForEndpointArray());
+    }
+
+    static void checkTypeSupportedForExternalEvents (const AST::Context& context, const Type& t)
+    {
+        if (t.isBoundedInt())
+            context.throwError (Errors::notYetImplemented ("Endpoints using wrap or clamp types"));
+
+        if (t.isArray())
+            checkTypeSupportedForExternalEvents (context, t.getArrayElementType());
+
+        if (t.isStruct())
+            for (auto& m : t.getStructRef().getMembers())
+                checkTypeSupportedForExternalEvents (context, m.type);
     }
 
     //==============================================================================
