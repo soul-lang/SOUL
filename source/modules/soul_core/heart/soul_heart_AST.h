@@ -40,6 +40,7 @@ struct heart
         X(StructElement) \
         X(Constant) \
         X(TypeCast) \
+        X(AggregateInitialiserList) \
         X(UnaryOperator) \
         X(BinaryOperator) \
         X(PureFunctionCall) \
@@ -307,8 +308,7 @@ struct heart
         }
 
     private:
-        std::optional<int64_t> multiplier;
-        std::optional<int64_t> divider;
+        std::optional<int64_t> multiplier, divider;
     };
 
     //==============================================================================
@@ -417,6 +417,75 @@ struct heart
         Value getAsConstant() const override                { return {}; }
 
         ReadWriteCount readWriteCount;
+    };
+
+    //==============================================================================
+    struct Constant  : public Expression
+    {
+        Constant (CodeLocation l, Value v) : Expression (std::move (l)), value (std::move (v)) {}
+        Constant (CodeLocation l, const Type& t) : Expression (std::move (l)), value (Value::zeroInitialiser (t)) {}
+
+        const Type& getType() const override               { return value.getType(); }
+        Value getAsConstant() const override               { return value; }
+        bool isMutable() const override                    { return false; }
+        bool isAssignable() const override                 { return false; }
+        pool_ptr<Variable> getRootVariable() override      { return {}; }
+        bool readsVariable (Variable&) const override      { return false; }
+        bool writesVariable (Variable&) const override     { return false; }
+        void visitExpressions (ExpressionVisitorFn, AccessType) override {}
+
+        Value value;
+    };
+
+    //==============================================================================
+    struct AggregateInitialiserList  : public Expression
+    {
+        AggregateInitialiserList (CodeLocation l, const Type& t) : Expression (std::move (l)), type (t) {}
+
+        const Type& getType() const override               { return type; }
+        bool isMutable() const override                    { return false; }
+        bool isAssignable() const override                 { return false; }
+        pool_ptr<Variable> getRootVariable() override      { return {}; }
+        bool writesVariable (Variable&) const override     { return false; }
+
+        bool readsVariable (Variable& v) const override
+        {
+            for (auto& i : items)
+                if (i->readsVariable (v))
+                    return true;
+
+            return false;
+        }
+
+        void visitExpressions (ExpressionVisitorFn fn, AccessType a) override
+        {
+            for (auto& i : items)
+                i->visitExpressions (fn, a);
+        }
+
+        Value getAsConstant() const override
+        {
+            auto result = Value::zeroInitialiser (type);
+            size_t index = 0;
+
+            for (auto& i : items)
+            {
+                auto v = i->getAsConstant();
+
+                if (! v.isValid())
+                    return {};
+
+                if (! (type.isStruct() || type.isFixedSizeArray() || type.isVector()))
+                    return v.castToTypeExpectingSuccess (type);
+
+                result.modifySubElementInPlace (index++, v);
+            }
+
+            return result;
+        }
+
+        Type type;
+        ArrayWithPreallocation<pool_ref<Expression>, 4> items;
     };
 
     //==============================================================================
@@ -585,24 +654,6 @@ struct heart
 
         pool_ref<Expression> parent;
         std::string memberName;
-    };
-
-    //==============================================================================
-    struct Constant  : public Expression
-    {
-        Constant (CodeLocation l, Value v) : Expression (std::move (l)), value (std::move (v)) {}
-        Constant (CodeLocation l, const Type& t) : Expression (std::move (l)), value (Value::zeroInitialiser (t)) {}
-
-        const Type& getType() const override               { return value.getType(); }
-        Value getAsConstant() const override               { return value; }
-        bool isMutable() const override                    { return false; }
-        bool isAssignable() const override                 { return false; }
-        pool_ptr<Variable> getRootVariable() override      { return {}; }
-        bool readsVariable (Variable&) const override      { return false; }
-        bool writesVariable (Variable&) const override     { return false; }
-        void visitExpressions (ExpressionVisitorFn, AccessType) override {}
-
-        Value value;
     };
 
     //==============================================================================

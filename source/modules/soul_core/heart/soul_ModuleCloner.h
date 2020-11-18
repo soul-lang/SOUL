@@ -118,6 +118,9 @@ struct ModuleCloner
         if (auto s = cast<heart::StructElement> (old))
             return cloneStructElement (*s);
 
+        if (auto l = cast<heart::AggregateInitialiserList> (old))
+            return cloneInitialiserList (*l);
+
         auto pp = cast<heart::ProcessorProperty> (old);
         return newModule.allocate<heart::ProcessorProperty> (pp->location, pp->property);
     }
@@ -276,6 +279,16 @@ struct ModuleCloner
     {
         for (auto& m : structMappings[std::addressof (old)]->getMembers())
             m.type = cloneType (m.type);
+    }
+
+    heart::AggregateInitialiserList& cloneInitialiserList (const heart::AggregateInitialiserList& old)
+    {
+        auto& l = newModule.allocate<heart::AggregateInitialiserList> (old.location, old.type);
+
+        for (auto& i : old.items)
+            l.items.push_back (cloneExpression (i));
+
+        return l;
     }
 
     heart::Block& createNewBlock (const heart::Block& old)

@@ -563,7 +563,7 @@ private:
                      && c->targetType.isFixedSizeAggregate()
                      && c->targetType.getNumAggregateElements() == csl->items.size())
                 {
-                    return convertListToConstantValue (c->context, c->targetType, *csl);
+                    return createAggregateInitialiserList (c->context, c->targetType, *csl);
                 }
             }
 
@@ -708,28 +708,22 @@ private:
         return builder.createCastIfNeeded (resolved, targetType);
     }
 
-    heart::Expression& convertListToConstantValue (const AST::Context& context, const Type& targetType, AST::CommaSeparatedList& list)
+    heart::AggregateInitialiserList& createAggregateInitialiserList (const AST::Context& context, const Type& targetType, AST::CommaSeparatedList& list)
     {
-        auto v = Value::zeroInitialiser (targetType);
-        size_t index = 0;
+        auto& result = module.allocator.allocate<heart::AggregateInitialiserList> (context.location, targetType);
+        uint32_t index = 0;
 
         for (auto& item : AST::CommaSeparatedList::getAsExpressionList (list))
         {
-            if (auto constItem = item->getAsConstant())
-            {
-                auto elementType = targetType.isStruct() ? targetType.getStructRef().getMemberType (index)
-                                                         : targetType.getElementType();
+            auto elementType = targetType.isStruct() ? targetType.getStructRef().getMemberType (index)
+                                                     : targetType.getElementType();
 
-                SanityCheckPass::expectSilentCastPossible (item->context, elementType, *constItem);
-                v.modifySubElementInPlace (index++, constItem->value.castToTypeExpectingSuccess (elementType));
-            }
-            else
-            {
-                item->context.throwError (Errors::expectedConstant());
-            }
+            SanityCheckPass::expectSilentCastPossible (item->context, elementType, item);
+            result.items.push_back (evaluateAsExpression (item, elementType));
+            ++index;
         }
 
-        return module.allocator.allocate<heart::Constant> (context.location, v);
+        return result;
     }
 
     heart::StructElement& createStructSubElement (AST::StructMemberRef& member, heart::Expression& source)

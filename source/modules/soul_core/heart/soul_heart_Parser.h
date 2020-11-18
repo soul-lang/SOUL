@@ -585,7 +585,10 @@ private:
         {
             FunctionParseState parseState (module->allocate<heart::Function>());
 
-            v.initialValue = parseExpression (parseState);
+            if (matches (HEARTOperator::openParen))
+                v.initialValue = parseInitialiserList (parseState, type);
+            else
+                v.initialValue = parseExpression (parseState);
         }
 
         parseAnnotation (v.annotation);
@@ -1310,11 +1313,11 @@ private:
                 return parseProcessorProperty();
         }
 
-        if (matches (Token::literalInt32))   return parseConstantAsExpression (state, PrimitiveType::int32);
-        if (matches (Token::literalInt64))   return parseConstantAsExpression (state, PrimitiveType::int64);
-        if (matches (Token::literalFloat32)) return parseConstantAsExpression (state, PrimitiveType::float32);
-        if (matches (Token::literalFloat64)) return parseConstantAsExpression (state, PrimitiveType::float64);
-        if (matches (Token::literalString))  return parseConstantAsExpression (state, Type::createStringLiteral());
+        if (matches (Token::literalInt32))       return parseConstantAsExpression (state, PrimitiveType::int32);
+        if (matches (Token::literalInt64))       return parseConstantAsExpression (state, PrimitiveType::int64);
+        if (matches (Token::literalFloat32))     return parseConstantAsExpression (state, PrimitiveType::float32);
+        if (matches (Token::literalFloat64))     return parseConstantAsExpression (state, PrimitiveType::float64);
+        if (matches (Token::literalString))      return parseConstantAsExpression (state, Type::createStringLiteral());
 
         return parseConstantAsExpression (state, readValueType());
     }
@@ -1363,6 +1366,42 @@ private:
         }
 
         return {};
+    }
+
+    heart::AggregateInitialiserList& parseInitialiserList (const FunctionParseState& state, const Type& type)
+    {
+        auto& list = module->allocate<heart::AggregateInitialiserList> (location, type);
+        expect (HEARTOperator::openParen);
+
+        auto getAggregateElementType = [] (const Type& t, uint32_t index)
+        {
+            if (t.isFixedSizeAggregate())
+            {
+                SOUL_ASSERT (index < t.getNumAggregateElements());
+                return t.isStruct() ? t.getStructRef().getMemberType (index)
+                                    : t.getElementType();
+            }
+
+            SOUL_ASSERT (index == 0);
+            return t;
+        };
+
+        if (! matchIf (HEARTOperator::closeParen))
+        {
+            for (;;)
+            {
+                auto& arg = parseExpression (state, getAggregateElementType (type, static_cast<uint32_t> (list.items.size())));
+                list.items.push_back (arg);
+
+                if (matchIf (HEARTOperator::comma))
+                    continue;
+
+                expect (HEARTOperator::closeParen);
+                break;
+            }
+        }
+
+        return list;
     }
 
     heart::ProcessorProperty& parseProcessorProperty()

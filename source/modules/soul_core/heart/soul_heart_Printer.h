@@ -498,6 +498,12 @@ private:
                 return;
             }
 
+            if (auto list = cast<heart::AggregateInitialiserList> (e))
+            {
+                printArgList (list->items);
+                return;
+            }
+
             SOUL_ASSERT_FALSE;
         }
 

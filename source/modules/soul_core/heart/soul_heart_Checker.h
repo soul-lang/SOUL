@@ -318,8 +318,11 @@ struct heart::Checker
                                 if (! r->source->arraySize.has_value())
                                     s->location.throwError (Errors::endpointIndexInvalid());
 
-                                if (r->element->getAsConstant().isValid())
-                                    TypeRules::checkAndGetArrayIndex (r->location, r->element->getAsConstant(), r->source->dataTypes.front().createArray (*r->source->arraySize));
+                                auto constElement = r->element->getAsConstant();
+
+                                if (constElement.isValid())
+                                    TypeRules::checkAndGetArrayIndex (r->location, constElement,
+                                                                      r->source->dataTypes.front().createArray (*r->source->arraySize));
                             }
                         }
 
@@ -344,8 +347,11 @@ struct heart::Checker
                                 if (! w->target->canHandleElementType (w->value->getType()))
                                     s->location.throwError (Errors::wrongTypeForEndpoint());
 
-                                if (w->element->getAsConstant().isValid())
-                                    TypeRules::checkAndGetArrayIndex (w->location, w->element->getAsConstant(), w->target->dataTypes.front().createArray (*w->target->arraySize));
+                                auto constElement = w->element->getAsConstant();
+
+                                if (constElement.isValid())
+                                    TypeRules::checkAndGetArrayIndex (w->location, constElement,
+                                                                      w->target->dataTypes.front().createArray (*w->target->arraySize));
                             }
                         }
                     }
