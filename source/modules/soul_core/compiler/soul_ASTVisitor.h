@@ -316,8 +316,9 @@ struct ASTVisitor
         visitObject (c.source);
     }
 
-    virtual void visit (AST::ProcessorAliasDeclaration&)
+    virtual void visit (AST::ProcessorAliasDeclaration& a)
     {
+        visitObjectIfNotNull (a.targetProcessor);
     }
 
     virtual void visit (AST::EndpointDeclaration& e)
@@ -796,6 +797,7 @@ struct RewritingASTVisitor
 
     virtual AST::ProcessorAliasDeclaration& visit (AST::ProcessorAliasDeclaration& a)
     {
+        replaceExpression (a.targetProcessor);
         return a;
     }
 

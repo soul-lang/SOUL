@@ -483,7 +483,13 @@ private:
 
                     auto context = getContext();
                     auto name = parseIdentifier();
-                    module->addSpecialisationParameter (allocate<AST::UsingDeclaration> (context, name, nullptr));
+
+                    auto& usingDeclaration = allocate<AST::UsingDeclaration> (context, name, nullptr);
+
+                    if (matchIf (Operator::assign))
+                        usingDeclaration.targetType = parseType (ParseTypeContext::variableType);
+
+                    module->addSpecialisationParameter (usingDeclaration);
                 }
                 else if (matchIf (Keyword::processor))
                 {
@@ -491,7 +497,13 @@ private:
                         throwError (Errors::processorSpecialisationNotAllowed());
 
                     auto context = getContext();
-                    module->addSpecialisationParameter (allocate<AST::ProcessorAliasDeclaration> (context, parseIdentifier()));
+                    auto& processorAliasDeclaration = allocate<AST::ProcessorAliasDeclaration> (context, parseIdentifier());
+
+                    if (matchIf (Operator::assign))
+                        processorAliasDeclaration.targetProcessor = parseType (ParseTypeContext::nameOrType);
+
+                    module->addSpecialisationParameter (processorAliasDeclaration);
+
                 }
                 else if (matchIf (Keyword::namespace_))
                 {
@@ -499,13 +511,22 @@ private:
                         throwError (Errors::namespaceSpecialisationNotAllowed());
 
                     auto context = getContext();
-                    module->addSpecialisationParameter (allocate<AST::NamespaceAliasDeclaration> (context, parseIdentifier()));
+                    auto& namespaceAliasDeclaration = allocate<AST::NamespaceAliasDeclaration> (context, parseIdentifier());
+
+                    if (matchIf (Operator::assign))
+                        namespaceAliasDeclaration.targetNamespace = parseType (ParseTypeContext::nameOrType);
+
+                    module->addSpecialisationParameter (namespaceAliasDeclaration);
                 }
                 else
                 {
                     giveErrorOnExternalKeyword();
                     auto& parameterType = parseType (ParseTypeContext::processorParameter);
                     auto& parameterVariable = allocate<AST::VariableDeclaration> (getContext(), parameterType, nullptr, true);
+
+                    if (matchIf (Operator::assign))
+                        parameterVariable.initialValue = parseExpression();
+
                     parameterVariable.name = parseIdentifier();
                     module->addSpecialisationParameter (parameterVariable);
                 }

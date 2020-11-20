@@ -909,8 +909,8 @@ struct AST
 
         virtual bool isResolved() const = 0;
 
-        virtual Type getResultType() const                            { SOUL_ASSERT_FALSE; return {}; }
-        virtual Type resolveAsType() const                            { SOUL_ASSERT_FALSE; return {}; }
+        virtual Type getResultType() const                            { context.throwError (Errors::expectedType()); }
+        virtual Type resolveAsType() const                            { context.throwError (Errors::expectedType()); }
         virtual pool_ptr<ProcessorBase> getAsProcessor() const        { return {}; }
         virtual pool_ptr<Namespace> getAsNamespace() const            { return {}; }
         virtual pool_ptr<EndpointDeclaration> getAsEndpoint() const   { return {}; }
@@ -1454,10 +1454,11 @@ struct AST
         {
         }
 
-        bool isResolved() const                 { return targetProcessor != nullptr; }
+        bool isResolved() const                 { return resolvedProcessor != nullptr; }
 
         Identifier name;
-        pool_ptr<ProcessorBase> targetProcessor;
+        pool_ptr<Expression> targetProcessor;
+        pool_ptr<ProcessorBase> resolvedProcessor;
     };
 
     //==============================================================================

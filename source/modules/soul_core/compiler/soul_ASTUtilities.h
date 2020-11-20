@@ -194,11 +194,9 @@ struct ASTUtilities
     static std::string getSpecialisationSignature (const ParamList& params, const ArgList& args)
     {
         std::stringstream key;
-        SOUL_ASSERT (args.size() == params.size());
 
-        for (size_t i = 0; i < args.size(); ++i)
+        for (size_t i = 0; i < params.size(); ++i)
         {
-            auto& arg = args[i].get();
             auto& param = params[i];
 
             if (i > 0)
@@ -206,30 +204,33 @@ struct ASTUtilities
 
             if (auto u = cast<AST::UsingDeclaration> (param))
             {
-                if (arg.resolveAsType().isStruct())
-                    key << getSignatureString (arg.resolveAsType().getStruct().get());
+                auto targetType = (i < args.size()) ? args[i]->resolveAsType() : u->targetType->resolveAsType();
+
+                if (targetType.isStruct())
+                    key << getSignatureString (targetType.getStruct().get());
                 else
-                    key << arg.resolveAsType().getShortIdentifierDescription();
+                    key << targetType.getShortIdentifierDescription();
 
                 continue;
             }
 
             if (auto v = cast<AST::VariableDeclaration> (param))
             {
-                auto& value = arg.getAsConstant()->value;
+                auto& value = (i < args.size()) ?  args[i]->getAsConstant()->value : v->initialValue->getAsConstant()->value;
                 key << std::string (static_cast<const char*> (value.getPackedData()), value.getPackedDataSize());
                 continue;
             }
 
             if (auto v = cast<AST::NamespaceAliasDeclaration> (param))
             {
-                key << getSignatureString (v->resolvedNamespace.get());
+                auto ns = (i < args.size()) ? cast<AST::NamespaceRef> (args[i])->ns : v->resolvedNamespace;
+                key << getSignatureString (ns.get());
                 continue;
             }
 
             if (auto v = cast<AST::ProcessorAliasDeclaration> (param))
             {
-                key << getSignatureString (v->targetProcessor.get());
+                key << getSignatureString (v->resolvedProcessor.get());
                 continue;
             }
 
