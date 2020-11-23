@@ -1879,7 +1879,6 @@ private:
                     return instance;
 
                 auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (instance.specialisationArgs);
-                auto numArgs = specialisationArgs.size();
                 auto target = pool_ref<AST::ProcessorBase> (*p);
 
                 if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams))
@@ -1898,18 +1897,20 @@ private:
                     return instance;
                 }
 
-                if (target->owningInstance != nullptr || numArgs != 0)
+                bool requiresSpecialisation = ! target->specialisationParams.empty();
+
+                if (target->owningInstance != nullptr || requiresSpecialisation)
                 {
                     auto nameRoot = target->name.toString();
 
-                    if (numArgs != 0)
+                    if (requiresSpecialisation)
                         nameRoot = TokenisedPathString::join (nameRoot,
                                                               "_for_" + makeSafeIdentifierName (choc::text::replace (graph.getFullyQualifiedPath().toString(), ":", "_")
                                                                   + "_" + instance.instanceName->toString()));
                     auto& ns = target->getNamespace();
                     target = *cast<AST::ProcessorBase> (target->createClone (allocator, ns, ns.makeUniqueName (nameRoot)));
 
-                    if (numArgs != 0)
+                    if (requiresSpecialisation)
                     {
                         auto oldCloneFn = target->createClone;
 
