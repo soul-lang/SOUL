@@ -1147,6 +1147,15 @@ private:
             }
             else if (targetType.isArrayOrVector())
             {
+                if (numArgs == 1)
+                {
+                    if (auto constant = list.items.front()->getAsConstant())
+                        if (TypeRules::canCastTo (targetType, constant->value.getType()))
+                            return allocator.allocate<AST::Constant> (expr.context, constant->value.castToTypeExpectingSuccess (targetType));
+
+                    return expr;
+                }
+
                 SanityCheckPass::throwErrorIfWrongNumberOfElements (expr.context, targetType, numArgs);
 
                 auto elementType = targetType.getElementType();
