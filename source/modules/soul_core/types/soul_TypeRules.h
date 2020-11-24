@@ -103,7 +103,8 @@ struct TypeRules
             if (dest.isVoid() || source.isVoid())
                 return CastType::notPossible;
 
-            if ((dest.isPrimitive() || dest.isVectorOfSize1()) && source.isPrimitive() && ! dest.isReference())
+            if ((dest.isPrimitive() || dest.isVectorOfSize1()) &&
+                (source.isPrimitive() || source.isVectorOfSize1()) && ! dest.isReference())
                 return getCastType (dest.getPrimitiveType(), source.getPrimitiveType());
 
             if (! dest.isReference())

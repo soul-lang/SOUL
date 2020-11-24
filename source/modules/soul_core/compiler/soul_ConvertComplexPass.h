@@ -315,6 +315,8 @@ private:
 
         AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
         {
+            SOUL_ASSERT (targetType.isComplex());
+
             auto& transformedExpression = transformations.getTransformedExpression (e);
 
             auto sourceType = e.getResultType();
@@ -324,10 +326,16 @@ private:
 
             if (sourceType.isComplex())
             {
+                auto memberType = targetType.isComplex32() ? PrimitiveType::float32 : PrimitiveType::float64;
+
                 // Cast the real/imaginary components to the targetType
                 auto& args = allocator.allocate<AST::CommaSeparatedList> (e.context);
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "real")));
-                args.items.push_back (allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "imag")));
+
+                auto& real = allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "real"));
+                args.items.push_back (allocator.allocate<AST::TypeCast> (e.context, memberType, real));
+
+                auto& imag = allocator.allocate<AST::DotOperator> (e.context, transformedExpression, identifierFromString (allocator, e.context, "imag"));
+                args.items.push_back (allocator.allocate<AST::TypeCast> (e.context, memberType, imag));
 
                 return allocator.allocate<AST::TypeCast> (e.context, targetType.removeReferenceIfPresent(), args);
             }
