@@ -666,13 +666,13 @@ struct AudioMIDIWrapper
         eventOutputList.deliverPendingEvents (handleEvent);
     }
 
+    Performer& performer;
     ParameterStateList parameterList;
     TimelineEventEndpointList timelineEventEndpointList;
+    uint64_t totalFramesRendered = 0;
 
 private:
     //==============================================================================
-    Performer& performer;
-
     MultiEndpointFIFO inputFIFO;
 
     AudioInputList   audioInputList;
@@ -681,7 +681,6 @@ private:
     MIDIOutputList   midiOutputList;
     EventOutputList  eventOutputList;
 
-    uint64_t totalFramesRendered = 0;
     uint32_t maxBlockSize = 0;
 
     static constexpr uint32_t maxInternalBlockSize = 512;

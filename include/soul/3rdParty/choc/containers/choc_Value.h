@@ -1925,9 +1925,9 @@ template <typename PrimitiveType> void ValueView::setUnchecked (PrimitiveType v)
 
     if constexpr (matchesType<PrimitiveType, bool>())
     {
-        *data = v ? 1 : 0; 
+        *data = v ? 1 : 0;
     }
-    else if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>())   
+    else if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>())
     {
         setUnchecked (static_cast<int32_t> (v.handle));
     }
