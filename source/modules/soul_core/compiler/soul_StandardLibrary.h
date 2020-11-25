@@ -1381,6 +1381,51 @@ R"soul_code(
             let Bipolar  = 1;
         }
 
+        namespace smoother
+        {
+            struct State
+            {
+                float currentValue;
+                float targetValue;
+                float increment;
+                int steps;
+            }
+
+            void reset (State& state, float initialValue)
+            {
+                state.currentValue = initialValue;
+                state.targetValue = initialValue;
+                state.increment = 0.0f;
+                state.steps = 0;
+            }
+
+            void setTarget (State& state, float targetValue, int steps)
+            {
+                state.targetValue = targetValue;
+                state.increment = (state.targetValue - state.currentValue) / steps;
+)soul_code"
+R"soul_code(
+
+                state.steps = steps;
+            }
+
+            float tick (State& state)
+            {
+                if (state.steps == 0)
+                    return state.currentValue;
+
+                state.currentValue += state.increment;
+                state.steps--;
+
+                if (state.steps == 0)
+                {
+                    state.currentValue = state.targetValue;
+                }
+                
+                return state.currentValue;
+            }
+        }
+
         processor Processor (int initialShape, int initialPolarity, float initialDepth, float initialFreq)
         {
             output stream SampleType out;
@@ -1392,9 +1437,6 @@ R"soul_code(
             {
                 float rateHzIn     [[ name: "Rate (Hz)",     min: 0.01,  max: 40.0,   init: 1.,   unit: "hz", step: 0.01 ]];
                 float rateTempoIn  [[ name: "Rate (Tempo)",  min: 0,     max: 14,     init: 0,    text: "1/64|1/32|1/16T|1/16|1/16D|1/8T|1/8|1/8D|1/4|1/4D|1/2|1/1|2/1|4/1|8/1"]];
-)soul_code"
-R"soul_code(
-
                 float depthIn      [[ name: "Depth",         min: 0,     max: 100,    init: 100,  unit: "%",  step: 1 ]];
                 float shapeIn      [[ name: "Shape",         min: 0,     max: 5,      init: 0,    text: "Triangle|Square|Ramp Up|Ramp Down|Sine|Sample & Hold"]];
                 float polarityIn   [[ name: "Polarity",      min: 0,     max: 1,      init: 0,    text: "Unipolar|Bipolar"]];
@@ -1403,6 +1445,9 @@ R"soul_code(
             }
 
             event positionIn (soul::timeline::Position v)             { qnPos = v.currentQuarterNote; }
+)soul_code"
+R"soul_code(
+
             event transportStateIn (soul::timeline::TransportState v) { transportRunning = v.state > 0; }
             event tempoIn (soul::timeline::Tempo v)                   { qnPhaseIncrement = (v.bpm / 60.0f) * float (processor.period); }
 
@@ -1426,9 +1471,6 @@ R"soul_code(
                 else if (div == Divs::k8nd)  qnScalar = DivScalars::k8nd;
                 else if (div == Divs::k4n )  qnScalar = DivScalars::k4n;
                 else if (div == Divs::k4nd)  qnScalar = DivScalars::k4nd;
-)soul_code"
-R"soul_code(
-
                 else if (div == Divs::k2n )  qnScalar = DivScalars::k2n;
                 else if (div == Divs::k1bar) qnScalar = DivScalars::k1bar;
                 else if (div == Divs::k2bar) qnScalar = DivScalars::k2bar;
@@ -1436,18 +1478,22 @@ R"soul_code(
                 else if (div == Divs::k8bar) qnScalar = DivScalars::k8bar;
             }
 
-            event depthIn (float v)       { depth = v * 0.01f; }
+            event depthIn (float v)       { depth.setTarget (v * 0.01f, smoothingSamples); }
             event shapeIn (float v)       { shape = int (floor (v)); }
             event polarityIn (float v)    { polarity = (v < 0.5f) ? Polarity::Unipolar : Polarity::Bipolar; }
             event rateModeIn (float v)    { qnMode = v > 0.5f; }
+)soul_code"
+R"soul_code(
+
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
             var phaseIncrement = float32 (initialFreq * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
-            SampleType depth = initialDepth * 0.01f;
+            smoother::State depth;
 
+            let smoothingSamples = int (processor.frequency * 0.02);
             bool transportRunning = false;
             bool qnMode = false;
             bool timelineSync = false;
@@ -1476,9 +1522,6 @@ R"soul_code(
                     if (shape == Shape::Triangle)
                         return shapers::triangle (phase);
                     else if (shape == Shape::Square)
-)soul_code"
-R"soul_code(
-
                         return shapers::square (phase);
                     else if (shape == Shape::RampUp)
                         return shapers::rampUp (phase);
@@ -1493,6 +1536,9 @@ R"soul_code(
                 {
                     if (shape == Shape::Triangle)
                         return shapers::triangleUnipolar (phase);
+)soul_code"
+R"soul_code(
+
                     else if (shape == Shape::Square)
                         return shapers::squareUnipolar (phase);
                     else if (shape == Shape::RampUp)
@@ -1508,13 +1554,18 @@ R"soul_code(
                 return 0.0f;
             }
 
+            void init()
+            {
+                depth.reset (initialDepth * 0.01f);
+            }
+
             void run()
             {
                 rng.reset (processor.id + 10);
 
                 loop
                 {
-                    out << getNextSample() * depth;
+                    out << getNextSample() * depth.tick();
 
                     if (qnMode)
                     {
@@ -1527,9 +1578,6 @@ R"soul_code(
                         else // freewheel
                         {
                             phase += (qnPhaseIncrement * float32 (qnScalar));
-
-)soul_code"
-R"soul_code(
 
                             while (phase >= 1.0f)
                                 phase -= 1.0f;
