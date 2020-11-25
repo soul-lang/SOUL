@@ -1115,7 +1115,7 @@ R"soul_code(
     }
 
     //==============================================================================
-    /** A semi band-limited oscillator with Sawtooth, Square and Triangle wave shapes
+    /** A semi band-limited oscillator with sawtooth, square and triangle wave shapes
         using the PolyBLEP (Polynomial Band-Limited Step) technique.
         You may want to oversample this oscillator, in order to reduce aliasing
     */
@@ -1158,9 +1158,9 @@ R"soul_code(
 
         namespace Shape
         {
-            let Sawtooth = 0;
-            let Triangle = 1;
-            let Square   = 2;
+            let sawtooth = 0;
+            let triangle = 1;
+            let square   = 2;
         }
 
         processor Processor (int initialShape, float initialFrequency)
@@ -1177,7 +1177,7 @@ R"soul_code(
             event frequencyIn (float v)    { s.update (processor.period, v); }
 
             phasor::State s;
-            wrap<3> shape = wrap<3> (initialShape);
+            var shape = wrap<3> (initialShape);
 
             void init()
             {
@@ -1191,18 +1191,18 @@ R"soul_code(
 
                 loop
                 {
-                    if (shape == Shape::Sawtooth)
+                    if (shape == Shape::sawtooth)
                     {
                         y = shapers::sawtooth (s);
                     }
-                    else if (shape == Shape::Triangle)
+                    else if (shape == Shape::triangle)
                     {
                         // leaky integrator
                         let coefficient = PhaseType (1.0 - (0.25 * s.phaseIncrement));
                         triAccumulator = s.phaseIncrement * shapers::square (s) + coefficient * triAccumulator;
                         y = triAccumulator * PhaseType (4);
                     }
-                    else if (shape == Shape::Square)
+                    else if (shape == Shape::square)
                     {
                         y = shapers::square (s);
                     }
@@ -1221,23 +1221,21 @@ R"soul_code(
 R"soul_code(
 
     //==============================================================================
-    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously 
-        https://vicanek.de/articles/QuadOsc.pdf  
+    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously
+        https://vicanek.de/articles/QuadOsc.pdf
     */
     namespace quadrature (using SampleType)
     {
-        let updateInterval = 16; // limit coefficient updates to every 16 samples 
+        let updateInterval = 16; // limit coefficient updates to every 16 samples
 
         struct State
         {
-            SampleType u;
-            SampleType v;
+            SampleType u, v;
         }
 
         struct Coeffs
         {
-            SampleType k1;
-            SampleType k2;
+            SampleType k1, k2;
         }
 
         void reset (State& s)
@@ -1269,7 +1267,7 @@ R"soul_code(
             input event float frequencyIn [[ name: "Frequency", min: -maxFreqHz, max: maxFreqHz, init: 0.0 ]]; // Default meta data allows negative frequencies
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
-            
+
             float frequency = initialFrequency;
             bool recalc = true;
 
@@ -1289,10 +1287,10 @@ R"soul_code(
                     }
 
                     loop (updateInterval)
+                    {
 )soul_code"
 R"soul_code(
 
-                    {
                         let y = s.process (c);
                         sineOut << y[0];
                         cosineOut << y[1];
@@ -1321,34 +1319,34 @@ R"soul_code(
             SampleType square           (PhaseType phase) { return (float (phase > 0.5f) * 2.0f) - 1.0f; }
             SampleType squareUnipolar   (PhaseType phase) { return float (phase > 0.5f); }
             SampleType sine             (PhaseType phase) { return sin (phase * float32 (twoPi)); }
-            SampleType sineUnipolar     (PhaseType phase) { return (sin (phase * float32 (twoPi)) + 1.0f) * 0.5f; }                        
+            SampleType sineUnipolar     (PhaseType phase) { return (sin (phase * float32 (twoPi)) + 1.0f) * 0.5f; }
         }
 
         namespace Shape
         {
-            let Triangle = 0;
-            let Square   = 1;
-            let RampUp   = 2;
-            let RampDown = 3;
-            let Sine     = 4;
+            let triangle = 0;
+            let square   = 1;
+            let rampUp   = 2;
+            let rampDown = 3;
+            let sine     = 4;
             let SAH      = 5;
         }
 
         namespace Divs
         {
-            let k64n  = 0; 
-            let k32n  = 1; 
-            let k16nt = 2; 
-            let k16n  = 3; 
-            let k16nd = 4; 
-            let k8nt  = 5; 
+            let k64n  = 0;
+            let k32n  = 1;
+            let k16nt = 2;
+            let k16n  = 3;
+            let k16nd = 4;
+            let k8nt  = 5;
+            let k8n   = 6;
 )soul_code"
 R"soul_code(
 
-            let k8n   = 6; 
-            let k8nd  = 7; 
-            let k4n   = 8; 
-            let k4nd  = 9; 
+            let k8nd  = 7;
+            let k4n   = 8;
+            let k4nd  = 9;
             let k2n   = 10;
             let k1bar = 11;
             let k2bar = 12;
@@ -1377,8 +1375,8 @@ R"soul_code(
 
         namespace Polarity
         {
-            let Unipolar = 0;
-            let Bipolar  = 1;
+            let unipolar = 0;
+            let bipolar  = 1;
         }
 
         namespace smoother
@@ -1418,10 +1416,8 @@ R"soul_code(
                 state.steps--;
 
                 if (state.steps == 0)
-                {
                     state.currentValue = state.targetValue;
-                }
-                
+
                 return state.currentValue;
             }
         }
@@ -1445,19 +1441,19 @@ R"soul_code(
             }
 
             event positionIn (soul::timeline::Position v)             { qnPos = v.currentQuarterNote; }
+            event transportStateIn (soul::timeline::TransportState v) { transportRunning = v.state > 0; }
 )soul_code"
 R"soul_code(
 
-            event transportStateIn (soul::timeline::TransportState v) { transportRunning = v.state > 0; }
             event tempoIn (soul::timeline::Tempo v)                   { qnPhaseIncrement = (v.bpm / 60.0f) * float (processor.period); }
 
-            event rateHzIn (float v) 
-            { 
+            event rateHzIn (float v)
+            {
                 if (!qnMode)
-                    phaseIncrement = PhaseType (v * processor.period); 
+                    phaseIncrement = PhaseType (v * processor.period);
             }
 
-            event rateTempoIn (float v) 
+            event rateTempoIn (float v)
             {
                 let div = int(floor(v));
 
@@ -1480,14 +1476,14 @@ R"soul_code(
 
             event depthIn (float v)       { depth.setTarget (v * 0.01f, smoothingSamples); }
             event shapeIn (float v)       { shape = int (floor (v)); }
-            event polarityIn (float v)    { polarity = (v < 0.5f) ? Polarity::Unipolar : Polarity::Bipolar; }
+            event polarityIn (float v)    { polarity = (v < 0.5f) ? Polarity::unipolar : Polarity::bipolar; }
             event rateModeIn (float v)    { qnMode = v > 0.5f; }
-)soul_code"
-R"soul_code(
-
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
+)soul_code"
+R"soul_code(
+
             var phaseIncrement = float32 (initialFreq * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
@@ -1511,44 +1507,32 @@ R"soul_code(
                     noiseSample = SampleType (rng.getNextBipolar());
 
                 prevPhase = phase;
-                
+
                 return noiseSample;
             }
 
             SampleType getNextSample()
             {
-                if (polarity == Polarity::Bipolar)
+                if (polarity == Polarity::bipolar)
                 {
-                    if (shape == Shape::Triangle)
-                        return shapers::triangle (phase);
-                    else if (shape == Shape::Square)
-                        return shapers::square (phase);
-                    else if (shape == Shape::RampUp)
-                        return shapers::rampUp (phase);
-                    else if (shape == Shape::RampDown)
-                        return shapers::rampDown (phase);  
-                    else if (shape == Shape::Sine)
-                        return shapers::sine (phase);
-                    else if (shape == Shape::SAH)
-                        return getNoiseSample();
+                    if (shape == Shape::triangle)  return shapers::triangle (phase);
+                    if (shape == Shape::square)    return shapers::square (phase);
+                    if (shape == Shape::rampUp)    return shapers::rampUp (phase);
+                    if (shape == Shape::rampDown)  return shapers::rampDown (phase);
+                    if (shape == Shape::sine)      return shapers::sine (phase);
+                    if (shape == Shape::SAH)       return getNoiseSample();
                 }
                 else
                 {
-                    if (shape == Shape::Triangle)
-                        return shapers::triangleUnipolar (phase);
+                    if (shape == Shape::triangle)  return shapers::triangleUnipolar (phase);
+                    if (shape == Shape::square)    return shapers::squareUnipolar (phase);
+                    if (shape == Shape::rampUp)    return shapers::rampUpUnipolar (phase);
+                    if (shape == Shape::rampDown)  return shapers::rampDownUnipolar (phase);
 )soul_code"
 R"soul_code(
 
-                    else if (shape == Shape::Square)
-                        return shapers::squareUnipolar (phase);
-                    else if (shape == Shape::RampUp)
-                        return shapers::rampUpUnipolar (phase);
-                    else if (shape == Shape::RampDown)
-                        return shapers::rampDownUnipolar (phase);  
-                    else if (shape == Shape::Sine)
-                        return shapers::sineUnipolar (phase);
-                    else if (shape == Shape::SAH)
-                        return getNoiseSample();
+                    if (shape == Shape::sine)      return shapers::sineUnipolar (phase);
+                    if (shape == Shape::SAH)       return getNoiseSample();
                 }
 
                 return 0.0f;
