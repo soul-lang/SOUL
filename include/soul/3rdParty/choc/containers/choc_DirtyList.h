@@ -42,7 +42,7 @@ namespace choc::fifo
     number of objects is very large.
     To make this possible, the compromises are that it needs to be initialised with a
     complete list of the objects needed, so that it can assign handles to them, and its
-    memory requirements involve allocating small amount of storage per object.
+    memory requirements include allocating a small amount of storage per object.
 */
 template <typename ObjectType>
 struct DirtyList

@@ -33,20 +33,20 @@ namespace choc::fifo
 
 //==============================================================================
 /**
-A multiple writer, single consumer FIFO which can store items as contiguous
-blocks of data with individual sizes.
-Multiple write threads may have to briefly spin-wait for each other, but the
-reader thread is not blocked by the activity of writers.
+    A multiple writer, single consumer FIFO which can store items as contiguous
+    blocks of data with individual sizes.
+    Multiple write threads may have to briefly spin-wait for each other, but the
+    reader thread is not blocked by the activity of writers.
 
-Note that this class uses a circular buffer, but does not split individual
-items across the end of the buffer. This means that when accessing an item,
-the reader always has direct access to each item's data as a contiguous block.
-But it also means that when an item is too large to fit into empty space at the
-end of the circular buffer, that space is treated as padding and the item is
-written at the start of the buffer, so it may not always be possible to add an
-item, even if there's enough total space for it. You might want to take this
-into account by making sure the capacity is at least a few times greater than
-the largest item you need to store.
+    Note that this class uses a circular buffer, but does not split individual
+    items across the end of the buffer. This means that when accessing an item,
+    the reader always has direct access to each item's data as a contiguous block.
+    But it also means that when an item is too large to fit into empty space at the
+    end of the circular buffer, that space is treated as padding and the item is
+    written at the start of the buffer, so it may not always be possible to add an
+    item, even if there's enough total space for it. You might want to take this
+    into account by making sure the capacity is at least a few times greater than
+    the largest item you need to store.
 */
 struct VariableSizeFIFO
 {

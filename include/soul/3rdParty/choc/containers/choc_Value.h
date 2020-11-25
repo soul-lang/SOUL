@@ -1309,7 +1309,7 @@ inline Type& Type::operator= (const Type& other)
     return *this;
 }
 
-inline Type::Type (MainType t)  : mainType (t), content() {}
+inline Type::Type (MainType t)  : mainType (t) {}
 inline Type::Type (MainType t, Content c, Allocator* a)  : mainType (t), content (c), allocator (a) {}
 
 inline Type::Type (MainType vectorElementType, uint32_t size)  : mainType (MainType::vector)
@@ -1923,16 +1923,23 @@ template <typename PrimitiveType> void ValueView::setUnchecked (PrimitiveType v)
     static_assert (isPrimitiveType<PrimitiveType>() || isStringType<PrimitiveType>(),
                    "The template type needs to be one of the supported primitive types");
 
-    if constexpr (matchesType<PrimitiveType, bool>())                       { *data = v ? 1 : 0; return; }
-    if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>())   return setUnchecked (static_cast<int32_t> (v.handle));
-
-    if constexpr (isStringType<PrimitiveType>())
+    if constexpr (matchesType<PrimitiveType, bool>())
+    {
+        *data = v ? 1 : 0; 
+    }
+    else if constexpr (matchesType<PrimitiveType, StringDictionary::Handle>())   
+    {
+        setUnchecked (static_cast<int32_t> (v.handle));
+    }
+    else if constexpr (isStringType<PrimitiveType>())
     {
         check (stringDictionary != nullptr, "No string dictionary supplied");
-        return setUnchecked (stringDictionary->getHandleForString (v));
+        setUnchecked (stringDictionary->getHandleForString (v));
     }
-
-    writeUnaligned (data, v);
+    else
+    {
+        writeUnaligned (data, v);
+    }
 }
 
 template <typename PrimitiveType> void ValueView::set (PrimitiveType v)
