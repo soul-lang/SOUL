@@ -35,6 +35,11 @@ namespace soul::random
         int64 seed;
     }
 
+    void reset (RandomNumberState& state, int64 seed)
+    {
+        state.seed = seed;
+    }
+
     /** Returns the next number in the full 32-bit integer range. */
     int32 getNextInt32 (RandomNumberState& state)
     {
