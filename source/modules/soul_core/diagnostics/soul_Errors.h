@@ -101,6 +101,7 @@ namespace soul
     X(mustBeOnlyOneEndpoint,                "A processor can only be placed inside a chain if it has exactly one input and one output") \
     X(cannotNameEndpointInChain,            "A processor that is chained between two others cannot specify an endpoint name") \
     X(cannotChainConnectionWithMultiple,    "Cannot create a chained sequence of connections when multiple endpoints are specified") \
+    X(invalidEndpointSpecifier,             "Invalid endpoint specifier") \
     X(sourceEndpointIndexOutOfRange,        "Source index out of range") \
     X(destinationEndpointIndexOutOfRange,   "Destination index out of range") \
     X(ambiguousSymbol,                      "Multiple matches found when looking for $Q0$") \

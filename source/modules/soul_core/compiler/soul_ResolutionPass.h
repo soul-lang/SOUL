@@ -731,9 +731,6 @@ private:
             if (std::addressof (result) != std::addressof (d))
                 return result;
 
-            if (failIfNotResolved (d.lhs))
-                return result;
-
             if (currentConnectionEndpoint != nullptr)
             {
                 if (auto processorInstance = cast<AST::ProcessorInstanceRef> (d.lhs))
@@ -758,7 +755,18 @@ private:
                                 return allocator.allocate<AST::ConnectionEndpointRef> (d.context, processorInstance, d.rhs);
                     }
                 }
+
+                if (auto nestedDots = cast<AST::DotOperator> (d.lhs))
+                {
+                    if (ignoreErrors)
+                        ++numFails;
+                    else
+                        d.context.throwError (Errors::invalidEndpointSpecifier());
+                }
             }
+
+            if (failIfNotResolved (d.lhs))
+                return result;
 
             if (AST::isResolvedAsType (d.lhs.get()))
             {
