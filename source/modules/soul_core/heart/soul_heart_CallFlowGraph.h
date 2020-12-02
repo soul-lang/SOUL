@@ -98,18 +98,27 @@ private:
 
     static bool visitDownstreamBlocks (heart::Block& start, std::function<bool(heart::Block&)> visitor)
     {
-        for (auto b : start.terminator->getDestinationBlocks())
+        heart::Block* front = &start;
+        heart::Block* back = &start;
+
+        for (;;)
         {
-            if (! b->tempData.get<bool>())
+            for (auto b : front->terminator->getDestinationBlocks())
             {
-                if (! visitor (b))
-                    return false;
+                if (b->tempData.get<heart::Block*>() == nullptr)
+                {
+                    if (! visitor (b))
+                        return false;
 
-                b->tempData.set (true);
-
-                if (! visitDownstreamBlocks (b, visitor))
-                    return false;
+                    back->tempData.set (&b.get());
+                    back = &b.get();
+                }
             }
+
+            if (front == back)
+                break;
+
+            front = front->tempData.get<heart::Block*>();
         }
 
         return true;
@@ -117,18 +126,27 @@ private:
 
     static bool visitUpstreamBlocks (heart::Block& start, std::function<bool(heart::Block&)> visitor)
     {
-        for (auto b : start.predecessors)
+        heart::Block* front = &start;
+        heart::Block* back = &start;
+
+        for (;;)
         {
-            if (! b->tempData.get<bool>())
+            for (auto b : front->predecessors)
             {
-                if (! visitor (b))
-                    return false;
+                if (b->tempData.get<heart::Block*>() == nullptr)
+                {
+                    if (! visitor (b))
+                        return false;
 
-                b->tempData.set (true);
-
-                if (! visitUpstreamBlocks (b, visitor))
-                    return false;
+                    back->tempData.set (&b.get());
+                    back = &b.get();
+                }
             }
+
+            if (front == back)
+                break;
+
+            front = front->tempData.get<heart::Block*>();
         }
 
         return true;
