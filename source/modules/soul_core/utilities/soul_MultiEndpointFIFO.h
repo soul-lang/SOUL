@@ -32,7 +32,7 @@ struct MultiEndpointFIFO
 {
     MultiEndpointFIFO()
     {
-        incomingItemAllocator = std::make_unique<LocalAllocator<incomingItemAllocationSpace>>();
+        incomingItemAllocator = std::make_unique<LocalChocValueAllocator<incomingItemAllocationSpace>>();
         reset (256 * 1024, 2048);
     }
 
@@ -64,7 +64,7 @@ struct MultiEndpointFIFO
 
         if (value.getType().usesStrings())
         {
-            LocalAllocator<maxItemSize> localSpace;
+            LocalChocValueAllocator<maxItemSize> localSpace;
             choc::value::ValueView v (choc::value::Type (std::addressof (localSpace), value.getType()),
                                       startOfValueData, value.getDictionary());
 
@@ -75,41 +75,87 @@ struct MultiEndpointFIFO
         return fifo.push (scratch.space, scratch.total);
     }
 
-    /** Note that these iterate functions may only be called by a single thread. */
-    template <typename HandleStartOfChunk, typename HandleItem, typename HandleEndOfChunk>
-    bool iterateChunks (uint64_t startFrameNumber,
-                        uint32_t totalFramesNeeded, uint32_t maxFramesPerChunk,
-                        HandleStartOfChunk&& handleStartOfChunk,
-                        HandleItem&& handleItem,
-                        HandleEndOfChunk&& handleEndOfChunk)
+    //==============================================================================
+    bool prepareForReading (uint64_t startFrameNumber, uint32_t numFramesNeeded)
     {
+        incomingItemAllocator->reset();
         uint32_t numItems = 0;
         bool success = true;
-        incomingItemAllocator->reset();
 
-        fifo.popAllAvailable ([&] (const void* data, uint32_t size)
-                              {
-                                  auto d = static_cast<const uint8_t*> (data);
-                                  uint64_t absoluteTime;
+        dataLock = fifo.popAllAvailable ([&] (const void* data, uint32_t size)
+                                         {
+                                             auto d = static_cast<const uint8_t*> (data);
+                                             uint64_t absoluteTime;
 
-                                  if (numItems < incomingItems.size()
-                                       && readIncomingItem (incomingItems[numItems], { d, d + size }, startFrameNumber, absoluteTime))
-                                      ++numItems;
-                                  else
-                                      success = false;
-                              },
-                              [&]
-                              {
-                                  processChunks (incomingItems.data(), numItems, totalFramesNeeded, maxFramesPerChunk,
-                                                 handleStartOfChunk, handleItem, handleEndOfChunk);
-                              });
+                                             if (numItems < incomingItems.size()
+                                                  && readIncomingItem (incomingItems[numItems], { d, d + size }, startFrameNumber, absoluteTime))
+                                                 ++numItems;
+                                             else
+                                                 success = false;
+                                         });
 
-        // the values are all still referencing our local allocator space, which will be overwritten
-        // soon, so need to make sure they're not left pointing to it..
-        for (uint32_t i = 0; i < numItems; ++i)
+        framesToRead = numFramesNeeded;
+        totalItemsRead = numItems;
+        currentFrame = 0;
+        nextChunkStart = 0;
+        return success;
+    }
+
+    uint32_t getNumFramesInNextChunk (uint32_t maxNumFrames)
+    {
+        if (currentFrame >= framesToRead)
+            return 0;
+
+        nextChunkStart = findOffsetOfNextItemAfter (incomingItems.data(), totalItemsRead, currentFrame,
+                                                    std::min (framesToRead, currentFrame + maxNumFrames));
+        framesThisTime = nextChunkStart - currentFrame;
+        return framesThisTime;
+    }
+
+    template <typename HandleItem>
+    void processNextChunk (HandleItem&& handleItem)
+    {
+        for (uint32_t i = 0; i < totalItemsRead; ++i)
+        {
+            auto& item = incomingItems[i];
+            auto itemStart = item.startFrame;
+            auto itemEnd = itemStart + item.numFrames;
+
+            if (itemEnd > currentFrame && itemStart < nextChunkStart)
+            {
+                if (item.numFrames != 1)
+                {
+                    if (itemStart < currentFrame)
+                    {
+                        auto amountToTrim = currentFrame - itemStart;
+                        item.value = item.value.getElementRange (amountToTrim, item.numFrames - amountToTrim);
+                        itemStart = currentFrame;
+                        item.numFrames -= amountToTrim;
+                        item.startFrame += amountToTrim;
+                    }
+
+                    if (itemEnd > nextChunkStart)
+                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value.getElementRange (0, nextChunkStart - itemStart)));
+                    else
+                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
+                }
+                else
+                {
+                    handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
+                }
+            }
+        }
+
+        currentFrame = nextChunkStart;
+    }
+
+    void finishReading()
+    {
+        for (uint32_t i = 0; i < totalItemsRead; ++i)
             incomingItems[i].value = {};
 
-        return success;
+        dataLock = {};
+        totalItemsRead = 0;
     }
 
     /** Note that these iterate functions may only be called by a single thread. */
@@ -117,6 +163,7 @@ struct MultiEndpointFIFO
     bool iterateAllAvailable (HandleItem&& handleItem)
     {
         bool success = true;
+        incomingItemAllocator->reset();
 
         fifo.popAllAvailable ([&] (const void* data, uint32_t size)
                               {
@@ -175,47 +222,12 @@ private:
         }
     };
 
-    template <size_t totalSize>
-    struct LocalAllocator  : public choc::value::Allocator
-    {
-        LocalAllocator() = default;
-        ~LocalAllocator() override = default;
-
-        void reset()    { position = 0; }
-
-        void* allocate (size_t size) override
-        {
-            lastAllocationPosition = position;
-            auto result = pool.data() + position;
-            auto newSize = position + ((size + 15u) & ~15u);
-
-            if (newSize > pool.size())
-                throw choc::value::Error { "Out of local scratch space" };
-
-            position = newSize;
-            return result;
-        }
-
-        void* resizeIfPossible (void* data, size_t requiredSize) override
-        {
-            if (pool.data() + lastAllocationPosition == data)
-            {
-                position = lastAllocationPosition;
-                return allocate (requiredSize);
-            }
-
-            return {};
-        }
-
-        void free (void*) noexcept override {}
-
-        size_t position = 0, lastAllocationPosition = 0;
-        std::array<char, totalSize> pool;
-    };
-
     choc::fifo::VariableSizeFIFO fifo;
-    std::unique_ptr<LocalAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
+
+    std::unique_ptr<LocalChocValueAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
     std::vector<Item> incomingItems;
+    choc::fifo::VariableSizeFIFO::DataLocker dataLock;
+    uint32_t framesToRead = 0, totalItemsRead = 0, currentFrame = 0, nextChunkStart = 0, framesThisTime = 0;
 
     struct DictionaryBuilder
     {
@@ -283,7 +295,7 @@ private:
         }
     };
 
-    template <typename DestType> void read (choc::value::InputData& reader, DestType& d)
+    template <typename DestType> static void read (choc::value::InputData& reader, DestType& d)
     {
         if (reader.start + sizeof (d) > reader.end)
             throw choc::value::Error { "Malformed data" };
@@ -327,7 +339,7 @@ private:
         return false;
     }
 
-    uint32_t findOffsetOfNextItemAfter (const Item* items, uint32_t numItems, uint32_t startFrame, uint32_t endFrame)
+    static uint32_t findOffsetOfNextItemAfter (const Item* items, uint32_t numItems, uint32_t startFrame, uint32_t endFrame)
     {
         auto lowest = endFrame;
 
@@ -340,56 +352,6 @@ private:
         }
 
         return lowest;
-    }
-
-    template <typename HandleItem, typename HandleStartOfChunk, typename HandleEndOfChunk>
-    void processChunks (Item* items, uint32_t numItems,
-                        uint32_t totalFrames, uint32_t maxFramesPerChunk,
-                        HandleStartOfChunk&& handleStartOfChunk,
-                        HandleItem&& handleItem,
-                        HandleEndOfChunk&& handleEndOfChunk)
-    {
-        for (uint32_t frame = 0; frame < totalFrames;)
-        {
-            auto nextChunkStart = findOffsetOfNextItemAfter (items, numItems, frame, std::min (totalFrames, frame + maxFramesPerChunk));
-            auto numFramesToDo = nextChunkStart - frame;
-
-            handleStartOfChunk (numFramesToDo);
-
-            for (uint32_t i = 0; i < numItems; ++i)
-            {
-                auto& item = items[i];
-                auto itemStart = item.startFrame;
-                auto itemEnd = itemStart + item.numFrames;
-
-                if (itemEnd > frame && itemStart < nextChunkStart)
-                {
-                    if (item.numFrames != 1)
-                    {
-                        if (itemStart < frame)
-                        {
-                            auto amountToTrim = frame - itemStart;
-                            item.value = item.value.getElementRange (amountToTrim, item.numFrames - amountToTrim);
-                            itemStart = frame;
-                            item.numFrames -= amountToTrim;
-                            item.startFrame += amountToTrim;
-                        }
-
-                        if (itemEnd > nextChunkStart)
-                            handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value.getElementRange (0, nextChunkStart - itemStart)));
-                        else
-                            handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
-                    }
-                    else
-                    {
-                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
-                    }
-                }
-            }
-
-            handleEndOfChunk (numFramesToDo);
-            frame = nextChunkStart;
-        }
     }
 };
 

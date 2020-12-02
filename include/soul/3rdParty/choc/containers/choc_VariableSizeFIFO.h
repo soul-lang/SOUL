@@ -92,6 +92,19 @@ struct VariableSizeFIFO
     template <typename HandleItem, typename ItemsComplete>
     void popAllAvailable (HandleItem&&, ItemsComplete&&);
 
+    struct DataLocker;
+
+    /** Allows access to all the available item in the FIFO via a callback.
+        If there are any pending items in the FIFO, the handleItem function
+        will be called for each of them. Then, when no more are available, the function
+        returns a lock object which prevents the FIFO's read position being updated and
+        thus protects the the data in the returned items until the lock object is deleted.
+        HandleItem must be a functor or lambda which can be called
+        as handleItems (const void* data, uint32_t size).
+    */
+    template <typename HandleItem>
+    DataLocker popAllAvailable (HandleItem&&);
+
     /** Returns the number of used bytes in the FIFO. */
     uint32_t getUsedSpace() const;
 
@@ -226,6 +239,46 @@ void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem, ItemsComplete&&
 
     itemsComplete();
     readPos = newReadPos;
+}
+
+struct VariableSizeFIFO::DataLocker
+{
+    DataLocker() = default;
+    DataLocker (VariableSizeFIFO* f, uint32_t pos) : fifo (f), newReadPos (pos) {}
+    DataLocker (const DataLocker&) = delete;
+    DataLocker (DataLocker&& other) : fifo (other.fifo), newReadPos (other.newReadPos) { other.fifo = nullptr; }
+    DataLocker& operator= (DataLocker&& other) { apply(); fifo = other.fifo; newReadPos = other.newReadPos; other.fifo = nullptr; return *this; }
+    ~DataLocker() { apply(); }
+    void apply() { if (fifo != nullptr) fifo->readPos = newReadPos; }
+
+    VariableSizeFIFO* fifo = nullptr;
+    uint32_t newReadPos;
+};
+
+template <typename HandleItem>
+VariableSizeFIFO::DataLocker VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem)
+{
+    auto originalWritePos = writePos.load();
+    auto newReadPos = readPos.load();
+
+    while (newReadPos != originalWritePos)
+    {
+        auto itemData = buffer.data() + static_cast<int32_t> (newReadPos);
+        ItemHeader itemSize;
+        std::memcpy (std::addressof (itemSize), itemData, headerSize);
+
+        if (itemSize != 0)
+        {
+            handleItem (static_cast<void*> (itemData + headerSize), itemSize);
+            newReadPos = (newReadPos + itemSize + headerSize) % capacity;
+        }
+        else
+        {
+            newReadPos = 0;
+        }
+    }
+
+    return DataLocker (this, newReadPos);
 }
 
 

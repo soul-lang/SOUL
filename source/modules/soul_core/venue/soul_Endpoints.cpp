@@ -115,27 +115,5 @@ OutputEndpointType getOutputEndpointType (const EndpointDetails& details)
     return OutputEndpointType::other;
 }
 
-std::vector<EndpointDetails> getInputEndpointsOfType (Performer& p, InputEndpointType type)
-{
-    std::vector<EndpointDetails> results;
-
-    for (auto& e : p.getInputEndpoints())
-        if (getInputEndpointType (e) == type)
-            results.push_back (e);
-
-    return results;
-}
-
-std::vector<EndpointDetails> getOutputEndpointsOfType (Performer& p, OutputEndpointType type)
-{
-    std::vector<EndpointDetails> results;
-
-    for (auto& e : p.getOutputEndpoints())
-        if (getOutputEndpointType (e) == type)
-            results.push_back (e);
-
-    return results;
-}
-
 
 } // namespace soul

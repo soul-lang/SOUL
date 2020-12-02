@@ -64,7 +64,8 @@ struct AudioInputList
 {
     AudioInputList() = default;
 
-    void initialise (Performer& p, uint32_t maxBlockSize)
+    template <typename PerformerOrVenue>
+    void initialise (PerformerOrVenue& p, uint32_t maxBlockSize)
     {
         clear();
 
@@ -131,7 +132,8 @@ struct AudioOutputList
 {
     AudioOutputList() = default;
 
-    void initialise (Performer& p)
+    template <typename PerformerOrVenue>
+    void initialise (PerformerOrVenue& p)
     {
         clear();
 
@@ -153,7 +155,8 @@ struct AudioOutputList
         totalNumChannels = 0;
     }
 
-    void handleOutputData (Performer& p, choc::buffer::ChannelArrayView<float> outputChannels)
+    template <typename PerformerOrVenue>
+    void handleOutputData (PerformerOrVenue& p, choc::buffer::ChannelArrayView<float> outputChannels)
     {
         for (auto& output : outputs)
             copyIntersectionAndClearOutside (outputChannels.getChannelRange ({ output.startChannel, output.startChannel + output.numChannels }),
@@ -175,7 +178,8 @@ struct MIDIInputList
 {
     MIDIInputList() = default;
 
-    void initialise (Performer& p)
+    template <typename PerformerOrVenue>
+    void initialise (PerformerOrVenue& p)
     {
         clear();
 
@@ -630,25 +634,28 @@ struct AudioMIDIWrapper
         timelineEventEndpointList.addToFIFO (inputFIFO, totalFramesRendered);
         uint32_t framesDone = 0;
 
-        inputFIFO.iterateChunks (totalFramesRendered,
-                                 numFrames, maxBlockSize,
-                                 [&] (uint32_t numFramesToDo)
-                                 {
-                                     performer.prepare (numFramesToDo);
-                                 },
-                                 [&] (EndpointHandle endpoint, uint64_t /*itemStart*/, const choc::value::ValueView& value)
-                                 {
-                                     deliverValueToEndpoint (endpoint, value);
-                                 },
-                                 [&] (uint32_t numFramesDone)
-                                 {
-                                     performer.advance();
-                                     audioOutputList.handleOutputData (performer, output.getFrameRange ({ framesDone, output.size.numFrames }));
-                                     midiOutputList.handleOutputData (performer, framesDone, midiOut);
-                                     eventOutputList.postOutputEvents (performer, totalFramesRendered + framesDone);
-                                     framesDone += numFramesDone;
-                                 });
+        inputFIFO.prepareForReading (totalFramesRendered, numFrames);
 
+        for (;;)
+        {
+            auto numFramesToDo = inputFIFO.getNumFramesInNextChunk (maxBlockSize);
+
+            if (numFramesToDo == 0)
+                break;
+
+            performer.prepare (numFramesToDo);
+            inputFIFO.processNextChunk ([&] (EndpointHandle endpoint, uint64_t /*itemStart*/, const choc::value::ValueView& value)
+                                        {
+                                            deliverValueToEndpoint (endpoint, value);
+                                        });
+            performer.advance();
+            audioOutputList.handleOutputData (performer, output.getFrameRange ({ framesDone, output.size.numFrames }));
+            midiOutputList.handleOutputData (performer, framesDone, midiOut);
+            eventOutputList.postOutputEvents (performer, totalFramesRendered + framesDone);
+            framesDone += numFramesToDo;
+        }
+
+        inputFIFO.finishReading();
         totalFramesRendered += framesDone;
     }
 

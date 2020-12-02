@@ -92,7 +92,28 @@ enum class OutputEndpointType
 InputEndpointType getInputEndpointType (const EndpointDetails&);
 OutputEndpointType getOutputEndpointType (const EndpointDetails&);
 
-std::vector<EndpointDetails> getInputEndpointsOfType (Performer&, InputEndpointType);
-std::vector<EndpointDetails> getOutputEndpointsOfType (Performer&, OutputEndpointType);
+template <typename PerformerOrVenue>
+std::vector<EndpointDetails> getInputEndpointsOfType (PerformerOrVenue& performerOrVenue, InputEndpointType type)
+{
+    std::vector<EndpointDetails> results;
+
+    for (auto& e : performerOrVenue.getInputEndpoints())
+        if (getInputEndpointType (e) == type)
+            results.push_back (e);
+
+    return results;
+}
+
+template <typename PerformerOrVenue>
+std::vector<EndpointDetails> getOutputEndpointsOfType (PerformerOrVenue& performerOrVenue, OutputEndpointType type)
+{
+    std::vector<EndpointDetails> results;
+
+    for (auto& e : performerOrVenue.getOutputEndpoints())
+        if (getOutputEndpointType (e) == type)
+            results.push_back (e);
+
+    return results;
+}
 
 } // namespace soul
