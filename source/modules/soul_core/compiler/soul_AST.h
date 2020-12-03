@@ -1098,11 +1098,10 @@ struct AST
 
     struct ConnectionEndpointRef  : public Expression
     {
-        ConnectionEndpointRef (const Context& c, pool_ptr<ProcessorInstanceRef> p, QualifiedIdentifier& endpoint)
+        ConnectionEndpointRef (const Context& c, pool_ptr<ProcessorInstanceRef> p, pool_ptr<UnqualifiedName> endpoint)
             : Expression (ObjectType::ConnectionEndpointRef, c, ExpressionKind::endpoint),
               parentProcessorInstance (p), endpointName (endpoint)
         {
-            SOUL_ASSERT (endpointName.path.isUnqualified());
         }
 
         bool isResolved() const override                { return true; }
@@ -1111,13 +1110,13 @@ struct AST
         {
             if (parentProcessorInstance != nullptr)
                 if (auto p = parentProcessorInstance->getAsProcessor())
-                    return p->findEndpoint (endpointName.toString());
+                    return p->findEndpoint (endpointName->toString());
 
             return {};
         }
 
         pool_ptr<ProcessorInstanceRef> parentProcessorInstance;
-        QualifiedIdentifier& endpointName;
+        pool_ptr<UnqualifiedName> endpointName;
     };
 
     //==============================================================================
@@ -1150,7 +1149,7 @@ struct AST
         static std::string getEndpointName (Expression& e, bool isSource)
         {
             if (auto endpoint = e.getAsEndpoint())           return endpoint->name;
-            if (auto er = cast<ConnectionEndpointRef> (e))   return er->endpointName.toString();
+            if (auto er = cast<ConnectionEndpointRef> (e))   return er->endpointName->toString();
             if (auto ar = cast<ArrayElementRef> (e))         return getEndpointName (*ar->object, isSource);
             if (auto dot = cast<DotOperator> (e))            return dot->rhs.toString();
             if (auto p = e.getAsProcessor())                 return getDefaultEndpointName (e.context, *p, ! isSource);
@@ -1672,7 +1671,7 @@ struct AST
         std::string toString() const                { return identifier.toString(); }
 
         IdentifierPath getIdentifierPath() const    { return IdentifierPath (identifier); }
-        
+
         bool operator== (const UnqualifiedName& other) const     { return identifier == other.identifier; }
         bool operator!= (const UnqualifiedName& other) const     { return identifier != other.identifier; }
 

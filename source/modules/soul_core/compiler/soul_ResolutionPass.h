@@ -752,7 +752,9 @@ private:
 
                         if (search.itemsFound.size() == 1)
                             if (is_type<AST::EndpointDeclaration> (search.itemsFound.front()))
-                                return allocator.allocate<AST::ConnectionEndpointRef> (d.context, processorInstance, d.rhs);
+                                return allocator.allocate<AST::ConnectionEndpointRef> (d.context,
+                                                                                       processorInstance,
+                                                                                       allocator.allocate<AST::UnqualifiedName> (d.context, d.rhs.path.getFirstPart()));
                     }
                 }
 

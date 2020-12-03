@@ -366,7 +366,7 @@ private:
         if (processor != nullptr)
             processorRef = allocator.allocate<AST::ProcessorInstanceRef> (c, *processor);
 
-        auto& name = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (endpoint.name));
+        auto& name = allocator.allocate<AST::UnqualifiedName> (c, endpoint.name);
         return allocator.allocate<AST::Connection::SharedEndpoint> (allocator.allocate<AST::ConnectionEndpointRef> (c, processorRef, name));
     }
 
