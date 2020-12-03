@@ -55,6 +55,7 @@ struct AST
         X(TernaryOp) \
         X(UnaryOperator) \
         X(QualifiedIdentifier) \
+        X(UnqualifiedName) \
         X(VariableRef) \
         X(InputEndpointRef) \
         X(OutputEndpointRef) \
@@ -239,7 +240,7 @@ struct AST
     {
         struct Property
         {
-            pool_ref<QualifiedIdentifier> name;
+            pool_ref<UnqualifiedName> name;
             pool_ref<Expression> value;
         };
 
@@ -249,7 +250,7 @@ struct AST
         const Property* findProperty (const StringType& name) const
         {
             for (auto& p : properties)
-                if (p.name->path == name)
+                if (p.name->identifier == name)
                     return std::addressof (p);
 
             return {};
@@ -264,7 +265,7 @@ struct AST
         {
             for (auto& p : properties)
             {
-                if (p.name->path == newProperty.name->path)
+                if (p.name->identifier == newProperty.name->identifier)
                 {
                     p.value = newProperty.value;
                     return;
@@ -287,7 +288,7 @@ struct AST
             for (auto& p : properties)
             {
                 if (auto constValue = p.value->getAsConstant())
-                    a.set (p.name->path.toString(), constValue->value, dictionary);
+                    a.set (p.name->toString(), constValue->value, dictionary);
                 else
                     p.value->context.throwError (Errors::unresolvedAnnotation());
             }
@@ -1026,7 +1027,7 @@ struct AST
     {
         struct PathSection
         {
-            pool_ptr<QualifiedIdentifier> name;
+            pool_ptr<UnqualifiedName> name;
             pool_ptr<Expression> index;
         };
 
@@ -1662,6 +1663,21 @@ struct AST
         }
 
         Value value;
+    };
+
+    //==============================================================================
+    struct UnqualifiedName : public Expression
+    {
+        UnqualifiedName (const Context& c, Identifier i)
+            : Expression (ObjectType::UnqualifiedName, c, ExpressionKind::unknown), identifier (i) {}
+
+        bool isResolved() const override            { return false; }
+        std::string toString() const                { return identifier.toString(); }
+
+        bool operator== (const UnqualifiedName& other) const     { return identifier == other.identifier; }
+        bool operator!= (const UnqualifiedName& other) const     { return identifier != other.identifier; }
+
+        Identifier identifier;
     };
 
     //==============================================================================

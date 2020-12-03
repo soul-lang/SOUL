@@ -816,10 +816,7 @@ private:
                 }
                 else
                 {
-                    path.name = parseQualifiedIdentifier();
-
-                    if (path.name->path.isQualified())
-                        path.name->context.throwError (Errors::expectedUnqualifiedName());
+                    path.name = parseUnqualifiedName();
                 }
 
                 if (matchIf (Operator::openBracket))
@@ -841,7 +838,7 @@ private:
                 if (matches (Token::identifier))
                     e.name = parseIdentifier();
                 else
-                    e.name = e.childPath->sections.back().name->path.getLastPart();
+                    e.name = e.childPath->sections.back().name->identifier;
 
                 parseAnnotation (e.annotation);
 
@@ -877,7 +874,7 @@ private:
                 if (annotation.findProperty (name) != nullptr)
                     context.throwError (Errors::nameInUse (name));
 
-                auto& key = allocate<AST::QualifiedIdentifier> (context, IdentifierPath (allocator.get (name)));
+                auto& key = allocate<AST::UnqualifiedName> (context, allocator.get (name));
 
                 if (matchIf (Operator::colon))
                     annotation.addProperty ({ key, parseExpression() });
@@ -2045,6 +2042,17 @@ private:
             path.addSuffix (parseIdentifier());
 
         return allocate<AST::QualifiedIdentifier> (context, path);
+    }
+
+    AST::UnqualifiedName& parseUnqualifiedName()
+    {
+        auto context = getContext();
+        auto identifier = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
+
+        if (matches (Operator::doubleColon))
+            throwError (Errors::identifierMustBeUnqualified());
+
+        return allocate<AST::UnqualifiedName> (context, identifier);
     }
 
     void giveErrorOnSemicolon()

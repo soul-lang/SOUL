@@ -191,6 +191,7 @@ namespace soul
     X(externalOnlyAllowedOnStateVars,       "The 'external' flag can only be applied to state variables") \
     X(wrongTypeForUnary,                    "Illegal type for unary operator") \
     X(typeTooBig,                           "Type size ($0$) exceeds the maximum permitted ($1$)") \
+    X(identifierMustBeUnqualified,          "This identifier cannot have a namespace qualifier") \
     X(nonConstInNamespace,                  "Only constant variables can be declared inside a namespace") \
     X(nonConstInGraph,                      "Only constant variables can be declared inside a graph") \
     X(comparisonAlwaysTrue,                 "Comparison with bounded integer type is always true") \

@@ -334,9 +334,9 @@ private:
         return anyDone;
     }
 
-    static AST::EndpointDeclaration& findEndpoint (AST::ProcessorBase& processor, AST::QualifiedIdentifier& name, bool isInput)
+    static AST::EndpointDeclaration& findEndpoint (AST::ProcessorBase& processor, const AST::UnqualifiedName& name, bool isInput)
     {
-        auto result = processor.findEndpoint (name.path.getFirstPart(), isInput);
+        auto result = processor.findEndpoint (name.identifier, isInput);
 
         if (result == nullptr)
             name.context.throwError (isInput ? Errors::cannotFindInput (name.toString())
@@ -351,7 +351,7 @@ private:
         std::string root = "expose";
 
         for (auto& p : path)
-            root += "_" + p.name->path.toString();
+            root += "_" + p.name->toString();
 
         return addSuffixToMakeUnique (makeSafeIdentifierName (root),
                                       [&] (const std::string& nm) { return parent.findEndpoint (nm) != nullptr; });
@@ -398,7 +398,7 @@ private:
 
         auto childProcessorQualName = path.front().name;
         auto& nameContext = childProcessorQualName->context;
-        auto childProcessorName = childProcessorQualName->path.getFirstPart();
+        auto childProcessorName = childProcessorQualName->identifier;
         auto childProcessorInstance = parentGraph.findChildProcessor (childProcessorName);
 
         if (childProcessorInstance == nullptr)

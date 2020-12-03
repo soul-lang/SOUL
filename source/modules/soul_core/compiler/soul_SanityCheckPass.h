@@ -544,7 +544,7 @@ private:
             soul::DuplicateNameChecker duplicateNameChecker;
 
             for (auto& p : a.properties)
-                duplicateNameChecker.check (p.name->path.toString(), p.name->context);
+                duplicateNameChecker.check (p.name->toString(), p.name->context);
         }
 
         void visit (AST::Graph& g) override

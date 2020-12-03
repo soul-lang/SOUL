@@ -387,6 +387,10 @@ struct ASTVisitor
     {
     }
 
+    virtual void visit (AST::UnqualifiedName&)
+    {
+    }
+
     virtual void visit (AST::DotOperator& o)
     {
         visitObject (o.lhs);
@@ -882,6 +886,11 @@ struct RewritingASTVisitor
     virtual AST::Expression& visit (AST::QualifiedIdentifier& o)
     {
         return o;
+    }
+
+    virtual AST::Expression& visit (AST::UnqualifiedName& n)
+    {
+        return n;
     }
 
     virtual AST::Expression& visit (AST::DotOperator& o)
