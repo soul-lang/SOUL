@@ -64,8 +64,14 @@ struct AudioInputList
 {
     AudioInputList() = default;
 
-    template <typename PerformerOrVenue>
-    void initialise (PerformerOrVenue& p, uint32_t maxBlockSize)
+    void initialise (uint32_t newMaxBlockSize)
+    {
+        maxBlockSize = newMaxBlockSize;
+        clear();
+    }
+
+    template <typename PerformerOrSession>
+    void attachToAllAudioEndpoints (PerformerOrSession& p)
     {
         clear();
 
@@ -75,56 +81,61 @@ struct AudioInputList
             const auto& frameType = e.getFrameType();
             SOUL_ASSERT (numChannels != 0 && numChannels == frameType.getNumElements());
             SOUL_ASSERT (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()));
-
-            inputs.push_back ({ p.getEndpointHandle (e.endpointID), totalNumChannels, numChannels, {} });
-
-            if (numChannels != 1)
-                inputs.back().interleaved.resize ({ numChannels, maxBlockSize });
-
-            totalNumChannels += numChannels;
+            connectEndpoint (p, e.endpointID, { totalNumChannels, totalNumChannels + numChannels });
         }
     }
 
     void clear()
     {
-        inputs.clear();
+        mappings.clear();
         totalNumChannels = 0;
+        scratchBuffer.resize ({ 1, maxBlockSize });
+    }
+
+    template <typename PerformerOrSession>
+    void connectEndpoint (PerformerOrSession& p, EndpointID endpointID, choc::buffer::ChannelRange channels)
+    {
+        mappings.push_back ({ p.getEndpointHandle (endpointID), channels });
+
+        if (channels.size() > scratchBuffer.getNumChannels())
+            scratchBuffer.resize ({ channels.size(), maxBlockSize });
+
+        totalNumChannels = std::max (totalNumChannels, channels.end);
     }
 
     void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, choc::buffer::ChannelArrayView<const float> inputChannels)
     {
         auto numFrames = inputChannels.getNumFrames();
 
-        for (auto& input : inputs)
+        for (auto& mapping : mappings)
         {
-            if (input.numChannels == 1)
+            if (mapping.channels.size() == 1)
             {
-                auto channel = inputChannels.getChannel (input.startChannelIndex);
+                auto channel = inputChannels.getChannel (mapping.channels.start);
 
-                fifo.addInputData (input.endpoint, time,
+                fifo.addInputData (mapping.endpoint, time,
                                    choc::value::createArrayView (const_cast<float*> (channel.data.data), numFrames));
             }
             else
             {
-                copy (input.interleaved.getStart (numFrames),
-                      inputChannels.getChannelRange ({ input.startChannelIndex, input.startChannelIndex + input.numChannels }));
+                copy (scratchBuffer.getStart (numFrames), inputChannels.getChannelRange (mapping.channels));
 
-                fifo.addInputData (input.endpoint, time,
-                                   choc::value::create2DArrayView (input.interleaved.getView().data.data,
-                                                                   numFrames, input.numChannels));
+                fifo.addInputData (mapping.endpoint, time,
+                                   choc::value::create2DArrayView (scratchBuffer.getView().data.data,
+                                                                   numFrames, mapping.channels.size()));
             }
         }
     }
 
-    struct AudioInput
+    struct InputMapping
     {
         EndpointHandle endpoint;
-        uint32_t startChannelIndex, numChannels;
-        choc::buffer::InterleavedBuffer<float> interleaved;
+        choc::buffer::ChannelRange channels;
     };
 
-    std::vector<AudioInput> inputs;
-    uint32_t totalNumChannels = 0;
+    std::vector<InputMapping> mappings;
+    uint32_t maxBlockSize = 0, totalNumChannels = 0;
+    choc::buffer::InterleavedBuffer<float> scratchBuffer;
 };
 
 //==============================================================================
@@ -132,8 +143,8 @@ struct AudioOutputList
 {
     AudioOutputList() = default;
 
-    template <typename PerformerOrVenue>
-    void initialise (PerformerOrVenue& p)
+    template <typename PerformerOrSession>
+    void initialise (PerformerOrSession& p)
     {
         clear();
 
@@ -144,33 +155,39 @@ struct AudioOutputList
             SOUL_ASSERT (numChannels != 0 && numChannels == frameType.getNumElements());
             SOUL_ASSERT (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()));
 
-            outputs.push_back ({ p.getEndpointHandle (e.endpointID), totalNumChannels, numChannels });
-            totalNumChannels += numChannels;
+            connectEndpoint (p, e.endpointID, { totalNumChannels, totalNumChannels + numChannels });
         }
     }
 
     void clear()
     {
-        outputs.clear();
+        mappings.clear();
         totalNumChannels = 0;
     }
 
-    template <typename PerformerOrVenue>
-    void handleOutputData (PerformerOrVenue& p, choc::buffer::ChannelArrayView<float> outputChannels)
+    template <typename PerformerOrSession>
+    void connectEndpoint (PerformerOrSession& p, EndpointID endpointID, choc::buffer::ChannelRange channels)
     {
-        for (auto& output : outputs)
-            copyIntersectionAndClearOutside (outputChannels.getChannelRange ({ output.startChannel, output.startChannel + output.numChannels }),
-                                             getChannelSetFromArray (p.getOutputStreamFrames (output.endpoint)));
+        mappings.push_back ({ p.getEndpointHandle (endpointID), channels });
+        totalNumChannels = std::max (totalNumChannels, channels.end);
     }
 
-    struct AudioOutput
+    template <typename PerformerOrSession>
+    void handleOutputData (PerformerOrSession& p, choc::buffer::ChannelArrayView<float> outputChannels)
+    {
+        for (auto& mapping : mappings)
+            copyIntersectionAndClearOutside (outputChannels.getChannelRange (mapping.channels),
+                                             getChannelSetFromArray (p.getOutputStreamFrames (mapping.endpoint)));
+    }
+
+    struct OutputMapping
     {
         EndpointHandle endpoint;
-        uint32_t startChannel, numChannels;
+        choc::buffer::ChannelRange channels;
     };
 
     uint32_t totalNumChannels = 0;
-    std::vector<AudioOutput> outputs;
+    std::vector<OutputMapping> mappings;
 };
 
 //==============================================================================
@@ -178,8 +195,8 @@ struct MIDIInputList
 {
     MIDIInputList() = default;
 
-    template <typename PerformerOrVenue>
-    void initialise (PerformerOrVenue& p)
+    template <typename PerformerOrSession>
+    void initialise (PerformerOrSession& p)
     {
         clear();
 
@@ -582,7 +599,7 @@ struct AudioMIDIWrapper
     void reset()
     {
         totalFramesRendered = 0;
-        audioInputList.clear();
+        audioInputList.initialise (maxInternalBlockSize);
         audioOutputList.clear();
         midiInputList.clear();
         midiOutputList.clear();
@@ -607,7 +624,7 @@ struct AudioMIDIWrapper
         SOUL_ASSERT (processorMaxBlockSize > 0);
         maxBlockSize = std::min (maxInternalBlockSize, processorMaxBlockSize);
 
-        audioInputList.initialise (perf, maxInternalBlockSize);
+        audioInputList.attachToAllAudioEndpoints (perf);
         audioOutputList.initialise (perf);
         midiInputList.initialise (perf);
         midiOutputList.initialise (perf);

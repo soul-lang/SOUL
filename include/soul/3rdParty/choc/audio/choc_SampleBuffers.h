@@ -56,10 +56,13 @@ struct FrameRange
 {
     FrameCount start = 0, end = 0;
 
+    constexpr FrameCount size() const                                 { return end - start; }
     constexpr bool contains (FrameCount index) const                  { return index >= start && index < end; }
     constexpr bool contains (FrameRange range) const                  { return range.start < end && range.end > start; }
     constexpr FrameRange getIntersection (FrameRange other) const     { return { start <= other.start ? start : other.start,
                                                                                  end >= other.end ? end : other.end }; }
+    constexpr bool operator== (const FrameRange& other) const         { return start == other.start && end == other.end; }
+    constexpr bool operator!= (const FrameRange& other) const         { return start != other.start || end != other.end; }
 };
 
 //==============================================================================
@@ -68,10 +71,13 @@ struct ChannelRange
 {
     ChannelCount start = 0, end = 0;
 
+    constexpr ChannelCount size() const                                 { return end - start; }
     constexpr bool contains (ChannelCount index) const                  { return index >= start && index < end; }
     constexpr bool contains (ChannelRange range) const                  { return range.start < end && range.end > start; }
     constexpr FrameRange getIntersection (ChannelRange other) const     { return { start <= other.start ? start : other.start,
                                                                                    end >= other.end ? end : other.end }; }
+    constexpr bool operator== (const ChannelRange& other) const         { return start == other.start && end == other.end; }
+    constexpr bool operator!= (const ChannelRange& other) const         { return start != other.start || end != other.end; }
 };
 
 //==============================================================================

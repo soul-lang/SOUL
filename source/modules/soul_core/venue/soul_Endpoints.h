@@ -92,24 +92,24 @@ enum class OutputEndpointType
 InputEndpointType getInputEndpointType (const EndpointDetails&);
 OutputEndpointType getOutputEndpointType (const EndpointDetails&);
 
-template <typename PerformerOrVenue>
-std::vector<EndpointDetails> getInputEndpointsOfType (PerformerOrVenue& performerOrVenue, InputEndpointType type)
+template <typename PerformerOrSession>
+std::vector<EndpointDetails> getInputEndpointsOfType (PerformerOrSession& p, InputEndpointType type)
 {
     std::vector<EndpointDetails> results;
 
-    for (auto& e : performerOrVenue.getInputEndpoints())
+    for (auto& e : p.getInputEndpoints())
         if (getInputEndpointType (e) == type)
             results.push_back (e);
 
     return results;
 }
 
-template <typename PerformerOrVenue>
-std::vector<EndpointDetails> getOutputEndpointsOfType (PerformerOrVenue& performerOrVenue, OutputEndpointType type)
+template <typename PerformerOrSession>
+std::vector<EndpointDetails> getOutputEndpointsOfType (PerformerOrSession& p, OutputEndpointType type)
 {
     std::vector<EndpointDetails> results;
 
-    for (auto& e : performerOrVenue.getOutputEndpoints())
+    for (auto& e : p.getOutputEndpoints())
         if (getOutputEndpointType (e) == type)
             results.push_back (e);
 
