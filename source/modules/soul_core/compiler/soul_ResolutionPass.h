@@ -633,12 +633,12 @@ private:
 
             if (arguments == nullptr)
             {
-                i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (processor.name));
+                i.instanceName = allocator.allocate<AST::UnqualifiedName> (c, processor.name);
             }
             else
             {
                 auto name = currentGraph->makeUniqueName ("_instance_" + processor.name.toString());
-                i.instanceName = allocator.allocate<AST::QualifiedIdentifier> (c, IdentifierPath (allocator.get (name)));
+                i.instanceName = allocator.allocate<AST::UnqualifiedName> (c, allocator.get (name));
             }
 
             i.targetProcessor = allocator.allocate<AST::ProcessorRef> (c, processor);
@@ -1905,7 +1905,7 @@ private:
                 SanityCheckPass::RecursiveGraphDetector::check (graph);
 
                 if (! instance.isImplicitlyCreated())
-                    if (! graph.getMatchingSubModules (instance.instanceName->path).empty())
+                    if (! graph.getMatchingSubModules (instance.instanceName->getIdentifierPath()).empty())
                         instance.context.throwError (Errors::alreadyProcessorWithName (instance.getReadableName()));
 
                 if (! canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))

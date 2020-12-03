@@ -550,7 +550,7 @@ struct AST
                                                       return true;
 
                                               for (auto& p : getProcessorInstances())
-                                                  if (p->instanceName->path == name)
+                                                  if (p->instanceName->toString() == name)
                                                       return true;
 
                                               return false;
@@ -803,14 +803,11 @@ struct AST
 
         void addProcessorInstance (AST::ProcessorInstance& newInstance)
         {
-            if (! newInstance.instanceName->path.isUnqualified())
-                newInstance.instanceName->context.throwError (Errors::expectedUnqualifiedName());
-
             for (auto& i : processorInstances)
                 if (*i->instanceName == *newInstance.instanceName)
                     newInstance.instanceName->context.throwError (newInstance.isImplicitlyCreated()
                                                                     ? Errors::cannotReuseImplicitProcessorInstance()
-                                                                    : Errors::nameInUse (newInstance.instanceName->path));
+                                                                    : Errors::nameInUse (newInstance.instanceName->toString()));
 
             processorInstances.push_back (newInstance);
         }
@@ -828,7 +825,7 @@ struct AST
         pool_ptr<ProcessorInstance> findChildProcessor (const StringType& processorInstanceName) const
         {
             for (auto& i : processorInstances)
-                if (i->instanceName->path == processorInstanceName)
+                if (i->instanceName->identifier == processorInstanceName)
                     return i;
 
             return {};
@@ -1218,7 +1215,7 @@ struct AST
     {
         ProcessorInstance (const Context& c) : ASTObject (ObjectType::ProcessorInstance, c) {}
 
-        pool_ptr<QualifiedIdentifier> instanceName;
+        pool_ptr<UnqualifiedName> instanceName;
         pool_ptr<Expression> targetProcessor, specialisationArgs,
                              clockMultiplierRatio, clockDividerRatio, arraySize;
         pool_ptr<Connection::SharedEndpoint> implicitInstanceSource;
@@ -1238,7 +1235,7 @@ struct AST
                 }
             }
 
-            return instanceName->path.toString();
+            return instanceName->toString();
         }
     };
 
@@ -1674,6 +1671,8 @@ struct AST
         bool isResolved() const override            { return false; }
         std::string toString() const                { return identifier.toString(); }
 
+        IdentifierPath getIdentifierPath() const    { return IdentifierPath (identifier); }
+        
         bool operator== (const UnqualifiedName& other) const     { return identifier == other.identifier; }
         bool operator!= (const UnqualifiedName& other) const     { return identifier != other.identifier; }
 

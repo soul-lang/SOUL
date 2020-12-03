@@ -691,7 +691,7 @@ private:
     void parseProcessorInstance (AST::Graph& graph)
     {
         auto& u = allocate<AST::ProcessorInstance> (getContext());
-        u.instanceName = parseQualifiedIdentifier();
+        u.instanceName = parseUnqualifiedName();
         graph.addProcessorInstance (u);
 
         expect (Operator::assign);

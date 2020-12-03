@@ -307,7 +307,7 @@ private:
 
         for (auto& i : sourceGraph->processorInstances)
         {
-            if (i->instanceName->path == instanceName)
+            if (i->instanceName->toString() == instanceName)
             {
                 auto& targetProcessor = sourceGraph->findSingleMatchingProcessor (i);
 
