@@ -11,10 +11,11 @@
 #define DONT_SET_USING_JUCE_NAMESPACE 1
 #include "../JuceLibraryCode/JuceHeader.h"
 
-#include "../../../include/soul/soul_patch.h"
 #include "../../../include/soul/patch/helper_classes/soul_patch_AudioPluginFormat.h"
 #include "../../../include/soul/patch/helper_classes/soul_patch_Utilities.h"
 #include "../../../include/soul/patch/helper_classes/soul_patch_CompilerCacheFolder.h"
+
+#include "../../../include/soul/soul_patch.h"
 
 #include "PatchLoaderComponent.h"
 

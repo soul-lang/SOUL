@@ -310,7 +310,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         wrapper.prepare ((uint32_t) config.maxFramesPerBlock,
                          [] (const EndpointDetails& endpoint) -> uint32_t
                          {
-                             return readRampLengthAnnotation (endpoint);
+                             return readRampLengthForEndpoint (endpoint);
                          });
 
         parameterList.rebuildList (wrapper.getParameterEndpoints(), wrapper.parameterList);
