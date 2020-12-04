@@ -1249,7 +1249,7 @@ struct AST
         Identifier name;
         Context nameLocation;
         std::vector<pool_ref<VariableDeclaration>> parameters;
-        std::vector<pool_ref<QualifiedIdentifier>> genericWildcards;
+        std::vector<pool_ref<UnqualifiedName>> genericWildcards;
         std::vector<pool_ref<UsingDeclaration>> genericSpecialisations;
         pool_ptr<Function> originalGenericFunction;
         pool_ptr<FunctionCall> originalCallLeadingToSpecialisation;

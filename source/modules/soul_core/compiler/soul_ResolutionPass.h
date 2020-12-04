@@ -2556,9 +2556,7 @@ private:
         {
             for (auto wildcardToResolve : function.genericWildcards)
             {
-                SOUL_ASSERT (wildcardToResolve->path.isUnqualified());
-
-                auto wildcardName = wildcardToResolve->path.getLastPart();
+                auto wildcardName = wildcardToResolve->identifier;
                 Type resolvedType;
 
                 for (size_t i = 0; i < function.parameters.size(); ++i)
@@ -2616,7 +2614,7 @@ private:
                 auto& resolvedType = resolvedTypes[i];
 
                 auto& usingDecl = allocator.allocate<AST::UsingDeclaration> (wildcardToResolve->context,
-                                                                             wildcardToResolve->path.getLastPart(),
+                                                                             wildcardToResolve->identifier,
                                                                              allocator.allocate<AST::ConcreteType> (AST::Context(), resolvedType));
                 function.genericSpecialisations.push_back (usingDecl);
             }

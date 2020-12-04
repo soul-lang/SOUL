@@ -387,7 +387,7 @@ private:
         auto context = getContext();
         auto name = parseIdentifier();
 
-        std::vector<pool_ref<AST::QualifiedIdentifier>> genericWildcards;
+        std::vector<pool_ref<AST::UnqualifiedName>> genericWildcards;
 
         if (matchIf (Operator::lessThan))
             genericWildcards = parseGenericFunctionWildcardList();
@@ -946,19 +946,16 @@ private:
     }
 
     //==============================================================================
-    std::vector<pool_ref<AST::QualifiedIdentifier>> parseGenericFunctionWildcardList()
+    std::vector<pool_ref<AST::UnqualifiedName>> parseGenericFunctionWildcardList()
     {
-        std::vector<pool_ref<AST::QualifiedIdentifier>> wildcards;
+        std::vector<pool_ref<AST::UnqualifiedName>> wildcards;
 
         for (;;)
         {
             if (! matches (Token::identifier))
                 throwError (Errors::expectedGenericWildcardName());
 
-            auto& wildcard = parseQualifiedIdentifier();
-
-            if (wildcard.path.isQualified())
-                wildcard.context.throwError (Errors::qualifierOnGeneric());
+            auto& wildcard = parseUnqualifiedName();
 
             wildcards.push_back (wildcard);
 
@@ -995,7 +992,7 @@ private:
 
     AST::Function& parseFunctionDeclaration (const AST::Context& context, AST::Expression& returnType,
                                              Identifier name, const AST::Context& nameLocation,
-                                             std::vector<pool_ref<AST::QualifiedIdentifier>> genericWildcards)
+                                             std::vector<pool_ref<AST::UnqualifiedName>> genericWildcards)
     {
         if (AST::isResolvedAsType (returnType) && returnType.getConstness() == AST::Constness::definitelyConst)
             throwError (Errors::functionReturnTypeCannotBeConst());
