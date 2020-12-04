@@ -84,8 +84,8 @@ struct ChannelRange
 /** Represents the size of a buffer, i.e. the number of channels and frames it contains. */
 struct Size
 {
-    ChannelCount numChannels;
-    FrameCount numFrames;
+    ChannelCount numChannels = 0;
+    FrameCount numFrames = 0;
 
     bool operator== (Size other) const                              { return numChannels == other.numChannels && numFrames == other.numFrames; }
     bool operator!= (Size other) const                              { return numChannels != other.numChannels || numFrames != other.numFrames; }
