@@ -26,7 +26,7 @@ namespace soul::patch
 */
 struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerImpl>
 {
-    PatchPlayerImpl (FileList f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
+    PatchPlayerImpl (FileList<PatchLoadError> f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
         : fileList (std::move (f)), config (c), performer (std::move (p)), wrapper (*performer)
     {
     }
@@ -77,34 +77,12 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     }
 
     //==============================================================================
-    void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
-    {
-        for (auto& fileState : fileList.sourceFiles)
-        {
-            VirtualFile::Ptr source;
-
-            if (preprocessor != nullptr)
-                source = VirtualFile::Ptr (preprocessor->preprocessSourceFile (*fileState.file));
-
-            if (source == nullptr)
-                source = fileState.file;
-
-            std::string readError;
-            auto content = loadVirtualFileAsString (*source, readError);
-
-            if (! readError.empty())
-                throwPatchLoadError (readError);
-
-            build.sourceFiles.push_back ({ fileState.path, std::move (content) });
-        }
-    }
-
     soul::Program compileSources (soul::CompileMessageList& messageList,
                                   const BuildSettings& settings,
                                   SourceFilePreprocessor* preprocessor)
     {
         BuildBundle build;
-        addSource (build, preprocessor);
+        fileList.addSource (build, preprocessor);
         build.settings = settings;
         auto program = Compiler::build (messageList, build);
 
@@ -206,37 +184,6 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         }
     }
 
-    inline choc::value::Value replaceStringsWithFileContent (const choc::value::ValueView& value,
-                                                             const std::function<choc::value::Value(std::string_view)>& convertStringToValue)
-    {
-        if (value.isString())
-            return convertStringToValue (value.getString());
-
-        if (value.isArray())
-        {
-            auto v = choc::value::createEmptyArray();
-
-            for (auto i : value)
-                v.addArrayElement (replaceStringsWithFileContent (i, convertStringToValue));
-
-            return v;
-        }
-
-        if (value.isObject())
-        {
-            auto v = choc::value::createObject (value.getObjectClassName());
-
-            value.visitObjectMembers ([&] (std::string_view memberName, const choc::value::ValueView& memberValue)
-            {
-                v.addMember (memberName, replaceStringsWithFileContent (memberValue, convertStringToValue));
-            });
-
-            return v;
-        }
-
-        return choc::value::Value (value);
-    }
-
     choc::value::Value resolveExternalVariable (ExternalDataProvider* externalDataProvider, const ExternalVariable& ev)
     {
         if (externalDataProvider != nullptr)
@@ -249,14 +196,14 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         {
             try
             {
-                return replaceStringsWithFileContent (externals[ev.name],
-                                                      [&] (std::string_view s) -> choc::value::Value
-                                                      {
-                                                          if (auto file = fileList.checkAndCreateVirtualFile (std::string (s)))
-                                                              return AudioFileToValue::load (std::move (file), ev.annotation);
+                return replaceStringsWithValues (externals[ev.name],
+                                                 [&] (std::string_view s) -> choc::value::Value
+                                                 {
+                                                     if (auto file = fileList.checkAndCreateVirtualFile (std::string (s)))
+                                                         return AudioFileToValue::load (std::move (file), ev.annotation);
 
-                                                          return choc::value::createString (s);
-                                                      });
+                                                     return choc::value::createString (s);
+                                                 });
             }
             catch (const PatchLoadError& error)
             {
@@ -358,32 +305,23 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
 
     void createRenderOperations()
     {
-        parameters.clear();
         checkSampleRateAndBlockSize();
 
         wrapper.prepare ((uint32_t) config.maxFramesPerBlock,
                          [] (const EndpointDetails& endpoint) -> uint32_t
                          {
-                             return checkRampLength (endpoint.annotation.getValue ("rampFrames"));
+                             return readRampLengthAnnotation (endpoint);
                          });
 
-        auto paramEndpoints = wrapper.getParameterEndpoints();
-        parameters.reserve (paramEndpoints.size());
-        uint32_t index = 0;
-
-        for (auto& p : paramEndpoints)
-            parameters.push_back (Parameter::Ptr (new ParameterImpl (p, wrapper.parameterList, index++)));
-
-        parameterSpan = makeSpan (parameters);
+        parameterList.rebuildList (wrapper.getParameterEndpoints(), wrapper.parameterList);
+        parameterSpan = makeSpan (parameterList.parameters);
     }
 
     //==============================================================================
     void reset() override
     {
         performer->reset();
-
-        for (auto& p : parameters)
-            static_cast<ParameterImpl&>(*p).markAsDirty();
+        parameterList.markAllAsDirty();
     }
 
     bool sendInputEvent (EndpointHandle handle, const choc::value::ValueView& event) override
@@ -455,96 +393,6 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     }
 
     //==============================================================================
-    struct ParameterImpl final  : public RefCountHelper<Parameter, ParameterImpl>
-    {
-        ParameterImpl (const EndpointDetails& details, ParameterStateList& list, uint32_t index)
-            : paramList (list), paramIndex (index), annotation (details.annotation)
-        {
-            ID = makeString (details.name);
-
-            PatchParameterProperties props (details.name, details.annotation.toExternalValue());
-            name         = makeString (props.name);
-            unit         = makeString (props.unit);
-            minValue     = props.minValue;
-            maxValue     = props.maxValue;
-            step         = props.step;
-            initialValue = props.initialValue;
-
-            value = initialValue;
-
-            propertyNameStrings = annotation.getNames();
-            propertyNameRawStrings.reserve (propertyNameStrings.size());
-
-            for (auto& p : propertyNameStrings)
-                propertyNameRawStrings.push_back (p.c_str());
-
-            propertyNameSpan = makeSpan (propertyNameRawStrings);
-            paramList.setParameter (paramIndex, value);
-            markAsDirty();
-        }
-
-        float getValue() const override
-        {
-            return value;
-        }
-
-        void setValue (float newValue) override
-        {
-            value = snapToLegalValue (newValue);
-            paramList.setParameter (paramIndex, value);
-        }
-
-        void markAsDirty()
-        {
-            paramList.markAsChanged (paramIndex);
-        }
-
-        String* getProperty (const char* propertyName) const override
-        {
-            if (annotation.hasValue (propertyName))
-                return makeStringPtr (annotation.getString (propertyName));
-
-            return {};
-        }
-
-        Span<const char*> getPropertyNames() const override   { return propertyNameSpan; }
-
-        float snapToLegalValue (float v) const
-        {
-            if (step > 0)
-                v = minValue + step * std::floor ((v - minValue) / step + 0.5f);
-
-            return v < minValue ? minValue : (v > maxValue ? maxValue : v);
-        }
-
-        float value = 0;
-        ParameterStateList& paramList;
-        const uint32_t paramIndex = 0;
-        Annotation annotation;
-        std::vector<std::string> propertyNameStrings;
-        std::vector<const char*> propertyNameRawStrings;
-        Span<const char*> propertyNameSpan;
-    };
-
-    //==============================================================================
-    static uint32_t checkRampLength (const soul::Value& v)
-    {
-        if (v.getType().isPrimitive() && (v.getType().isFloatingPoint() || v.getType().isInteger()))
-        {
-            auto frames = v.getAsInt64();
-
-            if (frames < 0)
-                return 0;
-
-            if (frames > maxRampLength)
-                return (uint32_t) maxRampLength;
-
-            return (uint32_t) frames;
-        }
-
-        return 1000;
-    }
-
     void checkSampleRateAndBlockSize() const
     {
         if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
@@ -555,12 +403,13 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     Span<CompilationMessage> compileMessagesSpan;
     bool anyErrors = false;
 
-    FileList fileList;
+    FileList<PatchLoadError> fileList;
 
     std::vector<Bus> inputBuses, outputBuses;
     std::vector<EndpointDescription> inputEventEndpoints, outputEventEndpoints;
     std::vector<EndpointDescriptionHolder> endpointHolders;
-    std::vector<Parameter::Ptr> parameters;
+
+    ParameterList parameterList;
 
     Span<Bus> inputBusesSpan = {}, outputBusesSpan = {};
     Span<Parameter::Ptr> parameterSpan = {};
@@ -570,8 +419,6 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     PatchPlayerConfiguration config;
     std::unique_ptr<soul::Performer> performer;
     AudioMIDIWrapper wrapper;
-
-    static constexpr int64_t maxRampLength = 0x7fffffff;
 };
 
 }

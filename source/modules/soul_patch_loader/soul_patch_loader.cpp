@@ -22,9 +22,9 @@
 #include "JuceHeader.h"
 
 #include "../../../include/soul/patch/helper_classes/soul_patch_Utilities.h"
+#include "../../../include/soul/patch/helper_classes/soul_patch_FileList.h"
 
 #include "classes/soul_patch_helpers.h"
-#include "classes/soul_patch_FileList.h"
 #include "classes/soul_patch_BelaTransformation.h"
 #include "classes/soul_patch_PlayerImpl.h"
 #include "classes/soul_patch_InstanceImpl.h"
@@ -53,7 +53,7 @@ namespace soul::patch
                                         const soul::BuildSettings& buildSettings,
                                         const char* path)
     {
-        if (soul::patch::isValidPathString (path))
+        if (sanityCheckString (path))
             return createPatchInstance (std::move (performerFactory), buildSettings, createLocalOrRemoteFile (path));
 
         return {};

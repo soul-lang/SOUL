@@ -44,7 +44,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     void refreshFileList()
     {
         fileList.refresh();
-        description = Description::Ptr (fileList.createDescription());
+        description = fileList.createDescriptionPtr();
     }
 
     void silentRefreshFileList()
@@ -55,7 +55,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         }
         catch (const PatchLoadError& e)
         {
-            description = Description::Ptr (new FileList::DescriptionImpl (fileList.manifest.file, e.message));
+            description = fileList.createDescriptionWithMessage (e.message);
         }
     }
 
@@ -119,7 +119,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     std::unique_ptr<soul::PerformerFactory> performerFactory;
     BuildSettings buildSettings;
     VirtualFile::Ptr manifestFile;
-    FileList fileList;
+    FileList<PatchLoadError> fileList;
     Description::Ptr description;
 };
 

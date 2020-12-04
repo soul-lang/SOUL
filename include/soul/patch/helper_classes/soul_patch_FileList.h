@@ -22,26 +22,28 @@ namespace soul::patch
 {
 
 //==============================================================================
-/** A wrapper for a VirtualFile which keeps a few extra details alongside it. */
-struct FileState
-{
-    VirtualFile::Ptr file;
-    std::string path;
-    int64_t lastModificationTime = 0;
-
-    int64_t getSize() const                             { return file->getSize(); }
-    int64_t getLastModificationTime() const             { return file->getLastModificationTime(); }
-    bool hasFileBeenModified() const                    { return lastModificationTime != getLastModificationTime(); }
-    bool hasChanged (const FileState& other) const      { return path != other.path || lastModificationTime != other.lastModificationTime; }
-    bool operator< (const FileState& other) const       { return path < other.path; }
-};
-
-//==============================================================================
 /** Manages a list of the known files in a patch, and provides methods for
     checking them for changes.
 */
+template <typename PatchLoadErrorException>
 struct FileList
 {
+    //==============================================================================
+    /** A wrapper for a VirtualFile which keeps a few extra details alongside it. */
+    struct FileState
+    {
+        VirtualFile::Ptr file;
+        std::string path;
+        int64_t lastModificationTime = 0;
+
+        int64_t getSize() const                             { return file->getSize(); }
+        int64_t getLastModificationTime() const             { return file->getLastModificationTime(); }
+        bool hasFileBeenModified() const                    { return lastModificationTime != getLastModificationTime(); }
+        bool hasChanged (const FileState& other) const      { return path != other.path || lastModificationTime != other.lastModificationTime; }
+        bool operator< (const FileState& other) const       { return path < other.path; }
+    };
+
+    //==============================================================================
     VirtualFile::Ptr manifestFile, root;
     std::string manifestName;
     FileState manifest;
@@ -68,13 +70,13 @@ struct FileList
     VirtualFile::Ptr checkAndCreateVirtualFile (const std::string& relativePath) const
     {
         if (relativePath.empty())
-            throwPatchLoadError ("Empty file name");
+            throw PatchLoadErrorException { "Empty file name" };
 
         if (root != nullptr)
             if (auto f = VirtualFile::Ptr (root->getChildFile (relativePath.c_str())))
                 return f;
 
-        throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath));
+        throw PatchLoadErrorException { "Cannot find file " + choc::text::addDoubleQuotes (relativePath) };
     }
 
     FileState checkAndCreateFileState (const std::string& relativePath) const
@@ -87,7 +89,7 @@ struct FileList
     void findManifestFile()
     {
         if (manifestFile == nullptr || ! endsWith (manifestName, getManifestSuffix()))
-            throwPatchLoadError ("Expected a .soulpatch file");
+            throw PatchLoadErrorException { "Expected a .soulpatch file" };
 
         manifest = { manifestFile, manifestName, 0 };
         manifest.lastModificationTime = manifest.getLastModificationTime();
@@ -100,7 +102,7 @@ struct FileList
         manifestJSON = parseManifestFile (*manifest.file, error);
 
         if (! error.empty())
-            throwPatchLoadError (error);
+            throw PatchLoadErrorException { std::move (error) };
 
         checkExternalsList();
     }
@@ -113,7 +115,7 @@ struct FileList
         auto addFile = [&] (const choc::value::ValueView& file)
         {
             if (! file.isString())
-                throwPatchLoadError (manifest.path, "Expected the '" + propertyName + "' variable to be a filename or array of files");
+                throw PatchLoadErrorException { manifest.path + ": error: Expected the '" + propertyName + "' variable to be a filename or array of files" };
 
             paths.push_back (std::string (file.getString()));
         };
@@ -148,6 +150,28 @@ struct FileList
         appendVector (filesToWatch, getFileListProperty ("view"));
     }
 
+    void addSource (BuildBundle& build, SourceFilePreprocessor* preprocessor)
+    {
+        for (auto& fileState : sourceFiles)
+        {
+            VirtualFile::Ptr source;
+
+            if (preprocessor != nullptr)
+                source = VirtualFile::Ptr (preprocessor->preprocessSourceFile (*fileState.file));
+
+            if (source == nullptr)
+                source = fileState.file;
+
+            std::string readError;
+            auto content = loadVirtualFileAsString (*source, readError);
+
+            if (! readError.empty())
+                throw PatchLoadErrorException { std::move (readError) };
+
+            build.sourceFiles.push_back ({ fileState.path, std::move (content) });
+        }
+    }
+
     bool haveAnyReferencedFilesBeenModified() const
     {
         for (auto& f : filesToWatch)
@@ -170,7 +194,7 @@ struct FileList
             return;
 
         if (! externals.isObject())
-            throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
+            throw PatchLoadErrorException { "The 'externals' field in the manifest must be a JSON object" };
 
         externals.visitObjectMembers ([] (std::string_view memberName, const choc::value::ValueView&)
         {
@@ -180,10 +204,10 @@ struct FileList
             auto path = IdentifierPath::fromString (tempAllocator, std::string (name));
 
             if (! path.isValid())
-                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (std::string (name)));
+                throw PatchLoadErrorException { "Invalid symbol name for external binding " + quoteName (std::string (name)) };
 
             if (path.isUnqualified())
-                throwPatchLoadError ("The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor");
+                throw PatchLoadErrorException { "The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor" };
         });
     }
 
@@ -198,7 +222,7 @@ struct FileList
         {
             newList.findManifestFile();
         }
-        catch (const PatchLoadError&) {}
+        catch (const PatchLoadErrorException&) {}
 
         return manifest.hasChanged (newList.manifest)
                  || haveAnyReferencedFilesBeenModified();
@@ -214,12 +238,13 @@ struct FileList
         return mostRecent;
     }
 
+private:
     struct DescriptionImpl final  : public RefCountHelper<Description, DescriptionImpl>
     {
         DescriptionImpl (VirtualFile::Ptr m, std::string desc)
             : manifestHolder (std::move (m)), stringDescription (std::move (desc))
         {
-            manifestFile = manifestHolder.get();
+            this->manifestFile = manifestHolder.get();
             updatePointers();
         }
 
@@ -235,7 +260,7 @@ struct FileList
                 stringCategory       = json["category"].getWithDefault<std::string> ({});
                 stringManufacturer   = json["manufacturer"].getWithDefault<std::string> ({});
                 stringURL            = json["URL"].getWithDefault<std::string> ({});
-                isInstrument         = json["isInstrument"].getWithDefault<bool> (false);
+                this->isInstrument   = json["isInstrument"].getWithDefault<bool> (false);
 
                 updatePointers();
             }
@@ -243,13 +268,13 @@ struct FileList
 
         void updatePointers()
         {
-            description   = stringDescription.c_str();
-            UID           = stringUID.c_str();
-            version       = stringVersion.c_str();
-            name          = stringName.c_str();
-            category      = stringCategory.c_str();
-            manufacturer  = stringManufacturer.c_str();
-            URL           = stringURL.c_str();
+            this->description   = stringDescription.c_str();
+            this->UID           = stringUID.c_str();
+            this->version       = stringVersion.c_str();
+            this->name          = stringName.c_str();
+            this->category      = stringCategory.c_str();
+            this->manufacturer  = stringManufacturer.c_str();
+            this->URL           = stringURL.c_str();
         }
 
         DescriptionImpl (const DescriptionImpl&) = delete;
@@ -259,9 +284,20 @@ struct FileList
         std::string stringUID, stringVersion, stringName, stringDescription, stringCategory, stringManufacturer, stringURL;
     };
 
+public:
     Description* createDescription() const
     {
         return new DescriptionImpl (manifest.file, manifestJSON);
+    }
+
+    Description::Ptr createDescriptionPtr() const
+    {
+        return Description::Ptr (createDescription());
+    }
+
+    Description::Ptr createDescriptionWithMessage (std::string desc) const
+    {
+        return Description::Ptr (new DescriptionImpl (manifest.file, std::move (desc)));
     }
 };
 

@@ -268,6 +268,132 @@ struct PatchParameterProperties
     bool isAutomatable = false, isBoolean = false, isHidden = false;
 };
 
+//==============================================================================
+/** Creates and holds a list of soul::patch::Parameter implementations, connecting them
+    to a ParameterStateList object.
+*/
+struct ParameterList
+{
+    ParameterList() = default;
+
+    void rebuildList (ArrayView<EndpointDetails> endpoints, ParameterStateList& stateList)
+    {
+        parameters.clear();
+        parameters.reserve (endpoints.size());
+        uint32_t index = 0;
+
+        for (auto& p : endpoints)
+            parameters.push_back (Parameter::Ptr (new ParameterImpl (p, stateList, index++)));
+    }
+
+    void markAllAsDirty()
+    {
+        for (auto& p : parameters)
+            static_cast<ParameterImpl&>(*p).markAsDirty();
+    }
+
+    std::vector<Parameter::Ptr> parameters;
+
+private:
+    struct ParameterImpl final  : public RefCountHelper<Parameter, ParameterImpl>
+    {
+        ParameterImpl (const EndpointDetails& details, ParameterStateList& list, uint32_t index)
+            : paramList (list), paramIndex (index), annotation (details.annotation)
+        {
+            ID = makeString (details.name);
+
+            PatchParameterProperties props (details.name, details.annotation.toExternalValue());
+            name         = makeString (props.name);
+            unit         = makeString (props.unit);
+            minValue     = props.minValue;
+            maxValue     = props.maxValue;
+            step         = props.step;
+            initialValue = props.initialValue;
+
+            value = initialValue;
+
+            propertyNameStrings = annotation.getNames();
+            propertyNameRawStrings.reserve (propertyNameStrings.size());
+
+            for (auto& p : propertyNameStrings)
+                propertyNameRawStrings.push_back (p.c_str());
+
+            propertyNameSpan = makeSpan (propertyNameRawStrings);
+            paramList.setParameter (paramIndex, value);
+            markAsDirty();
+        }
+
+        float getValue() const override
+        {
+            return value;
+        }
+
+        void setValue (float newValue) override
+        {
+            value = snapToLegalValue (newValue);
+            paramList.setParameter (paramIndex, value);
+        }
+
+        void markAsDirty()
+        {
+            paramList.markAsChanged (paramIndex);
+        }
+
+        String* getProperty (const char* propertyName) const override
+        {
+            if (annotation.hasValue (propertyName))
+                return makeStringPtr (annotation.getString (propertyName));
+
+            return {};
+        }
+
+        Span<const char*> getPropertyNames() const override   { return propertyNameSpan; }
+
+        float snapToLegalValue (float v) const
+        {
+            if (step > 0)
+                v = minValue + step * std::floor ((v - minValue) / step + 0.5f);
+
+            return v < minValue ? minValue : (v > maxValue ? maxValue : v);
+        }
+
+        float value = 0;
+        ParameterStateList& paramList;
+        const uint32_t paramIndex = 0;
+        Annotation annotation;
+        std::vector<std::string> propertyNameStrings;
+        std::vector<const char*> propertyNameRawStrings;
+        Span<const char*> propertyNameSpan;
+    };
+};
+
+//==============================================================================
+inline uint32_t readRampLengthAnnotation (const soul::Value& v)
+{
+    static constexpr int64_t maxRampLength = 0x7fffffff;
+
+    if (v.getType().isPrimitive() && (v.getType().isFloatingPoint() || v.getType().isInteger()))
+    {
+        auto frames = v.getAsInt64();
+
+        if (frames < 0)
+            return 0;
+
+        if (frames > maxRampLength)
+            return (uint32_t) maxRampLength;
+
+        return (uint32_t) frames;
+    }
+
+    return 1000;
+}
+
+inline uint32_t readRampLengthAnnotation (const EndpointDetails& endpoint)
+{
+    return readRampLengthAnnotation (endpoint.annotation.getValue ("rampFrames"));
+}
+
+
 #ifdef JUCE_CORE_H_INCLUDED
 
 //==============================================================================

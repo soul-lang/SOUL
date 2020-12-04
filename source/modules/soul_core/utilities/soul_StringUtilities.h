@@ -117,6 +117,8 @@ std::string convertToString (const IdentifierPath& name);
 std::string quoteName (const std::string& name);
 std::string quoteName (const Identifier& name);
 
+bool sanityCheckString (const char* s, size_t maxLength = 8192);
+
 //==============================================================================
 /** Creates a table of strings, where each column gets padded out based on the longest
     item that it contains. Use calls to startRow/appendItem to create the table, then

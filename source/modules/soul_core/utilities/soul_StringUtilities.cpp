@@ -242,6 +242,17 @@ std::string convertToString (const IdentifierPath& name)     { return Program::s
 std::string quoteName (const std::string& name)        { return choc::text::addSingleQuotes (convertToString (name)); }
 std::string quoteName (const Identifier& name)         { return choc::text::addSingleQuotes (convertToString (name)); }
 
+bool sanityCheckString (const char* s, size_t maxLength)
+{
+    if (s != nullptr)
+        for (size_t i = 0; i < maxLength; ++i)
+            if (s[i] == 0)
+                return choc::text::findInvalidUTF8Data (s, i) == nullptr;
+
+    return false;
+}
+
+//==============================================================================
 void PaddedStringTable::startRow()
 {
     rows.push_back ({});
@@ -284,6 +295,7 @@ std::string& PaddedStringTable::getCell (size_t row, size_t column)
     return rows[row][column];
 }
 
+//==============================================================================
 HashBuilder& HashBuilder::operator<< (char c) noexcept
 {
     auto n = (uint8_t) c;

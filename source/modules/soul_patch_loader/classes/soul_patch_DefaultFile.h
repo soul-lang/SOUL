@@ -36,7 +36,7 @@ struct RemoteFile final  : public RefCountHelper<VirtualFile, RemoteFile>
 
     VirtualFile* getChildFile (const char* path) override
     {
-        if (isValidPathString (path))
+        if (sanityCheckString (path))
             return new RemoteFile (url.getChildURL (juce::CharPointer_UTF8 (path)));
 
         return {};
@@ -100,7 +100,7 @@ struct LocalFile final  : public RefCountHelper<VirtualFile, LocalFile>
 
     VirtualFile* getChildFile (const char* path) override
     {
-        if (isValidPathString (path))
+        if (sanityCheckString (path))
             return new LocalFile (file.getChildFile (juce::CharPointer_UTF8 (path)));
 
         return {};
@@ -149,7 +149,7 @@ struct LocalFile final  : public RefCountHelper<VirtualFile, LocalFile>
 /** Creates either a LocalFile or RemoteFile object, based on the path provided */
 VirtualFile* createLocalOrRemoteFile (const char* pathOrURL)
 {
-    if (pathOrURL == nullptr || choc::text::findInvalidUTF8Data (pathOrURL, strlen (pathOrURL)) != nullptr)
+    if (! sanityCheckString (pathOrURL))
         return {};
 
     auto path = juce::String::fromUTF8 (pathOrURL);

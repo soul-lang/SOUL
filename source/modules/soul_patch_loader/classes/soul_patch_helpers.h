@@ -25,18 +25,6 @@ namespace soul::patch
 bool operator== (PatchPlayerConfiguration s1, PatchPlayerConfiguration s2)    { return s1.sampleRate == s2.sampleRate && s1.maxFramesPerBlock == s2.maxFramesPerBlock; }
 bool operator!= (PatchPlayerConfiguration s1, PatchPlayerConfiguration s2)    { return ! (s1 == s2); }
 
-static bool isValidPathString (const char* s)
-{
-    constexpr size_t maxLength = 8192;
-
-    if (s != nullptr)
-        for (size_t i = 0; i < maxLength; ++i)
-            if (s[i] == 0)
-                return choc::text::findInvalidUTF8Data (s, i) == nullptr;
-
-    return false;
-}
-
 //==============================================================================
 struct PatchLoadError
 {
@@ -46,11 +34,6 @@ struct PatchLoadError
 [[noreturn]] static void throwPatchLoadError (std::string message)
 {
     throw PatchLoadError { std::move (message) };
-}
-
-[[noreturn]] static void throwPatchLoadError (const std::string& file, const std::string& message)
-{
-    throwPatchLoadError (file + ": error: " + message);
 }
 
 //==============================================================================

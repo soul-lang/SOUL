@@ -340,7 +340,8 @@ struct ParameterStateList
 
     using GetRampLengthForSparseStreamFn = std::function<uint32_t(const EndpointDetails&)>;
 
-    void initialise (soul::Performer& performer, GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
+    template <typename PerformerOrSession>
+    void initialise (PerformerOrSession& p, GetRampLengthForSparseStreamFn&& getRampLengthForSparseStreamFn)
     {
         valueHolder = choc::value::createFloat32 (0);
 
@@ -352,7 +353,7 @@ struct ParameterStateList
         rampTargetMember = rampedValueHolder.getObjectMemberAt (1).value;
 
         {
-            auto params = getInputEndpointsOfType (performer, InputEndpointType::parameter);
+            auto params = getInputEndpointsOfType (p, InputEndpointType::parameter);
 
             parameters.clear();
             parameters.reserve (params.size());
@@ -360,7 +361,7 @@ struct ParameterStateList
             for (auto& parameterInput : params)
             {
                 Parameter param;
-                param.endpoint = performer.getEndpointHandle (parameterInput.endpointID);
+                param.endpoint = p.getEndpointHandle (parameterInput.endpointID);
 
                 if (isStream (parameterInput))
                 {
@@ -375,8 +376,8 @@ struct ParameterStateList
         std::vector<Parameter*> parameterPtrs;
         parameterPtrs.reserve (parameters.size());
 
-        for (auto& p : parameters)
-            parameterPtrs.push_back (std::addressof (p));
+        for (auto& param : parameters)
+            parameterPtrs.push_back (std::addressof (param));
 
         auto dirtyHandles = dirtyList.initialise (parameterPtrs);
 

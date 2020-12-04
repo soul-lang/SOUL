@@ -127,6 +127,38 @@ inline auto getIteratorForIndex (Vector& vector, Position index)
     return vector.begin() + static_cast<typename Vector::difference_type> (index);
 }
 
+template <typename ConvertStringToValueFn>
+static choc::value::Value replaceStringsWithValues (const choc::value::ValueView& value,
+                                                    const ConvertStringToValueFn& convertStringToValue)
+{
+    if (value.isString())
+        return convertStringToValue (value.getString());
+
+    if (value.isArray())
+    {
+        auto v = choc::value::createEmptyArray();
+
+        for (auto i : value)
+            v.addArrayElement (replaceStringsWithValues (i, convertStringToValue));
+
+        return v;
+    }
+
+    if (value.isObject())
+    {
+        auto v = choc::value::createObject (value.getObjectClassName());
+
+        value.visitObjectMembers ([&] (std::string_view memberName, const choc::value::ValueView& memberValue)
+        {
+            v.addMember (memberName, replaceStringsWithValues (memberValue, convertStringToValue));
+        });
+
+        return v;
+    }
+
+    return choc::value::Value (value);
+}
+
 //==============================================================================
 /** This is a bit like a lite version of std::span.
     However, it does have the huge advantage that it asserts when mistakes are made like
