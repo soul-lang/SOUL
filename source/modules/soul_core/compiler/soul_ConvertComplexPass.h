@@ -81,9 +81,9 @@ private:
 
     Transformations transformations;
 
-    static AST::QualifiedIdentifier& identifierFromString (AST::Allocator& allocator, AST::Context& context, const std::string& s)
+    static AST::UnqualifiedName& identifierFromString (AST::Allocator& allocator, AST::Context& context, const std::string& s)
     {
-        return allocator.allocate<AST::QualifiedIdentifier> (context,  soul::IdentifierPath::fromString (allocator.identifiers, s));
+        return allocator.allocate<AST::UnqualifiedName> (context,  allocator.get (s));
     }
 
     static bool requiresRemapping (const soul::Type& type)

@@ -1452,7 +1452,7 @@ private:
     {
         expect (Operator::dot);
         auto context = getContext();
-        auto& propertyName = parseQualifiedIdentifier();
+        auto& propertyName = parseUnqualifiedName();
 
         auto property = heart::ProcessorProperty::getPropertyFromName (propertyName.toString());
 
@@ -1498,7 +1498,7 @@ private:
     {
         auto context = getContext();
         expect (Operator::dot);
-        auto& propertyOrMethodName = parseQualifiedIdentifier();
+        auto& propertyOrMethodName = parseUnqualifiedName();
 
         auto metaTypeOp = getOpForTypeMetaFunctionName (propertyOrMethodName);
 
@@ -1523,7 +1523,8 @@ private:
             if (auto dot = cast<AST::DotOperator> (expression))
             {
                 args.items.insert (args.items.begin(), dot->lhs);
-                return parseSuffixes (allocate<AST::CallOrCast> (dot->rhs, args, true));
+                auto& fn = allocate<AST::QualifiedIdentifier> (dot->rhs.context, IdentifierPath (dot->rhs.identifier));
+                return parseSuffixes (allocate<AST::CallOrCast> (fn, args, true));
             }
 
             return parseSuffixes (allocate<AST::CallOrCast> (expression, args, false));
@@ -1773,6 +1774,11 @@ private:
             return AST::TypeMetaFunction::getOperationForName (qi.path.getFirstPart());
 
         return AST::TypeMetaFunction::Op::none;
+    }
+
+    static AST::TypeMetaFunction::Op getOpForTypeMetaFunctionName (const AST::UnqualifiedName& name)
+    {
+        return AST::TypeMetaFunction::getOperationForName (name.identifier);
     }
 
     AST::TypeMetaFunction& parseTypeMetaFunction (const AST::Context& context, AST::TypeMetaFunction::Op op)

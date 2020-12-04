@@ -687,15 +687,12 @@ private:
                                                                             : Value::createInt32 (size));
         }
 
-        pool_ptr<AST::Expression> createTypeMetaFunction (AST::QualifiedIdentifier& name, AST::Expression& arg)
+        pool_ptr<AST::Expression> createTypeMetaFunction (AST::UnqualifiedName& name, AST::Expression& arg)
         {
-            if (name.path.isUnqualified())
-            {
-                auto op = AST::TypeMetaFunction::getOperationForName (name.path.getFirstPart());
+            auto op = AST::TypeMetaFunction::getOperationForName (name.identifier);
 
-                if (op != AST::TypeMetaFunction::Op::none)
-                    return allocator.allocate<AST::TypeMetaFunction> (name.context, arg, op);
-            }
+            if (op != AST::TypeMetaFunction::Op::none)
+                return allocator.allocate<AST::TypeMetaFunction> (name.context, arg, op);
 
             return {};
         }
@@ -738,7 +735,7 @@ private:
                     if (auto processor = processorInstance->getAsProcessor())
                     {
                         AST::Scope::NameSearch search;
-                        search.partiallyQualifiedPath = d.rhs.path;
+                        search.partiallyQualifiedPath = d.rhs.getIdentifierPath();
                         search.stopAtFirstScopeWithResults = true;
                         search.findVariables = false;
                         search.findTypes = false;
@@ -754,7 +751,7 @@ private:
                             if (is_type<AST::EndpointDeclaration> (search.itemsFound.front()))
                                 return allocator.allocate<AST::ConnectionEndpointRef> (d.context,
                                                                                        processorInstance,
-                                                                                       allocator.allocate<AST::UnqualifiedName> (d.context, d.rhs.path.getFirstPart()));
+                                                                                       allocator.allocate<AST::UnqualifiedName> (d.context, d.rhs.identifier));
                     }
                 }
 
@@ -772,9 +769,8 @@ private:
 
             if (AST::isResolvedAsType (d.lhs.get()))
             {
-                if (d.rhs.path.isUnqualified())
-                    if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
-                        return *metaFunction;
+                if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
+                    return *metaFunction;
             }
             else if (AST::isResolvedAsValue (d.lhs.get()))
             {
@@ -783,7 +779,7 @@ private:
                 if (lhsType.isStruct())
                 {
                     auto& s = lhsType.getStructRef();
-                    auto name = d.rhs.path.toString();
+                    auto name = d.rhs.toString();
 
                     if (s.hasMemberWithName (name))
                         return allocator.allocate<AST::StructMemberRef> (d.context, d.lhs, s, std::move (name));
@@ -793,7 +789,7 @@ private:
                 }
                 else if (lhsType.isComplex())
                 {
-                    auto name = d.rhs.path.toString();
+                    auto name = d.rhs.toString();
 
                     if (name == "real" || name == "imag")
                         return allocator.allocate<AST::ComplexMemberRef> (d.context, d.lhs, lhsType, std::move (name));
@@ -801,13 +797,12 @@ private:
                     d.rhs.context.throwError (Errors::unknownMemberInComplex (d.rhs.toString(), lhsType.getDescription()));
                 }
 
-                if (d.rhs.path.isUnqualified())
-                    if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
-                        return *metaFunction;
+                if (auto metaFunction = createTypeMetaFunction (d.rhs, d.lhs))
+                    return *metaFunction;
             }
             else if (d.lhs->isOutputEndpoint())
             {
-                if (currentConnectionEndpoint != nullptr || d.rhs.path == "type")
+                if (currentConnectionEndpoint != nullptr || d.rhs.toString() == "type")
                     return d;
 
                 d.context.throwError (Errors::noSuchOperationOnEndpoint());

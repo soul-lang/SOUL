@@ -1991,13 +1991,13 @@ struct AST
 
     struct DotOperator  : public Expression
     {
-        DotOperator (const Context& c, Expression& a, QualifiedIdentifier& b)
+        DotOperator (const Context& c, Expression& a, UnqualifiedName& b)
            : Expression (ObjectType::DotOperator, c, ExpressionKind::unknown), lhs (a), rhs (b) {}
 
         bool isResolved() const override            { return false; }
 
         pool_ref<Expression> lhs;
-        QualifiedIdentifier& rhs;
+        UnqualifiedName& rhs;
     };
 
     //==============================================================================
