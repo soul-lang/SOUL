@@ -492,13 +492,13 @@ struct AST
 
         ModuleBase& findSingleMatchingSubModule (const QualifiedIdentifier& name) const
         {
-            auto modulesFound = getMatchingSubModules (name.path);
+            auto modulesFound = getMatchingSubModules (name.getPath());
 
             if (modulesFound.empty())
-                name.context.throwError (Errors::unresolvedSymbol (name.path));
+                name.context.throwError (Errors::unresolvedSymbol (name.getPath()));
 
             if (modulesFound.size() > 1)
-                name.context.throwError (Errors::ambiguousSymbol (name.path));
+                name.context.throwError (Errors::ambiguousSymbol (name.getPath()));
 
             return modulesFound.front();
         }
@@ -508,7 +508,7 @@ struct AST
             auto p = cast<ProcessorBase> (findSingleMatchingSubModule (name));
 
             if (p == nullptr)
-                name.context.throwError (Errors::notAProcessorOrGraph (name.path));
+                name.context.throwError (Errors::notAProcessorOrGraph (name.getPath()));
 
             return *p;
         }
@@ -1681,16 +1681,47 @@ struct AST
     //==============================================================================
     struct QualifiedIdentifier  : public Expression
     {
-        QualifiedIdentifier (const Context& c, IdentifierPath p)
-            : Expression (ObjectType::QualifiedIdentifier, c, ExpressionKind::unknown), path (std::move (p)) {}
+        QualifiedIdentifier (const Context& c)
+            : Expression (ObjectType::QualifiedIdentifier, c, ExpressionKind::unknown)
+        {
+        }
+
+        QualifiedIdentifier (const Context& c, IdentifierPath path)
+            : Expression (ObjectType::QualifiedIdentifier, c, ExpressionKind::unknown)
+        {
+            addToPath (path, nullptr);
+        }
+
+        void addToPath (IdentifierPath path, pool_ptr<Expression> specialisationArgs)
+        {
+            pathSections.push_back ({ path, specialisationArgs });
+        }
 
         bool isResolved() const override            { return false; }
-        std::string toString() const                { return path.toString(); }
+        std::string toString() const                { return pathSections[0].path.toString(); }
 
-        bool operator== (const QualifiedIdentifier& other) const     { return path == other.path; }
-        bool operator!= (const QualifiedIdentifier& other) const     { return path != other.path; }
+        bool operator== (const QualifiedIdentifier& other) const     { return pathSections[0].path == other.pathSections[0].path; }
+        bool operator!= (const QualifiedIdentifier& other) const     { return pathSections[0].path != other.pathSections[0].path; }
 
-        IdentifierPath path;
+        bool isSimplePath() const
+        {
+            return pathSections.size() == 1 && pathSections[0].specialisationArgs == nullptr;
+        }
+
+        IdentifierPath getPath() const
+        {
+            return pathPrefix + pathSections[0].path;
+        }
+
+        struct PathSection
+        {
+            IdentifierPath path;
+            pool_ptr<Expression> specialisationArgs;
+        };
+
+
+        std::vector<PathSection> pathSections;
+        IdentifierPath pathPrefix;
     };
 
     struct SubscriptWithBrackets  : public Expression

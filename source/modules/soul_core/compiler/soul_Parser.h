@@ -1770,8 +1770,8 @@ private:
 
     static AST::TypeMetaFunction::Op getOpForTypeMetaFunctionName (const AST::QualifiedIdentifier& qi)
     {
-        if (qi.path.isUnqualified())
-            return AST::TypeMetaFunction::getOperationForName (qi.path.getFirstPart());
+        if (qi.getPath().isUnqualified())
+            return AST::TypeMetaFunction::getOperationForName (qi.getPath().getFirstPart());
 
         return AST::TypeMetaFunction::Op::none;
     }
@@ -2038,13 +2038,28 @@ private:
 
     AST::QualifiedIdentifier& parseQualifiedIdentifier()
     {
-        auto context = getContext();
-        IdentifierPath path (parseIdentifier());
+        auto& qi = allocate<AST::QualifiedIdentifier> (getContext());
 
-        while (matchIf (Operator::doubleColon))
-            path.addSuffix (parseIdentifier());
+        for (;;)
+        {
+            IdentifierPath path (parseIdentifier());
 
-        return allocate<AST::QualifiedIdentifier> (context, path);
+            while (matchIf (Operator::doubleColon))
+                path.addSuffix (parseIdentifier());
+
+            auto p = getCurrentTokeniserPosition();
+            auto s = parseSpecialisationArgs();
+
+            if (matchIf (Operator::doubleColon))
+            {
+                qi.addToPath (path, s);
+                continue;
+            }
+
+            resetPosition (p);
+            qi.addToPath (path, nullptr);
+            return qi;
+        }
     }
 
     AST::UnqualifiedName& parseUnqualifiedName()

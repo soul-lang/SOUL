@@ -368,7 +368,7 @@ struct SanityCheckPass  final
                 }
                 else if (auto name = cast<AST::QualifiedIdentifier> (p->targetProcessor))
                 {
-                    auto modulesFound = g.getMatchingSubModules (name->path);
+                    auto modulesFound = g.getMatchingSubModules (name->getPath());
 
                     if (modulesFound.size() == 1)
                         sub = cast<AST::Graph> (modulesFound.front());
@@ -603,10 +603,16 @@ private:
     {
         using super = ASTVisitor;
 
+        void visit (AST::UnqualifiedName& name) override
+        {
+            super::visit (name);
+            name.context.throwError (Errors::unresolvedSymbol (name.toString()));
+        }
+
         void visit (AST::QualifiedIdentifier& qi) override
         {
             super::visit (qi);
-            qi.context.throwError (Errors::unresolvedSymbol (qi.path));
+            qi.context.throwError (Errors::unresolvedSymbol (qi.getPath()));
         }
 
         void visit (AST::CallOrCast& c) override

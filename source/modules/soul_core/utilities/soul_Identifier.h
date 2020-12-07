@@ -226,6 +226,16 @@ struct IdentifierPath  final
     bool operator== (const std::string& other) const        { return toString() == other; }
     bool operator!= (const std::string& other) const        { return toString() != other; }
 
+    IdentifierPath operator+ (const IdentifierPath& other) const
+    {
+        IdentifierPath result (*this);
+
+        for (auto i : other.pathSections)
+            result.addSuffix (i);
+        
+        return result;
+    }
+
     size_t size() const                 { return pathSections.size(); }
     Identifier getFirstPart() const     { return pathSections.front(); }
     Identifier getLastPart() const      { return pathSections.back(); }
@@ -263,6 +273,13 @@ struct IdentifierPath  final
         auto p = *this;
         p.pathSections.push_back (i);
         return p;
+    }
+
+    void removeFirst (size_t items)
+    {
+        SOUL_ASSERT (pathSections.size() >= items);
+
+        pathSections.erase (pathSections.begin(), pathSections.begin() + items);
     }
 
     static IdentifierPath fromString (Identifier::Pool& allocator, std::string fullPath)

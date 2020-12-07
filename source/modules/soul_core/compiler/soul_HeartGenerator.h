@@ -1255,6 +1255,11 @@ private:
         SOUL_ASSERT_FALSE;
     }
 
+    void visit (AST::UnqualifiedName&) override
+    {
+        SOUL_ASSERT_FALSE;
+    }
+
     Type getStructType (AST::StructMemberRef& a)
     {
         auto structType = a.object->getResultType();

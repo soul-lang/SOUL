@@ -107,14 +107,14 @@ struct ASTUtilities
 
     static pool_ptr<AST::OutputEndpointRef> createConsoleEndpoint (AST::Allocator& allocator, AST::QualifiedIdentifier& name)
     {
-        if (! (name.path.isUnqualifiedName ("console") || name.path.isUnqualifiedName ("consoul")))
+        if (! (name.getPath().isUnqualifiedName ("console") || name.getPath().isUnqualifiedName ("consoul")))
             return {};
 
         SOUL_ASSERT (name.getParentScope() != nullptr);
         auto processor = name.getParentScope()->findProcessor();
 
         if (processor == nullptr)
-            name.context.throwError (Errors::cannotFindOutput (name.path));
+            name.context.throwError (Errors::cannotFindOutput (name.getPath()));
 
         if (auto e = processor->findEndpoint (getConsoleEndpointInternalName(), false))
             return allocator.allocate<AST::OutputEndpointRef> (name.context, *e);
