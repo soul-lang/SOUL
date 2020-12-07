@@ -84,7 +84,7 @@
 #include "heart/soul_ModuleCloner.h"
 #include "heart/soul_Module.cpp"
 #include "heart/soul_Program.cpp"
-#include "venue/soul_ThreadedVenue.cpp"
+#include "venue/soul_RenderingVenue.cpp"
 #include "diagnostics/soul_CodeLocation.cpp"
 #include "diagnostics/soul_Logging.cpp"
 #include "diagnostics/soul_CompileMessageList.cpp"

@@ -25,9 +25,23 @@ namespace soul::patch
 /** Manages a list of the known files in a patch, and provides methods for
     checking them for changes.
 */
-template <typename PatchLoadErrorException>
 struct FileList
 {
+    //==============================================================================
+    void initialiseFromManifestFile (VirtualFile::Ptr manifestFileToOpen)
+    {
+        if (auto name = String::Ptr (manifestFileToOpen->getName()))
+        {
+            manifestName = name.toString<std::string>();
+
+            if (endsWith (manifestName, getManifestSuffix()))
+            {
+                manifestFile = manifestFileToOpen;
+                root = VirtualFile::Ptr (manifestFile->getParent());
+            }
+        }
+    }
+
     //==============================================================================
     /** A wrapper for a VirtualFile which keeps a few extra details alongside it. */
     struct FileState
@@ -70,13 +84,13 @@ struct FileList
     VirtualFile::Ptr checkAndCreateVirtualFile (const std::string& relativePath) const
     {
         if (relativePath.empty())
-            throw PatchLoadErrorException { "Empty file name" };
+            throwPatchLoadError ("Empty file name");
 
         if (root != nullptr)
             if (auto f = VirtualFile::Ptr (root->getChildFile (relativePath.c_str())))
                 return f;
 
-        throw PatchLoadErrorException { "Cannot find file " + choc::text::addDoubleQuotes (relativePath) };
+        throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath));
     }
 
     FileState checkAndCreateFileState (const std::string& relativePath) const
@@ -89,7 +103,7 @@ struct FileList
     void findManifestFile()
     {
         if (manifestFile == nullptr || ! endsWith (manifestName, getManifestSuffix()))
-            throw PatchLoadErrorException { "Expected a .soulpatch file" };
+            throwPatchLoadError ("Expected a .soulpatch file");
 
         manifest = { manifestFile, manifestName, 0 };
         manifest.lastModificationTime = manifest.getLastModificationTime();
@@ -102,7 +116,7 @@ struct FileList
         manifestJSON = parseManifestFile (*manifest.file, error);
 
         if (! error.empty())
-            throw PatchLoadErrorException { std::move (error) };
+            throwPatchLoadError (std::move (error));
 
         checkExternalsList();
     }
@@ -115,7 +129,7 @@ struct FileList
         auto addFile = [&] (const choc::value::ValueView& file)
         {
             if (! file.isString())
-                throw PatchLoadErrorException { manifest.path + ": error: Expected the '" + propertyName + "' variable to be a filename or array of files" };
+                throwPatchLoadError (manifest.path + ": error: Expected the '" + propertyName + "' variable to be a filename or array of files");
 
             paths.push_back (std::string (file.getString()));
         };
@@ -166,7 +180,7 @@ struct FileList
             auto content = loadVirtualFileAsString (*source, readError);
 
             if (! readError.empty())
-                throw PatchLoadErrorException { std::move (readError) };
+                throwPatchLoadError (std::move (readError));
 
             build.sourceFiles.push_back ({ fileState.path, std::move (content) });
         }
@@ -194,7 +208,7 @@ struct FileList
             return;
 
         if (! externals.isObject())
-            throw PatchLoadErrorException { "The 'externals' field in the manifest must be a JSON object" };
+            throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
 
         externals.visitObjectMembers ([] (std::string_view memberName, const choc::value::ValueView&)
         {
@@ -204,10 +218,10 @@ struct FileList
             auto path = IdentifierPath::fromString (tempAllocator, std::string (name));
 
             if (! path.isValid())
-                throw PatchLoadErrorException { "Invalid symbol name for external binding " + quoteName (std::string (name)) };
+                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (std::string (name)));
 
             if (path.isUnqualified())
-                throw PatchLoadErrorException { "The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor" };
+                throwPatchLoadError ("The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor");
         });
     }
 
@@ -222,7 +236,7 @@ struct FileList
         {
             newList.findManifestFile();
         }
-        catch (const PatchLoadErrorException&) {}
+        catch (const PatchLoadError&) {}
 
         return manifest.hasChanged (newList.manifest)
                  || haveAnyReferencedFilesBeenModified();

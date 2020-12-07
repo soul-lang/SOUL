@@ -201,13 +201,21 @@ struct MIDIInputList
         clear();
 
         for (auto& e : getInputEndpointsOfType (p, InputEndpointType::midi))
-            inputs.push_back ({ p.getEndpointHandle (e.endpointID),
-                                choc::value::Value (e.getSingleEventType()) });
+            connectEndpoint (p, e.endpointID);
     }
 
     void clear()
     {
         inputs.clear();
+    }
+
+    template <typename PerformerOrSession>
+    void connectEndpoint (PerformerOrSession& p, const EndpointID& endpointID)
+    {
+        auto& details = findDetailsForID (p.getInputEndpoints(), endpointID);
+
+        inputs.push_back ({ p.getEndpointHandle (endpointID),
+                            choc::value::Value (details.getSingleEventType()) });
     }
 
     void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, MIDIEventInputList midiEvents)
@@ -283,20 +291,33 @@ struct EventOutputList
         endpointNames.clear();
     }
 
-    void initialise (Performer& p)
+    template <typename PerformerOrSession>
+    void initialise (PerformerOrSession& p)
     {
         for (auto& e : getOutputEndpointsOfType (p, OutputEndpointType::event))
-        {
             if (! isMIDIEventEndpoint (e))
-            {
-                auto handle = p.getEndpointHandle (e.endpointID);
-                outputs.push_back (handle);
-                endpointNames[handle.getRawHandle()] = e.name;
-            }
-        }
+                connectEndpoint (p, e.endpointID);
     }
 
-    bool postOutputEvents (Performer& p, uint64_t position)
+    template <typename PerformerOrSession>
+    bool connectEndpoint (PerformerOrSession& p, const EndpointID& endpointID)
+    {
+        for (auto& e : p.getOutputEndpoints())
+        {
+            if (e.endpointID == endpointID)
+            {
+                auto handle = p.getEndpointHandle (endpointID);
+                outputs.push_back (handle);
+                endpointNames[handle.getRawHandle()] = e.name;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    template <typename PerformerOrSession>
+    bool postOutputEvents (PerformerOrSession& p, uint64_t position)
     {
         bool success = true;
 

@@ -259,10 +259,12 @@ private:
 
         if (lastCallbackCount != 0 && now > lastKnownActiveCallbackTime + std::chrono::milliseconds (2000))
         {
+           #if ! SOUL_DEBUG
             log ("Fatal error! run() function took too long to execute.\n"
                  "Process terminating...");
 
             std::terminate();
+           #endif
         }
     }
 

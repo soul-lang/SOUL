@@ -26,7 +26,7 @@ namespace soul::patch
 */
 struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerImpl>
 {
-    PatchPlayerImpl (FileList<PatchLoadError> f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
+    PatchPlayerImpl (FileList f, PatchPlayerConfiguration c, std::unique_ptr<soul::Performer> p)
         : fileList (std::move (f)), config (c), performer (std::move (p)), wrapper (*performer)
     {
     }
@@ -403,7 +403,7 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     Span<CompilationMessage> compileMessagesSpan;
     bool anyErrors = false;
 
-    FileList<PatchLoadError> fileList;
+    FileList fileList;
 
     std::vector<Bus> inputBuses, outputBuses;
     std::vector<EndpointDescription> inputEventEndpoints, outputEventEndpoints;

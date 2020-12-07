@@ -149,6 +149,17 @@ inline const char* getManifestWildcard()                { return "*.soulpatch"; 
 inline const char* getManifestTopLevelPropertyName()    { return "soulPatchV1"; }
 
 //==============================================================================
+struct PatchLoadError
+{
+    std::string message;
+};
+
+[[noreturn]] static inline void throwPatchLoadError (std::string message)
+{
+    throw PatchLoadError { std::move (message) };
+}
+
+//==============================================================================
 inline choc::value::ValueView getManifestContentObject (const choc::value::ValueView& topLevelObject)
 {
     return topLevelObject[getManifestTopLevelPropertyName()];

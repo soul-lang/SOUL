@@ -21,587 +21,424 @@
 namespace soul::audioplayer
 {
 
-//==============================================================================
-class AudioPlayerVenue   : public soul::Venue,
-                           private AudioMIDISystem::Callback
+struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
 {
-public:
-    AudioPlayerVenue (Requirements r, std::unique_ptr<PerformerFactory> factory)
-        : audioSystem (std::move (r)),
-          performerFactory (std::move (factory))
+    Pimpl (AudioPlayerVenue& v, const Requirements& r, std::unique_ptr<PerformerFactory> f)
+       : venue (v), audioSystem (std::move (r)), renderingVenue (std::move (f))
     {
-        createDeviceEndpoints (audioSystem.getNumInputChannels(),
-                               audioSystem.getNumOutputChannels());
+        audioSystem.setCallback (this);
     }
 
-    ~AudioPlayerVenue() override
+    ~Pimpl() override
     {
-        SOUL_ASSERT (activeSessions.empty());
         audioSystem.setCallback (nullptr);
-        performerFactory.reset();
     }
 
-    std::unique_ptr<Venue::Session> createSession() override
-    {
-        return std::make_unique<AudioPlayerSession> (*this);
-    }
-
-    std::vector<EndpointDetails> getSourceEndpoints() override    { return convertEndpointList (sourceEndpoints); }
-    std::vector<EndpointDetails> getSinkEndpoints() override      { return convertEndpointList (sinkEndpoints); }
-
     //==============================================================================
-    struct EndpointInfo
+    struct AudioVenueSession  : public Venue::Session
     {
-        EndpointDetails details;
-        int audioChannelIndex = 0;
-        bool isMIDI = false;
-    };
-
-    struct RenderContext
-    {
-        uint64_t totalFramesRendered = 0;
-        choc::buffer::ChannelArrayView<const float> inputChannels;
-        choc::buffer::ChannelArrayView<float> outputChannels;
-        const MIDIEvent* midiIn;
-        MIDIEvent* midiOut;
-        uint32_t frameOffset = 0, midiInCount = 0, midiOutCount = 0, midiOutCapacity = 0;
-
-        template <typename RenderBlockFn>
-        void iterateInBlocks (uint32_t maxFramesPerBlock, RenderBlockFn&& render)
+        AudioVenueSession (std::unique_ptr<Session> s, AudioPlayerVenue& v)
+            : session (std::move (s)), venue (v)
         {
-            auto framesRemaining = inputChannels.getNumFrames();
-            auto context = *this;
-
-            while (framesRemaining != 0)
-            {
-                auto framesToDo = std::min (maxFramesPerBlock, framesRemaining);
-                context.midiIn = midiIn;
-                context.midiInCount = 0;
-
-                while (midiInCount != 0)
-                {
-                    auto time = midiIn->frameIndex;
-
-                    if (time > frameOffset)
-                    {
-                        framesToDo = std::min (framesToDo, time - frameOffset);
-                        break;
-                    }
-
-                    ++midiIn;
-                    --midiInCount;
-                    context.midiInCount++;
-                }
-
-                context.inputChannels  = inputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
-                context.outputChannels = outputChannels.getFrameRange ({ frameOffset, frameOffset + framesToDo });
-
-                render (context);
-
-                frameOffset += framesToDo;
-                framesRemaining -= framesToDo;
-                context.totalFramesRendered += framesToDo;
-                context.frameOffset += framesToDo;
-            }
-
-            midiOutCount = context.midiOutCount;
-        }
-    };
-
-    //==============================================================================
-    struct AudioPlayerSession   : public Venue::Session
-    {
-        AudioPlayerSession (AudioPlayerVenue& v)  : venue (v)
-        {
-            performer = venue.performerFactory->createPerformer();
+            session->setIOServiceCallbacks ([this] (uint32_t numFrames) { startNextBlock (numFrames); },
+                                            [this] (uint32_t maxFrames) { return getNextNumFrames (maxFrames); },
+                                            [this] (InputEndpointActions& actions, uint32_t numFrames) { preProcess (actions, numFrames); },
+                                            [this] (OutputEndpointActions& actions, uint32_t numFrames) { postProcess (actions, numFrames); });
         }
 
-        ~AudioPlayerSession() override
+        ~AudioVenueSession() override
         {
             unload();
         }
 
-        soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() override             { return performer->getInputEndpoints(); }
-        soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() override            { return performer->getOutputEndpoints(); }
-
-        bool load (CompileMessageList& messageList, const Program& program) override
+        bool load (const Program& p, CompileTaskFinishedCallback loadFinishedCallback) override
         {
-            if (program.isEmpty())
-                return false;
-
-            unload();
-
-            if (performer->load (messageList, program))
-            {
-                setState (SessionState::loaded);
-                return true;
-            }
-
-            return false;
-        }
-
-        void setEndpointActive (const EndpointID& endpointID) override      { performer->getEndpointHandle (endpointID); }
-
-        void setNextInputStreamFrames (EndpointHandle handle, const choc::value::ValueView& frameArray) override
-        {
-            performer->setNextInputStreamFrames (handle, frameArray);
-        }
-
-        void setSparseInputStreamTarget (EndpointHandle handle, const choc::value::ValueView& targetFrameValue, uint32_t numFramesToReachValue) override
-        {
-            performer->setSparseInputStreamTarget (handle, targetFrameValue, numFramesToReachValue);
-        }
-
-        void setInputValue (EndpointHandle handle, const choc::value::ValueView& newValue) override
-        {
-            performer->setInputValue (handle, newValue);
-        }
-
-        void addInputEvent (EndpointHandle handle, const choc::value::ValueView& eventData) override
-        {
-            performer->addInputEvent (handle, eventData);
-        }
-
-        choc::value::ValueView getOutputStreamFrames (EndpointHandle handle) override
-        {
-            return performer->getOutputStreamFrames (handle);
-        }
-
-        void iterateOutputEvents (EndpointHandle handle, Performer::HandleNextOutputEventFn fn) override
-        {
-            performer->iterateOutputEvents (handle, std::move (fn));
-        }
-
-        bool isEndpointActive (const EndpointID& e) override
-        {
-            return performer->isEndpointActive (e);
-        }
-
-        bool link (CompileMessageList& messageList, const BuildSettings& settings) override
-        {
-            maxBlockSize = settings.maxBlockSize;
-            buildOperationList();
-
-            if (state == SessionState::loaded && performer->link (messageList, settings, {}))
-            {
-                setState (SessionState::linked);
-                return true;
-            }
-
-            return false;
-        }
-
-        bool isRunning() override
-        {
-            return state == SessionState::running;
-        }
-
-        bool start() override
-        {
-            if (state == SessionState::linked)
-            {
-                SOUL_ASSERT (performer->isLinked());
-
-                if (venue.startSession (this))
-                    setState (SessionState::running);
-            }
-
-            return isRunning();
-        }
-
-        void stop() override
-        {
-            if (isRunning())
-            {
-                venue.stopSession (this);
-                setState (SessionState::linked);
-                totalFramesRendered = 0;
-            }
+            return session->load (p, [this, clientCallback = std::move (loadFinishedCallback)] (const CompileMessageList& messages)
+                                  {
+                                      clientCallback (messages);
+                                      postLoadSetup();
+                                  });
         }
 
         void unload() override
         {
-            stop();
-            performer->unload();
-            preRenderOperations.clear();
-            postRenderOperations.clear();
-            inputCallbacks.clear();
-            outputCallbacks.clear();
-            connections.clear();
-            setState (SessionState::empty);
+            externalInputConnections.clear();
+            externalOutputConnections.clear();
+            session->unload();
         }
 
-        Status getStatus() override
+        bool start() override            { return session->start(); }
+        bool isRunning() override        { return session->isRunning(); }
+        void stop() override             { session->stop(); }
+        Status getStatus() override      { return session->getStatus(); }
+
+        //==============================================================================
+        ArrayView<const EndpointDetails> getInputEndpoints() override   { return session->getInputEndpoints(); }
+        ArrayView<const EndpointDetails> getOutputEndpoints() override  { return session->getOutputEndpoints(); }
+
+        //==============================================================================
+        EndpointHandle getEndpointHandle (const EndpointID& e) override   { return session->getEndpointHandle (e); }
+        bool isEndpointActive (const EndpointID& e) override              { return session->isEndpointActive (e); }
+
+        //==============================================================================
+        void setIOServiceCallbacks (BeginNextBlockFn start, GetNextNumFramesFn size, PrepareInputsFn pre, ReadOutputsFn post) override
         {
-            Status s;
-            s.state = state;
-            s.cpu = venue.audioSystem.getCPULoad();
-            s.sampleRate = venue.audioSystem.getSampleRate();
-            s.blockSize = venue.audioSystem.getMaxBlockSize();
-            s.xruns = performer->getXRuns();
-
-            auto deviceXruns = venue.audioSystem.getXRunCount();
-
-            if (deviceXruns > 0) // < 0 means not known
-                s.xruns += (uint32_t) deviceXruns;
-
-            return s;
+            beginNextBlockCallback = std::move (start);
+            getBlockSizeCallback = std::move (size);
+            preRenderCallback = std::move (pre);
+            postRenderCallback = std::move (post);
         }
 
-        void setState (SessionState newState)
+        bool link (const BuildSettings& settings, CompileTaskFinishedCallback linkFinishedCallback) override
         {
-            if (state != newState)
+            return session->link (settings, std::move (linkFinishedCallback));
+        }
+
+        bool connectExternalEndpoint (EndpointID sessionEndpoint, EndpointID externalEndpoint) override
+        {
+            if (auto external = venue.pimpl->findExternalEndpoint (externalEndpoint))
             {
-                state = newState;
-
-                if (stateChangeCallback != nullptr)
-                    stateChangeCallback (state);
-            }
-        }
-
-        void setStateChangeCallback (StateChangeCallbackFn f) override     { stateChangeCallback = std::move (f); }
-
-        uint64_t getTotalFramesRendered() const override                   { return totalFramesRendered; }
-
-        bool connectSessionInputEndpoint (EndpointID inputID, EndpointID venueSourceID) override
-        {
-            if (auto venueEndpoint = venue.findEndpoint (venue.sourceEndpoints, venueSourceID))
-                return connectInputEndpoint (*venueEndpoint, inputID);
-
-            return false;
-        }
-
-        bool connectSessionOutputEndpoint (EndpointID outputID, EndpointID venueSinkID) override
-        {
-            if (auto venueEndpoint = venue.findEndpoint (venue.sinkEndpoints, venueSinkID))
-                return connectOutputEndpoint (*venueEndpoint, outputID);
-
-            return false;
-        }
-
-        bool setInputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
-        {
-            if (! containsEndpoint (performer->getInputEndpoints(), endpoint))
-                return false;
-
-            inputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
-            return true;
-        }
-
-        bool setOutputEndpointServiceCallback (EndpointID endpoint, EndpointServiceFn callback) override
-        {
-            if (! containsEndpoint (performer->getOutputEndpoints(), endpoint))
-                return false;
-
-            outputCallbacks.push_back ({ performer->getEndpointHandle (endpoint), std::move (callback) });
-            return true;
-        }
-
-        void deviceStopped()
-        {
-        }
-
-        bool connectInputEndpoint (const EndpointInfo& externalEndpoint, EndpointID inputID)
-        {
-            for (auto& details : performer->getInputEndpoints())
-            {
-                if (details.endpointID == inputID)
+                if (external->isInput)
                 {
-                    if (isStream (details) && ! externalEndpoint.isMIDI)
+                    if (auto programIn = findInternalEndpoint (session->getInputEndpoints(), sessionEndpoint))
                     {
-                        connections.push_back ({ externalEndpoint.audioChannelIndex, -1, false, details.endpointID });
-                        return true;
-                    }
-
-                    if (isEvent (details) && externalEndpoint.isMIDI)
-                    {
-                        connections.push_back ({ -1, -1, true, details.endpointID });
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        bool connectOutputEndpoint (const EndpointInfo& externalEndpoint, EndpointID outputID)
-        {
-            for (auto& details : performer->getOutputEndpoints())
-            {
-                if (details.endpointID == outputID)
-                {
-                    if (isStream (details) && ! externalEndpoint.isMIDI)
-                    {
-                        connections.push_back ({ -1, externalEndpoint.audioChannelIndex, false, details.endpointID });
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        void buildOperationList()
-        {
-            preRenderOperations.clear();
-            postRenderOperations.clear();
-
-            for (auto& connection : connections)
-            {
-                auto& perf = *performer;
-                auto endpointHandle = performer->getEndpointHandle (connection.endpointID);
-
-                if (connection.isMIDI)
-                {
-                    if (isMIDIEventEndpoint (findDetailsForID (perf.getInputEndpoints(), connection.endpointID)))
-                    {
-                        auto midiEvent = choc::value::createObject ("soul::midi::Message",
-                                                                    "midiBytes", int32_t {});
-
-                        preRenderOperations.push_back ([&perf, endpointHandle, midiEvent] (RenderContext& rc) mutable
+                        if (external->isMIDI)
                         {
-                            for (uint32_t i = 0; i < rc.midiInCount; ++i)
+                            if (isMIDIEventEndpoint (*programIn))
                             {
-                                midiEvent.getObjectMemberAt (0).value.set (rc.midiIn[i].getPackedMIDIData());
-                                perf.addInputEvent (endpointHandle, midiEvent);
+                                externalInputConnections.emplace_back (ExternalConnection { sessionEndpoint, externalEndpoint });
+                                return true;
                             }
-                        });
+                        }
+                        else
+                        {
+                            auto numChannelsOut = getNumAudioChannels (*programIn);
+
+                            if (numChannelsOut != 0)
+                            {
+                                externalInputConnections.emplace_back (ExternalConnection { sessionEndpoint, externalEndpoint });
+                                return true;
+                            }
+                        }
                     }
                 }
-                else if (connection.audioInputStreamIndex >= 0)
+                else
                 {
-                    auto& details = findDetailsForID (perf.getInputEndpoints(), connection.endpointID);
-                    auto& frameType = details.getFrameType();
-                    auto startChannel = static_cast<uint32_t> (connection.audioInputStreamIndex);
-                    auto numChans = frameType.getNumElements();
-
-                    if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
+                    if (auto programOut = findInternalEndpoint (session->getOutputEndpoints(), sessionEndpoint))
                     {
-                        choc::buffer::InterleavedBuffer<float> interleaved (numChans, maxBlockSize);
+                        if (external->isMIDI)
+                            return false;  // MIDI out - currently ignored
 
-                        preRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans, interleaved] (RenderContext& rc)
+                        auto numChannelsIn = getNumAudioChannels (*programOut);
+
+                        if (numChannelsIn != 0)
                         {
-                            copy (interleaved, rc.inputChannels.getChannelRange ({ startChannel, startChannel + numChans }));
-
-                            perf.setNextInputStreamFrames (endpointHandle, choc::value::create2DArrayView (interleaved.getView().data.data,
-                                                                                                           interleaved.getNumFrames(),
-                                                                                                           interleaved.getNumChannels()));
-                        });
-                    }
-                    else
-                    {
-                        SOUL_ASSERT_FALSE;
-                    }
-                }
-                else if (connection.audioOutputStreamIndex >= 0)
-                {
-                    auto& details = findDetailsForID (perf.getOutputEndpoints(), connection.endpointID);
-                    auto& frameType = details.getFrameType();
-                    auto startChannel = static_cast<uint32_t> (connection.audioOutputStreamIndex);
-                    auto numChans = frameType.getNumElements();
-
-                    if (frameType.isFloat() || (frameType.isVector() && frameType.getElementType().isFloat()))
-                    {
-                        postRenderOperations.push_back ([&perf, endpointHandle, startChannel, numChans] (RenderContext& rc)
-                        {
-                            copyIntersectionAndClearOutside (rc.outputChannels.getChannelRange ({ startChannel, startChannel + numChans }),
-                                                             getChannelSetFromArray (perf.getOutputStreamFrames (endpointHandle)));
-                        });
-                    }
-                    else
-                    {
-                        SOUL_ASSERT_FALSE;
+                            externalOutputConnections.emplace_back (ExternalConnection { sessionEndpoint, externalEndpoint });
+                            return true;
+                        }
                     }
                 }
             }
+
+            return false;
         }
 
-        void processBlock (RenderContext context)
+        void postLoadSetup()
         {
-            SOUL_ASSERT (maxBlockSize > 0);
-            auto maxFramesPerBlock = std::min (512u, maxBlockSize);
-            context.totalFramesRendered = totalFramesRendered;
+            midiInputList.clear();
+            audioInputList.initialise (maxBlockSize);
+            audioOutputList.clear();
 
-            context.iterateInBlocks (maxFramesPerBlock, [&] (RenderContext& rc)
+            eventOutputList.clear();
+
+            for (auto& e : getOutputEndpointsOfType (*this, OutputEndpointType::event))
+                eventOutputList.connectEndpoint (*this, e.endpointID);
+
+            // in lieu of handling midi out, just send it along with other output events..
+            for (auto& e : getOutputEndpointsOfType (*this, OutputEndpointType::midi))
+                eventOutputList.connectEndpoint (*this, e.endpointID);
+
+            for (auto& c : externalInputConnections)
             {
-                performer->prepare (rc.inputChannels.getNumFrames());
+                if (auto e = venue.pimpl->findExternalEndpoint (c.externalEndpoint))
+                {
+                    if (e->isMIDI)
+                        midiInputList.connectEndpoint (*session, c.sessionEndpoint);
+                    else
+                        audioInputList.connectEndpoint (*session, c.sessionEndpoint, e->channels);
+                }
+            }
 
-                for (auto& op : preRenderOperations)
-                    op (rc);
-
-                for (auto& c : inputCallbacks)
-                    c.callback (*this, c.endpointHandle);
-
-                performer->advance();
-
-                for (auto& op : postRenderOperations)
-                    op (rc);
-
-                for (auto& c : outputCallbacks)
-                    c.callback (*this, c.endpointHandle);
-            });
-
-            totalFramesRendered += context.outputChannels.getNumFrames();
+            for (auto& c : externalOutputConnections)
+            {
+                if (auto e = venue.pimpl->findExternalEndpoint (c.externalEndpoint))
+                    audioOutputList.connectEndpoint (*session, c.sessionEndpoint, e->channels);
+            }
         }
 
+        void startNextBlock (uint32_t numFrames)
+        {
+            SOUL_ASSERT (numFrames <= maxBlockSize);
+            auto framePos = venue.pimpl->totalFramesRendered;
+            audioInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentInputBuffer);
+            midiInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentMIDIBuffer);
+
+            frameOffset = 0;
+            inputFIFO.prepareForReading (venue.pimpl->totalFramesRendered, numFrames);
+
+            if (beginNextBlockCallback != nullptr)
+                beginNextBlockCallback (numFrames);
+        }
+
+        uint32_t getNextNumFrames (uint32_t maxNumFrames)
+        {
+            if (getBlockSizeCallback != nullptr)
+                maxNumFrames = getBlockSizeCallback (maxNumFrames);
+
+            return inputFIFO.getNumFramesInNextChunk (maxNumFrames);
+        }
+
+        void preProcess (InputEndpointActions& actions, uint32_t numFrames)
+        {
+            if (preRenderCallback != nullptr)
+                preRenderCallback (actions, numFrames);
+
+            inputFIFO.processNextChunk ([&] (soul::EndpointHandle endpoint, uint64_t /*frame*/,
+                                             const choc::value::ValueView& value)
+            {
+                switch (endpoint.getType())
+                {
+                    case EndpointType::stream:
+                        SOUL_TODO // need to also handle sparse streams
+                        actions.setNextInputStreamFrames (endpoint, value);
+                        break;
+
+                    case EndpointType::event:
+                        actions.addInputEvent (endpoint, value);
+                        break;
+
+                    case EndpointType::value:
+                        actions.setInputValue (endpoint, value);
+                        break;
+
+                    case EndpointType::unknown:
+                    default:
+                        SOUL_ASSERT_FALSE;
+                }
+            });
+        }
+
+        void postProcess (OutputEndpointActions& actions, uint32_t numFrames)
+        {
+            if (postRenderCallback != nullptr)
+                postRenderCallback (actions, numFrames);
+
+            auto output = venue.pimpl->currentOutputBuffer;
+            audioOutputList.handleOutputData (actions, output.getFrameRange ({ frameOffset, frameOffset + numFrames }));
+            eventOutputList.postOutputEvents (actions, venue.pimpl->totalFramesRendered + frameOffset);
+            frameOffset += numFrames;
+        }
+
+        bool flushOutgoingEvents (const OutgoingEventHandlerFn& handler) override
+        {
+            eventOutputList.deliverPendingEvents (handler);
+            return true;
+        }
+
+    private:
+        std::unique_ptr<Session> session;
         AudioPlayerVenue& venue;
-        std::unique_ptr<Performer> performer;
-        uint32_t maxBlockSize = 0;
-        std::atomic<uint64_t> totalFramesRendered { 0 };
-        StateChangeCallbackFn stateChangeCallback;
 
-        struct EndpointCallback
+        MIDIInputList midiInputList;
+        AudioInputList audioInputList;
+        AudioOutputList audioOutputList;
+        MultiEndpointFIFO inputFIFO;
+        EventOutputList eventOutputList;
+
+        BeginNextBlockFn beginNextBlockCallback;
+        GetNextNumFramesFn getBlockSizeCallback;
+        PrepareInputsFn preRenderCallback;
+        ReadOutputsFn postRenderCallback;
+        uint32_t frameOffset = 0;
+
+        struct ExternalConnection
         {
-            EndpointHandle endpointHandle;
-            EndpointServiceFn callback;
+            EndpointID sessionEndpoint, externalEndpoint;
         };
 
-        std::vector<EndpointCallback> inputCallbacks, outputCallbacks;
-
-        struct Connection
-        {
-            int audioInputStreamIndex = -1, audioOutputStreamIndex = -1;
-            bool isMIDI = false;
-            EndpointID endpointID;
-        };
-
-        std::vector<Connection> connections;
-        std::vector<std::function<void(RenderContext&)>> preRenderOperations;
-        std::vector<std::function<void(RenderContext&)>> postRenderOperations;
-
-        SessionState state = SessionState::empty;
+        std::vector<ExternalConnection> externalInputConnections, externalOutputConnections;
     };
 
     //==============================================================================
-    bool startSession (AudioPlayerSession* s)
+    struct ExternalIOEndpoint
     {
-        std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
+        std::string endpointID, name;
+        bool isInput, isMIDI;
+        choc::buffer::ChannelRange channels;
 
-        if (! contains (activeSessions, s))
-            activeSessions.push_back (s);
+        EndpointDetails getDetails() const
+        {
+            EndpointDetails details;
+            details.endpointID = EndpointID::create (endpointID);
+            details.name = name;
 
-        audioSystem.setCallback (this);
-        return true;
-    }
+            if (isMIDI)
+            {
+                SOUL_ASSERT (isInput);
+                details.endpointType = EndpointType::event;
 
-    bool stopSession (AudioPlayerSession* s)
-    {
-        std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
-        removeFirst (activeSessions, [=] (AudioPlayerSession* i) { return i == s; });
+                auto midiType = choc::value::createObject ("Message",
+                                                           "midiBytes", (int32_t) 0).getType();
+                details.dataTypes.push_back (midiType);
+            }
+            else
+            {
+                details.endpointType = EndpointType::stream;
+                details.dataTypes.push_back (choc::value::Type::createVectorFloat32 (channels.size()));
+            }
 
-        if (activeSessions.empty())
-            audioSystem.setCallback (nullptr);
+            return details;
+        }
 
-        return true;
-    }
+        bool operator== (const ExternalIOEndpoint& other) const
+        {
+            return endpointID == other.endpointID
+                    && name == other.name
+                    && isInput == other.isInput
+                    && isMIDI == other.isMIDI
+                    && channels == other.channels;
+        }
 
+        bool operator!= (const ExternalIOEndpoint& other) const
+        {
+            return ! operator== (other);
+        }
+    };
 
-private:
     //==============================================================================
-    AudioMIDISystem audioSystem;
-    std::unique_ptr<PerformerFactory> performerFactory;
-
-    std::vector<EndpointInfo> sourceEndpoints, sinkEndpoints;
-
-    std::recursive_mutex activeSessionLock;
-    std::vector<AudioPlayerSession*> activeSessions;
+    ArrayView<const EndpointDetails> getExternalInputEndpoints()  { return externalInputDetails; }
+    ArrayView<const EndpointDetails> getExternalOutputEndpoints() { return externalOutputDetails; }
 
     //==============================================================================
-    void createDeviceEndpoints (int numInputChannels, int numOutputChannels)
+    void renderStarting (double, uint32_t) override
     {
-        if (numInputChannels > 0)
-            addEndpoint (sourceEndpoints,
-                         EndpointType::stream,
-                         EndpointID::create ("defaultIn"),
-                         "defaultIn",
-                         getVectorType (numInputChannels),
-                         0, false);
-
-        if (numOutputChannels > 0)
-            addEndpoint (sinkEndpoints,
-                         EndpointType::stream,
-                         EndpointID::create ("defaultOut"),
-                         "defaultOut",
-                         getVectorType (numOutputChannels),
-                         0, false);
-
-        auto midiMessageType = soul::createMIDIEventEndpointType();
-
-        addEndpoint (sourceEndpoints,
-                     EndpointType::event,
-                     EndpointID::create ("defaultMidiIn"),
-                     "defaultMidiIn",
-                     midiMessageType,
-                     0, true);
-
-        addEndpoint (sinkEndpoints,
-                     EndpointType::event,
-                     EndpointID::create ("defaultMidiOut"),
-                     "defaultMidiOut",
-                     midiMessageType,
-                     0, true);
+        refreshExternalEndpoints();
     }
 
-    const EndpointInfo* findEndpoint (ArrayView<EndpointInfo> endpoints, const EndpointID& endpointID) const
-    {
-        for (auto& e : endpoints)
-            if (e.details.endpointID == endpointID)
-                return std::addressof (e);
-
-        return {};
-    }
-
-    static std::vector<EndpointDetails> convertEndpointList (ArrayView<EndpointInfo> sourceList)
-    {
-        std::vector<EndpointDetails> result;
-
-        for (auto& e : sourceList)
-            result.push_back (e.details);
-
-        return result;
-    }
-
-    void renderStarting (double, uint32_t) override {}
     void renderStopped() override {}
 
     void render (choc::buffer::ChannelArrayView<const float> input,
                  choc::buffer::ChannelArrayView<float> output,
                  MIDIEventInputList midiIn) override
     {
-        std::lock_guard<decltype(activeSessionLock)> lock (activeSessionLock);
+        auto numFrames = output.getNumFrames();
+        SOUL_ASSERT (numFrames == input.getNumFrames());
+        output.clear();
+        uint32_t offset = 0;
 
-        auto context = RenderContext { 0, input, output, midiIn.listStart, nullptr, 0,
-                                       static_cast<uint32_t> (midiIn.listEnd - midiIn.listStart), 0, 0 };
+        while (numFrames != 0)
+        {
+            auto numToDo = std::min (numFrames, maxBlockSize);
 
-        for (auto& s : activeSessions)
-            s->processBlock (context);
+            currentInputBuffer = input.getFrameRange ({ offset, offset + numToDo });
+            currentOutputBuffer = output.getFrameRange ({ offset, offset + numToDo });
+            currentMIDIBuffer = midiIn.removeEventsBefore (numToDo);
+
+            auto result = renderingVenue.render (numToDo);
+            SOUL_ASSERT (result == nullptr);
+
+            totalFramesRendered += numToDo;
+            offset += numToDo;
+            numFrames -= numToDo;
+        }
     }
 
-    static soul::Type getVectorType (int size)    { return (soul::Type::createVector (soul::PrimitiveType::float32, static_cast<size_t> (size))); }
-
-    static void addEndpoint (std::vector<EndpointInfo>& list, EndpointType endpointType,
-                             EndpointID id, std::string name, Type dataType,
-                             int audioChannelIndex, bool isMIDI)
+    //==============================================================================
+    void refreshExternalEndpoints()
     {
-        EndpointInfo e;
+        externalEndpoints = getExternalEndpointList();
 
-        e.details.endpointID    = std::move (id);
-        e.details.name          = std::move (name);
-        e.details.endpointType  = endpointType;
-        e.details.dataTypes.push_back (dataType.getExternalType());
+        externalInputDetails.clear();
+        externalOutputDetails.clear();
 
-        e.audioChannelIndex     = audioChannelIndex;
-        e.isMIDI                = isMIDI;
+        for (auto& e : externalEndpoints)
+        {
+            if (e.isInput)
+                externalInputDetails.push_back (e.getDetails());
+            else
+                externalOutputDetails.push_back (e.getDetails());
+        }
+    }
 
-        list.push_back (e);
+    //==============================================================================
+    static constexpr uint32_t maxBlockSize = 1024;
+
+    AudioPlayerVenue& venue;
+    AudioMIDISystem audioSystem;
+    RenderingVenue renderingVenue;
+
+    std::mutex audioCallbackLock;
+
+    std::vector<ExternalIOEndpoint> externalEndpoints;
+    std::vector<EndpointDetails> externalInputDetails, externalOutputDetails;
+
+    uint64_t totalFramesRendered = 0;
+
+    choc::buffer::ChannelArrayView<const float> currentInputBuffer;
+    choc::buffer::ChannelArrayView<float> currentOutputBuffer;
+    MIDIEventInputList currentMIDIBuffer;
+
+    decltype (externalEndpoints) getExternalEndpointList() const
+    {
+        decltype (externalEndpoints) list;
+
+        if (auto numInputChannels = static_cast<uint32_t> (audioSystem.getNumInputChannels()))
+            list.push_back ({ "audio_in", "default audio input", true, false, { 0, numInputChannels } });
+
+        if (auto numOutputChannels = static_cast<uint32_t> (audioSystem.getNumOutputChannels()))
+            list.push_back ({ "audio_out", "default audio output", false, false, { 0, numOutputChannels } });
+
+        list.push_back ({ "midi_in", "MIDI in", true, true, {} });
+        return list;
+    }
+
+    ExternalIOEndpoint* findExternalEndpoint (const EndpointID& endpointID)
+    {
+        for (auto& e : externalEndpoints)
+            if (e.endpointID == endpointID.toString())
+                return std::addressof (e);
+
+        return {};
+    }
+
+    static const EndpointDetails* findInternalEndpoint (ArrayView<const EndpointDetails> list, const EndpointID& endpointID)
+    {
+        for (auto& e : list)
+            if (e.endpointID == endpointID)
+                return std::addressof (e);
+
+        return nullptr;
     }
 };
 
 //==============================================================================
-std::unique_ptr<Venue> createAudioPlayerVenue (const Requirements& requirements,
-                                               std::unique_ptr<PerformerFactory> performerFactory)
+AudioPlayerVenue::AudioPlayerVenue (const Requirements& r, std::unique_ptr<PerformerFactory> f)
+   : pimpl (std::make_unique<Pimpl> (*this, r, std::move (f)))
 {
-    return std::make_unique<AudioPlayerVenue> (requirements, std::move (performerFactory));
 }
+
+AudioPlayerVenue::~AudioPlayerVenue() = default;
+
+bool AudioPlayerVenue::createSession (SessionReadyCallback callback)
+{
+    return pimpl->renderingVenue.createSession ([this, cb = std::move (callback)] (std::unique_ptr<Session> newSession)
+                                                {
+                                                    SOUL_ASSERT (newSession != nullptr);
+                                                    cb (std::make_unique<Pimpl::AudioVenueSession> (std::move (newSession), *this));
+                                                });
+}
+
+ArrayView<const EndpointDetails> AudioPlayerVenue::getExternalInputEndpoints()  { return pimpl->getExternalInputEndpoints(); }
+ArrayView<const EndpointDetails> AudioPlayerVenue::getExternalOutputEndpoints() { return pimpl->getExternalOutputEndpoints(); }
 
 }

@@ -57,13 +57,21 @@ namespace soul::audioplayer
         std::function<void(std::string_view)> printLogMessage;
     };
 
-    /** Returns an implementation of a soul::Venue which uses the standard JUCE
-        audio and MIDI devices to play the output of a performer.
+    //==============================================================================
+    /** A venue inplementation that connects to the system audio devices. */
+    struct AudioPlayerVenue  : public soul::Venue
+    {
+        AudioPlayerVenue (const Requirements&, std::unique_ptr<PerformerFactory>);
+        ~AudioPlayerVenue() override;
 
-        The Requirements object is used to provide hints about preferred sample
-        rates, etc. to use when opening an audio device
-    */
-    std::unique_ptr<soul::Venue> createAudioPlayerVenue (const Requirements&,
-                                                         std::unique_ptr<PerformerFactory>);
+        //==============================================================================
+        bool createSession (SessionReadyCallback) override;
 
+        ArrayView<const EndpointDetails> getExternalInputEndpoints() override;
+        ArrayView<const EndpointDetails> getExternalOutputEndpoints() override;
+    
+    private:
+        struct Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
+    };
 }

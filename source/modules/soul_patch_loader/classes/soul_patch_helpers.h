@@ -26,17 +26,6 @@ bool operator== (PatchPlayerConfiguration s1, PatchPlayerConfiguration s2)    { 
 bool operator!= (PatchPlayerConfiguration s1, PatchPlayerConfiguration s2)    { return ! (s1 == s2); }
 
 //==============================================================================
-struct PatchLoadError
-{
-    std::string message;
-};
-
-[[noreturn]] static void throwPatchLoadError (std::string message)
-{
-    throw PatchLoadError { std::move (message) };
-}
-
-//==============================================================================
 /** Creates and holds a list of soul::patch::Parameter implementations, connecting them
     to a ParameterStateList object.
 */

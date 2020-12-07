@@ -29,16 +29,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, const BuildSettings& settings, VirtualFile::Ptr f)
         : performerFactory (std::move (factory)), buildSettings (settings), manifestFile (std::move (f))
     {
-        if (auto name = String::Ptr (manifestFile->getName()))
-        {
-            fileList.manifestName = name.toString<std::string>();
-
-            if (endsWith (fileList.manifestName, getManifestSuffix()))
-            {
-                fileList.manifestFile = manifestFile;
-                fileList.root = VirtualFile::Ptr (manifestFile->getParent());
-            }
-        }
+        fileList.initialiseFromManifestFile (manifestFile);
     }
 
     void refreshFileList()
@@ -119,7 +110,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
     std::unique_ptr<soul::PerformerFactory> performerFactory;
     BuildSettings buildSettings;
     VirtualFile::Ptr manifestFile;
-    FileList<PatchLoadError> fileList;
+    FileList fileList;
     Description::Ptr description;
 };
 
