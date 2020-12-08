@@ -843,27 +843,25 @@ R"soul_code(
         static_assert (Array.elementType.primitiveType.isFloat, "readLinearInterpolated() only works with arrays of float values");
         static_assert (IndexType.isFloat && IndexType.isPrimitive, "The index for readLinearInterpolated() must be a floating point value");
 
-        let size = int (array.size);
-
-        if (size == 0)
+        if (array.size == 0)
             return Array.elementType();
 
-        let intIndex = int (index);
-        let wrappedIndex = int (wrap (intIndex, size));
-        let sample1 = array.at (wrappedIndex);
-        let sample2 = array.at (wrappedIndex != size - 1 ? wrappedIndex + 1 : 0);
+        let indexFloor = floor (index);
+        let intIndex = int (indexFloor);
+        let sample1 = array.at (intIndex);
+        let sample2 = array.at (intIndex + 1);
 
-        return sample1 + (sample2 - sample1) * Array.elementType (index - IndexType (intIndex));
+        return sample1 + (sample2 - sample1) * Array.elementType (index - indexFloor);
     }
 
     // NB: this is used internally, not something you'd want to call from user code
-)soul_code"
-R"soul_code(
-
     int get_array_size<Array> (const Array& array) [[intrin: "get_array_size"]];
 
 
     // Trigonometry functions
+
+)soul_code"
+R"soul_code(
 
     T sin<T>   (T n)  [[intrin: "sin"]]      { static_assert (T.isPrimitive || T.isVector, "sin() only works with floating point types");   static_assert (T.primitiveType.isFloat, "sin() only works with floating point types");   return T(); }
     T cos<T>   (T n)  [[intrin: "cos"]]      { static_assert (T.isPrimitive || T.isVector, "cos() only works with floating point types");   static_assert (T.primitiveType.isFloat, "cos() only works with floating point types");   return T(); }
@@ -1288,10 +1286,10 @@ R"soul_code(
 
                     loop (updateInterval)
                     {
+                        let y = s.process (c);
 )soul_code"
 R"soul_code(
 
-                        let y = s.process (c);
                         sineOut << y[0];
                         cosineOut << y[1];
                         advance();
@@ -1341,12 +1339,12 @@ R"soul_code(
             let k16nd = 4;
             let k8nt  = 5;
             let k8n   = 6;
-)soul_code"
-R"soul_code(
-
             let k8nd  = 7;
             let k4n   = 8;
             let k4nd  = 9;
+)soul_code"
+R"soul_code(
+
             let k2n   = 10;
             let k1bar = 11;
             let k2bar = 12;
@@ -1401,14 +1399,14 @@ R"soul_code(
             {
                 state.targetValue = targetValue;
                 state.increment = (state.targetValue - state.currentValue) / steps;
-)soul_code"
-R"soul_code(
-
                 state.steps = steps;
             }
 
             float tick (State& state)
             {
+)soul_code"
+R"soul_code(
+
                 if (state.steps == 0)
                     return state.currentValue;
 
@@ -1442,10 +1440,10 @@ R"soul_code(
 
             event positionIn (soul::timeline::Position v)             { qnPos = v.currentQuarterNote; }
             event transportStateIn (soul::timeline::TransportState v) { transportRunning = v.state > 0; }
+            event tempoIn (soul::timeline::Tempo v)                   { qnPhaseIncrement = (v.bpm / 60.0f) * float (processor.period); }
+
 )soul_code"
 R"soul_code(
-
-            event tempoIn (soul::timeline::Tempo v)                   { qnPhaseIncrement = (v.bpm / 60.0f) * float (processor.period); }
 
             event rateHzIn (float v)
             {
@@ -1481,13 +1479,13 @@ R"soul_code(
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
-)soul_code"
-R"soul_code(
-
             var phaseIncrement = float32 (initialFreq * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
             smoother::State depth;
+
+)soul_code"
+R"soul_code(
 
             let smoothingSamples = int (processor.frequency * 0.02);
             bool transportRunning = false;
@@ -1507,7 +1505,6 @@ R"soul_code(
                     noiseSample = SampleType (rng.getNextBipolar());
 
                 prevPhase = phase;
-
                 return noiseSample;
             }
 
@@ -1528,9 +1525,6 @@ R"soul_code(
                     if (shape == Shape::square)    return shapers::squareUnipolar (phase);
                     if (shape == Shape::rampUp)    return shapers::rampUpUnipolar (phase);
                     if (shape == Shape::rampDown)  return shapers::rampDownUnipolar (phase);
-)soul_code"
-R"soul_code(
-
                     if (shape == Shape::sine)      return shapers::sineUnipolar (phase);
                     if (shape == Shape::SAH)       return getNoiseSample();
                 }
@@ -1539,6 +1533,9 @@ R"soul_code(
             }
 
             void init()
+)soul_code"
+R"soul_code(
+
             {
                 depth.reset (initialDepth * 0.01f);
             }

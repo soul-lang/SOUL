@@ -241,17 +241,15 @@ namespace soul::intrinsics
         static_assert (Array.elementType.primitiveType.isFloat, "readLinearInterpolated() only works with arrays of float values");
         static_assert (IndexType.isFloat && IndexType.isPrimitive, "The index for readLinearInterpolated() must be a floating point value");
 
-        let size = int (array.size);
-
-        if (size == 0)
+        if (array.size == 0)
             return Array.elementType();
 
-        let intIndex = int (index);
-        let wrappedIndex = int (wrap (intIndex, size));
-        let sample1 = array.at (wrappedIndex);
-        let sample2 = array.at (wrappedIndex != size - 1 ? wrappedIndex + 1 : 0);
+        let indexFloor = floor (index);
+        let intIndex = int (indexFloor);
+        let sample1 = array.at (intIndex);
+        let sample2 = array.at (intIndex + 1);
 
-        return sample1 + (sample2 - sample1) * Array.elementType (index - IndexType (intIndex));
+        return sample1 + (sample2 - sample1) * Array.elementType (index - indexFloor);
     }
 
     // NB: this is used internally, not something you'd want to call from user code
