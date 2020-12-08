@@ -204,6 +204,7 @@ struct RenderingVenue::Pimpl
 
     ~Pimpl()
     {
+        std::lock_guard<std::mutex> l (sessionListLock);
         SOUL_ASSERT (activeSessions.empty());
         createSessionQueue.detach();
         taskThread.shutdown();
