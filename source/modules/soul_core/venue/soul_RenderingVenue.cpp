@@ -224,8 +224,8 @@ struct RenderingVenue::Pimpl
 
         ~SessionImpl() override
         {
-            unload();
             taskQueue.detach();
+            venue.removeActiveSession (*this);
         }
 
         bool load (const Program& p, CompileTaskFinishedCallback loadFinishedCallback) override
