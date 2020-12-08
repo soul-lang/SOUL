@@ -810,7 +810,14 @@ private:
                     if (auto p = cast<AST::ProcessorBase> (item))
                     {
                         if (currentConnectionEndpoint != nullptr)
+                        {
+                            auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
+
+                            if (! validateSpecialisationArgs (specialisationArgs, p->specialisationParams))
+                                return qi;
+
                             return getOrCreateImplicitProcessorInstance (qi.context, *p, {});
+                        }
 
                         return allocator.allocate<AST::ProcessorRef> (qi.context, *p);
                     }
