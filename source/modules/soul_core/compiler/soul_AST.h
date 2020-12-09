@@ -330,6 +330,13 @@ struct AST
             return {};
         }
 
+        virtual IdentifierPath getFullyQualifiedDisplayPath() const
+        {
+            SOUL_ASSERT_FALSE;
+            return {};
+        }
+
+
         virtual Scope* getParentScope() const = 0;
         virtual ModuleBase* getAsModule()                   { return nullptr; }
         virtual ProcessorBase* getAsProcessor()             { return nullptr; }
@@ -600,6 +607,17 @@ struct AST
             return IdentifierPath (name);
         }
 
+        IdentifierPath getFullyQualifiedDisplayPath() const override
+        {
+            if (originalModule != nullptr)
+                return originalModule->getFullyQualifiedDisplayPath();
+
+            if (auto p = getParentScope())
+                return IdentifierPath (p->getFullyQualifiedDisplayPath(), name);
+
+            return IdentifierPath (name);
+        }
+
         void performLocalNameSearch (NameSearch& search, const Statement*) const override
         {
             auto targetName = search.partiallyQualifiedPath.getLastPart();
@@ -669,6 +687,7 @@ struct AST
 
         std::function<ModuleBase&(AST::Allocator&, AST::Namespace& parentNamespace, const std::string& newName)> createClone;
 
+        pool_ptr<ModuleBase> originalModule;
     private:
         size_t countEndpoints (bool countInputs) const
         {

@@ -117,7 +117,6 @@ private:
     AST::Allocator& allocator;
     pool_ptr<AST::ModuleBase> module;
     AST::Scope* currentScope;
-    Identifier* newNameForFirstDecl = nullptr;
 
     // Bit of a bodge here as a simple way to parse things like float<2 + 2>, this
     // just forces the parser to ignore any > tokens when parsing an expression. Could be
@@ -195,12 +194,6 @@ private:
         auto context = getContext();
         auto name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
 
-        if (newNameForFirstDecl != nullptr)
-        {
-            name = *newNameForFirstDecl;
-            newNameForFirstDecl = nullptr;
-        }
-
         if (matchIf (Operator::assign))
         {
             auto& identifier = parseQualifiedIdentifier();
@@ -241,18 +234,23 @@ private:
 
     static AST::ModuleBase& cloneModuleWithNewName (AST::Allocator& allocator,
                                                     AST::Namespace& parentNamespace,
-                                                    const AST::ModuleBase& itemToClone,
+                                                    AST::ModuleBase& itemToClone,
                                                     const std::string& newName)
     {
         StructuralParser p (allocator, itemToClone.context.location, parentNamespace);
-        auto newNameID = allocator.identifiers.get (newName);
-        p.newNameForFirstDecl = &newNameID;
 
-        if (itemToClone.isProcessor())  return *p.parseProcessorDecl (parentNamespace);
-        if (itemToClone.isGraph())      return *p.parseGraphDecl (parentNamespace);
+        pool_ptr<AST::ModuleBase> clonedModule;
 
-        SOUL_ASSERT (itemToClone.isNamespace());
-        return *p.parseNamespaceDecl (parentNamespace);
+        if (itemToClone.isProcessor())  clonedModule = p.parseProcessorDecl (parentNamespace);
+        if (itemToClone.isGraph())      clonedModule = p.parseGraphDecl (parentNamespace);
+        if (itemToClone.isNamespace())  clonedModule = p.parseNamespaceDecl (parentNamespace);
+
+        SOUL_ASSERT (clonedModule != nullptr);
+
+        clonedModule->name = allocator.identifiers.get (newName);
+        clonedModule->originalModule = itemToClone;
+
+        return *clonedModule;
     }
 
     pool_ptr<AST::Expression> parseSpecialisationArgs()

@@ -774,7 +774,7 @@ private:
                         auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
 
                         if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
-                            qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedPath()));
+                            qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedDisplayPath()));
 
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
                         {
@@ -858,7 +858,7 @@ private:
                         auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
 
                         if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
-                            qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedPath()));
+                            qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedDisplayPath()));
 
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
                         {
@@ -2037,7 +2037,7 @@ private:
                 auto target = pool_ref<AST::ProcessorBase> (*p);
 
                 if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams))
-                    instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedPath()));
+                    instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedDisplayPath()));
 
                 auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
                 SanityCheckPass::RecursiveGraphDetector::check (graph);
@@ -2125,7 +2125,7 @@ private:
             if (auto target = instance.targetNamespace->getAsNamespace())
             {
                 if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams))
-                    instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedPath()));
+                    instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedDisplayPath()));
 
                 if (canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))
                 {
