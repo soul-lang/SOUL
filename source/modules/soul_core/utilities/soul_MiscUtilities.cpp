@@ -74,6 +74,8 @@ void ScopedDisableDenormals::setFPMode (intptr_t newValue) noexcept
    #elif SOUL_INTEL
     auto v = static_cast<uint32_t> (newValue);
     _mm_setcsr (v);
+   #else
+    (void) newValue;
    #endif
 }
 

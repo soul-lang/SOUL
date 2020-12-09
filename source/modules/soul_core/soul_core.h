@@ -40,6 +40,8 @@
  #define SOUL_ARM64 1
 #elif (defined (__arm__) || __ARM_NEON__)
  #define SOUL_ARM32 1
+#elif __wasm__
+ #define SOUL_WASM 1
 #else
  #define SOUL_INTEL 1
 #endif
