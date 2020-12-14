@@ -1018,7 +1018,7 @@ R"soul_code(
 /**
     This namespace contains various simple oscillators
 */
-namespace soul::oscillators
+namespace soul::oscillators (using SampleType = float32)
 {
     using PhaseType = float32;  // TODO: this should probably be a defaulted namespace parameterisation
     let minFreqHz = 0.0;
@@ -1057,7 +1057,7 @@ namespace soul::oscillators
             return s.phase;
         }
 
-        processor Processor (using SampleType, float initialFrequency)
+        processor Processor (float initialFrequency)
         {
             output stream SampleType out;
 
@@ -1086,7 +1086,7 @@ namespace soul::oscillators
     //==============================================================================
     /** A simple sinewave oscillator.
     */
-    processor Sine (using SampleType, float initialFrequency)
+    processor Sine (float initialFrequency)
     {
         output stream SampleType out;
 
@@ -1117,7 +1117,7 @@ R"soul_code(
         using the PolyBLEP (Polynomial Band-Limited Step) technique.
         You may want to oversample this oscillator, in order to reduce aliasing
     */
-    namespace poly_blep (using SampleType)
+    namespace poly_blep
     {
         namespace shapers
         {
@@ -1148,10 +1148,10 @@ R"soul_code(
                 return (s.phase < PhaseType (0.5) ? PhaseType (-1) : PhaseType (1))
                         - polyblep (s.phase, s.phaseIncrement)
                         + polyblep (fmod (s.phase + PhaseType (0.5), PhaseType (1)), s.phaseIncrement);
+            }
 )soul_code"
 R"soul_code(
 
-            }
         }
 
         namespace Shape
@@ -1215,14 +1215,14 @@ R"soul_code(
         }
     }
 
+    //==============================================================================
 )soul_code"
 R"soul_code(
 
-    //==============================================================================
     /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously
         https://vicanek.de/articles/QuadOsc.pdf
     */
-    namespace quadrature (using SampleType)
+    namespace quadrature
     {
         let updateInterval = 16; // limit coefficient updates to every 16 samples
 
@@ -1249,12 +1249,12 @@ R"soul_code(
             c.k2 = SampleType (2.0 * c.k1 / (1.0 + c.k1 * c.k1));
         }
 
-        SampleType<2> process (State& s, Coeffs& c)
+        SampleType[2] process (State& s, Coeffs& c)
         {
             let tmp = s.u - c.k1 * s.v;
             s.v = s.v + c.k2 * tmp;
             s.u = tmp - c.k1 * s.v;
-            return SampleType<2> (s.v, s.u);
+            return SampleType[2] (s.v, s.u);
         }
 
         processor Processor (float initialFrequency)
@@ -1287,11 +1287,11 @@ R"soul_code(
                     loop (updateInterval)
                     {
                         let y = s.process (c);
+                        sineOut << y[0];
+                        cosineOut << y[1];
 )soul_code"
 R"soul_code(
 
-                        sineOut << y[0];
-                        cosineOut << y[1];
                         advance();
                     }
                 }
@@ -1304,8 +1304,6 @@ R"soul_code(
     */
     namespace lfo
     {
-        using SampleType = float32;
-
         namespace shapers
         {
             SampleType rampUp           (PhaseType phase) { return (phase * 2.0f) - 1.0f; }
@@ -1342,13 +1340,13 @@ R"soul_code(
             let k8nd  = 7;
             let k4n   = 8;
             let k4nd  = 9;
-)soul_code"
-R"soul_code(
-
             let k2n   = 10;
             let k1bar = 11;
             let k2bar = 12;
             let k4bar = 13;
+)soul_code"
+R"soul_code(
+
             let k8bar = 14;
         }
 
@@ -1404,11 +1402,11 @@ R"soul_code(
 
             float tick (State& state)
             {
-)soul_code"
-R"soul_code(
-
                 if (state.steps == 0)
                     return state.currentValue;
+
+)soul_code"
+R"soul_code(
 
                 state.currentValue += state.increment;
                 state.steps--;
@@ -1442,12 +1440,12 @@ R"soul_code(
             event transportStateIn (soul::timeline::TransportState v) { transportRunning = v.state > 0; }
             event tempoIn (soul::timeline::Tempo v)                   { qnPhaseIncrement = (v.bpm / 60.0f) * float (processor.period); }
 
-)soul_code"
-R"soul_code(
-
             event rateHzIn (float v)
             {
                 if (!qnMode)
+)soul_code"
+R"soul_code(
+
                     phaseIncrement = PhaseType (v * processor.period);
             }
 
@@ -1484,10 +1482,10 @@ R"soul_code(
             int polarity = initialPolarity;
             smoother::State depth;
 
+            let smoothingSamples = int (processor.frequency * 0.02);
 )soul_code"
 R"soul_code(
 
-            let smoothingSamples = int (processor.frequency * 0.02);
             bool transportRunning = false;
             bool qnMode = false;
             bool timelineSync = false;
@@ -1533,11 +1531,11 @@ R"soul_code(
             }
 
             void init()
+            {
+                depth.reset (initialDepth * 0.01f);
 )soul_code"
 R"soul_code(
 
-            {
-                depth.reset (initialDepth * 0.01f);
             }
 
             void run()

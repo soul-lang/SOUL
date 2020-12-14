@@ -521,11 +521,11 @@ private:
                     giveErrorOnExternalKeyword();
                     auto& parameterType = parseType (ParseTypeContext::processorParameter);
                     auto& parameterVariable = allocate<AST::VariableDeclaration> (getContext(), parameterType, nullptr, true);
+                    parameterVariable.name = parseIdentifier();
 
                     if (matchIf (Operator::assign))
                         parameterVariable.initialValue = parseExpression();
 
-                    parameterVariable.name = parseIdentifier();
                     module->addSpecialisationParameter (parameterVariable);
                 }
             }

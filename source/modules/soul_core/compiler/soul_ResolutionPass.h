@@ -579,6 +579,11 @@ private:
                     if (p->resolvedProcessor == nullptr)
                         return false;
                 }
+                else if (auto v = cast<AST::VariableDeclaration> (params[i]))
+                {
+                    if (v->initialValue == nullptr)
+                        return false;
+                }
                 else
                 {
                     return false;
@@ -746,8 +751,27 @@ private:
             return {};
         }
 
+        void updateQualifiedIdentifierPrefix (AST::QualifiedIdentifier& qi, AST::Namespace& resolvedNamespace)
+        {
+            auto index = currentModule->namespaceAliases.size() + 1;
+            auto aliasName = allocator.get ("_ns_" + std::to_string (index));
+
+            qi.pathPrefix = IdentifierPath (aliasName);
+
+            auto& aliasDeclaration = allocator.allocate<AST::NamespaceAliasDeclaration> (qi.context, aliasName);
+            aliasDeclaration.resolvedNamespace = resolvedNamespace;
+            currentModule->namespaceAliases.push_back (aliasDeclaration);
+        }
+
         AST::Expression& visit (AST::QualifiedIdentifier& qi) override
         {
+            super::visit (qi);
+
+            auto path = qi.getPath().toString();
+
+            if (path == "soul::oscillators")
+                path = qi.getPath().toString();
+
             AST::Scope::NameSearch search;
             search.partiallyQualifiedPath = qi.getPath();
             search.stopAtFirstScopeWithResults = true;
@@ -779,8 +803,7 @@ private:
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
                         {
                             auto& resolvedNamespace = getOrAddNamespaceSpecialisation (*targetNamespace, specialisationArgs);
-                            qi.pathPrefix.addSuffix(allocator.get (resolvedNamespace.name));
-
+                            updateQualifiedIdentifierPrefix (qi, resolvedNamespace);
                             auto itemsToRemove = static_cast<size_t> (static_cast<int> (qi.pathSections[0].path.size()) - itemsRemoved);
                             qi.pathSections[0].path.removeFirst (itemsToRemove);
                             ++itemsReplaced;
@@ -863,8 +886,8 @@ private:
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
                         {
                             auto& resolvedNamespace = getOrAddNamespaceSpecialisation (*targetNamespace, specialisationArgs);
+                            updateQualifiedIdentifierPrefix (qi, resolvedNamespace);
 
-                            qi.pathPrefix.addSuffix(allocator.get (resolvedNamespace.name));
                             qi.pathSections.erase (qi.pathSections.begin());
                             ++itemsReplaced;
                             return qi;
@@ -906,7 +929,6 @@ private:
 
             return f;
         }
-
 
         AST::Expression& visit (AST::CallOrCast& call) override
         {
@@ -977,6 +999,9 @@ private:
         {
             auto signature = ASTUtilities::getSpecialisationSignature (processor.specialisationParams,
                                                                        AST::CommaSeparatedList::getAsExpressionList (arguments));
+
+            auto currentGraph = cast<AST::Graph> (currentModule);
+            SOUL_ASSERT (currentGraph != nullptr);
 
             for (auto i : currentGraph->processorInstances)
             {
@@ -1212,16 +1237,35 @@ private:
 
         AST::Graph& visit (AST::Graph& g) override
         {
-            auto lastGraph = currentGraph;
-            currentGraph = g;
+            auto lastModule = currentModule;
+            currentModule = g;
             auto& result = super::visit (g);
-            currentGraph = lastGraph;
+            currentModule = lastModule;
+            return result;
+        }
+
+        AST::Namespace& visit (AST::Namespace& n) override
+        {
+            auto lastModule = currentModule;
+            currentModule = n;
+            auto& result = super::visit (n);
+            currentModule = lastModule;
+            return result;
+        }
+
+        AST::Processor& visit (AST::Processor& p) override
+        {
+            auto lastModule = currentModule;
+            currentModule = p;
+            auto& result = super::visit (p);
+            currentModule = lastModule;
             return result;
         }
 
         pool_ptr<AST::Statement> currentStatement;
         pool_ptr<AST::Connection::SharedEndpoint> currentConnectionEndpoint;
-        pool_ptr<AST::Graph> currentGraph;
+//        pool_ptr<AST::Graph> currentGraph;
+        pool_ptr<AST::ModuleBase> currentModule;
         int parsingProcessorInstance = 0;
         uint32_t numVariablesResolved = 0;
     };

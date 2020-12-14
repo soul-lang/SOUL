@@ -885,6 +885,9 @@ struct RewritingASTVisitor
 
     virtual AST::Expression& visit (AST::QualifiedIdentifier& o)
     {
+        for (auto& p : o.pathSections)
+            replaceExpression (p.specialisationArgs);
+
         return o;
     }
 

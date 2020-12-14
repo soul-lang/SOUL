@@ -21,7 +21,7 @@
 /**
     This namespace contains various simple oscillators
 */
-namespace soul::oscillators
+namespace soul::oscillators (using SampleType = float32)
 {
     using PhaseType = float32;  // TODO: this should probably be a defaulted namespace parameterisation
     let minFreqHz = 0.0;
@@ -60,7 +60,7 @@ namespace soul::oscillators
             return s.phase;
         }
 
-        processor Processor (using SampleType, float initialFrequency)
+        processor Processor (float initialFrequency)
         {
             output stream SampleType out;
 
@@ -89,7 +89,7 @@ namespace soul::oscillators
     //==============================================================================
     /** A simple sinewave oscillator.
     */
-    processor Sine (using SampleType, float initialFrequency)
+    processor Sine (float initialFrequency)
     {
         output stream SampleType out;
 
@@ -117,7 +117,7 @@ namespace soul::oscillators
         using the PolyBLEP (Polynomial Band-Limited Step) technique.
         You may want to oversample this oscillator, in order to reduce aliasing
     */
-    namespace poly_blep (using SampleType)
+    namespace poly_blep
     {
         namespace shapers
         {
@@ -216,7 +216,7 @@ namespace soul::oscillators
     /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously
         https://vicanek.de/articles/QuadOsc.pdf
     */
-    namespace quadrature (using SampleType)
+    namespace quadrature
     {
         let updateInterval = 16; // limit coefficient updates to every 16 samples
 
@@ -243,12 +243,12 @@ namespace soul::oscillators
             c.k2 = SampleType (2.0 * c.k1 / (1.0 + c.k1 * c.k1));
         }
 
-        SampleType<2> process (State& s, Coeffs& c)
+        SampleType[2] process (State& s, Coeffs& c)
         {
             let tmp = s.u - c.k1 * s.v;
             s.v = s.v + c.k2 * tmp;
             s.u = tmp - c.k1 * s.v;
-            return SampleType<2> (s.v, s.u);
+            return SampleType[2] (s.v, s.u);
         }
 
         processor Processor (float initialFrequency)
@@ -295,8 +295,6 @@ namespace soul::oscillators
     */
     namespace lfo
     {
-        using SampleType = float32;
-
         namespace shapers
         {
             SampleType rampUp           (PhaseType phase) { return (phase * 2.0f) - 1.0f; }
