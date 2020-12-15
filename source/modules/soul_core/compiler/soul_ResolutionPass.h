@@ -524,7 +524,7 @@ private:
             {
                 if (AST::isResolvedAsValue (arg))
                 {
-                    SOUL_ASSERT (v->isConstant && v->declaredType != nullptr);
+                    SOUL_ASSERT (v->isConstant);
                     return true;
                 }
 
