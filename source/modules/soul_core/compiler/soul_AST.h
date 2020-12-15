@@ -281,6 +281,13 @@ struct AST
                 setProperty (p);
         }
 
+        void mergeProperties (const Annotation& other)
+        {
+            for (auto& p : other.properties)
+                if (findProperty (p.name->identifier) == nullptr)
+                    setProperty (p);
+        }
+
         soul::Annotation toPlainAnnotation (const StringDictionary& dictionary) const
         {
             soul::Annotation a;

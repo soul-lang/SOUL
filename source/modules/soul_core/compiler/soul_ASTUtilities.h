@@ -377,7 +377,7 @@ private:
                                                    AST::EndpointDeclaration& childEndpoint)
     {
         parentEndpoint.details = allocator.allocate<AST::EndpointDetails> (childEndpoint.getDetails());
-        parentEndpoint.annotation.setProperties (childEndpoint.annotation);
+        parentEndpoint.annotation.mergeProperties (childEndpoint.annotation);
         parentEndpoint.childPath.reset();
 
         auto& parent = createConnectionEndpoint (allocator, {}, {}, parentEndpoint);
