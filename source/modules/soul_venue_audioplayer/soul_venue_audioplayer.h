@@ -69,7 +69,7 @@ namespace soul::audioplayer
 
         ArrayView<const EndpointDetails> getExternalInputEndpoints() override;
         ArrayView<const EndpointDetails> getExternalOutputEndpoints() override;
-    
+
     private:
         struct Pimpl;
         std::unique_ptr<Pimpl> pimpl;

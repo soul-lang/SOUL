@@ -232,7 +232,7 @@ struct IdentifierPath  final
 
         for (auto i : other.pathSections)
             result.addSuffix (i);
-        
+
         return result;
     }
 

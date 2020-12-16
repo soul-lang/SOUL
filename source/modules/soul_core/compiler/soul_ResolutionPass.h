@@ -743,7 +743,7 @@ private:
                         return {};
                     }
                 }
-                
+
                 path = path.getParentPath();
                 itemsRemoved++;
             }
@@ -2223,7 +2223,7 @@ private:
                         numFails++;
                         return call;
                     }
-                    
+
                     if (call.arguments != nullptr)
                     {
                         for (auto& arg : call.arguments->items)
