@@ -2667,7 +2667,7 @@ namespace soul::oscillators (using SampleType = float32,
             return s.phase;
         }
 
-        processor Processor (float initialFrequency = defaultFreqHz)
+        processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType out;
 
@@ -2696,7 +2696,7 @@ namespace soul::oscillators (using SampleType = float32,
     //==============================================================================
     /** A simple sinewave oscillator.
     */
-    processor Sine (float initialFrequency = defaultFreqHz)
+    processor Sine (float initialFrequency = 1000)
     {
         output stream SampleType out;
 
@@ -2772,7 +2772,7 @@ R"soul_code(
         }
 
         processor Processor (int initialShape = 0,
-                            float initialFrequency = defaultFreqHz)
+                            float initialFrequency = 1000)
         {
             output stream SampleType out;
 
@@ -2866,7 +2866,7 @@ R"soul_code(
             return SampleType[2] (s.v, s.u);
         }
 
-        processor Processor (float initialFrequency = defaultFreqHz)
+        processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType sineOut;
             output stream SampleType cosineOut;
