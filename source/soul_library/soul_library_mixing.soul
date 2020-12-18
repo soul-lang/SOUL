@@ -110,7 +110,7 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Simple processor which applies a changable gain level to a signal. */
+    /** Simple processor which applies a changeable gain level to a signal. */
     processor DynamicGain (using SampleType)
     {
         input  stream SampleType in;

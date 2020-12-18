@@ -19,14 +19,14 @@
 */
 
 /**
-    This namespace contains various simple oscillators
+    This namespace contains various types of oscillator.
 */
-namespace soul::oscillators (using SampleType = float32)
+namespace soul::oscillators (using SampleType = float32,
+                             using PhaseType  = float32)
 {
-    using PhaseType = float32;  // TODO: this should probably be a defaulted namespace parameterisation
-    let minFreqHz = 0.0;
-    let maxFreqHz = 22000.0;
-    let initFreqHz = 1000.0;
+    let minFreqHz = 0.0f;
+    let maxFreqHz = 22000.0f;
+    let defaultFreqHz = 1000.0f;
 
     //==============================================================================
     /** A unipolar ramp (phasor) oscillator.
@@ -54,17 +54,17 @@ namespace soul::oscillators (using SampleType = float32)
         {
             s.phase += s.phaseIncrement;
 
-            while (s.phase >= PhaseType (1.0))
-                s.phase -= PhaseType (1.0);
+            while (s.phase >= PhaseType (1))
+                s.phase -= PhaseType (1);
 
             return s.phase;
         }
 
-        processor Processor (float initialFrequency)
+        processor Processor (float initialFrequency = defaultFreqHz)
         {
             output stream SampleType out;
 
-            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
 
             event frequencyIn (float v) { s.update (processor.period, v); }
 
@@ -89,11 +89,11 @@ namespace soul::oscillators (using SampleType = float32)
     //==============================================================================
     /** A simple sinewave oscillator.
     */
-    processor Sine (float initialFrequency)
+    processor Sine (float initialFrequency = defaultFreqHz)
     {
         output stream SampleType out;
 
-        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
 
         event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
@@ -115,7 +115,7 @@ namespace soul::oscillators (using SampleType = float32)
     //==============================================================================
     /** A semi band-limited oscillator with sawtooth, square and triangle wave shapes
         using the PolyBLEP (Polynomial Band-Limited Step) technique.
-        You may want to oversample this oscillator, in order to reduce aliasing
+        You may want to oversample this oscillator, in order to reduce aliasing.
     */
     namespace poly_blep
     {
@@ -158,14 +158,15 @@ namespace soul::oscillators (using SampleType = float32)
             let square   = 2;
         }
 
-        processor Processor (int initialShape, float initialFrequency)
+        processor Processor (int initialShape = 0,
+                            float initialFrequency = defaultFreqHz)
         {
             output stream SampleType out;
 
             input event
             {
                 float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
-                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
             }
 
             event shapeIn (float v)        { shape = wrap<3> (floor (v)); }
@@ -213,13 +214,11 @@ namespace soul::oscillators (using SampleType = float32)
     }
 
     //==============================================================================
-    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously
+    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously.
         https://vicanek.de/articles/QuadOsc.pdf
     */
-    namespace quadrature
+    namespace quadrature (int updateInterval = 16)
     {
-        let updateInterval = 16; // limit coefficient updates to every 16 samples
-
         struct State
         {
             SampleType u, v;
@@ -251,7 +250,7 @@ namespace soul::oscillators (using SampleType = float32)
             return SampleType[2] (s.v, s.u);
         }
 
-        processor Processor (float initialFrequency)
+        processor Processor (float initialFrequency = defaultFreqHz)
         {
             output stream SampleType sineOut;
             output stream SampleType cosineOut;
@@ -260,8 +259,8 @@ namespace soul::oscillators (using SampleType = float32)
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
 
-            float frequency = initialFrequency;
-            bool recalc = true;
+            float frequency  = initialFrequency;
+            bool  recalc     = true;
 
             void run()
             {
@@ -291,7 +290,8 @@ namespace soul::oscillators (using SampleType = float32)
     }
 
     //==============================================================================
-    /** A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output
+    /**
+        A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.
     */
     namespace lfo
     {
@@ -311,50 +311,12 @@ namespace soul::oscillators (using SampleType = float32)
 
         namespace Shape
         {
-            let triangle = 0;
-            let square   = 1;
-            let rampUp   = 2;
-            let rampDown = 3;
-            let sine     = 4;
-            let SAH      = 5;
-        }
-
-        namespace Divs
-        {
-            let k64n  = 0;
-            let k32n  = 1;
-            let k16nt = 2;
-            let k16n  = 3;
-            let k16nd = 4;
-            let k8nt  = 5;
-            let k8n   = 6;
-            let k8nd  = 7;
-            let k4n   = 8;
-            let k4nd  = 9;
-            let k2n   = 10;
-            let k1bar = 11;
-            let k2bar = 12;
-            let k4bar = 13;
-            let k8bar = 14;
-        }
-
-        namespace DivScalars
-        {
-            let k64n  = 64.0   / 4.0; // 1 sixty fourth of a beat
-            let k32n  = 32.0   / 4.0; // 1 thirty second of a beat
-            let k16nt = 24.0   / 4.0; // 1 sixteenth note triplet
-            let k16n  = 16.0   / 4.0; // 1 sixteenth note
-            let k16nd = 12.0   / 4.0; // 1 dotted sixteenth note
-            let k8nt  = 9.0    / 4.0; // 1 eighth note triplet
-            let k8n   = 8.0    / 4.0; // 1 eighth note
-            let k8nd  = 6.0    / 4.0; // 1 dotted eighth note
-            let k4n   = 4.0    / 4.0; // 1 quater note / 1 beat @ 4/4
-            let k4nd  = 3.0    / 4.0; // 1 dotted quater note @ 4/4
-            let k2n   = 2.0    / 4.0; // 2 beats @ 4/4
-            let k1bar = 1.0    / 4.0; // 1 bar @ 4/4
-            let k2bar = 0.5    / 4.0; // 2 bars @ 4/4
-            let k4bar = 0.25   / 4.0; // 4 bars @ 4/4
-            let k8bar = 0.125  / 4.0; // 8 bars @ 4/4
+            let triangle      = 0;
+            let square        = 1;
+            let rampUp        = 2;
+            let rampDown      = 3;
+            let sine          = 4;
+            let sampleAndHold = 5;
         }
 
         namespace Polarity
@@ -403,7 +365,10 @@ namespace soul::oscillators (using SampleType = float32)
             }
         }
 
-        processor Processor (int initialShape, int initialPolarity, float initialDepth, float initialFreq)
+        processor Processor (int initialShape = 0,
+                             int initialPolarity = 0,
+                             float initialDepth = 1.0f,
+                             float initialFrequency = 1.0f)
         {
             output stream SampleType out;
             input event soul::timeline::Position positionIn;
@@ -413,7 +378,7 @@ namespace soul::oscillators (using SampleType = float32)
             input event
             {
                 float rateHzIn     [[ name: "Rate (Hz)",     min: 0.01,  max: 40.0,   init: 1.,   unit: "hz", step: 0.01 ]];
-                float rateTempoIn  [[ name: "Rate (Tempo)",  min: 0,     max: 14,     init: 0,    text: "1/64|1/32|1/16T|1/16|1/16D|1/8T|1/8|1/8D|1/4|1/4D|1/2|1/1|2/1|4/1|8/1"]];
+                float rateTempoIn  [[ name: "Rate (Beats)",  min: 0.001, max: 32,     init: 0,    unit: "beat", step: 0.001]];
                 float depthIn      [[ name: "Depth",         min: 0,     max: 100,    init: 100,  unit: "%",  step: 1 ]];
                 float shapeIn      [[ name: "Shape",         min: 0,     max: 5,      init: 0,    text: "Triangle|Square|Ramp Up|Ramp Down|Sine|Sample & Hold"]];
                 float polarityIn   [[ name: "Polarity",      min: 0,     max: 1,      init: 0,    text: "Unipolar|Bipolar"]];
@@ -427,31 +392,11 @@ namespace soul::oscillators (using SampleType = float32)
 
             event rateHzIn (float v)
             {
-                if (!qnMode)
+                if (! qnMode)
                     phaseIncrement = PhaseType (v * processor.period);
             }
 
-            event rateTempoIn (float v)
-            {
-                let div = int(floor(v));
-
-                if      (div == Divs::k64n)  qnScalar = DivScalars::k64n;
-                else if (div == Divs::k32n)  qnScalar = DivScalars::k32n;
-                else if (div == Divs::k16nt) qnScalar = DivScalars::k16nt;
-                else if (div == Divs::k16n)  qnScalar = DivScalars::k16n;
-                else if (div == Divs::k16nd) qnScalar = DivScalars::k16nd;
-                else if (div == Divs::k8nt)  qnScalar = DivScalars::k8nt;
-                else if (div == Divs::k8n )  qnScalar = DivScalars::k8n;
-                else if (div == Divs::k8nd)  qnScalar = DivScalars::k8nd;
-                else if (div == Divs::k4n )  qnScalar = DivScalars::k4n;
-                else if (div == Divs::k4nd)  qnScalar = DivScalars::k4nd;
-                else if (div == Divs::k2n )  qnScalar = DivScalars::k2n;
-                else if (div == Divs::k1bar) qnScalar = DivScalars::k1bar;
-                else if (div == Divs::k2bar) qnScalar = DivScalars::k2bar;
-                else if (div == Divs::k4bar) qnScalar = DivScalars::k4bar;
-                else if (div == Divs::k8bar) qnScalar = DivScalars::k8bar;
-            }
-
+            event rateTempoIn (float v)   { qnScalar = v; }
             event depthIn (float v)       { depth.setTarget (v * 0.01f, smoothingSamples); }
             event shapeIn (float v)       { shape = int (floor (v)); }
             event polarityIn (float v)    { polarity = (v < 0.5f) ? Polarity::unipolar : Polarity::bipolar; }
@@ -459,7 +404,7 @@ namespace soul::oscillators (using SampleType = float32)
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
-            var phaseIncrement = float32 (initialFreq * processor.period);
+            var phaseIncrement = float32 (initialFrequency * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
             smoother::State depth;
@@ -479,7 +424,7 @@ namespace soul::oscillators (using SampleType = float32)
             SampleType getNoiseSample()
             {
                 if (phase < prevPhase)
-                    noiseSample = SampleType (rng.getNextBipolar());
+                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar() : rng.getNextUnipolar());
 
                 prevPhase = phase;
                 return noiseSample;
@@ -489,24 +434,24 @@ namespace soul::oscillators (using SampleType = float32)
             {
                 if (polarity == Polarity::bipolar)
                 {
-                    if (shape == Shape::triangle)  return shapers::triangle (phase);
-                    if (shape == Shape::square)    return shapers::square (phase);
-                    if (shape == Shape::rampUp)    return shapers::rampUp (phase);
-                    if (shape == Shape::rampDown)  return shapers::rampDown (phase);
-                    if (shape == Shape::sine)      return shapers::sine (phase);
-                    if (shape == Shape::SAH)       return getNoiseSample();
+                    if (shape == Shape::triangle)      return shapers::triangle (phase);
+                    if (shape == Shape::square)        return shapers::square (phase);
+                    if (shape == Shape::rampUp)        return shapers::rampUp (phase);
+                    if (shape == Shape::rampDown)      return shapers::rampDown (phase);
+                    if (shape == Shape::sine)          return shapers::sine (phase);
+                    if (shape == Shape::sampleAndHold) return getNoiseSample();
                 }
                 else
                 {
-                    if (shape == Shape::triangle)  return shapers::triangleUnipolar (phase);
-                    if (shape == Shape::square)    return shapers::squareUnipolar (phase);
-                    if (shape == Shape::rampUp)    return shapers::rampUpUnipolar (phase);
-                    if (shape == Shape::rampDown)  return shapers::rampDownUnipolar (phase);
-                    if (shape == Shape::sine)      return shapers::sineUnipolar (phase);
-                    if (shape == Shape::SAH)       return getNoiseSample();
+                    if (shape == Shape::triangle)      return shapers::triangleUnipolar (phase);
+                    if (shape == Shape::square)        return shapers::squareUnipolar (phase);
+                    if (shape == Shape::rampUp)        return shapers::rampUpUnipolar (phase);
+                    if (shape == Shape::rampDown)      return shapers::rampDownUnipolar (phase);
+                    if (shape == Shape::sine)          return shapers::sineUnipolar (phase);
+                    if (shape == Shape::sampleAndHold) return getNoiseSample();
                 }
 
-                return 0.0f;
+                return SampleType();
             }
 
             void init()

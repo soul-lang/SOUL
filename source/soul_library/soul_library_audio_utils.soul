@@ -46,6 +46,14 @@ namespace soul
         return (sourceSampleRate * pow (2.0f, targetMIDINote * (1.0f / 12.0f)))
              / (targetSampleRate * pow (2.0f, sourceMIDINote * (1.0f / 12.0f)));
     }
+
+    /* Returns the coefficient for a filter pole, based on a t60 decay time in seconds */
+    float64 tau2pole (float64 t60, float64 sampleRate)   { return pow (0.001,  1.0  / (t60 * sampleRate)); }
+    float32 tau2pole (float32 t60, float32 sampleRate)   { return pow (0.001f, 1.0f / (t60 * sampleRate)); }
+
+    /* Returns the t60 decay time in seconds for a filter pole coefficient in the range 0-1 */
+    float64 pole2tau (float64 pole, float64 sampleRate)   { return -1.0 / (log (pole) * sampleRate); }
+    float32 pole2tau (float32 pole, float32 sampleRate)   { return -1.0f / (log (pole) * sampleRate); }
 }
 
 //==============================================================================

@@ -310,6 +310,17 @@ namespace soul
         return (sourceSampleRate * pow (2.0f, targetMIDINote * (1.0f / 12.0f)))
              / (targetSampleRate * pow (2.0f, sourceMIDINote * (1.0f / 12.0f)));
     }
+
+    /* Returns the coefficient for a filter pole, based on a t60 decay time in seconds */
+    float64 tau2pole (float64 t60, float64 sampleRate)   { return pow (0.001,  1.0  / (t60 * sampleRate)); }
+    float32 tau2pole (float32 t60, float32 sampleRate)   { return pow (0.001f, 1.0f / (t60 * sampleRate)); }
+
+)soul_code"
+R"soul_code(
+
+    /* Returns the t60 decay time in seconds for a filter pole coefficient in the range 0-1 */
+    float64 pole2tau (float64 pole, float64 sampleRate)   { return -1.0 / (log (pole) * sampleRate); }
+    float32 pole2tau (float32 pole, float32 sampleRate)   { return -1.0f / (log (pole) * sampleRate); }
 }
 
 //==============================================================================
@@ -318,9 +329,6 @@ namespace soul
 */
 namespace soul::audio_samples
 {
-)soul_code"
-R"soul_code(
-
     /** An external variable declared with the type soul::audio_samples::Mono
         can be loaded with monoised data from an audio file.
     */
@@ -460,7 +468,7 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Simple processor which applies a changable gain level to a signal. */
+    /** Simple processor which applies a changeable gain level to a signal. */
     processor DynamicGain (using SampleType)
     {
         input  stream SampleType in;
@@ -1014,16 +1022,1618 @@ R"soul_code(
 }
 )soul_code";
 
+    if (moduleName == "soul.filters")  return R"soul_code(
+/**
+    Various filter implementations.
+*/
+namespace soul::filters (using SampleType = float32,
+                         using CoeffType  = float64,
+                         int updateInterval = 16)
+{
+    // Processor parameter min/max/defaults
+    let minFreqHz = 5.0f;
+    let maxFreqHz = 22000.0f;
+    let defaultFreqHz = 1000.0f;
+    let defaultQuality = 0.707107f; // 1.0 / sqrt (2.0) butterworth response
+    let defaultGain = 0.f;
+
+    /** The frequency upper-bound for update functions.
+        (Just below nyquist, e.g 0.49 * 44100 = ~22kHz).
+    */
+    let normalisedFreqLimit = 0.49;
+
+    //==============================================================================
+    /** Highpass for removing DC offset
+
+        y[n] = x[n] - x[n-1] + b0 * y[n-1]
+
+        https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html
+    */
+    namespace dc_blocker
+    {
+        struct Coeffs
+        {
+            CoeffType b1;
+            CoeffType a0;
+        }
+
+        struct State
+        {
+            SampleType[1] x;
+            SampleType[1] y;
+        }
+
+        void reset (State& s)
+        {
+            s.x[0] = SampleType();
+            s.y[0] = SampleType();
+        }
+
+        void update (Coeffs& c, float64 sampleRate, float64 freqHz)
+        {
+            let w = pi * freqHz / sampleRate;
+            c.a0 = CoeffType (1.0 / (1.0 + w));
+            c.b1 = CoeffType ((1.0 - w) * c.a0);
+        }
+
+        SampleType process (State& s, SampleType x, Coeffs& c)
+        {
+            let y = SampleType (x - s.x[0] + c.a0 * s.y[0]);
+            s.x[0] = x;
+            s.y[0] = y;
+            return SampleType (c.b1 * y);
+        }
+
+        processor Processor (float64 frequency = 30.0f)
+        {
+            input stream SampleType in;
+            output stream SampleType out;
+
+            void run()
+            {
+                State s;
+                Coeffs c;
+
+                c.update (processor.frequency, frequency);
+
+                loop
+                {
+                    out << s.process (in, c);
+)soul_code"
+R"soul_code(
+
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /** Biquadratic (two-pole-two-zero) IIR filter building block.
+
+        Direct Form I (DFI):
+           y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
+
+        Transposed Direct Form II (TDFII):
+           y[n] = b0 * x[n] + s1
+             s1 = b1 * x[n] + a1 * y[n] + s2
+             s2 = b2 * x[n] + a2 * y[n]
+    */
+    namespace biquad
+    {
+        // Coefficients and related functions
+
+        struct Coeffs
+        {
+            CoeffType<3> b, /**< feed-forward, numerator, zero, FIR coefficients */
+                         a; /**< feed-back, denominator, pole, IIR coefficients */
+        }
+
+        void set (Coeffs &c, CoeffType b0, CoeffType b1, CoeffType b2, CoeffType a0, CoeffType a1, CoeffType a2)
+        {
+            c.b[0] = b0; c.b[1] = b1; c.b[2] = b2; c.a[0] = a0; c.a[1] = a1; c.a[2] = a2;
+        }
+
+        /** Sets the coefficients, normalizing based on the first feedback coefficient v.a[0] */
+        void setNonNormalised (Coeffs &c, const Coeffs& v)
+        {
+            let oneOverA0 = 1.0 / v.a[0];
+            c.b = v.b * oneOverA0;
+            c.a = v.a * oneOverA0;
+            c.a[0] = v.a[0]; // keep original a0
+        }
+
+        /** Sets the coefficients, assuming v is already normalized. */
+        void setNormalised (Coeffs &c, Coeffs v)
+        {
+            c = v;
+        }
+
+        void clear (Coeffs &c)
+        {
+            c.b = CoeffType();
+            c.a = CoeffType();
+        }
+
+        // State and related functions
+
+        struct State
+        {
+            SampleType[2] x;
+            SampleType[2] y;
+        }
+
+        void reset (State &s)
+        {
+            s.x[0] = SampleType();
+            s.x[1] = SampleType();
+            s.y[0] = SampleType();
+            s.y[1] = SampleType();
+        }
+
+        // Process functions
+
+)soul_code"
+R"soul_code(
+
+        SampleType processDFI (State& s, SampleType x, Coeffs& c)
+        {
+            let y  = SampleType (c.b[0] * x
+                               + c.b[1] * s.x[0]
+                               + c.b[2] * s.x[1]
+                               - c.a[1] * s.y[0]
+                               - c.a[2] * s.y[1]);
+
+            s.x[1] = s.x[0];
+            s.x[0] = x;
+            s.y[1] = s.y[0];
+            s.y[0] = y;
+
+            return y;
+        }
+
+        /** See https://www.earlevel.com/DigitalAudio/images/BiquadTDFII.gif */
+        SampleType processTDFII (State& s, SampleType x, Coeffs& c)
+        {
+            let y  = s.x[0] + SampleType (c.b[0]) * x;
+            s.x[0] = s.y[0] + SampleType (c.b[1]) * x - SampleType (c.a[1]) * y;
+            s.y[0] = SampleType (c.b[2]) * x - SampleType (c.a[2]) * y;
+            return y;
+        }
+
+        /** Like processTDFII, but optimised for c.b[2] and c.a[2] == 0. */
+        SampleType processOnePole (State& s, SampleType x, Coeffs& c)
+        {
+            let y  = s.x[0] + SampleType (c.b[0]) * x;
+            s.x[0] = SampleType (c.b[1]) * x - SampleType (c.a[1]) * y;
+            return y;
+        }
+
+        SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
+        {
+            static_assert (StateArrayType.isArray, "states argument is not an array");
+            static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+            static_assert (s.size == c.size, "states and coeffs arrays are not the same size");
+
+            var y = x;
+
+            for (wrap<s.size> i)
+                y = processDFI (s[i], y, c[i]);
+
+            return y;
+        }
+
+        SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
+        {
+            static_assert (StateArrayType.isArray, "states argument is not an array");
+            static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+)soul_code"
+R"soul_code(
+
+            static_assert (s.size == c.size, "states and coeffs arrays are not the same size");
+
+            var y = x;
+
+            for (wrap<s.size> i)
+                y = processTDFII (s[i], y, c[i]);
+
+            return y;
+        }
+    }
+
+    //==============================================================================
+    /**
+        1st-order IIR filter.
+
+        y[n] = b0 * x[n] - a1 * y[n-1]
+
+        Coefficients derived from Pirkle.
+        This filter is not suitable for modulation.
+    */
+    namespace onepole
+    {
+        namespace biquad = soul::filters::biquad;
+
+        namespace Mode
+        {
+            let lowpass  = 0;
+            let highpass = 1;
+            let allpass  = 2;
+        }
+
+        void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz)
+        {
+            biquad::Coeffs nc; // normalised coefficients
+            nc.a[0] = 1.0;
+
+            let theta = twoPi * (freqHz / sampleRate);
+
+            if (mode == Mode::lowpass)
+            {
+                let gamma = cos (theta) / (1.0 + sin (theta));
+
+                nc.b[0] = (1.0 - gamma) / 2.0;
+                nc.b[1] = (1.0 - gamma) / 2.0;
+                nc.a[1] = -gamma;
+            }
+            else if (mode == Mode::highpass)
+            {
+                let gamma = cos (theta) / (1.0 + sin (theta));
+
+                nc.b[0] = (1.0 + gamma) / 2.0;
+                nc.b[1] = -(1.0 + gamma) / 2.0;
+                nc.a[1] = -gamma;
+            }
+            else if (mode == Mode::allpass)
+            {
+                let w = tan (theta * 0.5);
+                let alpha = (w - 1.0) / (w + 1.0);
+
+                nc.b[0] = alpha;
+                nc.b[1] = 1.0;
+                nc.a[1] = alpha;
+            }
+
+            c.setNormalised (nc);
+        }
+
+        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+        {
+            input stream SampleType in;
+            output stream SampleType out;
+
+            input event
+            {
+)soul_code"
+R"soul_code(
+
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float modeIn      [[ name: "Mode",      min: 0,           max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
+            }
+
+            event frequencyIn (float v)   { frequency = v;  recalc = true; }
+            event modeIn      (float v)   { mode = int (v); recalc = true; }
+
+            float frequency  = initialFrequency;
+            int   mode       = initialMode;
+            bool  recalc     = true;
+
+            void run()
+            {
+                biquad::State s;
+                biquad::Coeffs c;
+
+                loop
+                {
+                    if (recalc)
+                    {
+                        recalc = false;
+                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        update (c, processor.frequency, mode, clippedFrequency);
+                    }
+
+                    loop (updateInterval)
+                    {
+                        out << s.processOnePole (in, c);
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /** RBJ biquad EQ, 2nd Order IIR Filter.
+
+        This filter is not suitable for modulation.
+        See https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
+    */
+    namespace rbj_eq
+    {
+        namespace biquad = soul::filters::biquad;
+
+        namespace Mode
+        {
+            let lowpass   = 0;
+            let highpass  = 1;
+            let bandpass  = 2;
+            let lowShelf  = 3;
+            let highShelf = 4;
+            let peaking   = 5;
+            let notch     = 6;
+            let allpass   = 7;
+        }
+
+        void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gaindB)
+        {
+)soul_code"
+R"soul_code(
+
+            biquad::Coeffs nnc; // non-normalised coefficients
+
+            let theta = twoPi * (freqHz / sampleRate);
+            let sinTheta = sin (theta);
+            let cosTheta = cos (theta);
+            let Q = max (quality, 0.001);
+            let alpha = sinTheta / (2.0 * Q);
+
+            if (mode == Mode::lowpass)
+            {
+                nnc.b[0] = (1.0 - cosTheta) / 2.0;
+                nnc.b[1] =  1.0 - cosTheta;
+                nnc.b[2] = (1.0 - cosTheta) / 2.0;
+                nnc.a[0] =  1.0 + alpha;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] =  1.0 - alpha;
+            }
+            else if (mode == Mode::highpass)
+            {
+                nnc.b[0] = (1.0 + cosTheta) / 2.0;
+                nnc.b[1] = -(1.0 + cosTheta);
+                nnc.b[2] = (1.0 + cosTheta) / 2.0;
+                nnc.a[0] =  1.0 + alpha;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] =  1.0 - alpha;
+            }
+            else if (mode == Mode::bandpass) // (constant 0 dB peak gain)
+            {
+                nnc.b[0] = alpha;
+                nnc.b[1] = 0.0;
+                nnc.b[2] = -alpha;
+                nnc.a[0] =  1.0 + alpha;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] =  1.0 - alpha;
+            }
+            else if (mode == Mode::lowShelf)
+            {
+                let A = pow (10.0, gaindB / 40.0);
+                nnc.b[0] = A * ((A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
+                nnc.b[1] = 2.0 * A * ( (A - 1) - (A + 1) * cosTheta);
+                nnc.b[2] = A * ((A + 1) - (A - 1) * cosTheta - 2 * sqrt (A) * alpha);
+                nnc.a[0] = (A + 1) + (A - 1) * cosTheta + 2 * sqrt (A) * alpha;
+                nnc.a[1] = -2.0 * ( (A - 1) + (A + 1) * cosTheta);
+                nnc.a[2] = (A + 1) + (A - 1) * cosTheta - 2 * sqrt (A) * alpha;
+            }
+            else if (mode == Mode::highShelf)
+            {
+                let A = pow (10.0, gaindB / 40.0);
+)soul_code"
+R"soul_code(
+
+                nnc.b[0] = A * ((A + 1) + (A - 1) * cosTheta + 2.0 * sqrt (A) * alpha);
+                nnc.b[1] = -2.0 * A * ( (A - 1) + (A + 1) * cosTheta);
+                nnc.b[2] = A * ((A + 1) + (A - 1) * cosTheta - 2.0 * sqrt (A) * alpha);
+                nnc.a[0] = (A + 1) - (A - 1) * cosTheta + 2.0 * sqrt (A) * alpha;
+                nnc.a[1] = 2.0 * ( (A - 1) - (A + 1) * cosTheta);
+                nnc.a[2] = (A + 1) - (A - 1) * cosTheta - 2.0 * sqrt (A) * alpha;
+            }
+            else if (mode == Mode::peaking)
+            {
+                let A = pow (10.0, gaindB / 40.0);
+                nnc.b[0] = 1.0 + alpha * A;
+                nnc.b[1] = -2.0 * cosTheta;
+                nnc.b[2] = 1.0 - alpha * A;
+                nnc.a[0] = 1.0 + alpha / A;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] = 1.0 - alpha / A;
+            }
+            else if (mode == Mode::notch)
+            {
+                nnc.b[0] = 1.0;
+                nnc.b[1] = -2.0 * cosTheta;
+                nnc.b[2] = 1.0;
+                nnc.a[0] = 1.0 + alpha;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] = 1.0 - alpha;
+            }
+            else if (mode == Mode::allpass)
+            {
+                nnc.b[0] = 1.0 - alpha;
+                nnc.b[1] = -2.0 * cosTheta;
+                nnc.b[2] = 1.0 + alpha;
+                nnc.a[0] = 1.0 + alpha;
+                nnc.a[1] = -2.0 * cosTheta;
+                nnc.a[2] = 1.0 - alpha;
+            }
+
+            c.setNonNormalised (nnc);
+        }
+
+        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+        {
+            input stream SampleType in;
+            output stream SampleType out;
+
+            input event
+            {
+                float modeIn      [[ name: "Mode",      min: 0,           max: 7,         init: 0,         text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass"]];
+)soul_code"
+R"soul_code(
+
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality ]];
+                float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain ]];
+            }
+
+            event frequencyIn (float v) { frequency = v;   recalc = true; }
+            event qualityIn   (float v) { quality = v;     recalc = true; }
+            event gainIn      (float v) { gain = v;        recalc = true; }
+            event modeIn      (float v) { mode = int (v);  recalc = true; }
+
+            float  frequency = initialFrequency;
+            float  quality   = initialQuality;
+            float  gain      = initialGain;
+            int    mode      = initialMode;
+            bool   recalc    = true;
+
+            void run()
+            {
+                biquad::State s;
+                biquad::Coeffs c;
+
+                loop
+                {
+                    if (recalc)
+                    {
+                        recalc = false;
+                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        c.update (processor.frequency, mode, clippedFrequency, quality, gain);
+                    }
+
+                    loop (updateInterval)
+                    {
+                        out << s.processTDFII (in, c);
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /**
+        Generic second-order-section cascade biquad processors.
+    */
+    namespace sos_cascade
+    {
+        namespace biquad = soul::filters::biquad;
+
+        /** Supply an array of coefficients for each SOS. The size of the array should be a multiple of 6,
+            and the coefficients are expected to be normalised already
+)soul_code"
+R"soul_code(
+
+        */
+        processor Processor (const CoeffType[] coeffs)
+        {
+            input stream SampleType in;
+            output stream SampleType out;
+
+            let numSOS = size (coeffs) / 6;
+            biquad::State[numSOS] s;
+            biquad::Coeffs[numSOS] c;
+
+            void init()
+            {
+                static_assert (size (coeffs) % 6 == 0, "coeffs is not a multiple of 6");
+
+                wrap<numSOS> section = 0;
+                wrap<coeffs.size> coeffIdx = 0;
+
+                loop (numSOS)
+                {
+                    // TODO: replace with dynamic array slice
+                    biquad::set (c[section], coeffs[wrap<coeffs.size> (coeffIdx + 0)],
+                                             coeffs[wrap<coeffs.size> (coeffIdx + 1)],
+                                             coeffs[wrap<coeffs.size> (coeffIdx + 2)],
+                                             coeffs[wrap<coeffs.size> (coeffIdx + 3)],
+                                             coeffs[wrap<coeffs.size> (coeffIdx + 4)],
+                                             coeffs[wrap<coeffs.size> (coeffIdx + 5)]);
+                    section++;
+                    coeffIdx += 6;
+                }
+            }
+
+            void run()
+            {
+                loop
+                {
+                    out << biquad::processCascadeTDFII (in, s, c);
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /**
+        N-th order Butterworth filter, made by cascading multiple second order sections.
+
+        This filter is not suitable for modulation.
+    */
+    namespace butterworth
+    {
+        namespace biquad = soul::filters::biquad;
+        namespace onepole = soul::filters::onepole;
+        namespace rbj = soul::filters::rbj_eq;
+
+        namespace Mode
+        {
+            let lowpass  = 0;
+            let highpass = 1;
+        }
+
+)soul_code"
+R"soul_code(
+
+        void update<CoeffsArrayType> (CoeffsArrayType& coeffs, float64 sampleRate, int order, int mode, float64 freqHz)
+        {
+            static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+
+            biquad::Coeffs nc; // normalised coefficients
+
+            bool oddOrder = (order % 2) == 1;
+
+            if (oddOrder)
+            {
+                onepole::update (nc, sampleRate, mode, freqHz);
+                coeffs.at (0).setNormalised (nc);
+
+                for (int i=0; i<order/2; i++)
+                {
+                    let Q = 1.0 / (2.0 * cos ((CoeffType (i) + 1.0) * pi / order));
+                    rbj::update (nc, sampleRate, mode, freqHz, Q, 0.);
+                    coeffs.at (i+1).setNormalised (nc);
+                }
+            }
+            else
+            {
+                for (wrap<coeffs.size> i)
+                {
+                    let Q = 1.0 / (2.0 * cos ((2.0 * CoeffType (i) + 1.0) * pi / (order * 2.0)));
+                    rbj::update (nc, sampleRate, mode, freqHz, Q, 0.);
+                    coeffs.at (i).setNormalised (nc);
+                }
+            }
+        }
+
+        /** Butterworth processor.
+            The order must be > 0
+        */
+        processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+        {
+            input stream SampleType in;
+            output stream SampleType out;
+
+            input event
+            {
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
+            }
+
+            event frequencyIn (float v) { frequency = v; recalc = true; }
+            event modeIn      (float v) { mode = int (v); recalc = true; clear = true; }
+
+            float frequency = initialFrequency;
+            int mode = initialMode;
+            bool recalc = true;
+            bool clear = true;
+
+)soul_code"
+R"soul_code(
+
+            void run()
+            {
+                let numSOS = (order / 2) + (order % 2);
+                biquad::State[numSOS] s;
+                biquad::Coeffs[numSOS] c;
+
+                loop
+                {
+                    if (recalc)
+                    {
+                        if (clear) // mode change requires clearing histories
+                        {
+                            for (wrap<s.size> i)
+                            {
+                                biquad::reset (s[i]);
+                            }
+                        }
+
+                        recalc = false;
+                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        update (c, processor.frequency, order, mode, clippedFrequency);
+                    }
+
+                    loop (updateInterval)
+                    {
+                        out << biquad::processCascadeTDFII (in, s, c);
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /** Analytic filter / IIR Hilbert transformer.
+
+        https://dsp.stackexchange.com/a/59157
+
+        Increasing numFilters will increase the accuracy of the quadrature output across the
+        pass band but introduce more delay with respect to the input signal.
+        The filter passband is from transitionBandwidthHz to nyquist - transitionBandwidthHz.
+    */
+    namespace analytic (int numFilters = 6, float transitionBandwidthHz = 20.0f)
+    {
+        /** Polyphase IIR Designer.
+            Based on HIIR http://ldesoras.free.fr/prod.html#src_hiir
+        */
+        namespace polyphase_iir_design
+        {
+            let numCoefficients = numFilters * 2;
+            let order = numCoefficients * 2 + 1;
+
+            struct Coeffs
+            {
+                float64[numCoefficients] coeffs;
+            }
+
+)soul_code"
+R"soul_code(
+
+            Coeffs compute (float64 transition)
+            {
+                Coeffs c;
+
+                let p = computeTransitionParam (transition);
+
+                for (wrap<numCoefficients> i)
+                    c.coeffs.at (i) = computeCoeff (i, p);
+
+                return c;
+            }
+
+            struct TransitionParams
+            {
+                float64 k, q;
+            }
+
+            TransitionParams computeTransitionParam (float64 transition)
+            {
+                var k = tan ((1.0 - transition * 2.0) * (pi / 4));
+                k *= k;
+                let kksqrt = pow (1.0 - k * k, 0.25);
+                let e = 0.5 * (1.0 - kksqrt) / (1 + kksqrt);
+                let e2 = e * e;
+                let e4 = e2 * e2;
+                let q = e * (1.0 + e4 * (2.0 + e4 * (15.0 + 150.0 * e4)));
+
+                return TransitionParams (k, q);
+            }
+
+            float64 computeAccNum (float64 q, int c)
+            {
+                float64 result, i = 0, j = 1;
+
+                loop
+                {
+                    let next = pow (q, float64 (i * (i + 1))) * sin ((i * 2 + 1) * c * pi / order) * j;
+                    result += next;
+
+                    if (abs (next) < 1e-100)
+                        return result;
+
+                    j = -j;
+                    i++;
+                }
+            }
+
+            float64 computeAccDen (float64 q, int c)
+            {
+                float64 result, i = 1.0, j = -1.0;
+
+                loop
+                {
+                    let next = pow (q, (i * i)) * cos (i * 2 * c * pi / order) * j;
+                    result += next;
+
+                    if (abs (next) < 1e-100)
+                        return result;
+
+                    j = -j;
+                    i = i + 1.0;
+                }
+            }
+
+            float64 computeCoeff (int index, TransitionParams params)
+            {
+                let num = computeAccNum (params.q, index + 1)  * pow (params.q, 0.25);
+)soul_code"
+R"soul_code(
+
+                let den = computeAccDen (params.q, index + 1) + 0.5;
+                let ww = num / den;
+                let wwsq = ww * ww;
+
+                let x = sqrt ((1 - wwsq * params.k) * (1.0 - wwsq / params.k)) / (1.0 + wwsq);
+                return (1.0 - x) / (1.0 + x);
+            }
+        }
+
+        /** Parallel 2nd-order all-pass.
+            y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
+        */
+        namespace dual_apf
+        {
+            struct State
+            {
+                SampleType[2] x1, y1, x2, y2;
+                CoeffType[2] c;
+            }
+
+            SampleType[2] process (State& s, SampleType[2] x)
+            {
+                let y = SampleType[2] (SampleType (s.c[0]) * (x[0] + s.y2[0]) - s.x2[0],
+                                       SampleType (s.c[1]) * (x[1] + s.y2[1]) - s.x2[1]);
+                s.x2 = s.x1;
+                s.x1 = x;
+                s.y2 = s.y1;
+                s.y1 = y;
+
+                return y;
+            }
+        }
+
+        struct State
+        {
+            dual_apf::State[numFilters] apfs;
+            SampleType[1] x;
+        }
+
+        void update (State& s, float64 sampleRate)
+        {
+            let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz/sampleRate));
+
+            for (wrap<numFilters> i)
+            {
+                s.apfs.at (i).c[0] = design.coeffs.at (i * 2);
+                s.apfs.at (i).c[1] = design.coeffs.at (i * 2 + 1);
+            }
+        }
+
+        SampleType[2] process (State& s, SampleType x)
+        {
+            var y = SampleType[2] (x, s.x[0]);
+
+            for (wrap<numFilters> i)
+            {
+                y = s.apfs[i].process (y);
+            }
+
+            s.x[0] = x;
+            return y;
+        }
+
+        processor Processor
+        {
+            input stream SampleType in;
+            output stream SampleType realOut;
+            output stream SampleType imagOut;
+
+            State s;
+
+            void init()
+            {
+)soul_code"
+R"soul_code(
+
+                s.update (processor.frequency);
+            }
+
+            void run()
+            {
+                loop
+                {
+                    let y = s.process (in);
+                    realOut << y[0];
+                    imagOut << y[1];
+                    advance();
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /** Complex Resonator filter.
+
+        See https://ccrma.stanford.edu/~jos/smac03maxjos/smac03maxjos.pdf
+        This filter is suitable for modulation
+    */
+    namespace complex_resonator
+    {
+        struct State
+        {
+            SampleType yReal;
+            SampleType yImag;
+        }
+
+        struct Coeffs
+        {
+            complex64 v;
+        }
+
+        // TODO: if cexp becomes a global function, use that
+        complex64 cexp (complex64 c)
+        {
+            let e = exp (c.real);
+            return complex64 (e * cos (c.imag), e * sin (c.imag));
+        }
+
+        void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 t60)
+        {
+            let jImag = (0.0 + 1.0i);
+            let decayFactor = tau2pole (t60, sampleRate);
+            let oscCoef = cexp ((jImag * twoPi) * (freqHz / sampleRate));
+            c.v = decayFactor * oscCoef;
+        }
+
+        SampleType[2] process (State& s, Coeffs& c, SampleType x)
+        {
+            let xReal = x;
+            let xImag = SampleType();
+            let vReal = SampleType (c.v.real);
+            let vImag = SampleType (c.v.imag);
+            let yReal = xReal + ((vReal * s.yReal) - (vImag * s.yImag));
+            let yImag = xImag + ((vReal * s.yImag) + (vImag * s.yReal));
+            s.yReal = yReal;
+            s.yImag = yImag;
+            return SampleType[2] (yReal, yImag);
+        }
+
+        processor Processor (float initialFrequency = defaultFreqHz, float initialDecay = 1.0f, float initialGain = 1.0f)
+        {
+            input stream SampleType in;
+)soul_code"
+R"soul_code(
+
+            output stream SampleType realOut;
+            output stream SampleType imagOut;
+
+            input event
+            {
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float decayIn     [[ name: "Decay (s)", min: 0.01,        max: 10.0,      init: 1.0 ]];
+                float gainIn      [[ name: "Gain",      min: 0.01,        max: 10.0,      init: 1.0 ]];
+            }
+
+            event frequencyIn (float v) { frequency = v; recalc = true; }
+            event decayIn     (float v) { decay = v; recalc = true; }
+            event gainIn      (float v) { gain = v; recalc = true; }
+
+            float frequency = initialFrequency,
+                      decay = initialDecay,
+                       gain = initialGain;
+            bool recalc = true;
+
+            namespace DCBlocker = soul::filters::dc_blocker;
+
+            void run()
+            {
+                State s;
+                Coeffs c;
+
+                DCBlocker::Coeffs dcc;
+                DCBlocker::State realDCBlocker, imagDCBlocker;
+
+                dcc.update (processor.frequency, 30.0f);
+
+                loop
+                {
+                    if (recalc)
+                    {
+                        recalc = false;
+                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        c.update (processor.frequency, clippedFrequency, decay);
+                    }
+
+                    loop (updateInterval)
+                    {
+                        let y = s.process (c, in);
+                        realOut << realDCBlocker.process (y[0] * gain, dcc);
+                        imagOut << imagDCBlocker.process (y[1] * gain, dcc);
+                        advance();
+                    }
+                }
+            }
+        }
+    }
+
+    //==============================================================================
+    /**
+)soul_code"
+R"soul_code(
+
+        "Topology preserving transform" filters.
+    */
+    namespace tpt
+    {
+        //==============================================================================
+        /** "Topology preserving transform" one-pole filter.
+
+            Derived from work by Zavalishin and Pirkle.
+            This filter is suitable for modulation.
+        */
+        namespace onepole
+        {
+            namespace Mode
+            {
+                let lowpass  = 0;
+                let highpass = 1;
+                let allpass  = 2;
+            }
+
+            struct Coeffs
+            {
+                CoeffType b;
+            }
+
+            struct State
+            {
+                SampleType z1;
+            }
+
+            void clear (Coeffs& c)
+            {
+                c.b = CoeffType (1);
+            }
+
+            void reset (State& s)
+            {
+                s.z1 = SampleType();
+            }
+
+            void update (Coeffs& c, float64 sampleRate, float64 freqHz)
+            {
+                let wd = twoPi * freqHz;
+                let T  = 1.0 / sampleRate;
+                let wa = (2.0 / T) * tan (wd * T / 2.0);
+                let g  = wa * T / 2.0;
+
+                c.b = CoeffType (g / (1.0 + g));
+            }
+
+            SampleType processLPF (State& s, SampleType x, Coeffs& c)
+            {
+                let vn = (x - s.z1) * SampleType (c.b);
+                let lpf = vn + s.z1;
+                s.z1 = vn + lpf;
+                return lpf;
+            }
+
+            SampleType processHPF (State& s, SampleType x, Coeffs& c)
+            {
+                return x - processLPF (s, x, c);
+            }
+
+            SampleType processAPF (State& s, SampleType x, Coeffs& c)
+            {
+                let lpf = processLPF (s, x, c);
+                let hpf = x - lpf;
+                return lpf - hpf;
+            }
+
+            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+            {
+                input stream SampleType in;
+)soul_code"
+R"soul_code(
+
+                output stream SampleType out;
+
+                input event
+                {
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+                    float modeIn      [[ name: "Mode",      min: 0,         max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
+                }
+
+                event frequencyIn (float v) { frequency = v; recalc = true; }
+                event modeIn      (float v) { mode = int (v); recalc = true; }
+
+                float frequency = initialFrequency;
+                int mode = initialMode;
+                bool recalc = true;
+
+                void run()
+                {
+                    State s;
+                    Coeffs c;
+                    c.clear ();
+
+                    loop
+                    {
+                        if (recalc)
+                        {
+                            recalc = false;
+                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            c.update (processor.frequency, clippedFrequency);
+                        }
+
+                        loop (16)
+                        {
+                            if (mode == Mode::lowpass)
+                                out << s.processLPF (in, c);
+                            else if (mode == Mode::highpass)
+                                out << s.processHPF (in, c);
+                            else if (mode == Mode::allpass)
+                                out << s.processAPF (in, c);
+
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+        //==============================================================================
+        /** "Topology preserving transform" multi-mode state variable filter (SVF).
+
+            Derived from work by Zavalishin and Pirkle.
+            This filter is suitable for modulation.
+)soul_code"
+R"soul_code(
+
+        */
+        namespace svf
+        {
+            namespace Mode
+            {
+                let lowpass  = 0;
+                let highpass = 1;
+                let bandpass = 2;
+            }
+
+            struct Coeffs
+            {
+                CoeffType a0;
+                CoeffType a;
+                CoeffType p;
+            }
+
+            struct State
+            {
+                SampleType[2] z;
+            }
+
+            void reset (State& s)
+            {
+                s.z[0] = SampleType();
+                s.z[1] = SampleType();
+            }
+
+            void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 quality)
+            {
+                let Q = max (quality, 0.001);
+                let wd = twoPi * freqHz;
+                let T  = 1.0 / sampleRate;
+                let wa = (2.0 / T) * tan (wd * T / 2.0);
+                let g  = wa * T / 2.0;
+                let R = 1.0 / (2.0 * Q);
+                c.a0 = 1.0 / (1.0 + 2.0 * R * g + g * g);
+                c.a = g;
+                c.p = 2.0 * R + g;
+            }
+
+            SampleType[3] process (State& s, SampleType x, Coeffs& c)
+            {
+                let hpf = SampleType (c.a0 * (x - c.p * s.z[0] - s.z[1]));
+                let bpf = SampleType (c.a * hpf + s.z[0]);
+                let lpf = SampleType (c.a * bpf + s.z[1]);
+
+                s.z[0] = SampleType (c.a * hpf + bpf);
+                s.z[1] = SampleType (c.a * bpf + lpf);
+
+                return SampleType[3] (lpf, hpf, bpf);
+            }
+
+            processor Processor (float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality)
+            {
+                input stream SampleType in;
+                output stream SampleType lowpassOut, bandpassOut, highpassOut;
+
+                input event
+                {
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+)soul_code"
+R"soul_code(
+
+                    float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality ]];
+                }
+
+                event frequencyIn (float v) { frequency = v; recalc = true; }
+                event qualityIn   (float v) { quality = v; recalc = true; }
+
+                float frequency = initialFrequency,
+                        quality = initialQuality;
+                bool recalc = true;
+
+                void run()
+                {
+                    State s;
+                    Coeffs c;
+
+                    loop
+                    {
+                        if (recalc)
+                        {
+                            recalc = false;
+                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            c.update (processor.frequency, clippedFrequency, quality);
+                        }
+
+                        loop (updateInterval)
+                        {
+                            let y = s.process (in, c);
+                            lowpassOut  << y[0];
+                            highpassOut << y[1];
+                            bandpassOut << y[2];
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+        //==============================================================================
+        /**
+            N-th order Butterworth filter, made by cascading TPT filters.
+            This filter is suitable for modulation
+        */
+        namespace butterworth
+        {
+            namespace onepole = soul::filters::tpt::onepole;
+            namespace svf = soul::filters::tpt::svf;
+
+            namespace Mode
+            {
+                let lowpass  = 0;
+                let highpass = 1;
+            }
+
+            void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs, onepole::Coeffs& onepoleCoeffs, float64 sampleRate, int order, float64 freqHz)
+            {
+)soul_code"
+R"soul_code(
+
+                static_assert (SVFCoeffsArrayType.isArray, "coeffs argument is not an array");
+
+                bool oddOrder = (order % 2) == 1;
+
+                if (oddOrder)
+                {
+                    onepole::update (onepoleCoeffs, sampleRate, freqHz);
+
+                    for (wrap<svfCoeffs.size> i)
+                    {
+                        let Q = 1.0 / (2.0 * cos ((CoeffType (i) + 1.0) * pi / order));
+                        svf::update (svfCoeffs.at (i), sampleRate, freqHz, Q);
+                    }
+                }
+                else
+                {
+                    for (wrap<svfCoeffs.size> i)
+                    {
+                        let Q = 1.0 / (2.0 * cos ((2.0 * CoeffType (i) + 1.0) * pi / (order * 2.0)));
+                        svf::update (svfCoeffs.at (i), sampleRate, freqHz, Q);
+                    }
+                }
+            }
+
+            SampleType process<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& svfStates, CoeffsArrayType& svfCoeffs,
+                                                                               onepole::State& onepoleState, onepole::Coeffs& onepoleCoeffs,
+                                                                               int mode, bool oddOrder)
+            {
+                static_assert (StateArrayType.isArray, "states argument is not an array");
+                static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+                static_assert (svfStates.size == svfCoeffs.size, "states and coeffs arrays are not the same size");
+
+                var y = x;
+
+                if (oddOrder)
+                {
+                    if (mode == Mode::lowpass)
+                        y = onepoleState.processLPF (y, onepoleCoeffs);
+                    else if (mode == Mode::highpass)
+                        y = onepoleState.processHPF (y, onepoleCoeffs);
+                }
+
+                for (wrap<svfStates.size> i)
+)soul_code"
+R"soul_code(
+
+                    y = svf::process (svfStates[i], y, svfCoeffs[i])[wrap<2> (mode)]; // TODO: tidy this
+
+                return y;
+            }
+
+            /* Butterworth processor.
+               The order must be > 1
+            */
+            processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+            {
+                input stream SampleType in;
+                output stream SampleType out;
+
+                input event
+                {
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                    float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
+                }
+
+                event frequencyIn (float v)   { frequency = v; recalc = true; }
+                event modeIn      (float v)   { mode = int (v); recalc = true; }
+
+                float  frequency  = initialFrequency;
+                int    mode       = initialMode;
+                bool   recalc     = true;
+
+                void run()
+                {
+                    let numSVFs = order / 2;
+                    let oddOrder = (order % 2) == 1;
+
+                    svf::State[numSVFs] svfStates;
+                    svf::Coeffs[numSVFs] svfCoeffs;
+                    onepole::State onepoleState;
+                    onepole::Coeffs onepoleCoeffs;
+
+                    loop
+                    {
+                        if (recalc)
+                        {
+                            recalc = false;
+                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            update (svfCoeffs, onepoleCoeffs, processor.frequency, order, clippedFrequency);
+                        }
+
+                        loop (updateInterval)
+                        {
+)soul_code"
+R"soul_code(
+
+                            out << process (in, svfStates, svfCoeffs, onepoleState, onepoleCoeffs, mode, oddOrder);
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+        //==============================================================================
+        /**
+            4th-order Linkwitz–Riley crossover filter, which outputs two bands of audio.
+
+            The channels should sum together to produce a flat response.
+            This filter is suitable for modulation.
+        */
+        namespace crossover
+        {
+            namespace SVF = soul::filters::tpt::svf;
+
+            struct State
+            {
+                SVF::State svf1, svf2;
+            }
+
+            struct Coeffs
+            {
+                SVF::Coeffs svf1, svf2;
+            }
+
+            processor Processor (float initialFrequency = defaultFreqHz)
+            {
+                input stream float32 in;
+                output stream float32 lowOut;
+                output stream float32 highOut;
+
+                input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+
+                event frequencyIn (float v) { frequency = v; recalc = true; }
+
+                float frequency = initialFrequency;
+                bool recalc = true;
+
+                void update (Coeffs& c, float64 sampleRate, float64 freqHz)
+                {
+                    c.svf1.update (sampleRate, freqHz, defaultQuality);
+                    c.svf2.update (sampleRate, freqHz, defaultQuality);
+                }
+
+                SampleType[2] process (State& s, SampleType x, Coeffs& c)
+                {
+                    let svf1 = s.svf1.process (x, c.svf1);
+                    let lpf1 = svf1[0], hpf1 = svf1[1], bpf1 = svf1[2];
+                    let apf1 = lpf1 - SampleType (sqrt (2.0)) * bpf1 + hpf1;
+                    let svf2 = s.svf2.process (lpf1, c.svf2);
+                    let lpf2 = svf2[0];
+
+)soul_code"
+R"soul_code(
+
+                    return SampleType[2] (lpf2, apf1 - lpf2);
+                }
+
+                void run()
+                {
+                    State s;
+                    Coeffs c;
+
+                    loop
+                    {
+                        if (recalc)
+                        {
+                            recalc = false;
+                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            update (c, processor.frequency, clippedFrequency);
+                        }
+
+                        loop (16)
+                        {
+                            let y = s.process (in, c);
+                            lowOut  << y[0];
+                            highOut << y[1];
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+        //==============================================================================
+        /** SVF EQ.
+
+            Based on the work of Andy Simper:
+            https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+
+            This filter is suitable for modulation.
+        */
+        namespace simper_eq
+        {
+            namespace Mode
+            {
+                let lowpass   = 0;
+                let highpass  = 1;
+                let bandpass  = 2;
+                let lowShelf  = 3;
+                let highShelf = 4;
+                let peaking   = 5;
+                let notch     = 6;
+                let allpass   = 7;
+                let bell      = 8;
+            }
+
+            struct Coeffs
+            {
+                CoeffType a1, a2, a3;
+                CoeffType m0, m1, m2;
+            }
+
+            struct State
+            {
+                SampleType ic1eq, ic2eq;
+            }
+
+            void reset (State& s)
+            {
+                s.ic1eq = SampleType();
+                s.ic2eq = SampleType();
+            }
+
+)soul_code"
+R"soul_code(
+
+            void update (Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gain)
+            {
+                let w = tan (pi * freqHz / sampleRate);
+                let k = 1.0 / clamp (quality, 0.01, 100.0);
+
+                if (mode == Mode::lowpass)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 0.0;
+                    c.m1 = 0.0;
+                    c.m2 = 1.0;
+                }
+                else if (mode == Mode::highpass)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = -k;
+                    c.m2 = -1.0;
+                }
+                else if (mode == Mode::bandpass)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 0.0;
+                    c.m1 = 1.0;
+                    c.m2 = 0.0;
+                }
+                else if (mode == Mode::lowShelf)
+                {
+                    let A = pow (10.0, gain / 40.0);
+                    let g = w / sqrt (A);
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = k * (A - 1.0);
+                    c.m2 = (A * A - 1.0);
+                }
+                else if (mode == Mode::highShelf)
+                {
+                    let A = pow (10.0, gain / 40.0);
+                    let g = w / sqrt (A);
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = A * A;
+)soul_code"
+R"soul_code(
+
+                    c.m1 = k * (1.0 - A) * A;
+                    c.m2 = (1.0 - A * A);
+                }
+                else if (mode == Mode::peaking)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = -k;
+                    c.m2 = -2.0;
+                }
+                else if (mode == Mode::notch)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = -k;
+                    c.m2 = 0.0;
+                }
+                else if (mode == Mode::allpass)
+                {
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = -2.0 * k;
+                    c.m2 = 0.0;
+                }
+                else if (mode == Mode::bell)
+                {
+                    let A = pow (10.0, gain / 40.0);
+                    let g = w;
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1.0;
+                    c.m1 = k * (A * A - 1.0);
+                    c.m2 = 0.0;
+                }
+            }
+
+            SampleType process (State& s, SampleType x, Coeffs& c)
+            {
+                let v0 = x;
+                let v3 = v0 - s.ic2eq;
+                let v1 = SampleType (c.a1 * s.ic1eq + c.a2 * v3);
+                let v2 = SampleType (s.ic2eq + c.a2 * s.ic1eq + c.a3 * v3);
+                s.ic1eq = SampleType (2.0 * v1 - s.ic1eq);
+                s.ic2eq = SampleType (2.0 * v2 - s.ic2eq);
+                return    SampleType (c.m0 * v0 + c.m1 * v1 + c.m2 * v2);
+            }
+)soul_code"
+R"soul_code(
+
+
+            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+            {
+                input stream SampleType in;
+                output stream SampleType out;
+
+                input event
+                {
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz  ]];
+                    float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
+                    float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0            ]];
+                    float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
+                }
+
+                event frequencyIn (float v) { frequency = v; recalc = true; }
+                event qualityIn   (float v) { quality = v; recalc = true; }
+                event gainIn      (float v) { gain = v; recalc = true; }
+                event modeIn      (float v) { mode = int (v); recalc = true; }
+
+                float frequency = initialFrequency,
+                        quality = initialQuality,
+                           gain = initialGain;
+                int mode = initialMode;
+                bool recalc = true;
+
+                void run()
+                {
+                    State s;
+                    Coeffs c;
+
+                    loop
+                    {
+                        if (recalc)
+                        {
+                            recalc = false;
+                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            c.update (processor.frequency, mode, clippedFrequency, quality, gain);
+                        }
+
+                        loop (updateInterval)
+                        {
+)soul_code"
+R"soul_code(
+
+                            out << s.process (in, c);
+                            advance();
+                        }
+                    }
+                }
+            }
+        }
+
+    } // (namespace tpt)
+}
+)soul_code";
+
     if (moduleName == "soul.oscillators")  return R"soul_code(
 /**
-    This namespace contains various simple oscillators
+    This namespace contains various types of oscillator.
 */
-namespace soul::oscillators (using SampleType = float32)
+namespace soul::oscillators (using SampleType = float32,
+                             using PhaseType  = float32)
 {
-    using PhaseType = float32;  // TODO: this should probably be a defaulted namespace parameterisation
-    let minFreqHz = 0.0;
-    let maxFreqHz = 22000.0;
-    let initFreqHz = 1000.0;
+    let minFreqHz = 0.0f;
+    let maxFreqHz = 22000.0f;
+    let defaultFreqHz = 1000.0f;
 
     //==============================================================================
     /** A unipolar ramp (phasor) oscillator.
@@ -1051,17 +2661,17 @@ namespace soul::oscillators (using SampleType = float32)
         {
             s.phase += s.phaseIncrement;
 
-            while (s.phase >= PhaseType (1.0))
-                s.phase -= PhaseType (1.0);
+            while (s.phase >= PhaseType (1))
+                s.phase -= PhaseType (1);
 
             return s.phase;
         }
 
-        processor Processor (float initialFrequency)
+        processor Processor (float initialFrequency = defaultFreqHz)
         {
             output stream SampleType out;
 
-            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
 
             event frequencyIn (float v) { s.update (processor.period, v); }
 
@@ -1086,14 +2696,14 @@ namespace soul::oscillators (using SampleType = float32)
     //==============================================================================
     /** A simple sinewave oscillator.
     */
-    processor Sine (float initialFrequency)
+    processor Sine (float initialFrequency = defaultFreqHz)
     {
         output stream SampleType out;
 
 )soul_code"
 R"soul_code(
 
-        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
 
         event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
@@ -1115,7 +2725,7 @@ R"soul_code(
     //==============================================================================
     /** A semi band-limited oscillator with sawtooth, square and triangle wave shapes
         using the PolyBLEP (Polynomial Band-Limited Step) technique.
-        You may want to oversample this oscillator, in order to reduce aliasing
+        You may want to oversample this oscillator, in order to reduce aliasing.
     */
     namespace poly_blep
     {
@@ -1161,14 +2771,15 @@ R"soul_code(
             let square   = 2;
         }
 
-        processor Processor (int initialShape, float initialFrequency)
+        processor Processor (int initialShape = 0,
+                            float initialFrequency = defaultFreqHz)
         {
             output stream SampleType out;
 
             input event
             {
                 float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
-                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: initFreqHz ]];
+                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
             }
 
             event shapeIn (float v)        { shape = wrap<3> (floor (v)); }
@@ -1215,17 +2826,15 @@ R"soul_code(
         }
     }
 
-    //==============================================================================
 )soul_code"
 R"soul_code(
 
-    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously
+    //==============================================================================
+    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously.
         https://vicanek.de/articles/QuadOsc.pdf
     */
-    namespace quadrature
+    namespace quadrature (int updateInterval = 16)
     {
-        let updateInterval = 16; // limit coefficient updates to every 16 samples
-
         struct State
         {
             SampleType u, v;
@@ -1257,7 +2866,7 @@ R"soul_code(
             return SampleType[2] (s.v, s.u);
         }
 
-        processor Processor (float initialFrequency)
+        processor Processor (float initialFrequency = defaultFreqHz)
         {
             output stream SampleType sineOut;
             output stream SampleType cosineOut;
@@ -1266,8 +2875,8 @@ R"soul_code(
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
 
-            float frequency = initialFrequency;
-            bool recalc = true;
+            float frequency  = initialFrequency;
+            bool  recalc     = true;
 
             void run()
             {
@@ -1288,10 +2897,10 @@ R"soul_code(
                     {
                         let y = s.process (c);
                         sineOut << y[0];
-                        cosineOut << y[1];
 )soul_code"
 R"soul_code(
 
+                        cosineOut << y[1];
                         advance();
                     }
                 }
@@ -1300,7 +2909,8 @@ R"soul_code(
     }
 
     //==============================================================================
-    /** A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output
+    /**
+        A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.
     */
     namespace lfo
     {
@@ -1320,53 +2930,12 @@ R"soul_code(
 
         namespace Shape
         {
-            let triangle = 0;
-            let square   = 1;
-            let rampUp   = 2;
-            let rampDown = 3;
-            let sine     = 4;
-            let SAH      = 5;
-        }
-
-        namespace Divs
-        {
-            let k64n  = 0;
-            let k32n  = 1;
-            let k16nt = 2;
-            let k16n  = 3;
-            let k16nd = 4;
-            let k8nt  = 5;
-            let k8n   = 6;
-            let k8nd  = 7;
-            let k4n   = 8;
-            let k4nd  = 9;
-            let k2n   = 10;
-            let k1bar = 11;
-            let k2bar = 12;
-            let k4bar = 13;
-)soul_code"
-R"soul_code(
-
-            let k8bar = 14;
-        }
-
-        namespace DivScalars
-        {
-            let k64n  = 64.0   / 4.0; // 1 sixty fourth of a beat
-            let k32n  = 32.0   / 4.0; // 1 thirty second of a beat
-            let k16nt = 24.0   / 4.0; // 1 sixteenth note triplet
-            let k16n  = 16.0   / 4.0; // 1 sixteenth note
-            let k16nd = 12.0   / 4.0; // 1 dotted sixteenth note
-            let k8nt  = 9.0    / 4.0; // 1 eighth note triplet
-            let k8n   = 8.0    / 4.0; // 1 eighth note
-            let k8nd  = 6.0    / 4.0; // 1 dotted eighth note
-            let k4n   = 4.0    / 4.0; // 1 quater note / 1 beat @ 4/4
-            let k4nd  = 3.0    / 4.0; // 1 dotted quater note @ 4/4
-            let k2n   = 2.0    / 4.0; // 2 beats @ 4/4
-            let k1bar = 1.0    / 4.0; // 1 bar @ 4/4
-            let k2bar = 0.5    / 4.0; // 2 bars @ 4/4
-            let k4bar = 0.25   / 4.0; // 4 bars @ 4/4
-            let k8bar = 0.125  / 4.0; // 8 bars @ 4/4
+            let triangle      = 0;
+            let square        = 1;
+            let rampUp        = 2;
+            let rampDown      = 3;
+            let sine          = 4;
+            let sampleAndHold = 5;
         }
 
         namespace Polarity
@@ -1384,6 +2953,9 @@ R"soul_code(
                 float increment;
                 int steps;
             }
+
+)soul_code"
+R"soul_code(
 
             void reset (State& state, float initialValue)
             {
@@ -1405,9 +2977,6 @@ R"soul_code(
                 if (state.steps == 0)
                     return state.currentValue;
 
-)soul_code"
-R"soul_code(
-
                 state.currentValue += state.increment;
                 state.steps--;
 
@@ -1418,7 +2987,10 @@ R"soul_code(
             }
         }
 
-        processor Processor (int initialShape, int initialPolarity, float initialDepth, float initialFreq)
+        processor Processor (int initialShape = 0,
+                             int initialPolarity = 0,
+                             float initialDepth = 1.0f,
+                             float initialFrequency = 1.0f)
         {
             output stream SampleType out;
             input event soul::timeline::Position positionIn;
@@ -1428,9 +3000,12 @@ R"soul_code(
             input event
             {
                 float rateHzIn     [[ name: "Rate (Hz)",     min: 0.01,  max: 40.0,   init: 1.,   unit: "hz", step: 0.01 ]];
-                float rateTempoIn  [[ name: "Rate (Tempo)",  min: 0,     max: 14,     init: 0,    text: "1/64|1/32|1/16T|1/16|1/16D|1/8T|1/8|1/8D|1/4|1/4D|1/2|1/1|2/1|4/1|8/1"]];
+                float rateTempoIn  [[ name: "Rate (Beats)",  min: 0.001, max: 32,     init: 0,    unit: "beat", step: 0.001]];
                 float depthIn      [[ name: "Depth",         min: 0,     max: 100,    init: 100,  unit: "%",  step: 1 ]];
                 float shapeIn      [[ name: "Shape",         min: 0,     max: 5,      init: 0,    text: "Triangle|Square|Ramp Up|Ramp Down|Sine|Sample & Hold"]];
+)soul_code"
+R"soul_code(
+
                 float polarityIn   [[ name: "Polarity",      min: 0,     max: 1,      init: 0,    text: "Unipolar|Bipolar"]];
                 float rateModeIn   [[ name: "Rate Mode",     min: 0,     max: 1,      init: 0,    text: "Hz|Tempo"]];
                 float syncIn       [[ name: "Timeline Sync", min: 0,     max: 1,      init: 0,    text: "Off|On"]];
@@ -1442,34 +3017,11 @@ R"soul_code(
 
             event rateHzIn (float v)
             {
-                if (!qnMode)
-)soul_code"
-R"soul_code(
-
+                if (! qnMode)
                     phaseIncrement = PhaseType (v * processor.period);
             }
 
-            event rateTempoIn (float v)
-            {
-                let div = int(floor(v));
-
-                if      (div == Divs::k64n)  qnScalar = DivScalars::k64n;
-                else if (div == Divs::k32n)  qnScalar = DivScalars::k32n;
-                else if (div == Divs::k16nt) qnScalar = DivScalars::k16nt;
-                else if (div == Divs::k16n)  qnScalar = DivScalars::k16n;
-                else if (div == Divs::k16nd) qnScalar = DivScalars::k16nd;
-                else if (div == Divs::k8nt)  qnScalar = DivScalars::k8nt;
-                else if (div == Divs::k8n )  qnScalar = DivScalars::k8n;
-                else if (div == Divs::k8nd)  qnScalar = DivScalars::k8nd;
-                else if (div == Divs::k4n )  qnScalar = DivScalars::k4n;
-                else if (div == Divs::k4nd)  qnScalar = DivScalars::k4nd;
-                else if (div == Divs::k2n )  qnScalar = DivScalars::k2n;
-                else if (div == Divs::k1bar) qnScalar = DivScalars::k1bar;
-                else if (div == Divs::k2bar) qnScalar = DivScalars::k2bar;
-                else if (div == Divs::k4bar) qnScalar = DivScalars::k4bar;
-                else if (div == Divs::k8bar) qnScalar = DivScalars::k8bar;
-            }
-
+            event rateTempoIn (float v)   { qnScalar = v; }
             event depthIn (float v)       { depth.setTarget (v * 0.01f, smoothingSamples); }
             event shapeIn (float v)       { shape = int (floor (v)); }
             event polarityIn (float v)    { polarity = (v < 0.5f) ? Polarity::unipolar : Polarity::bipolar; }
@@ -1477,15 +3029,12 @@ R"soul_code(
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
-            var phaseIncrement = float32 (initialFreq * processor.period);
+            var phaseIncrement = float32 (initialFrequency * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
             smoother::State depth;
 
             let smoothingSamples = int (processor.frequency * 0.02);
-)soul_code"
-R"soul_code(
-
             bool transportRunning = false;
             bool qnMode = false;
             bool timelineSync = false;
@@ -1494,13 +3043,16 @@ R"soul_code(
             float32 qnPhaseIncrement = (120.0f / 60.0f) * (1.0f / 44100.0f); // Default = 1qn @ 120bpm / 44.1 sr
 
             PhaseType prevPhase = 1.0f;
+)soul_code"
+R"soul_code(
+
             soul::random::RandomNumberState rng;
             SampleType noiseSample;
 
             SampleType getNoiseSample()
             {
                 if (phase < prevPhase)
-                    noiseSample = SampleType (rng.getNextBipolar());
+                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar() : rng.getNextUnipolar());
 
                 prevPhase = phase;
                 return noiseSample;
@@ -1510,32 +3062,29 @@ R"soul_code(
             {
                 if (polarity == Polarity::bipolar)
                 {
-                    if (shape == Shape::triangle)  return shapers::triangle (phase);
-                    if (shape == Shape::square)    return shapers::square (phase);
-                    if (shape == Shape::rampUp)    return shapers::rampUp (phase);
-                    if (shape == Shape::rampDown)  return shapers::rampDown (phase);
-                    if (shape == Shape::sine)      return shapers::sine (phase);
-                    if (shape == Shape::SAH)       return getNoiseSample();
+                    if (shape == Shape::triangle)      return shapers::triangle (phase);
+                    if (shape == Shape::square)        return shapers::square (phase);
+                    if (shape == Shape::rampUp)        return shapers::rampUp (phase);
+                    if (shape == Shape::rampDown)      return shapers::rampDown (phase);
+                    if (shape == Shape::sine)          return shapers::sine (phase);
+                    if (shape == Shape::sampleAndHold) return getNoiseSample();
                 }
                 else
                 {
-                    if (shape == Shape::triangle)  return shapers::triangleUnipolar (phase);
-                    if (shape == Shape::square)    return shapers::squareUnipolar (phase);
-                    if (shape == Shape::rampUp)    return shapers::rampUpUnipolar (phase);
-                    if (shape == Shape::rampDown)  return shapers::rampDownUnipolar (phase);
-                    if (shape == Shape::sine)      return shapers::sineUnipolar (phase);
-                    if (shape == Shape::SAH)       return getNoiseSample();
+                    if (shape == Shape::triangle)      return shapers::triangleUnipolar (phase);
+                    if (shape == Shape::square)        return shapers::squareUnipolar (phase);
+                    if (shape == Shape::rampUp)        return shapers::rampUpUnipolar (phase);
+                    if (shape == Shape::rampDown)      return shapers::rampDownUnipolar (phase);
+                    if (shape == Shape::sine)          return shapers::sineUnipolar (phase);
+                    if (shape == Shape::sampleAndHold) return getNoiseSample();
                 }
 
-                return 0.0f;
+                return SampleType();
             }
 
             void init()
             {
                 depth.reset (initialDepth * 0.01f);
-)soul_code"
-R"soul_code(
-
             }
 
             void run()
@@ -1547,6 +3096,9 @@ R"soul_code(
                     out << getNextSample() * depth.tick();
 
                     if (qnMode)
+)soul_code"
+R"soul_code(
+
                     {
                         if (timelineSync && transportRunning)
                         {

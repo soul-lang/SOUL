@@ -1,0 +1,46 @@
+## function
+
+bool near (float64 f1, float64 f2)
+{
+    return abs (f1 - f2) < 0.00000001;
+}
+
+bool check1 (const float64[12]& coefs, float64 c1, float64 c2, float64 c3, float64 c4, float64 c5, float64 c6)
+{
+    return  near (coefs[0], c1) &&
+            near (coefs[2], c2) &&
+            near (coefs[4], c3) &&
+            near (coefs[6], c4) &&
+            near (coefs[8], c5) &&
+            near (coefs[10], c6);
+}
+
+bool check2 (const float64[12]& coefs, float64 c1, float64 c2, float64 c3, float64 c4, float64 c5, float64 c6)
+{
+    return  near (coefs[1], c1) &&
+            near (coefs[3], c2) &&
+            near (coefs[5], c3) &&
+            near (coefs[7], c4) &&
+            near (coefs[9], c5) &&
+            near (coefs[11], c6);
+}
+
+bool test_11025()
+{
+    let transition = 2 * 20.0 / 11025.0;
+
+    let c = soul::filters::analytic (float64)::polyphase_iir_design (12)::compute (transition);
+
+    return check1 (c.coefs, 0.05300596123071753957, 0.36782134340288685781, 0.68077555669154810047, 0.86120132426594742103, 0.94496127698513132653, 0.98276350444409132923) &&
+           check2 (c.coefs, 0.19122135220724853499, 0.53911002190709766957, 0.78676642779662142591, 0.91152890470922764976, 0.96727404497147118079, 0.99462141640869106141);
+}
+
+bool test_44100()
+{
+    let transition = 2 * 20.0 / 44100.0;
+
+    let c = soul::filters::analytic (float64)::polyphase_iir_design (12)::compute (transition);
+
+    return check1 (c.coefs, 0.07953597068282830529, 0.49166607647985011154, 0.80207540068172422654, 0.93332158760939576414, 0.97892197623921384242, 0.99441088105986041867) &&
+           check2 (c.coefs, 0.27299246845856844912, 0.67385471864342094683, 0.88392180393340147315, 0.96223265392866863532, 0.98859401404889180043, 0.99832609558682605666);
+}
