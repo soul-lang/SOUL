@@ -71,9 +71,24 @@ struct CodeLocation   final
     bool isEmpty() const;
     std::string getFilename() const;
     LineAndColumn getLineAndColumn() const;
+
+    /** Returns the start of the current line. */
+    CodeLocation getStartOfLine() const;
+    /** Returns the end of the current line (not including any end-of-line characters). */
+    CodeLocation getEndOfLine() const;
+
+    /** Returns the start of the next line, or a null location if this is the last one. */
+    CodeLocation getStartOfNextLine() const;
+    /** Returns the start of the previous line, or a null location if this is the first one. */
+    CodeLocation getStartOfPreviousLine() const;
+
+    /** Returns the content of the current line (not including any end-of-line characters). */
     std::string getSourceLine() const;
 
+    /** The original text into which this is a pointer. */
     SourceCodeText::Ptr sourceCode;
+
+    /** The raw pointer to the text. */
     UTF8Reader location;
 };
 

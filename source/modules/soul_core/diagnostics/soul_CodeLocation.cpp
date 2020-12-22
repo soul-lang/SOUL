@@ -100,34 +100,82 @@ CodeLocation::LineAndColumn CodeLocation::getLineAndColumn() const
     return lc;
 }
 
-std::string CodeLocation::getSourceLine() const
+CodeLocation CodeLocation::getStartOfLine() const
 {
     if (location.getAddress() == nullptr)
         return {};
 
-    auto start = location;
-    auto end = location;
+    auto l = *this;
+    auto start = sourceCode->utf8;
 
-    while (! end.isEmpty())
+    while (l.location > start)
     {
-        auto c = end.getAndAdvance();
-
-        if (c == '\r' || c == '\n')
-            break;
-    }
-
-    while (start > sourceCode->utf8)
-    {
-        auto prev = start;
+        auto prev = l.location;
         auto c = *--prev;
 
         if (c == '\r' || c == '\n')
             break;
 
-        start = prev;
+        l.location = prev;
     }
 
-    return { start.getAddress(), end.getAddress() };
+    return l;
+}
+
+CodeLocation CodeLocation::getEndOfLine() const
+{
+    if (location.getAddress() == nullptr)
+        return {};
+
+    auto l = *this;
+
+    while (! l.location.isEmpty())
+    {
+        auto c = l.location.getAndAdvance();
+
+        if (c == '\r' || c == '\n')
+            break;
+    }
+
+    return l;
+}
+
+CodeLocation CodeLocation::getStartOfNextLine() const
+{
+    for (auto l = *this;;)
+    {
+        if (l.location.isEmpty())
+            return {};
+
+        if (l.location.getAndAdvance() == '\n')
+            return l;
+    }
+}
+
+CodeLocation CodeLocation::getStartOfPreviousLine() const
+{
+    auto l = getStartOfLine();
+
+    if (l.location.getAddress() == nullptr)
+        return {};
+
+    if (l.location <= sourceCode->utf8)
+        return {};
+
+    --(l.location);
+    return l.getStartOfLine();
+}
+
+std::string CodeLocation::getSourceLine() const
+{
+    if (location.getAddress() == nullptr)
+        return {};
+
+    auto s = getStartOfLine();
+    auto e = getEndOfLine();
+
+    return { s.location.getAddress(),
+             e.location.getAddress() };
 }
 
 void CodeLocation::emitMessage (CompileMessage message) const
