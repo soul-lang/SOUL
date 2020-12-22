@@ -25,7 +25,7 @@
 namespace soul
 {
 
-    Compiler::Compiler (bool i) : includeStandardLibrary (i)
+Compiler::Compiler (bool i) : includeStandardLibrary (i)
 {
     reset();
 }
@@ -34,8 +34,7 @@ void Compiler::reset()
 {
     topLevelNamespace.reset();
     allocator.clear();
-    auto rootNamespaceName = allocator.get (Program::getRootNamespaceName());
-    topLevelNamespace = allocator.allocate<AST::Namespace> (AST::Context(), rootNamespaceName);
+    topLevelNamespace = AST::createRootNamespace (allocator);
 
     if (includeStandardLibrary)
         addDefaultBuiltInLibrary();

@@ -82,7 +82,8 @@ struct StructuralParser   : public Tokeniser<Keyword::Matcher,
                                              StandardOperatorMatcher,
                                              StandardIdentifierMatcher>
 {
-    static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator, CodeLocation code,
+    static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator,
+                                                                             CodeLocation code,
                                                                              AST::Namespace& parentNamespace)
     {
         StructuralParser p (allocator, code, parentNamespace);

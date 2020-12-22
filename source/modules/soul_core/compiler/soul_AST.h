@@ -594,7 +594,6 @@ struct AST
             return *processorNamespace;
         }
 
-
         virtual ArrayView<pool_ref<ASTObject>>                 getSpecialisationParameters() const   { return specialisationParams; }
         virtual ArrayView<pool_ref<EndpointDeclaration>>       getEndpoints() const                  { return {}; }
         ArrayView<pool_ref<UsingDeclaration>>                  getUsingDeclarations() const override { return usings; }
@@ -669,11 +668,8 @@ struct AST
                     }
                 }
 
-                if (search.findNamespaces)
-                    search.addFirstWithName (getNamespaceAliases(), targetName);
-
-                if (search.findProcessors)
-                    search.addFirstWithName (getProcessorAliases(), targetName);
+                if (search.findNamespaces)  search.addFirstWithName (getNamespaceAliases(), targetName);
+                if (search.findProcessors)  search.addFirstWithName (getProcessorAliases(), targetName);
             }
         }
 
@@ -692,9 +688,10 @@ struct AST
         std::vector<pool_ref<StructDeclaration>> structures;
         std::vector<pool_ref<StaticAssertion>> staticAssertions;
 
-        std::function<ModuleBase&(AST::Allocator&, AST::Namespace& parentNamespace, const std::string& newName)> createClone;
+        std::function<ModuleBase&(Allocator&, Namespace& parentNamespace, const std::string& newName)> createClone;
 
         pool_ptr<ModuleBase> originalModule;
+
     private:
         size_t countEndpoints (bool countInputs) const
         {
@@ -827,7 +824,7 @@ struct AST
         std::vector<pool_ref<VariableDeclaration>> constants;
         std::vector<pool_ref<ProcessorAliasDeclaration>> processorAliases;
 
-        void addProcessorInstance (AST::ProcessorInstance& newInstance)
+        void addProcessorInstance (ProcessorInstance& newInstance)
         {
             for (auto& i : processorInstances)
                 if (*i->instanceName == *newInstance.instanceName)
@@ -902,12 +899,18 @@ struct AST
 
         struct NamespaceInstance
         {
-            std::string              key;
-            pool_ptr<AST::Namespace> instance;
+            std::string key;
+            pool_ptr<Namespace> instance;
         };
 
         std::vector<NamespaceInstance> namespaceInstances;
     };
+
+    static Namespace& createRootNamespace (Allocator& a)
+    {
+        auto rootNamespaceName = a.get (Program::getRootNamespaceName());
+        return a.allocate<Namespace> (Context(), rootNamespaceName);
+    }
 
     //==============================================================================
     struct Statement  : public ASTObject
@@ -1183,9 +1186,9 @@ struct AST
             e.context.throwError (Errors::expectedProcessorOrEndpoint());
         }
 
-        static std::string getDefaultEndpointName (const AST::Context& errorContext, AST::ProcessorBase& p, bool wantInput)
+        static std::string getDefaultEndpointName (const Context& errorContext, ProcessorBase& p, bool wantInput)
         {
-            pool_ptr<AST::EndpointDeclaration> found;
+            pool_ptr<EndpointDeclaration> found;
 
             for (auto& e : p.getEndpoints())
             {
@@ -2253,7 +2256,7 @@ struct AST
             if (auto csl = cast<CommaSeparatedList> (expressionOrList))
                 return csl->items;
 
-            decltype(AST::CommaSeparatedList::items) list;
+            decltype(CommaSeparatedList::items) list;
 
             if (expressionOrList != nullptr)
                 list.push_back (*expressionOrList);
