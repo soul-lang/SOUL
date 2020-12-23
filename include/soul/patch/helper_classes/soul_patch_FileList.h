@@ -34,7 +34,7 @@ struct FileList
         {
             manifestName = name.toString<std::string>();
 
-            if (endsWith (manifestName, getManifestSuffix()))
+            if (choc::text::endsWith (manifestName, getManifestSuffix()))
             {
                 manifestFile = manifestFileToOpen;
                 root = VirtualFile::Ptr (manifestFile->getParent());
@@ -102,7 +102,7 @@ struct FileList
 
     void findManifestFile()
     {
-        if (manifestFile == nullptr || ! endsWith (manifestName, getManifestSuffix()))
+        if (manifestFile == nullptr || ! choc::text::endsWith (manifestName, getManifestSuffix()))
             throwPatchLoadError ("Expected a .soulpatch file");
 
         manifest = { manifestFile, manifestName, 0 };

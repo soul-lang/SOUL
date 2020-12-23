@@ -165,7 +165,7 @@ struct TokenisedPathString
     {
         nameToRemove += "::";
 
-        if (startsWith (path, nameToRemove))
+        if (choc::text::startsWith (path, nameToRemove))
             return path.substr (nameToRemove.length());
 
         return path;

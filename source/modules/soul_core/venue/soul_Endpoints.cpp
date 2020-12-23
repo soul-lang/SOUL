@@ -32,7 +32,7 @@ bool isMIDIMessageStruct (const choc::value::Type& type)
     if (! type.isObject())
         return false;
 
-    return endsWith (type.getObjectClassName(), "Message")
+    return choc::text::endsWith (type.getObjectClassName(), "Message")
             && type.getNumElements() == 1
             && type.getObjectMember (0).name == "midiBytes"
             && type.getObjectMember (0).type.isInt32();

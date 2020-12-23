@@ -104,6 +104,17 @@ std::vector<std::string> splitAtWhitespace (std::string_view text, bool keepDeli
 /** Splits a string at newline characters, returning an array of strings. */
 std::vector<std::string> splitIntoLines (std::string_view text, bool includeNewLinesInResult);
 
+/** Returns true if this text contains the given sub-string. */
+bool contains (std::string_view text, std::string_view possibleSubstring);
+/** Returns true if this text starts with the given character. */
+bool startsWith (std::string_view text, char possibleStart);
+/** Returns true if this text starts with the given sub-string. */
+bool startsWith (std::string_view text, std::string_view possibleStart);
+/** Returns true if this text ends with the given sub-string. */
+bool endsWith (std::string_view text, char possibleEnd);
+/** Returns true if this text ends with the given sub-string. */
+bool endsWith (std::string_view text, std::string_view possibleEnd);
+
 /** Calculates the Levenstein distance between two strings. */
 template <typename StringType>
 size_t getLevenshteinDistance (const StringType& string1,
@@ -351,6 +362,21 @@ inline std::vector<std::string> splitIntoLines (std::string_view text, bool incl
     return splitString (text, '\n', includeNewLinesInResult);
 }
 
+inline bool contains   (std::string_view t, std::string_view s)   { return t.find (s) != std::string::npos; }
+inline bool startsWith (std::string_view t, char s)               { return ! t.empty() && t.front() == s; }
+inline bool endsWith   (std::string_view t, char s)               { return ! t.empty() && t.back()  == s; }
+
+inline bool startsWith (std::string_view t, std::string_view s)
+{
+    auto len = s.length();
+    return t.length() >= len && t.substr (0, len) == s;
+}
+
+inline bool endsWith (std::string_view t, std::string_view s)
+{
+    auto len1 = t.length(), len2 = s.length();
+    return len1 >= len2 && t.substr (len1 - len2) == s;
+}
 
 template <typename StringType>
 size_t getLevenshteinDistance (const StringType& string1, const StringType& string2)
@@ -397,7 +423,6 @@ size_t getLevenshteinDistance (const StringType& string1, const StringType& stri
     std::unique_ptr<size_t[]> costs (new size_t[sizeNeeded]);
     return calculate (costs.get(), sizeNeeded, string1, string2);
 }
-
 
 } // namespace choc::text
 

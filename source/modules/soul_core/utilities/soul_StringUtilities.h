@@ -31,17 +31,6 @@ bool containsChar (const char*, char) noexcept;
 
 std::string trimCharacterAtStart (const std::string& s, char charToRemove);
 
-template <typename StringType>
-static inline bool contains (const std::string& text, const StringType& substring)
-{
-    return text.find (substring) != std::string::npos;
-}
-
-bool startsWith (const std::string& text, char possibleStart);
-bool startsWith (const std::string& text, const char* possibleStart);
-bool startsWith (const std::string& text, const std::string& possibleStart);
-bool endsWith (std::string_view text, std::string_view possibleEnd);
-
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
 std::string removeCharacter (std::string s, char charToRemove);
 

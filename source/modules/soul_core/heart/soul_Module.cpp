@@ -173,7 +173,7 @@ bool Module::isProcessor() const        { return moduleType == ModuleType::proce
 bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
 bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
 
-bool Module::isSystemModule() const     { return startsWith (originalFullName, "soul::"); }
+bool Module::isSystemModule() const     { return choc::text::startsWith (originalFullName, "soul::"); }
 
 pool_ptr<heart::InputDeclaration> Module::findInput (std::string_view name) const
 {

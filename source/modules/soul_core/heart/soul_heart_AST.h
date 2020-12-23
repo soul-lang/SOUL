@@ -885,7 +885,7 @@ struct heart
         {
             auto nm = name.toString();
 
-            if (startsWith (nm, "_"))
+            if (choc::text::startsWith (nm, "_"))
             {
                 auto i = nm.find (getGenericSpecialisationNameTag());
 

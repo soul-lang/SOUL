@@ -67,36 +67,6 @@ std::string trimCharacterAtStart (const std::string& s, char charToRemove)
     return {};
 }
 
-bool startsWith (const std::string& text, char possibleStart)
-{
-    return ! text.empty() && text[0] == possibleStart;
-}
-
-bool startsWith (const std::string& text, const char* possibleStart)
-{
-    SOUL_ASSERT (possibleStart != nullptr);
-
-    for (size_t i = 0; possibleStart[i] != 0; ++i)
-        if  (text[i] != possibleStart[i])
-            return false;
-
-    return true;
-}
-
-bool startsWith (const std::string& text, const std::string& possibleStart)
-{
-    return text.length() >= possibleStart.length()
-            && startsWith (text, possibleStart.c_str());
-}
-
-bool endsWith (std::string_view text, std::string_view possibleEnd)
-{
-    auto textLen = text.length();
-    auto endLen = possibleEnd.length();
-
-    return textLen >= endLen && text.substr (textLen - endLen) == possibleEnd;
-}
-
 std::string retainCharacters (std::string s, const std::string& charactersToRetain)
 {
     s.erase (std::remove_if (s.begin(), s.end(), [&] (char c) { return ! contains (charactersToRetain, c); }), s.end());
