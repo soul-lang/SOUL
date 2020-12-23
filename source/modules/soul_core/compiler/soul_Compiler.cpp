@@ -34,16 +34,20 @@ void Compiler::reset()
 {
     topLevelNamespace.reset();
     allocator.clear();
-    topLevelNamespace = AST::createRootNamespace (allocator);
-
-    if (includeStandardLibrary)
-        addDefaultBuiltInLibrary();
 }
 
 bool Compiler::addCode (CompileMessageList& messageList, CodeLocation code)
 {
     if (messageList.hasErrors())
         return false;
+
+    if (topLevelNamespace == nullptr)
+    {
+        topLevelNamespace = AST::createRootNamespace (allocator);
+
+        if (includeStandardLibrary)
+            addDefaultBuiltInLibrary();
+    }
 
     try
     {
