@@ -67,6 +67,12 @@ private:
         if (module.isFullyResolved)
             return runStats;
 
+        if (module.isTemplateModule())
+        {
+            module.isFullyResolved = true;
+            return runStats;
+        }
+
         for (;;)
         {
             runStats.clear();
@@ -737,8 +743,8 @@ private:
 
                     if (auto n = cast<AST::Namespace> (item))
                     {
-                        if (! n->getSpecialisationParameters().empty())
-                        return n;
+                        if (n->isTemplateModule())
+                            return n;
 
                         return {};
                     }
@@ -2064,9 +2070,9 @@ private:
         ProcessorInstanceResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
 
-        AST::Graph& visit (AST::Graph& g) override          { return g.getSpecialisationParameters().empty() ? super::visit (g) : g; }
-        AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
-        AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
+        AST::Graph& visit (AST::Graph& g) override          { return g.isTemplateModule() ? g : super::visit (g); }
+        AST::Processor& visit (AST::Processor& p) override  { return p.isTemplateModule() ? p : super::visit (p); }
+        AST::Namespace& visit (AST::Namespace& n) override  { return n.isTemplateModule() ? n : super::visit (n); }
 
         AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
         {
@@ -2150,9 +2156,9 @@ private:
         NamespaceAliasResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
 
-        AST::Graph& visit (AST::Graph& g) override          { return g.getSpecialisationParameters().empty() ? super::visit (g) : g; }
-        AST::Processor& visit (AST::Processor& p) override  { return p.getSpecialisationParameters().empty() ? super::visit (p) : p; }
-        AST::Namespace& visit (AST::Namespace& n) override  { return n.getSpecialisationParameters().empty() ? super::visit (n) : n; }
+        AST::Graph& visit (AST::Graph& g) override          { return g.isTemplateModule() ? g : super::visit (g); }
+        AST::Processor& visit (AST::Processor& p) override  { return p.isTemplateModule() ? p : super::visit (p); }
+        AST::Namespace& visit (AST::Namespace& n) override  { return n.isTemplateModule() ? n : super::visit (n); }
 
         AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& instance) override
         {
