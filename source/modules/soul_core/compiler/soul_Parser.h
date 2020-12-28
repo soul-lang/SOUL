@@ -179,21 +179,22 @@ private:
     void parseTopLevelDecl (AST::Namespace& parentNamespace)
     {
         parseImports (parentNamespace);
+        auto keywordLocation = location;
 
-        if (matchIf (Keyword::processor))      { parseProcessorDecl (parentNamespace); return; }
-        if (matchIf (Keyword::graph))          { parseGraphDecl     (parentNamespace); return; }
-        if (matchIf (Keyword::namespace_))     { parseNamespaceDecl (parentNamespace); return; }
+        if (matchIf (Keyword::processor))      { parseProcessorDecl (keywordLocation, parentNamespace); return; }
+        if (matchIf (Keyword::graph))          { parseGraphDecl     (keywordLocation, parentNamespace); return; }
+        if (matchIf (Keyword::namespace_))     { parseNamespaceDecl (keywordLocation, parentNamespace); return; }
         if (matches (Keyword::import))         throwError (Errors::importsMustBeAtStart());
 
         throwError (Errors::expectedTopLevelDecl());
     }
 
-    pool_ptr<AST::Processor> parseProcessorDecl (AST::Namespace&  ns)   { return parseTopLevelItem<AST::Processor> (ns); }
-    pool_ptr<AST::Graph>     parseGraphDecl     (AST::Namespace&  ns)   { return parseTopLevelItem<AST::Graph>     (ns); }
-    pool_ptr<AST::Namespace> parseNamespaceDecl (AST::ModuleBase& ns)   { return parseTopLevelItem<AST::Namespace> (ns); }
+    pool_ptr<AST::Processor> parseProcessorDecl (CodeLocation keywordLocation, AST::Namespace&  ns)   { return parseTopLevelItem<AST::Processor> (keywordLocation, ns); }
+    pool_ptr<AST::Graph>     parseGraphDecl     (CodeLocation keywordLocation, AST::Namespace&  ns)   { return parseTopLevelItem<AST::Graph>     (keywordLocation, ns); }
+    pool_ptr<AST::Namespace> parseNamespaceDecl (CodeLocation keywordLocation, AST::ModuleBase& ns)   { return parseTopLevelItem<AST::Namespace> (keywordLocation, ns); }
 
     template <typename ModuleType>
-    pool_ptr<ModuleType> parseTopLevelItem (AST::ModuleBase& parentModule)
+    pool_ptr<ModuleType> parseTopLevelItem (CodeLocation processorKeywordLocation, AST::ModuleBase& parentModule)
     {
         auto context = getContext();
         auto name = parseIdentifierWithMaxLength (AST::maxIdentifierLength);
@@ -213,7 +214,7 @@ private:
         if (parentNamespace == nullptr)
             context.throwError (Errors::namespaceMustBeInsideNamespace());
 
-        auto& newModule = allocate<ModuleType> (context, name);
+        auto& newModule = allocate<ModuleType> (processorKeywordLocation, context, name);
         parentNamespace->subModules.push_back (newModule);
 
         auto newNamespace = cast<AST::Namespace> (newModule);
@@ -222,9 +223,14 @@ private:
         module = newModule;
 
         if (newNamespace != nullptr && matchIf (Operator::doubleColon))
-            parseTopLevelItem<ModuleType> (*newNamespace);
+        {
+            newNamespace->processorKeywordLocation = {};
+            parseTopLevelItem<ModuleType> (processorKeywordLocation, *newNamespace);
+        }
         else
+        {
             parseTopLevelDeclContent();
+        }
 
         module = oldModule;
 
@@ -245,9 +251,9 @@ private:
 
         pool_ptr<AST::ModuleBase> clonedModule;
 
-        if (itemToClone.isProcessor())  clonedModule = p.parseProcessorDecl (parentNamespace);
-        if (itemToClone.isGraph())      clonedModule = p.parseGraphDecl (parentNamespace);
-        if (itemToClone.isNamespace())  clonedModule = p.parseNamespaceDecl (parentNamespace);
+        if (itemToClone.isProcessor())  clonedModule = p.parseProcessorDecl (itemToClone.processorKeywordLocation, parentNamespace);
+        if (itemToClone.isGraph())      clonedModule = p.parseGraphDecl     (itemToClone.processorKeywordLocation, parentNamespace);
+        if (itemToClone.isNamespace())  clonedModule = p.parseNamespaceDecl (itemToClone.processorKeywordLocation, parentNamespace);
 
         SOUL_ASSERT (clonedModule != nullptr);
 
@@ -329,18 +335,24 @@ private:
             {
                 if (matchIf (Keyword::struct_))         { parseStructDeclaration();  continue; }
 
-                if (matchIf (Keyword::graph))
+                if (matches (Keyword::graph))
                 {
                     if (ns == nullptr)
                         throwError (Errors::graphMustBeInsideNamespace());
 
-                    parseGraphDecl (*ns);
+                    auto keywordLocation = location;
+                    skip();
+
+                    parseGraphDecl (keywordLocation, *ns);
                     continue;
                 }
             }
 
-            if (matchIf (Keyword::processor))
+            if (matches (Keyword::processor))
             {
+                auto keywordLocation = location;
+                skip();
+
                 if (matches (Operator::dot))
                 {
                     parseProcessorLatencyDeclaration();
@@ -350,7 +362,7 @@ private:
                 if (ns == nullptr)
                     throwError (Errors::processorMustBeInsideNamespace());
 
-                parseProcessorDecl (*ns);
+                parseProcessorDecl (keywordLocation, *ns);
                 continue;
             }
 
@@ -358,7 +370,14 @@ private:
             if (matchIf (Keyword::let))             { parseTopLevelLetOrVar (true);        continue; }
             if (matchIf (Keyword::var))             { parseTopLevelLetOrVar (false);       continue; }
             if (matchIf (Keyword::event))           { parseEventFunction();                continue; }
-            if (matchIf (Keyword::namespace_))      { parseNamespaceDecl (*module);        continue; }
+
+            if (matches (Keyword::namespace_))
+            {
+                auto keywordLocation = location;
+                skip();
+                parseNamespaceDecl (keywordLocation, *module);
+                continue;
+            }
 
             if (matchesAny (Keyword::input, Keyword::output))
                 throwError (ns != nullptr ? Errors::namespaceCannotContainEndpoints()

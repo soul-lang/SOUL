@@ -576,8 +576,8 @@ struct AST
     struct ModuleBase   : public ASTObject,
                           public Scope
     {
-        ModuleBase (ObjectType ot, const Context& c, Identifier moduleName)
-            : ASTObject (ot, c), name (moduleName) {}
+        ModuleBase (ObjectType ot, CodeLocation processorKeyword, const Context& processorName, Identifier moduleName)
+            : ASTObject (ot, processorName), processorKeywordLocation (std::move (processorKeyword)), name (moduleName) {}
 
         Scope* getParentScope() const override      { return ASTObject::getParentScope(); }
         ModuleBase* getAsModule() override          { return this; }
@@ -674,6 +674,7 @@ struct AST
         }
 
         //==============================================================================
+        CodeLocation processorKeywordLocation;
         Identifier name;
         bool isFullyResolved = false;
 
@@ -708,7 +709,8 @@ struct AST
     //==============================================================================
     struct ProcessorBase  : public ModuleBase
     {
-        ProcessorBase (ObjectType ot, const Context& c, Identifier moduleName) : ModuleBase (ot, c, moduleName)
+        ProcessorBase (ObjectType ot, CodeLocation processorKeyword, const Context& processorName, Identifier moduleName)
+            : ModuleBase (ot, processorKeyword, processorName, moduleName)
         {
             SOUL_ASSERT (getParentScope() != nullptr);
         }
@@ -748,7 +750,8 @@ struct AST
     //==============================================================================
     struct Processor   : public ProcessorBase
     {
-        Processor (const Context& c, Identifier moduleName) : ProcessorBase (ObjectType::Processor, c, moduleName) {}
+        Processor (CodeLocation processorKeyword, const Context& processorName, Identifier moduleName)
+            : ProcessorBase (ObjectType::Processor, processorKeyword, processorName, moduleName) {}
 
         pool_ptr<Function> getRunFunction() const
         {
@@ -793,7 +796,8 @@ struct AST
     //==============================================================================
     struct Graph   : public ProcessorBase
     {
-        Graph (const Context& c, Identifier moduleName) : ProcessorBase (ObjectType::Graph, c, moduleName) {}
+        Graph (CodeLocation processorKeyword, const Context& processorName, Identifier moduleName)
+            : ProcessorBase (ObjectType::Graph, processorKeyword, processorName, moduleName) {}
 
         void addSpecialisationParameter (VariableDeclaration& v) override
         {
@@ -858,7 +862,8 @@ struct AST
     //==============================================================================
     struct Namespace  : public ModuleBase
     {
-        Namespace (const Context& c, Identifier moduleName) : ModuleBase (ObjectType::Namespace, c, moduleName) {}
+        Namespace (CodeLocation processorKeyword, const Context& processorName, Identifier moduleName)
+            : ModuleBase (ObjectType::Namespace, processorKeyword, processorName, moduleName) {}
 
         void addSpecialisationParameter (VariableDeclaration& v) override
         {
@@ -909,7 +914,7 @@ struct AST
     static Namespace& createRootNamespace (Allocator& a)
     {
         auto rootNamespaceName = a.get (Program::getRootNamespaceName());
-        return a.allocate<Namespace> (Context(), rootNamespaceName);
+        return a.allocate<Namespace> (CodeLocation(), Context(), rootNamespaceName);
     }
 
     //==============================================================================
