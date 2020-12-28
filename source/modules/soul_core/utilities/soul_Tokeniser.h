@@ -96,13 +96,14 @@ struct Tokeniser
     }
 
     UTF8Reader getCurrentTokeniserPosition() const noexcept     { return location.location; }
+
     void resetPosition (UTF8Reader newPos)
     {
-        if (input == newPos)
-            return;
-
-        input = newPos;
-        skip();
+        if (input != newPos)
+        {
+            input = newPos;
+            skip();
+        }
     }
 
     bool matches (TokenType t) const noexcept                   { return currentType == t; }

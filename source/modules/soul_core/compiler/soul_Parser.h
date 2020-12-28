@@ -75,12 +75,15 @@ struct StandardIdentifierMatcher
 };
 
 //==============================================================================
+using SOULTokeniser = Tokeniser<Keyword::Matcher,
+                                StandardOperatorMatcher,
+                                StandardIdentifierMatcher>;
+
+//==============================================================================
 /** Creates a rough-and-ready AST from the tokenised source code, ready for
     refinement in later stages of the compilation process
 */
-struct StructuralParser   : public Tokeniser<Keyword::Matcher,
-                                             StandardOperatorMatcher,
-                                             StandardIdentifierMatcher>
+struct StructuralParser   : public SOULTokeniser
 {
     static std::vector<pool_ref<AST::ModuleBase>> parseTopLevelDeclarations (AST::Allocator& allocator,
                                                                              CodeLocation code,
