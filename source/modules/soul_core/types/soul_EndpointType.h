@@ -139,4 +139,52 @@ struct EndpointDetails
     Annotation annotation;
 };
 
+inline EndpointDetails endpointToEndpointDetails (const Endpoint& e)
+{
+    EndpointDetails d;
+    d.endpointID = EndpointID::create (e.ID);
+    d.name = e.name;
+    d.endpointType = e.type;
+    d.dataTypes = e.valueTypes;
+    d.annotation = Annotation::fromExternalValue (e.annotation);
+    return d;
+}
+
+inline std::vector<EndpointDetails> endpointToEndpointDetails (ArrayView<Endpoint> endpoints)
+{
+    std::vector<EndpointDetails> results;
+    results.reserve (endpoints.size());
+
+    for (auto& e : endpoints)
+        results.push_back (endpointToEndpointDetails (e));
+
+    return results;
+}
+
+inline Endpoint endpointDetailsToEndpoint (const EndpointDetails& d)
+{
+    Endpoint e;
+    e.ID = d.endpointID.toString();
+    e.name = d.name;
+    e.type = d.endpointType;
+
+    for (auto& t : d.dataTypes)
+        e.valueTypes.push_back (t);
+
+    e.annotation = d.annotation.toExternalValue();
+    return e;
+}
+
+inline std::vector<Endpoint> endpointDetailsToEndpoint (ArrayView<EndpointDetails> endpoints)
+{
+    std::vector<Endpoint> results;
+    results.reserve (endpoints.size());
+
+    for (auto& e : endpoints)
+        results.push_back (endpointDetailsToEndpoint (e));
+
+    return results;
+}
+
+
 } // namespace soul

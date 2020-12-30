@@ -207,6 +207,18 @@ void Annotation::set (const std::string& name, bool value)                { setI
 void Annotation::set (const std::string& name, const char* value)         { set (name, std::string (value)); }
 void Annotation::set (const std::string& name, const std::string& value)  { setInternal (name, Value::createStringLiteral (dictionary.getHandleForString (value))); }
 
+void Annotation::set (const std::string& name, const choc::value::ValueView& value)
+{
+    if (value.isInt32())    return set (std::string (name), value.getInt32());
+    if (value.isInt64())    return set (std::string (name), value.getInt64());
+    if (value.isFloat32())  return set (std::string (name), value.getFloat32());
+    if (value.isFloat64())  return set (std::string (name), value.getFloat64());
+    if (value.isBool())     return set (std::string (name), value.getBool());
+    if (value.isString())   return set (std::string (name), std::string (value.getString()));
+
+    SOUL_ASSERT_FALSE; // other types not currently handled..
+}
+
 void Annotation::remove (const std::string& name)
 {
     SOUL_ASSERT (! name.empty());
@@ -241,6 +253,21 @@ choc::value::Value Annotation::toExternalValue() const
             o.addMember (p.name, p.value.toExternalValue (ConstantTable(), dictionary));
 
     return o;
+}
+
+Annotation Annotation::fromExternalValue (const choc::value::ValueView& v)
+{
+    Annotation a;
+
+    if (v.isObject() && v.getObjectClassName() == "Annotation")
+    {
+        v.visitObjectMembers ([&] (std::string_view name, const choc::value::ValueView& value)
+                              {
+                                  a.set (std::string (name), value);
+                              });
+    }
+
+    return a;
 }
 
 std::string Annotation::toJSON() const    { return annotationToString (dictionary, properties.get(), true); }

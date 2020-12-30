@@ -58,6 +58,7 @@ struct Annotation
     void set (const std::string& name, const char* value);
     void set (const std::string& name, const std::string& value);
     void set (const std::string& name, Value newValue, const StringDictionary&);
+    void set (const std::string& name, const choc::value::ValueView& value);
 
     void remove (const std::string& name);
 
@@ -65,6 +66,7 @@ struct Annotation
     const StringDictionary& getDictionary() const;
 
     choc::value::Value toExternalValue() const;
+    static Annotation fromExternalValue (const choc::value::ValueView&);
 
     std::string toJSON() const;
     std::string toHEART() const;
