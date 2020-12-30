@@ -228,23 +228,28 @@ struct RenderingVenue::Pimpl
             venue.removeActiveSession (*this);
         }
 
-        bool load (const Program& p, CompileTaskFinishedCallback loadFinishedCallback) override
+        bool load (BuildBundle build, CompileTaskFinishedCallback loadFinishedCallback) override
         {
             unload();
 
-            if (p.isEmpty())
+            if (build.sourceFiles.empty())
                 return false;
 
-            taskQueue.addTask ([this, p, callback = std::move (loadFinishedCallback)] (TaskThread::ShouldStopFlag& cancelled)
+            taskQueue.addTask ([this, build = std::move (build),
+                                callback = std::move (loadFinishedCallback)] (TaskThread::ShouldStopFlag& cancelled)
             {
                 CompileMessageList messageList;
-                bool ok = performer->load (messageList, p);
 
-                if (cancelled)
-                    return;
+                if (auto program = Compiler::build (messageList, build))
+                {
+                    bool ok = performer->load (messageList, program);
 
-                if (ok)
-                    setState (SessionState::loaded);
+                    if (cancelled)
+                        return;
+
+                    if (ok)
+                        setState (SessionState::loaded);
+                }
 
                 callback (messageList);
             });

@@ -54,11 +54,11 @@ public:
         */
         struct Status
         {
-            SessionState state;
-            float cpu;
-            uint32_t xruns;
-            double sampleRate;
-            uint32_t blockSize;
+            SessionState state = SessionState::empty;
+            float cpu = 0;
+            uint32_t xruns = 0;
+            double sampleRate = 0;
+            uint32_t blockSize = 0;
         };
 
         /** Returns the venue's current status. */
@@ -72,7 +72,7 @@ public:
             getInputEndpoints() and getOutputEndpoints() methods become available, so you can query
             and connect them to data sources before calling link().
         */
-        virtual bool load (const Program&, CompileTaskFinishedCallback loadFinishedCallback) = 0;
+        virtual bool load (BuildBundle, CompileTaskFinishedCallback loadFinishedCallback) = 0;
 
         /** When a program has been loaded, this returns a list of the input endpoints that
             the program provides.

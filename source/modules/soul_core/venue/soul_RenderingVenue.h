@@ -32,10 +32,6 @@ public:
     RenderingVenue (std::unique_ptr<PerformerFactory>);
     ~RenderingVenue() override;
 
-    using GetFramesToProcess = std::function<uint32_t(Session&, uint32_t maxNumFrames)>;
-    using PreProcess = std::function<void(Session&, uint32_t numFrames)>;
-    using PostProcess = std::function<void(Session&, uint32_t numFrames)>;
-
     /** This method needs to be called by either a thread or an audio callback
         to keep the rendering process running.
         @returns either nullptr if all went well, or an error message.
