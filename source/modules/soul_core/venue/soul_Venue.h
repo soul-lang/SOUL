@@ -116,9 +116,6 @@ public:
                                                           const std::string& endpointName,
                                                           const choc::value::ValueView& eventData)>;
 
-        /** Consumes any pending events that have been sent by the running program. */
-        virtual bool flushOutgoingEvents (const OutgoingEventHandlerFn&) = 0;
-
         /** Returns true if this endpoint is currently active. */
         virtual bool isEndpointActive (const EndpointID&) = 0;
 

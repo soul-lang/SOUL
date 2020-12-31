@@ -308,7 +308,7 @@ struct EventOutputList
             {
                 auto handle = p.getEndpointHandle (endpointID);
                 outputs.push_back (handle);
-                endpointNames[handle.getRawHandle()] = e.name;
+                endpointNames[handle] = e.name;
                 return true;
             }
         }
@@ -340,7 +340,7 @@ struct EventOutputList
     {
         fifo.iterateAllAvailable ([&] (EndpointHandle endpoint, uint64_t time, const choc::value::ValueView& value)
                                   {
-                                      auto name = endpointNames.find (endpoint.getRawHandle());
+                                      auto name = endpointNames.find (endpoint);
                                       SOUL_ASSERT (name != endpointNames.end());
                                       handleEvent (time, name->second, value);
                                   });
@@ -348,7 +348,7 @@ struct EventOutputList
 
     std::vector<EndpointHandle> outputs;
     MultiEndpointFIFO fifo;
-    std::unordered_map<uint32_t, std::string> endpointNames;
+    std::unordered_map<EndpointHandle, std::string> endpointNames;
 };
 
 //==============================================================================
@@ -521,7 +521,7 @@ struct TimelineEventEndpointList
 
     void applyNewTimeSignature (TimeSignature newTimeSig)
     {
-        if (timeSigHandle)
+        if (timeSigHandle.isValid())
         {
             newTimeSigValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newTimeSig.numerator));
             newTimeSigValue.getObjectMemberAt (1).value.set (static_cast<int32_t> (newTimeSig.denominator));
@@ -532,7 +532,7 @@ struct TimelineEventEndpointList
 
     void applyNewTempo (float newBPM)
     {
-        if (tempoHandle)
+        if (tempoHandle.isValid())
         {
             newTempoValue.getObjectMemberAt (0).value.set (newBPM);
             sendTempo = true;
@@ -542,7 +542,7 @@ struct TimelineEventEndpointList
 
     void applyNewTransportState (TransportState newState)
     {
-        if (transportHandle)
+        if (transportHandle.isValid())
         {
             newTransportValue.getObjectMemberAt (0).value.set (static_cast<int32_t> (newState));
             sendTransport = true;
@@ -552,7 +552,7 @@ struct TimelineEventEndpointList
 
     void applyNewTimelinePosition (TimelinePosition newPosition)
     {
-        if (positionHandle)
+        if (positionHandle.isValid())
         {
             newPositionValue.getObjectMemberAt (0).value.set (newPosition.currentFrame);
             newPositionValue.getObjectMemberAt (1).value.set (newPosition.currentQuarterNote);

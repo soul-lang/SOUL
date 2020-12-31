@@ -306,7 +306,6 @@ struct RenderingVenue::Pimpl
         ArrayView<const EndpointDetails> getOutputEndpoints() override      { return performer->getOutputEndpoints(); }
 
         bool connectExternalEndpoint (EndpointID, EndpointID) override      { return false; }
-        bool flushOutgoingEvents (const OutgoingEventHandlerFn&) override   { return false; }
 
         //==============================================================================
         EndpointHandle getEndpointHandle (const EndpointID& e) override     { return performer->getEndpointHandle (e); }

@@ -85,9 +85,10 @@ struct EndpointHandle
         return h;
     }
 
-    uint32_t getRawHandle() const                       { return handle & 0xffffff; }
+    using RawHandleType = uint32_t;
 
-    operator bool() const                               { return handle != 0; }
+    RawHandleType getRawHandle() const                  { return handle & 0xffffff; }
+
     bool isValid() const                                { return handle != 0; }
 
     bool operator== (EndpointHandle other) const        { return other.handle == handle; }
@@ -100,9 +101,7 @@ struct EndpointHandle
     bool isEvent() const                                { return getType() == EndpointType::event; }
 
 private:
-    uint32_t handle = 0;
-
-    template <typename Type> operator Type() const = delete;
+    RawHandleType handle = 0;
 };
 
 //==============================================================================
@@ -188,3 +187,13 @@ inline std::vector<Endpoint> endpointDetailsToEndpoint (ArrayView<EndpointDetail
 
 
 } // namespace soul
+
+namespace std
+{
+    template <>
+    struct hash<soul::EndpointHandle>
+    {
+        size_t operator() (const soul::EndpointHandle& p) const noexcept { return static_cast<size_t> (p.getRawHandle()); }
+    };
+}
+

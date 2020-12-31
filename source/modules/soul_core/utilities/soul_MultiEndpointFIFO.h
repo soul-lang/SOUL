@@ -149,6 +149,18 @@ struct MultiEndpointFIFO
         currentFrame = nextChunkStart;
     }
 
+    template <typename HandleItem>
+    void iterateAllPreparedItemsForHandle (EndpointHandle handle, HandleItem&& handleItem)
+    {
+        for (uint32_t i = 0; i < totalItemsRead; ++i)
+        {
+            auto& item = incomingItems[i];
+
+            if (item.endpoint == handle)
+                handleItem (item.startFrame, static_cast<const choc::value::ValueView&> (item.value));
+        }
+    }
+
     void finishReading()
     {
         for (uint32_t i = 0; i < totalItemsRead; ++i)

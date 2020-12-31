@@ -240,12 +240,6 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             frameOffset += numFrames;
         }
 
-        bool flushOutgoingEvents (const OutgoingEventHandlerFn& handler) override
-        {
-            eventOutputList.deliverPendingEvents (handler);
-            return true;
-        }
-
     private:
         std::unique_ptr<Session> session;
         AudioPlayerVenue& venue;
