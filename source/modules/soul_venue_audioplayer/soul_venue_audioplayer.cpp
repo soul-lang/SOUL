@@ -35,5 +35,5 @@
 #include <soul_core/soul_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 
-#include "audio_player/soul_AudioMIDISystem.h"
+#include "audio_player/soul_AudioMIDISystem.cpp"
 #include "audio_player/soul_AudioPlayer.cpp"

@@ -417,8 +417,8 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
 };
 
 //==============================================================================
-AudioPlayerVenue::AudioPlayerVenue (const Requirements& r, std::unique_ptr<PerformerFactory> f)
-   : pimpl (std::make_unique<Pimpl> (*this, r, std::move (f)))
+AudioPlayerVenue::AudioPlayerVenue (Requirements r, std::unique_ptr<PerformerFactory> f)
+   : pimpl (std::make_unique<Pimpl> (*this, std::move (r), std::move (f)))
 {
 }
 

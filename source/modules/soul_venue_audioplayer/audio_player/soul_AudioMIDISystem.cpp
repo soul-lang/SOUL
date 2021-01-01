@@ -22,11 +22,11 @@ namespace soul::audioplayer
 {
 
 //==============================================================================
-struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
-                          private juce::MidiInputCallback,
-                          private juce::Timer
+struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
+                                 private juce::MidiInputCallback,
+                                 private juce::Timer
 {
-    AudioMIDISystem (Requirements r) : requirements (r)
+    Pimpl (Requirements r) : requirements (std::move (r))
     {
         if (requirements.sampleRate < 1000.0 || requirements.sampleRate > 48000.0 * 8)
             requirements.sampleRate = 0;
@@ -41,24 +41,11 @@ struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
         startTimerHz (3);
     }
 
-    ~AudioMIDISystem() override
+    ~Pimpl() override
     {
         audioDevice.reset();
         midiInputs.clear();
     }
-
-    //==============================================================================
-    struct Callback
-    {
-        virtual ~Callback() = default;
-
-        virtual void render (choc::buffer::ChannelArrayView<const float> input,
-                             choc::buffer::ChannelArrayView<float> output,
-                             MIDIEventInputList) = 0;
-
-        virtual void renderStarting (double sampleRate, uint32_t blockSize) = 0;
-        virtual void renderStopped() = 0;
-    };
 
     void setCallback (Callback* newCallback)
     {
@@ -90,7 +77,6 @@ struct AudioMIDISystem  : private juce::AudioIODeviceCallback,
     int getNumInputChannels() const             { return audioDevice != nullptr ? audioDevice->getActiveInputChannels().countNumberOfSetBits() : 0; }
     int getNumOutputChannels() const            { return audioDevice != nullptr ? audioDevice->getActiveOutputChannels().countNumberOfSetBits() : 0; }
 
-private:
     //==============================================================================
     Requirements requirements;
 
@@ -382,5 +368,19 @@ private:
     }
 };
 
+//==============================================================================
+AudioMIDISystem::AudioMIDISystem (Requirements r)  : pimpl (std::make_unique<Pimpl> (std::move (r))) {}
+AudioMIDISystem::~AudioMIDISystem() = default;
+
+void AudioMIDISystem::setCallback (Callback* c)             { pimpl->setCallback (c); }
+
+double AudioMIDISystem::getSampleRate() const               { return pimpl->sampleRate; }
+uint32_t AudioMIDISystem::getMaxBlockSize() const           { return pimpl->blockSize; }
+
+float AudioMIDISystem::getCPULoad() const                   { return pimpl->loadMeasurer.getCurrentLoad(); }
+int AudioMIDISystem::getXRunCount() const                   { return pimpl->audioDevice != nullptr ? pimpl->audioDevice->getXRunCount() : -1; }
+
+int AudioMIDISystem::getNumInputChannels() const            { return pimpl->audioDevice != nullptr ? pimpl->audioDevice->getActiveInputChannels().countNumberOfSetBits() : 0; }
+int AudioMIDISystem::getNumOutputChannels() const           { return pimpl->audioDevice != nullptr ? pimpl->audioDevice->getActiveOutputChannels().countNumberOfSetBits() : 0; }
 
 }

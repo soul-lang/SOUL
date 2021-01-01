@@ -58,10 +58,44 @@ namespace soul::audioplayer
     };
 
     //==============================================================================
+    struct AudioMIDISystem
+    {
+        AudioMIDISystem (Requirements);
+        ~AudioMIDISystem();
+
+        struct Callback
+        {
+            virtual ~Callback() = default;
+
+            virtual void render (choc::buffer::ChannelArrayView<const float> input,
+                                 choc::buffer::ChannelArrayView<float> output,
+                                 MIDIEventInputList) = 0;
+
+            virtual void renderStarting (double sampleRate, uint32_t blockSize) = 0;
+            virtual void renderStopped() = 0;
+        };
+
+        void setCallback (Callback*);
+
+        double getSampleRate() const;
+        uint32_t getMaxBlockSize() const;
+
+        float getCPULoad() const;
+        int getXRunCount() const;
+
+        int getNumInputChannels() const;
+        int getNumOutputChannels() const;
+
+    private:
+        struct Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
+    };
+
+    //==============================================================================
     /** A venue inplementation that connects to the system audio devices. */
     struct AudioPlayerVenue  : public soul::Venue
     {
-        AudioPlayerVenue (const Requirements&, std::unique_ptr<PerformerFactory>);
+        AudioPlayerVenue (Requirements, std::unique_ptr<PerformerFactory>);
         ~AudioPlayerVenue() override;
 
         //==============================================================================
