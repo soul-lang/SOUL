@@ -22,8 +22,146 @@ namespace soul::audioplayer
 {
 
 //==============================================================================
+struct MIDIInputCollector::Pimpl  : private juce::Timer,
+                                    private juce::MidiInputCallback
+{
+    Pimpl (Requirements::PrintLogMessageFn l) : log (std::move (l))
+    {
+        constexpr uint32_t midiFIFOSize = 1024;
+        inputMIDIBuffer.reserve (midiFIFOSize);
+        midiFIFO.reset (midiFIFOSize);
+        startTimer (2000);
+    }
+
+    ~Pimpl() override
+    {
+        midiInputs.clear();
+    }
+
+    using MIDIClock = std::chrono::high_resolution_clock;
+
+    struct IncomingMIDIEvent
+    {
+        MIDIClock::time_point time;
+        choc::midi::ShortMessage message;
+    };
+
+    Requirements::PrintLogMessageFn log;
+    juce::StringArray lastMidiDevices;
+    std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
+    choc::fifo::SingleReaderSingleWriterFIFO<IncomingMIDIEvent> midiFIFO;
+    std::vector<MIDIEvent> inputMIDIBuffer;
+    MIDIClock::time_point lastMIDIBlockTime;
+
+    void timerCallback() override
+    {
+        scanForDevices();
+    }
+
+    void scanForDevices()
+    {
+        auto devices = juce::MidiInput::getDevices();
+
+        if (lastMidiDevices != devices)
+        {
+            lastMidiDevices = devices;
+
+            for (auto& mi : midiInputs)
+            {
+                if (log != nullptr)
+                    log (("Closing MIDI device: " + mi->getName()).toStdString());
+
+                mi.reset();
+            }
+
+            midiInputs.clear();
+
+            for (int i = devices.size(); --i >= 0;)
+                if (auto mi = juce::MidiInput::openDevice (i, this))
+                    midiInputs.emplace_back (std::move (mi));
+
+            for (auto& mi : midiInputs)
+            {
+                if (log != nullptr)
+                    log (("Opening MIDI device: " + mi->getName()).toStdString());
+
+                mi->start();
+            }
+        }
+    }
+
+    void clear()
+    {
+        midiFIFO.reset();
+        inputMIDIBuffer.clear();
+    }
+
+    MIDIEventInputList getNextBlock (double sampleRate, uint32_t numFrames)
+    {
+       #if ! JUCE_BELA
+        inputMIDIBuffer.clear();
+        auto now = MIDIClock::now();
+        using TimeSeconds = std::chrono::duration<double, std::ratio<1, 1>>;
+        auto startOfFrame = lastMIDIBlockTime;
+        lastMIDIBlockTime = now;
+
+        if (midiFIFO.getUsedSlots() != 0)
+        {
+            auto frameLength = TimeSeconds (1.0 / sampleRate);
+            IncomingMIDIEvent e;
+
+            while (midiFIFO.pop (e))
+            {
+                TimeSeconds timeSinceBufferStart = e.time - startOfFrame;
+                auto frame = static_cast<int> (timeSinceBufferStart.count() / frameLength.count());
+
+                if (frame < 0)
+                {
+                    if (frame < -40000)
+                        break;
+
+                    frame = 0;
+                }
+
+                auto frameIndex = static_cast<uint32_t> (frame) < numFrames ? static_cast<uint32_t> (frame)
+                                                                            : static_cast<uint32_t> (numFrames - 1);
+                inputMIDIBuffer.push_back ({ frameIndex, e.message });
+            }
+        }
+       #endif
+
+        return { inputMIDIBuffer.data(), inputMIDIBuffer.data() + inputMIDIBuffer.size() };
+    }
+
+    void handleIncomingMidiMessage (juce::MidiInput*, const juce::MidiMessage& message) override
+    {
+        if (message.getRawDataSize() < 4)  // long messages are ignored for now...
+        {
+            auto bytes = message.getRawData();
+            auto m = choc::midi::ShortMessage (bytes[0], bytes[1], bytes[2]);
+
+           #if JUCE_BELA
+            inputMIDIBuffer.push_back ({ 0, m });
+           #else
+            midiFIFO.push ({ MIDIClock::now(), m });
+           #endif
+        }
+    }
+};
+
+MIDIInputCollector::MIDIInputCollector (Requirements::PrintLogMessageFn l) : pimpl (std::make_unique<Pimpl> (std::move (l))) {}
+MIDIInputCollector::~MIDIInputCollector() = default;
+
+void MIDIInputCollector::clearFIFO()    { pimpl->clear(); }
+
+MIDIEventInputList MIDIInputCollector::getNextBlock (double sampleRate, uint32_t numFrames)
+{
+    return pimpl->getNextBlock (sampleRate, numFrames);
+}
+
+
+//==============================================================================
 struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
-                                 private juce::MidiInputCallback,
                                  private juce::Timer
 {
     Pimpl (Requirements r) : requirements (std::move (r))
@@ -34,17 +172,15 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
         if (requirements.blockSize < 1 || requirements.blockSize > 2048)
             requirements.blockSize = 0;
 
-        constexpr uint32_t midiFIFOSize = 1024;
-        inputMIDIBuffer.reserve (midiFIFOSize);
-        midiFIFO.reset (midiFIFOSize);
+        midiInputCollector = std::make_unique<MIDIInputCollector> (requirements.printLogMessage);
         openAudioDevice();
-        startTimerHz (3);
+        startTimerHz (2);
     }
 
     ~Pimpl() override
     {
         audioDevice.reset();
-        midiInputs.clear();
+        midiInputCollector.reset();
     }
 
     void setCallback (Callback* newCallback)
@@ -88,21 +224,9 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
     double sampleRate = 0;
     uint32_t blockSize = 0;
 
-    juce::StringArray lastMidiDevices;
-    std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
-    std::chrono::system_clock::time_point lastMIDIDeviceCheckTime, lastKnownActiveCallbackTime;
+    std::chrono::system_clock::time_point lastKnownActiveCallbackTime;
 
-    using MIDIClock = std::chrono::high_resolution_clock;
-
-    struct IncomingMIDIEvent
-    {
-        MIDIClock::time_point time;
-        choc::midi::ShortMessage message;
-    };
-
-    choc::fifo::SingleReaderSingleWriterFIFO<IncomingMIDIEvent> midiFIFO;
-    std::vector<MIDIEvent> inputMIDIBuffer;
-    MIDIClock::time_point lastMIDIBlockTime;
+    std::unique_ptr<MIDIInputCollector> midiInputCollector;
 
     CPULoadMeasurer loadMeasurer;
 
@@ -124,7 +248,7 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
 
         lastCallbackCount = 0;
         audioCallbackCount = 0;
-        midiFIFO.reset();
+        midiInputCollector->clearFIFO();
 
         loadMeasurer.reset();
 
@@ -157,9 +281,7 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
         for (int i = 0; i < numOutputChannels; ++i)
             juce::FloatVectorOperations::clear (outputChannelData[i], numFrames);
 
-       #if ! JUCE_BELA
-        fillMIDIInputBuffer (static_cast<uint32_t> (numFrames));
-       #endif
+        auto midiInput = midiInputCollector->getNextBlock (sampleRate, static_cast<uint32_t> (numFrames));
 
         if (totalFramesProcessed > numWarmUpFrames)
         {
@@ -168,74 +290,26 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
             if (callback != nullptr)
                 callback->render (choc::buffer::createChannelArrayView (inputChannelData,  (uint32_t) numInputChannels,  (uint32_t) numFrames),
                                   choc::buffer::createChannelArrayView (outputChannelData, (uint32_t) numOutputChannels, (uint32_t) numFrames),
-                                  { inputMIDIBuffer.data(), inputMIDIBuffer.data() + inputMIDIBuffer.size() });
+                                  midiInput);
         }
 
         totalFramesProcessed += static_cast<uint64_t> (numFrames);
         loadMeasurer.stopMeasurement();
 
        #if JUCE_BELA
-        inputMIDIBuffer.clear();
+        midiInputCollector->clearFIFO();
        #endif
-    }
-
-    void handleIncomingMidiMessage (juce::MidiInput*, const juce::MidiMessage& message) override
-    {
-        if (message.getRawDataSize() < 4)  // long messages are ignored for now...
-        {
-            auto bytes = message.getRawData();
-            auto m = choc::midi::ShortMessage (bytes[0], bytes[1], bytes[2]);
-
-           #if JUCE_BELA
-            inputMIDIBuffer.push_back ({ 0, m });
-           #else
-            midiFIFO.push ({ MIDIClock::now(), m });
-           #endif
-        }
-    }
-
-    void fillMIDIInputBuffer (uint32_t numFrames)
-    {
-        inputMIDIBuffer.clear();
-        auto now = MIDIClock::now();
-        using TimeSeconds = std::chrono::duration<double, std::ratio<1, 1>>;
-        auto startOfFrame = lastMIDIBlockTime;
-        lastMIDIBlockTime = now;
-
-        if (midiFIFO.getUsedSlots() != 0)
-        {
-            auto frameLength = TimeSeconds (1.0 / sampleRate);
-            IncomingMIDIEvent e;
-
-            while (midiFIFO.pop (e))
-            {
-                TimeSeconds timeSinceBufferStart = e.time - startOfFrame;
-                auto frame = static_cast<int> (timeSinceBufferStart.count() / frameLength.count());
-
-                if (frame < 0)
-                {
-                    if (frame < -40000)
-                        break;
-
-                    frame = 0;
-                }
-
-                auto frameIndex = static_cast<uint32_t> (frame) < numFrames ? static_cast<uint32_t> (frame)
-                                                                            : static_cast<uint32_t> (numFrames - 1);
-                inputMIDIBuffer.push_back ({ frameIndex, e.message });
-            }
-        }
     }
 
     void timerCallback() override
     {
-        auto now = std::chrono::system_clock::now();
-        checkMIDIDevices (now);
-        checkForStalledProcessor (now);
+        checkForStalledProcessor();
     }
 
-    void checkForStalledProcessor (std::chrono::system_clock::time_point now)
+    void checkForStalledProcessor()
     {
+        auto now = std::chrono::system_clock::now();
+
         if (lastCallbackCount != audioCallbackCount)
         {
             lastCallbackCount = audioCallbackCount;
@@ -325,46 +399,6 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
                 audioDevice.reset (type->createDevice (outputDevice, inputDevice));
             }
         }
-    }
-
-    void checkMIDIDevices (std::chrono::system_clock::time_point now)
-    {
-        if (now > lastMIDIDeviceCheckTime + std::chrono::seconds (2))
-        {
-            lastMIDIDeviceCheckTime = now;
-            openMIDIDevices();
-        }
-    }
-
-    void openMIDIDevices()
-    {
-        lastMIDIDeviceCheckTime = std::chrono::system_clock::now();
-        auto devices = juce::MidiInput::getDevices();
-
-        if (lastMidiDevices != devices)
-        {
-            lastMidiDevices = devices;
-
-            for (auto& mi : midiInputs)
-            {
-                log (("Closing MIDI device: " + mi->getName()).toStdString());
-                mi.reset();
-            }
-
-            midiInputs.clear();
-
-            for (int i = devices.size(); --i >= 0;)
-                if (auto mi = juce::MidiInput::openDevice (i, this))
-                    midiInputs.emplace_back (std::move (mi));
-
-            for (auto& mi : midiInputs)
-            {
-                log (("Opening MIDI device: " + mi->getName()).toStdString());
-                mi->start();
-            }
-        }
-
-        startTimer (2000);
     }
 };
 

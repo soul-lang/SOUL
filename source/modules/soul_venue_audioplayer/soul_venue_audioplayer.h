@@ -51,10 +51,26 @@ namespace soul::audioplayer
         int numInputChannels = 2;
         int numOutputChannels = 2;
 
+        using PrintLogMessageFn = std::function<void(std::string_view)>;
+
         /** The caller can provide a lambda here to handle log messages about audio
             and MIDI devices being opened and closed.
         */
-        std::function<void(std::string_view)> printLogMessage;
+        PrintLogMessageFn printLogMessage;
+    };
+
+    //==============================================================================
+    struct MIDIInputCollector
+    {
+        MIDIInputCollector (Requirements::PrintLogMessageFn);
+        ~MIDIInputCollector();
+
+        void clearFIFO();
+        MIDIEventInputList getNextBlock (double sampleRate, uint32_t numFrames);
+
+    private:
+        struct Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
     };
 
     //==============================================================================
