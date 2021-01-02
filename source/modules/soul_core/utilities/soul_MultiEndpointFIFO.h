@@ -38,10 +38,18 @@ struct MultiEndpointFIFO
 
     ~MultiEndpointFIFO() = default;
 
-    void reset (uint32_t fifoSize, uint32_t maxNumIncomingItems)
+    void reset (uint32_t fifoSize, uint32_t maxNumPendingItems)
     {
         fifo.reset (fifoSize);
-        incomingItems.resize (maxNumIncomingItems);
+        itemPool.resize (maxNumPendingItems);
+
+        pendingItems.clear();
+        pendingItems.reserve (maxNumPendingItems);
+        freeItems.clear();
+        freeItems.reserve (maxNumPendingItems);
+
+        for (auto& i : itemPool)
+            freeItems.push_back (std::addressof (i));
     }
 
     bool addInputData (soul::EndpointHandle endpoint, uint64_t time,
@@ -79,95 +87,108 @@ struct MultiEndpointFIFO
     bool prepareForReading (uint64_t startFrameNumber, uint32_t numFramesNeeded)
     {
         incomingItemAllocator->reset();
-        uint32_t numItems = 0;
         bool success = true;
 
         dataLock = fifo.popAllAvailable ([&] (const void* data, uint32_t size)
                                          {
                                              auto d = static_cast<const uint8_t*> (data);
-                                             uint64_t absoluteTime;
 
-                                             if (numItems < incomingItems.size()
-                                                  && readIncomingItem (incomingItems[numItems], { d, d + size }, startFrameNumber, absoluteTime))
-                                                 ++numItems;
-                                             else
-                                                 success = false;
+                                             if (! freeItems.empty())
+                                             {
+                                                 auto item = freeItems.back();
+
+                                                 if (readIncomingItem (*item, { d, d + size }, startFrameNumber))
+                                                 {
+                                                     freeItems.pop_back();
+                                                     pendingItems.push_back (item);
+                                                     return;
+                                                 }
+                                             }
+
+                                             success = false;
                                          });
 
-        framesToRead = numFramesNeeded;
-        totalItemsRead = numItems;
-        currentFrame = 0;
-        nextChunkStart = 0;
+        endFrame = startFrameNumber + numFramesNeeded;
+        currentFrame = startFrameNumber;
+        nextChunkStart = startFrameNumber;
         return success;
     }
 
     uint32_t getNumFramesInNextChunk (uint32_t maxNumFrames)
     {
-        if (currentFrame >= framesToRead)
+        if (currentFrame >= endFrame)
             return 0;
 
-        nextChunkStart = findOffsetOfNextItemAfter (incomingItems.data(), totalItemsRead, currentFrame,
-                                                    std::min (framesToRead, currentFrame + maxNumFrames));
-        framesThisTime = nextChunkStart - currentFrame;
+        nextChunkStart = findOffsetOfNextItemAfter (currentFrame, std::min (endFrame, currentFrame + maxNumFrames));
+        framesThisTime = static_cast<uint32_t> (nextChunkStart - currentFrame);
         return framesThisTime;
     }
 
     template <typename HandleItem>
     void processNextChunk (HandleItem&& handleItem)
     {
-        for (uint32_t i = 0; i < totalItemsRead; ++i)
+        for (auto* item : pendingItems)
         {
-            auto& item = incomingItems[i];
-            auto itemStart = item.startFrame;
-            auto itemEnd = itemStart + item.numFrames;
+            auto itemStart = item->startFrame;
+            auto numFrames = item->numFrames;
+            auto itemEnd = itemStart + numFrames;
 
             if (itemEnd > currentFrame && itemStart < nextChunkStart)
             {
-                if (item.numFrames != 1)
+                bool keepItem = false;
+
+                if (numFrames != 1)
                 {
-                    if (itemStart < currentFrame)
+                    if (currentFrame > itemStart)
                     {
-                        auto amountToTrim = currentFrame - itemStart;
-                        item.value = item.value.getElementRange (amountToTrim, item.numFrames - amountToTrim);
+                        auto amountToTrim = static_cast<uint32_t> (currentFrame - itemStart);
+                        item->value = item->value.getElementRange (amountToTrim, item->numFrames - amountToTrim);
                         itemStart = currentFrame;
-                        item.numFrames -= amountToTrim;
-                        item.startFrame += amountToTrim;
+                        item->numFrames -= amountToTrim;
+                        item->startFrame += amountToTrim;
                     }
 
                     if (itemEnd > nextChunkStart)
-                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value.getElementRange (0, nextChunkStart - itemStart)));
+                    {
+                        handleItem (item->endpoint, itemStart, static_cast<const choc::value::ValueView&> (item->value.getElementRange (0, static_cast<uint32_t> (nextChunkStart - itemStart))));
+                        keepItem = true;
+                    }
                     else
-                        handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
+                    {
+                        handleItem (item->endpoint, itemStart, static_cast<const choc::value::ValueView&> (item->value));
+                    }
                 }
                 else
                 {
-                    handleItem (item.endpoint, itemStart, static_cast<const choc::value::ValueView&> (item.value));
+                    handleItem (item->endpoint, itemStart, static_cast<const choc::value::ValueView&> (item->value));
+                }
+
+                if (! keepItem)
+                {
+                    item->release();
+                    freeItems.push_back (item);
                 }
             }
         }
 
+        removeIf (pendingItems, [] (const Item* i) { return i->numFrames == 0; });
         currentFrame = nextChunkStart;
     }
 
     template <typename HandleItem>
     void iterateAllPreparedItemsForHandle (EndpointHandle handle, HandleItem&& handleItem)
     {
-        for (uint32_t i = 0; i < totalItemsRead; ++i)
-        {
-            auto& item = incomingItems[i];
-
-            if (item.endpoint == handle)
-                handleItem (item.startFrame, static_cast<const choc::value::ValueView&> (item.value));
-        }
+        for (auto* item : pendingItems)
+            if (item->endpoint == handle)
+                handleItem (item->startFrame, static_cast<const choc::value::ValueView&> (item->value));
     }
 
     void finishReading()
     {
-        for (uint32_t i = 0; i < totalItemsRead; ++i)
-            incomingItems[i].value = {};
+        for (auto* item : pendingItems)
+            item->allocate();
 
         dataLock = {};
-        totalItemsRead = 0;
     }
 
     /** Note that these iterate functions may only be called by a single thread. */
@@ -180,12 +201,10 @@ struct MultiEndpointFIFO
         fifo.popAllAvailable ([&] (const void* data, uint32_t size)
                               {
                                   auto d = static_cast<const uint8_t*> (data);
-
                                   Item item;
-                                  uint64_t absoluteTime = 0;
 
-                                  if (readIncomingItem (item, { d, d + size }, 0, absoluteTime))
-                                      handleItem (item.endpoint, absoluteTime, item.value);
+                                  if (readIncomingItem (item, { d, d + size }, 0))
+                                      handleItem (item.endpoint, item.startFrame, item.value);
                                   else
                                       success = false;
                               },
@@ -208,10 +227,26 @@ private:
 
     struct Item
     {
-        uint32_t startFrame, numFrames;
+        uint64_t startFrame = 0;
+        uint32_t numFrames = 0;
         soul::EndpointHandle endpoint;
         choc::value::ValueView value;
         IncomingStringDictionary dictionary;
+        choc::value::Value allocatedCopy;
+
+        void allocate()
+        {
+            SOUL_TODO // need to avoid heap allocation here
+            allocatedCopy = value;
+            value = allocatedCopy.getView();
+        }
+
+        void release()
+        {
+            numFrames = 0;
+            value = {};
+            allocatedCopy = choc::value::Value();
+        }
     };
 
     struct ScratchWriter
@@ -235,11 +270,14 @@ private:
     };
 
     choc::fifo::VariableSizeFIFO fifo;
-
     std::unique_ptr<LocalChocValueAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
-    std::vector<Item> incomingItems;
+
+    std::vector<Item> itemPool;
+    std::vector<Item*> pendingItems, freeItems;
     choc::fifo::VariableSizeFIFO::DataLocker dataLock;
-    uint32_t framesToRead = 0, totalItemsRead = 0, currentFrame = 0, nextChunkStart = 0, framesThisTime = 0;
+
+    uint64_t currentFrame = 0, nextChunkStart = 0, endFrame = 0;
+    uint32_t framesThisTime = 0;
 
     struct DictionaryBuilder
     {
@@ -316,7 +354,7 @@ private:
         reader.start += sizeof (d);
     }
 
-    bool readIncomingItem (Item& item, choc::value::InputData reader, uint64_t startFrameNumber, uint64_t& absoluteTime)
+    bool readIncomingItem (Item& item, choc::value::InputData reader, uint64_t startFrameNumber)
     {
         try
         {
@@ -325,8 +363,7 @@ private:
 
             if (time >= startFrameNumber)
             {
-                absoluteTime = time;
-                item.startFrame = static_cast<uint32_t> (time - startFrameNumber);
+                item.startFrame = time;
                 read (reader, item.endpoint);
 
                 auto type = choc::value::Type::deserialise (reader, incomingItemAllocator.get());
@@ -351,15 +388,15 @@ private:
         return false;
     }
 
-    static uint32_t findOffsetOfNextItemAfter (const Item* items, uint32_t numItems, uint32_t startFrame, uint32_t endFrame)
+    uint64_t findOffsetOfNextItemAfter (uint64_t start, uint64_t end) const
     {
-        auto lowest = endFrame;
+        auto lowest = end;
 
-        for (uint32_t i = 0; i < numItems; ++i)
+        for (auto* i : pendingItems)
         {
-            auto frame = items[i].startFrame;
+            auto frame = i->startFrame;
 
-            if (frame < lowest && frame > startFrame)
+            if (frame > start && frame < lowest)
                 lowest = frame;
         }
 
