@@ -421,7 +421,7 @@ private:
             visitArray (m.specialisationParams);
 
             for (auto& p : m.specialisationParams)
-                validateSpecialisationParam (p, false);
+                validateSpecialisationParam (p, ignoreErrors);
 
             return m;
         }
@@ -577,7 +577,7 @@ private:
         bool validateSpecialisationArgs (const ArgList& args, const ParamList& params) const
         {
             for (size_t i = 0; i < params.size(); ++i)
-                if (! validateSpecialisationParam (params[i], ignoreErrors))
+                if (! validateSpecialisationParam (params[i], false))
                     return false;
 
             if (args.size() == params.size())
