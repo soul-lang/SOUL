@@ -412,6 +412,24 @@ private:
 
         const size_t maxNamespaceInstanceCount = 100;
 
+        template<class M>
+        M& visitModule (M& m)
+        {
+            if (! m.isTemplateModule())
+                return super::visit (m);
+
+            visitArray (m.specialisationParams);
+
+            for (auto& p : m.specialisationParams)
+                validateSpecialisationParam (p, false);
+
+            return m;
+        }
+
+        AST::Graph& visit (AST::Graph& g) override          { return visitModule (g); }
+        AST::Processor& visit (AST::Processor& p) override  { return visitModule (p); }
+        AST::Namespace& visit (AST::Namespace& n) override  { return visitModule (n); }
+
         AST::Namespace& getOrAddNamespaceSpecialisation (AST::Namespace& namespaceToClone, const ArgList& specialisationArgs)
         {
             SOUL_ASSERT (specialisationArgs.size() <= namespaceToClone.specialisationParams.size());
@@ -438,7 +456,7 @@ private:
             return target;
         }
 
-        bool validateSpecialisationParam (AST::ASTObject& param) const
+        bool validateSpecialisationParam (AST::ASTObject& param, bool ignoreErrors) const
         {
             if (auto u = cast<AST::UsingDeclaration> (param))
             {
@@ -559,7 +577,7 @@ private:
         bool validateSpecialisationArgs (const ArgList& args, const ParamList& params) const
         {
             for (size_t i = 0; i < params.size(); ++i)
-                if (! validateSpecialisationParam (params[i]))
+                if (! validateSpecialisationParam (params[i], ignoreErrors))
                     return false;
 
             if (args.size() == params.size())
@@ -1245,7 +1263,7 @@ private:
         {
             auto lastModule = currentModule;
             currentModule = g;
-            auto& result = super::visit (g);
+            auto& result = ModuleInstanceResolver::visit (g);
             currentModule = lastModule;
             return result;
         }
@@ -1254,7 +1272,7 @@ private:
         {
             auto lastModule = currentModule;
             currentModule = n;
-            auto& result = super::visit (n);
+            auto& result = ModuleInstanceResolver::visit (n);
             currentModule = lastModule;
             return result;
         }
@@ -1263,14 +1281,13 @@ private:
         {
             auto lastModule = currentModule;
             currentModule = p;
-            auto& result = super::visit (p);
+            auto& result = ModuleInstanceResolver::visit (p);
             currentModule = lastModule;
             return result;
         }
 
         pool_ptr<AST::Statement> currentStatement;
         pool_ptr<AST::Connection::SharedEndpoint> currentConnectionEndpoint;
-//        pool_ptr<AST::Graph> currentGraph;
         pool_ptr<AST::ModuleBase> currentModule;
         int parsingProcessorInstance = 0;
         uint32_t numVariablesResolved = 0;
@@ -2070,10 +2087,6 @@ private:
         ProcessorInstanceResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
 
-        AST::Graph& visit (AST::Graph& g) override          { return g.isTemplateModule() ? g : super::visit (g); }
-        AST::Processor& visit (AST::Processor& p) override  { return p.isTemplateModule() ? p : super::visit (p); }
-        AST::Namespace& visit (AST::Namespace& n) override  { return n.isTemplateModule() ? n : super::visit (n); }
-
         AST::ProcessorInstance& visit (AST::ProcessorInstance& instance) override
         {
             super::visit (instance);
@@ -2155,10 +2168,6 @@ private:
 
         NamespaceAliasResolver (ResolutionPass& rp, bool shouldIgnoreErrors)
             : super (rp, shouldIgnoreErrors) {}
-
-        AST::Graph& visit (AST::Graph& g) override          { return g.isTemplateModule() ? g : super::visit (g); }
-        AST::Processor& visit (AST::Processor& p) override  { return p.isTemplateModule() ? p : super::visit (p); }
-        AST::Namespace& visit (AST::Namespace& n) override  { return n.isTemplateModule() ? n : super::visit (n); }
 
         AST::NamespaceAliasDeclaration& visit (AST::NamespaceAliasDeclaration& instance) override
         {

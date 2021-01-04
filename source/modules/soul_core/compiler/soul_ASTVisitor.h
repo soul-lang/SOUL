@@ -525,6 +525,7 @@ struct RewritingASTVisitor
     //==============================================================================
     virtual AST::Processor& visit (AST::Processor& p)
     {
+        visitArray        (p.specialisationParams);
         visitArray        (p.endpoints);
         visitArray        (p.structures);
         visitArray        (p.stateVariables);
@@ -538,6 +539,7 @@ struct RewritingASTVisitor
 
     virtual AST::Graph& visit (AST::Graph& g)
     {
+        visitArray   (g.specialisationParams);
         visitArray   (g.endpoints);
         replaceArray (g.usings);
         visitArray   (g.processorInstances);
@@ -552,6 +554,7 @@ struct RewritingASTVisitor
 
     virtual AST::Namespace& visit (AST::Namespace& n)
     {
+        visitArray   (n.specialisationParams);
         visitArray   (n.subModules);
         visitArray   (n.structures);
         replaceArray (n.usings);
