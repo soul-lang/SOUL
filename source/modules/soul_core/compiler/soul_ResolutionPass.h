@@ -456,7 +456,7 @@ private:
             return target;
         }
 
-        bool validateSpecialisationParam (AST::ASTObject& param, bool ignoreErrors) const
+        bool validateSpecialisationParam (AST::ASTObject& param, bool shouldIgnoreErrors) const
         {
             if (auto u = cast<AST::UsingDeclaration> (param))
             {
@@ -466,7 +466,7 @@ private:
                 if (AST::isResolvedAsType (*u->targetType))
                     return true;
 
-                if (! ignoreErrors)
+                if (! shouldIgnoreErrors)
                     u->targetType->context.throwError (Errors::expectedType());
 
                 return false;
@@ -481,7 +481,7 @@ private:
                 if (pa->resolvedProcessor != nullptr)
                     return true;
 
-                if (! ignoreErrors)
+                if (! shouldIgnoreErrors)
                     pa->targetProcessor->context.throwError (Errors::expectedProcessorName());
 
                 return false;
@@ -494,7 +494,7 @@ private:
                 if (AST::isResolvedAsValue (*v->initialValue))
                     return true;
 
-                if (! ignoreErrors)
+                if (! shouldIgnoreErrors)
                     v->initialValue->context.throwError (Errors::expectedValue());
 
                 return false;
@@ -509,7 +509,7 @@ private:
                 if (n->resolvedNamespace != nullptr)
                     return true;
 
-                if (! ignoreErrors)
+                if (! shouldIgnoreErrors)
                     n->targetNamespace->context.throwError (Errors::expectedNamespaceName());
 
                 return false;
