@@ -83,6 +83,24 @@ struct Allocator
 };
 
 //==============================================================================
+/** */
+template <size_t totalSize>
+struct FixedPoolAllocator  : public Allocator
+{
+    FixedPoolAllocator() = default;
+    ~FixedPoolAllocator() override = default;
+
+    void reset() noexcept    { position = 0; }
+    void* allocate (size_t size) override;
+    void* resizeIfPossible (void* data, size_t requiredSize) override;
+    void free (void*) noexcept override {}
+
+private:
+    size_t position = 0, lastAllocationPosition = 0;
+    char pool[totalSize];
+};
+
+//==============================================================================
 /** A type class that can represent primitives, vectors, strings, arrays and objects.
 
     A Type can represent:
@@ -325,6 +343,8 @@ private:
     void allocateCopy (const Type&);
     void deleteAllocatedObjects() noexcept;
     ElementTypeAndOffset getElementRangeInfo (uint32_t start, uint32_t length) const;
+    template <typename Visitor> void visitStringHandles (size_t, const Visitor&) const;
+    static Type createArray (Type elementType, uint32_t numElements, Allocator*);
 };
 
 //==============================================================================
@@ -512,6 +532,32 @@ public:
 
     void* getRawData()                   { return data; }
     const void* getRawData() const       { return data; }
+
+    //==============================================================================
+    /** Stores a complete representation of this value and its type in a packed data format.
+        It can later be reloaded with Value::deserialise() or ValueView::deserialise().
+        The OutputStream object can be any class which has a method write (const void*, size_t).
+        The data format is:
+        - The serialised Type data, as written by Type::serialise()
+        - The block of value data, which is a copy of getRawData(), the size being Type::getValueDataSize()
+        - If any strings are in the dictionary, this is followed by a packed int for the total size of
+          the remaining string block, then a sequence of null-terminated strings. String handles are
+          encoded as a byte offset into this table, where the first character of the first string = 1.
+        @see Value::deserialise, ValueView::deserialise
+    */
+    template <typename OutputStream>
+    void serialise (OutputStream&) const;
+
+    /*  Recreates a temporary ValueView from serialised data that was created by the
+        ValueView::serialise() method.
+        If a ValueView is successfully deserialised from the data, the handler functor will be
+        called with this (temporary!) ValueView as its argument.
+        Any errors while reading the data will cause an Error exception to be thrown.
+        The InputData object will be left pointing to any remaining data after the value has been read.
+        @see Value::serialise
+    */
+    template <typename Handler>
+    static void deserialise (InputData&, Handler&& handleResult);
 
 private:
     //==============================================================================
@@ -742,15 +788,16 @@ public:
     /** Returns the size of the raw data that stores this value. */
     size_t getRawDataSize() const                                       { return packedData.size(); }
 
-    /** Stores a complete representation of this value and its type a packed data format.
-        It can later be reloaded with Value::deserialise(). The OutputStream template can
-        be any kind of object which has a method write (const void*, size_t).
+    /** Stores a complete representation of this value and its type in a packed data format.
+        It can later be reloaded with Value::deserialise() or ValueView::deserialise().
+        The OutputStream object can be any class which has a method write (const void*, size_t).
         The data format is:
         - The serialised Type data, as written by Type::serialise()
         - The block of value data, which is a copy of getRawData(), the size being Type::getValueDataSize()
-        - If any strings are in the dictionary, this is followed by a packed int with the number of strings,
-          then a sequence of null-terminated strings
-        @see Value::deserialise
+        - If any strings are in the dictionary, this is followed by a packed int for the total size of
+          the remaining string block, then a sequence of null-terminated strings. String handles are
+          encoded as a byte offset into this table, where the first character of the first string = 1.
+        @see Value::deserialise, ValueView::deserialise
     */
     template <typename OutputStream>
     void serialise (OutputStream&) const;
@@ -778,7 +825,7 @@ private:
     {
         Handle getHandleForString (std::string_view text) override;
         std::string_view getStringForHandle (Handle handle) const override;
-        std::vector<std::string> strings;
+        std::vector<char> strings;
     };
 
     std::vector<uint8_t> packedData;
@@ -868,6 +915,10 @@ static Value createObject (std::string_view className, Members&&... members);
 //
 //==============================================================================
 
+#ifndef CHOC_ASSERT
+ #define CHOC_ASSERT(x)  assert(x);
+#endif
+
 namespace
 {
     template <typename Type1> static constexpr bool matchesType()                                       { return false; }
@@ -928,6 +979,32 @@ namespace
     }
 }
 
+//==============================================================================
+template <size_t totalSize>
+void* FixedPoolAllocator<totalSize>::allocate (size_t size)
+{
+    lastAllocationPosition = position;
+    auto result = pool + position;
+    auto newSize = position + ((size + 15u) & ~15u);
+
+    if (newSize > sizeof (pool))
+        throwError ("Out of local scratch space");
+
+    position = newSize;
+    return result;
+}
+
+template <size_t totalSize>
+void* FixedPoolAllocator<totalSize>::resizeIfPossible (void* data, size_t requiredSize)
+{
+    if (pool + lastAllocationPosition != data)
+        return {};
+
+    position = lastAllocationPosition;
+    return allocate (requiredSize);
+}
+
+//==============================================================================
 // This as a minimal replacement for std::vector (necessary because of custom allocators)
 template <typename ObjectType>
 struct Type::AllocatedVector
@@ -1145,6 +1222,20 @@ struct Type::ComplexArray
         return false;
     }
 
+    template <typename Visitor> void visitStringHandles (size_t offset, const Visitor& visitor) const
+    {
+        for (auto& g : groups)
+        {
+            auto elementSize = g.elementType.getValueDataSize();
+
+            for (uint32_t i = 0; i < g.repetitions; ++i)
+            {
+                g.elementType.visitStringHandles (offset, visitor);
+                offset += elementSize;
+            }
+        }
+    }
+
     ElementTypeAndOffset getElementInfo (uint32_t index) const
     {
         size_t offset = 0;
@@ -1240,6 +1331,15 @@ struct Type::Object
                 return true;
 
         return false;
+    }
+
+    template <typename Visitor> void visitStringHandles (size_t offset, const Visitor& visitor) const
+    {
+        for (uint32_t i = 0; i < members.size; ++i)
+        {
+            members[i].type.visitStringHandles (offset, visitor);
+            offset += members[i].type.getValueDataSize();
+        }
     }
 
     ElementTypeAndOffset getElementInfo (uint32_t index) const
@@ -1430,24 +1530,29 @@ inline Type Type::createEmptyArray()
 
 inline Type Type::createArray (Type elementType, uint32_t numElements)
 {
+    return createArray (std::move (elementType), numElements, nullptr);
+}
+
+inline Type Type::createArray (Type elementType, uint32_t numElements, Allocator* allocatorToUse)
+{
     check (numElements < maxNumArrayElements, "Too many array elements");
     Content c;
 
     if (elementType.isPrimitive())
     {
         c.primitiveArray = { elementType.mainType, numElements, 0 };
-        return Type (MainType::primitiveArray, c, nullptr);
+        return Type (MainType::primitiveArray, c, allocatorToUse);
     }
 
     if (elementType.isVector())
     {
         c.primitiveArray = { elementType.content.vector.elementType, numElements, elementType.content.vector.numElements };
-        return Type (MainType::primitiveArray, c, nullptr);
+        return Type (MainType::primitiveArray, c, allocatorToUse);
     }
 
-    c.complexArray = allocateObject<ComplexArray> (elementType.allocator, elementType.allocator);
+    c.complexArray = allocateObject<ComplexArray> (allocatorToUse, allocatorToUse);
     c.complexArray->groups.push_back ({ numElements, std::move (elementType) });
-    return Type (MainType::complexArray, c, nullptr);
+    return Type (MainType::complexArray, c, allocatorToUse);
 }
 
 template <typename PrimitiveType>
@@ -1481,7 +1586,7 @@ inline void Type::addArrayElements (Type elementType, uint32_t numElementsToAdd)
 
         if (content.primitiveArray.numElements == 0)
         {
-            *this = createArray (std::move (elementType), numElementsToAdd);
+            *this = createArray (std::move (elementType), numElementsToAdd, allocator);
             return;
         }
 
@@ -1554,6 +1659,22 @@ inline bool Type::usesStrings() const
     return isString()
             || (isObject() && content.object->usesStrings())
             || (isType (MainType::complexArray) && content.complexArray->usesStrings());
+}
+
+template <typename Visitor> void Type::visitStringHandles (size_t offset, const Visitor& visitor) const
+{
+    if (isString())                         return visitor (offset);
+    if (isObject())                         return content.object->visitStringHandles (offset, visitor);
+    if (isType (MainType::complexArray))    return content.complexArray->visitStringHandles (offset, visitor);
+
+    if (isType (MainType::primitiveArray) && content.primitiveArray.elementType == MainType::string)
+    {
+        for (uint32_t i = 0; i < content.primitiveArray.numElements; ++i)
+        {
+            visitor (offset);
+            offset += sizeof (StringDictionary::Handle::handle);
+        }
+    }
 }
 
 inline ElementTypeAndOffset Type::getElementTypeAndOffset (uint32_t index) const
@@ -2045,6 +2166,111 @@ struct ValueView::Iterator
 inline ValueView::Iterator ValueView::begin() const   { return { *this, 0, size() }; }
 
 //==============================================================================
+template <typename OutputStream>
+void ValueView::serialise (OutputStream& output) const
+{
+    type.serialise (output);
+
+    if (type.isVoid())
+        return;
+
+    auto dataSize = type.getValueDataSize();
+
+    if (stringDictionary == nullptr || ! type.usesStrings())
+    {
+        output.write (data, dataSize);
+        return;
+    }
+
+    static constexpr uint32_t maximumSize = 16384;
+
+    if (dataSize > maximumSize)
+        throwError ("Out of local scratch space");
+
+    uint8_t localCopy[maximumSize];
+    memcpy (localCopy, data, dataSize);
+
+    static constexpr uint32_t maxStrings = 128;
+    uint32_t numStrings = 0, stringDataSize = 0;
+    uint32_t oldHandles[maxStrings], newHandles[maxStrings];
+
+    type.visitStringHandles (0, [&] (size_t offset)
+    {
+        auto handleCopyAddress = localCopy + offset;
+        auto oldHandle = readUnaligned<uint32_t> (handleCopyAddress);
+
+        for (uint32_t i = 0; i < numStrings; ++i)
+        {
+            if (oldHandles[i] == oldHandle)
+            {
+                writeUnaligned<uint32_t> (handleCopyAddress, newHandles[i]);
+                return;
+            }
+        }
+
+        if (numStrings == maxStrings)
+            throwError ("Out of local scratch space");
+
+        oldHandles[numStrings] = oldHandle;
+        auto newHandle = stringDataSize + 1u;
+        writeUnaligned<uint32_t> (handleCopyAddress, newHandle);
+        newHandles[numStrings++] = newHandle;
+        stringDataSize += stringDictionary->getStringForHandle ({ oldHandle }).length() + 1u;
+    });
+
+    output.write (localCopy, dataSize);
+    Type::SerialisationHelpers::writeVariableLengthInt (output, stringDataSize);
+
+    for (uint32_t i = 0; i < numStrings; ++i)
+    {
+        auto text = stringDictionary->getStringForHandle ({ oldHandles[i] });
+        output.write (text.data(), text.length());
+        char nullTerm = 0;
+        output.write (std::addressof (nullTerm), 1u);
+    }
+}
+
+template <typename Handler>
+void ValueView::deserialise (InputData& input, Handler&& handleResult)
+{
+    FixedPoolAllocator<8192> localAllocator;
+    ValueView result;
+    result.type = Type::deserialise (input, std::addressof (localAllocator));
+    auto valueDataSize = result.type.getValueDataSize();
+    Type::SerialisationHelpers::expect (input.end >= input.start + valueDataSize);
+    result.data = const_cast<uint8_t*> (input.start);
+    input.start += valueDataSize;
+
+    if (input.start >= input.end || ! result.type.usesStrings())
+    {
+        handleResult (result);
+        return;
+    }
+
+    struct SerialisedStringDictionary  : public choc::value::StringDictionary
+    {
+        SerialisedStringDictionary (const void* d, size_t s) : start (static_cast<const char*> (d)), size (s) {}
+        Handle getHandleForString (std::string_view) override     { CHOC_ASSERT (false); return {}; }
+
+        std::string_view getStringForHandle (Handle handle) const override
+        {
+            handle.handle--;
+            Type::SerialisationHelpers::expect (handle.handle < size);
+            return std::string_view (start + handle.handle);
+        }
+
+        const char* const start;
+        const size_t size;
+    };
+
+    auto stringDataSize = Type::SerialisationHelpers::readVariableLengthInt (input);
+    Type::SerialisationHelpers::expect (input.start + stringDataSize <= input.end && input.start[stringDataSize - 1] == 0);
+    SerialisedStringDictionary dictionary (input.start, stringDataSize);
+    result.stringDictionary = std::addressof (dictionary);
+    handleResult (result);
+}
+
+//==============================================================================
 inline Value::Value() : value (dictionary) {}
 
 inline Value::Value (Value&& other)
@@ -2379,15 +2605,11 @@ template <typename OutputStream> void Value::serialise (OutputStream& o) const
     {
         o.write (getRawData(), value.type.getValueDataSize());
 
-        if (auto numStrings = static_cast<uint32_t> (dictionary.strings.size()))
+        if (auto stringDataSize = static_cast<uint32_t> (dictionary.strings.size()))
         {
-            Type::SerialisationHelpers::writeVariableLengthInt (o, numStrings);
-
-            for (auto& s : dictionary.strings)
-            {
-                 o.write (std::addressof (s[0]), s.length());
-                 o.write ("", 1);
-            }
+            CHOC_ASSERT (dictionary.strings.back() == 0);
+            Type::SerialisationHelpers::writeVariableLengthInt (o, stringDataSize);
+            o.write (dictionary.strings.data(), stringDataSize);
         }
     }
 }
@@ -2403,14 +2625,13 @@ inline Value Value::deserialise (InputData& input)
 
     if (input.end > input.start)
     {
-        auto numStrings = Type::SerialisationHelpers::readVariableLengthInt (input);
-        v.dictionary.strings.reserve (numStrings);
-
-        for (uint32_t i = 0; i < numStrings; ++i)
-            v.dictionary.strings.push_back (std::string (Type::SerialisationHelpers::readNullTerminatedString (input)));
+        auto stringDataSize = Type::SerialisationHelpers::readVariableLengthInt (input);
+        Type::SerialisationHelpers::expect (stringDataSize <= input.end - input.start);
+        v.dictionary.strings.resize (stringDataSize);
+        memcpy (v.dictionary.strings.data(), input.start, stringDataSize);
+        Type::SerialisationHelpers::expect (v.dictionary.strings.back() == 0);
     }
 
-    Type::SerialisationHelpers::expect (input.end == input.start);
     return v;
 }
 
@@ -2523,12 +2744,24 @@ inline Value::SimpleStringDictionary::Handle Value::SimpleStringDictionary::getH
     if (text.empty())
         return {};
 
-    for (decltype(Handle::handle) i = 0; i < strings.size(); ++i)
-        if (strings[i] == text)
-            return { i + 1 };
+    for (size_t i = 0; i < strings.size(); ++i)
+    {
+        std::string_view sv (strings.data() + i);
 
-    strings.push_back (std::string (text));
-    return { static_cast<decltype(Handle::handle)> (strings.size()) };
+        if (text == sv)
+            return { static_cast<decltype (Handle::handle)> (i + 1) };
+
+        i += sv.length();
+    }
+
+    auto result = Value::SimpleStringDictionary::Handle { static_cast<decltype (Handle::handle)> (strings.size() + 1) };
+    strings.reserve (strings.size() + text.length() + 1);
+
+    for (auto& c : text)
+        strings.push_back (c);
+
+    strings.push_back (0);
+    return result;
 }
 
 inline std::string_view Value::SimpleStringDictionary::getStringForHandle (Handle handle) const
@@ -2536,10 +2769,10 @@ inline std::string_view Value::SimpleStringDictionary::getStringForHandle (Handl
     if (handle == Handle())
         return {};
 
-    if (handle.handle <= strings.size())
-        return strings[handle.handle - 1];
+    if (handle.handle > strings.size())
+        throwError ("Unknown string");
 
-    throwError ("Unknown string");
+    return std::string_view (strings.data() + (handle.handle - 1));
 }
 
 } // namespace choc::value

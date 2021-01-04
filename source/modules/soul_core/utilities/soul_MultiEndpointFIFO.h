@@ -32,7 +32,7 @@ struct MultiEndpointFIFO
 {
     MultiEndpointFIFO()
     {
-        incomingItemAllocator = std::make_unique<LocalChocValueAllocator<incomingItemAllocationSpace>>();
+        incomingItemAllocator = std::make_unique<choc::value::FixedPoolAllocator<incomingItemAllocationSpace>>();
         reset (256 * 1024, 2048);
     }
 
@@ -72,7 +72,7 @@ struct MultiEndpointFIFO
 
         if (value.getType().usesStrings())
         {
-            LocalChocValueAllocator<maxItemSize> localSpace;
+            choc::value::FixedPoolAllocator<maxItemSize> localSpace;
             choc::value::ValueView v (choc::value::Type (std::addressof (localSpace), value.getType()),
                                       startOfValueData, value.getDictionary());
 
@@ -270,7 +270,7 @@ private:
     };
 
     choc::fifo::VariableSizeFIFO fifo;
-    std::unique_ptr<LocalChocValueAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
+    std::unique_ptr<choc::value::FixedPoolAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
 
     std::vector<Item> itemPool;
     std::vector<Item*> pendingItems, freeItems;

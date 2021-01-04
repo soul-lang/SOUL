@@ -152,45 +152,6 @@ struct TemporaryDataHolder
 };
 
 //==============================================================================
-template <size_t totalSize>
-struct LocalChocValueAllocator  : public choc::value::Allocator
-{
-    LocalChocValueAllocator() = default;
-    ~LocalChocValueAllocator() override = default;
-
-    void reset()    { position = 0; }
-
-    void* allocate (size_t size) override
-    {
-        lastAllocationPosition = position;
-        auto result = pool.data() + position;
-        auto newSize = position + ((size + 15u) & ~15u);
-
-        if (newSize > pool.size())
-            throw choc::value::Error { "Out of local scratch space" };
-
-        position = newSize;
-        return result;
-    }
-
-    void* resizeIfPossible (void* data, size_t requiredSize) override
-    {
-        if (pool.data() + lastAllocationPosition == data)
-        {
-            position = lastAllocationPosition;
-            return allocate (requiredSize);
-        }
-
-        return {};
-    }
-
-    void free (void*) noexcept override {}
-
-    size_t position = 0, lastAllocationPosition = 0;
-    std::array<char, totalSize> pool;
-};
-
-//==============================================================================
 struct ScopedDisableDenormals
 {
     ScopedDisableDenormals() noexcept;
