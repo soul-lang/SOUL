@@ -2215,7 +2215,7 @@ void ValueView::serialise (OutputStream& output) const
         auto newHandle = stringDataSize + 1u;
         writeUnaligned<uint32_t> (handleCopyAddress, newHandle);
         newHandles[numStrings++] = newHandle;
-        stringDataSize += stringDictionary->getStringForHandle ({ oldHandle }).length() + 1u;
+        stringDataSize += static_cast<uint32_t> (stringDictionary->getStringForHandle ({ oldHandle }).length() + 1u);
     });
 
     output.write (localCopy, dataSize);
