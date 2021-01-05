@@ -27,13 +27,13 @@
  #error "Incorrect use of SOUL cpp file"
 #endif
 
-#include "soul_venue_audioplayer.h"
-
 #include <thread>
-#include "../../../include/soul/3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
-
 #include <soul_core/soul_core.h>
 #include <juce_audio_devices/juce_audio_devices.h>
+
+#include "soul_venue_audioplayer.h"
+
+#include "../../../include/soul/3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #include "audio_player/soul_AudioMIDISystem.cpp"
 #include "audio_player/soul_AudioPlayer.cpp"

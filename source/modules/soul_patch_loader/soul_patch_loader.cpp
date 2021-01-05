@@ -18,9 +18,9 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include "../../../include/soul/soul_patch.h"
 #include "JuceHeader.h"
 
+#include "../../../include/soul/soul_patch.h"
 #include "../../../include/soul/patch/helper_classes/soul_patch_Utilities.h"
 #include "../../../include/soul/patch/helper_classes/soul_patch_FileList.h"
 
