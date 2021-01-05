@@ -2626,7 +2626,7 @@ inline Value Value::deserialise (InputData& input)
     if (input.end > input.start)
     {
         auto stringDataSize = Type::SerialisationHelpers::readVariableLengthInt (input);
-        Type::SerialisationHelpers::expect (stringDataSize <= input.end - input.start);
+        Type::SerialisationHelpers::expect (stringDataSize <= static_cast<uint32_t> (input.end - input.start));
         v.dictionary.strings.resize (stringDataSize);
         memcpy (v.dictionary.strings.data(), input.start, stringDataSize);
         Type::SerialisationHelpers::expect (v.dictionary.strings.back() == 0);
