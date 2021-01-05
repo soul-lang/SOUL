@@ -54,10 +54,9 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         bool load (BuildBundle build, CompileTaskFinishedCallback loadFinishedCallback) override
         {
             return session->load (std::move (build),
-                                  [this, clientCallback = std::move (loadFinishedCallback)] (const CompileMessageList& messages)
+                                  [clientCallback = std::move (loadFinishedCallback)] (const CompileMessageList& messages)
                                   {
                                       clientCallback (messages);
-                                      postLoadSetup();
                                   });
         }
 
@@ -92,6 +91,7 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
 
         bool link (const BuildSettings& settings, CompileTaskFinishedCallback linkFinishedCallback) override
         {
+            connectEndpoints();
             return session->link (settings, std::move (linkFinishedCallback));
         }
 
@@ -144,12 +144,11 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             return false;
         }
 
-        void postLoadSetup()
+        void connectEndpoints()
         {
             midiInputList.clear();
             audioInputList.initialise (maxBlockSize);
             audioOutputList.clear();
-
             eventOutputList.clear();
 
             for (auto& e : getOutputEndpointsOfType (*this, OutputEndpointType::event))
