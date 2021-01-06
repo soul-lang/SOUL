@@ -65,12 +65,19 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             externalInputConnections.clear();
             externalOutputConnections.clear();
             session->unload();
+            xruns = 0;
         }
 
         bool start() override            { return session->start(); }
         bool isRunning() override        { return session->isRunning(); }
         void stop() override             { session->stop(); }
-        Status getStatus() override      { return session->getStatus(); }
+
+        Status getStatus() override
+        {
+            auto s = session->getStatus();
+            s.xruns += xruns;
+            return std::move (s);
+        }
 
         //==============================================================================
         ArrayView<const EndpointDetails> getInputEndpoints() override   { return session->getInputEndpoints(); }
@@ -180,8 +187,12 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         {
             SOUL_ASSERT (numFrames <= maxBlockSize);
             auto framePos = venue.pimpl->totalFramesRendered;
-            audioInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentInputBuffer);
-            midiInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentMIDIBuffer);
+
+            if (! audioInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentInputBuffer))
+                ++xruns;
+
+            if (! midiInputList.addToFIFO (inputFIFO, framePos, venue.pimpl->currentMIDIBuffer))
+                ++xruns;
 
             frameOffset = 0;
             inputFIFO.prepareForReading (venue.pimpl->totalFramesRendered, numFrames);
@@ -237,6 +248,8 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             audioOutputList.handleOutputData (actions, output.getFrameRange ({ frameOffset, frameOffset + numFrames }));
             eventOutputList.postOutputEvents (actions, venue.pimpl->totalFramesRendered + frameOffset);
             frameOffset += numFrames;
+
+            inputFIFO.finishReading();
         }
 
     private:
@@ -254,6 +267,7 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         PrepareInputsFn preRenderCallback;
         ReadOutputsFn postRenderCallback;
         uint32_t frameOffset = 0;
+        std::atomic<uint32_t> xruns { 0 };
 
         struct ExternalConnection
         {

@@ -103,7 +103,7 @@ struct AudioInputList
         totalNumChannels = std::max (totalNumChannels, channels.end);
     }
 
-    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, choc::buffer::ChannelArrayView<const float> inputChannels)
+    bool addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, choc::buffer::ChannelArrayView<const float> inputChannels)
     {
         auto numFrames = inputChannels.getNumFrames();
 
@@ -113,18 +113,22 @@ struct AudioInputList
             {
                 auto channel = inputChannels.getChannel (mapping.channels.start);
 
-                fifo.addInputData (mapping.endpoint, time,
-                                   choc::value::createArrayView (const_cast<float*> (channel.data.data), numFrames));
+                if (! fifo.addInputData (mapping.endpoint, time,
+                                         choc::value::createArrayView (const_cast<float*> (channel.data.data), numFrames)))
+                    return false;
             }
             else
             {
                 copy (scratchBuffer.getStart (numFrames), inputChannels.getChannelRange (mapping.channels));
 
-                fifo.addInputData (mapping.endpoint, time,
-                                   choc::value::create2DArrayView (scratchBuffer.getView().data.data,
-                                                                   numFrames, mapping.channels.size()));
+                if (! fifo.addInputData (mapping.endpoint, time,
+                                         choc::value::create2DArrayView (scratchBuffer.getView().data.data,
+                                                                         numFrames, mapping.channels.size())))
+                    return false;
             }
         }
+
+        return true;
     }
 
     struct InputMapping
@@ -218,21 +222,25 @@ struct MIDIInputList
                             choc::value::Value (details.getSingleEventType()) });
     }
 
-    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, MIDIEventInputList midiEvents)
+    bool addToFIFO (MultiEndpointFIFO& fifo, uint64_t time, MIDIEventInputList midiEvents)
     {
-        if (inputs.empty())
-            return;
-
-        for (auto e : midiEvents)
+        if (! inputs.empty())
         {
-            auto eventTime = time + e.frameIndex;
-
-            for (auto& input : inputs)
+            for (auto e : midiEvents)
             {
-                input.midiEvent.getObjectMemberAt (0).value.set (e.getPackedMIDIData());
-                fifo.addInputData (input.endpoint, eventTime, input.midiEvent);
+                auto eventTime = time + e.frameIndex;
+
+                for (auto& input : inputs)
+                {
+                    input.midiEvent.getObjectMemberAt (0).value.set (e.getPackedMIDIData());
+
+                    if (! fifo.addInputData (input.endpoint, eventTime, input.midiEvent))
+                        return false;
+                }
             }
         }
+
+        return true;
     }
 
     struct MIDIInput
@@ -431,22 +439,28 @@ struct ParameterStateList
     /** Pushes events for any endpoints which have had their value
         modified by setParameter() or markAsChanged().
     */
-    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
+    bool addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
     {
         while (auto p = dirtyList.popNextDirtyObject())
         {
             if (p->rampFrames == 0)
             {
                 valueHolder.getViewReference().set (p->currentValue);
-                fifo.addInputData (p->endpoint, time, valueHolder);
+
+                if (! fifo.addInputData (p->endpoint, time, valueHolder))
+                    return false;
             }
             else
             {
                 rampFramesMember.set (static_cast<int32_t> (p->rampFrames));
                 rampTargetMember.set (p->currentValue);
-                fifo.addInputData (p->endpoint, time, rampedValueHolder);
+
+                if (! fifo.addInputData (p->endpoint, time, rampedValueHolder))
+                    return false;
             }
         }
+
+        return true;
     }
 
     static constexpr std::string_view rampHolderName { "_RampHolder" };
@@ -562,7 +576,7 @@ struct TimelineEventEndpointList
         }
     }
 
-    void addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
+    bool addToFIFO (MultiEndpointFIFO& fifo, uint64_t time)
     {
         if (anyChanges)
         {
@@ -571,27 +585,37 @@ struct TimelineEventEndpointList
             if (sendTimeSig)
             {
                 sendTimeSig = false;
-                fifo.addInputData (timeSigHandle, time, newTimeSigValue);
+
+                if (! fifo.addInputData (timeSigHandle, time, newTimeSigValue))
+                    return false;
             }
 
             if (sendTempo)
             {
                 sendTempo = false;
-                fifo.addInputData (tempoHandle, time, newTempoValue);
+
+                if (! fifo.addInputData (tempoHandle, time, newTempoValue))
+                    return false;
             }
 
             if (sendTransport)
             {
                 sendTransport = false;
-                fifo.addInputData (transportHandle, time, newTransportValue);
+
+                if (! fifo.addInputData (transportHandle, time, newTransportValue))
+                    return false;
             }
 
             if (sendPosition)
             {
                 sendPosition = false;
-                fifo.addInputData (positionHandle, time, newPositionValue);
+
+                if (! fifo.addInputData (positionHandle, time, newPositionValue))
+                    return false;
             }
         }
+
+        return true;
     }
 
     EndpointHandle timeSigHandle, tempoHandle, transportHandle, positionHandle;
