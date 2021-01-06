@@ -76,7 +76,7 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         {
             auto s = session->getStatus();
             s.xruns += xruns;
-            return std::move (s);
+            return s;
         }
 
         //==============================================================================
