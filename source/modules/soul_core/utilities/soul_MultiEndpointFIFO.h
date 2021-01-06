@@ -40,6 +40,8 @@ struct MultiEndpointFIFO
 
     void reset (uint32_t fifoSize, uint32_t maxNumPendingItems)
     {
+        fifoBatchReadOp.release();
+
         fifo.reset (fifoSize);
         itemPool.resize (maxNumPendingItems);
 
@@ -60,24 +62,13 @@ struct MultiEndpointFIFO
         scratch.write (std::addressof (time), sizeof (time));
         scratch.write (std::addressof (endpoint), sizeof (endpoint));
 
-        auto& type = value.getType();
-        type.serialise (scratch);
-        auto startOfValueData = scratch.dest;
-
-        if (! type.isVoid())
-            scratch.write (value.getRawData(), type.getValueDataSize());
-
-        if (scratch.overflowed())
-            return false;
-
-        if (value.getType().usesStrings())
+        try
         {
-            choc::value::FixedPoolAllocator<maxItemSize> localSpace;
-            choc::value::ValueView v (choc::value::Type (std::addressof (localSpace), value.getType()),
-                                      startOfValueData, value.getDictionary());
-
-            if (! DictionaryBuilder (scratch).write (v))
-                return false;
+            value.serialise (scratch);
+        }
+        catch (choc::value::Error)
+        {
+            return false;
         }
 
         return fifo.push (scratch.space, scratch.total);
@@ -89,24 +80,29 @@ struct MultiEndpointFIFO
         incomingItemAllocator->reset();
         bool success = true;
 
-        dataLock = fifo.popAllAvailable ([&] (const void* data, uint32_t size)
-                                         {
-                                             auto d = static_cast<const uint8_t*> (data);
+        if (! fifoBatchReadOp.isActive())
+            fifoBatchReadOp = choc::fifo::VariableSizeFIFO::BatchReadOperation (fifo);
 
-                                             if (! freeItems.empty())
-                                             {
-                                                 auto item = freeItems.back();
+        while (fifoBatchReadOp.pop ([&] (const void* data, uint32_t size)
+                                    {
+                                        auto d = static_cast<const uint8_t*> (data);
 
-                                                 if (readIncomingItem (*item, { d, d + size }, startFrameNumber))
-                                                 {
-                                                     freeItems.pop_back();
-                                                     pendingItems.push_back (item);
-                                                     return;
-                                                 }
-                                             }
+                                        if (! freeItems.empty())
+                                        {
+                                            auto item = freeItems.back();
 
-                                             success = false;
-                                         });
+                                            if (readIncomingItem (*item, { d, d + size }, startFrameNumber))
+                                            {
+                                                freeItems.pop_back();
+                                                pendingItems.push_back (item);
+                                                return;
+                                            }
+                                        }
+
+                                        success = false;
+                                    }))
+        {
+        }
 
         endFrame = startFrameNumber + numFramesNeeded;
         currentFrame = startFrameNumber;
@@ -185,10 +181,8 @@ struct MultiEndpointFIFO
 
     void finishReading()
     {
-        for (auto* item : pendingItems)
-            item->allocate();
-
-        dataLock = {};
+        if (pendingItems.empty())
+            fifoBatchReadOp.release();
     }
 
     /** Note that these iterate functions may only be called by a single thread. */
@@ -207,22 +201,29 @@ struct MultiEndpointFIFO
                                       handleItem (item.endpoint, item.startFrame, item.value);
                                   else
                                       success = false;
-                              },
-                              []{});
+                              });
 
         return success;
     }
 
     static constexpr uint32_t maxItemSize = 4096;
-    static constexpr size_t incomingItemAllocationSpace = 65536;
 
 private:
-    struct IncomingStringDictionary  : public choc::value::StringDictionary
+    struct SerialisedStringDictionary  : public choc::value::StringDictionary
     {
-        Handle getHandleForString (std::string_view) override               { SOUL_ASSERT_FALSE; return {}; }
-        std::string_view getStringForHandle (Handle handle) const override  { return std::string_view (start + handle.handle); }
+        Handle getHandleForString (std::string_view) override     { SOUL_ASSERT (false); return {}; }
 
-        const char* start = {};
+        std::string_view getStringForHandle (Handle handle) const override
+        {
+            handle.handle--;
+            if (handle.handle >= size)
+                choc::value::throwError ("Malformed data");
+
+            return std::string_view (start + handle.handle);
+        }
+
+        const char* start;
+        size_t size;
     };
 
     struct Item
@@ -231,21 +232,12 @@ private:
         uint32_t numFrames = 0;
         soul::EndpointHandle endpoint;
         choc::value::ValueView value;
-        IncomingStringDictionary dictionary;
-        choc::value::Value allocatedCopy;
-
-        void allocate()
-        {
-            SOUL_TODO // need to avoid heap allocation here
-            allocatedCopy = value;
-            value = allocatedCopy.getView();
-        }
+        SerialisedStringDictionary dictionary;
 
         void release()
         {
             numFrames = 0;
             value = {};
-            allocatedCopy = choc::value::Value();
         }
     };
 
@@ -255,103 +247,60 @@ private:
         char* dest = space;
         uint32_t total = 0;
 
-        bool overflowed() const      { return total > sizeof (space); }
-
         void write (const void* source, size_t size)
         {
             total += static_cast<uint32_t> (size);
 
-            if (! overflowed())
-            {
-                std::memcpy (dest, source, size);
-                dest += size;
-            }
+            if (total > sizeof (space))
+                choc::value::throwError ("Out of scratch space");
+
+            std::memcpy (dest, source, size);
+            dest += size;
         }
     };
 
     choc::fifo::VariableSizeFIFO fifo;
+    choc::fifo::VariableSizeFIFO::BatchReadOperation fifoBatchReadOp;
+
+    static constexpr size_t incomingItemAllocationSpace = 65536;
     std::unique_ptr<choc::value::FixedPoolAllocator<incomingItemAllocationSpace>> incomingItemAllocator;
 
     std::vector<Item> itemPool;
     std::vector<Item*> pendingItems, freeItems;
-    choc::fifo::VariableSizeFIFO::DataLocker dataLock;
 
     uint64_t currentFrame = 0, nextChunkStart = 0, endFrame = 0;
     uint32_t framesThisTime = 0;
 
-    struct DictionaryBuilder
-    {
-        DictionaryBuilder (ScratchWriter& s) : scratch (s) {}
-
-        static constexpr uint32_t maxStrings = 128;
-
-        ScratchWriter& scratch;
-        uint32_t numStrings = 0, stringEntryOffset = 0;
-        choc::value::StringDictionary::Handle oldHandles[maxStrings],
-                                              newHandles[maxStrings];
-
-        bool write (choc::value::ValueView& v)
-        {
-            if (v.isString())
-            {
-                auto oldHandle = v.getStringHandle();
-
-                for (decltype (numStrings) i = 0; i < numStrings; ++i)
-                {
-                    if (oldHandles[i] == oldHandle)
-                    {
-                        v.set (newHandles[i]);
-                        return true;
-                    }
-                }
-
-                if (numStrings == maxStrings)
-                    return false;
-
-                oldHandles[numStrings] = oldHandle;
-                newHandles[numStrings] = { stringEntryOffset };
-
-                auto text = v.getString();
-                auto len = text.length();
-                scratch.write (text.data(), len);
-                char nullTerm = 0;
-                scratch.write (std::addressof (nullTerm), 1u);
-                stringEntryOffset += static_cast<uint32_t> (len + 1);
-
-                v.set (newHandles[numStrings++]);
-            }
-            else if (v.isArray())
-            {
-                for (auto element : v)
-                    if (element.getType().usesStrings())
-                        if (! write (element))
-                            return false;
-            }
-            else if (v.isObject())
-            {
-                auto numMembers = v.size();
-
-                for (uint32_t i = 0; i < numMembers; ++i)
-                {
-                    auto member = v[i];
-
-                    if (member.getType().usesStrings())
-                        if (! write (member))
-                            return false;
-                }
-            }
-
-            return true;
-        }
-    };
-
     template <typename DestType> static void read (choc::value::InputData& reader, DestType& d)
     {
         if (reader.start + sizeof (d) > reader.end)
-            throw choc::value::Error { "Malformed data" };
+            choc::value::throwError ("Malformed data");
 
         std::memcpy (std::addressof (d), reader.start, sizeof (d));
         reader.start += sizeof (d);
+    }
+
+    static uint32_t readVariableLengthInt (choc::value::InputData& source)
+    {
+        uint32_t result = 0;
+
+        for (int shift = 0;;)
+        {
+            if (source.end <= source.start)
+                choc::value::throwError ("Malformed data");
+
+            auto nextByte = *source.start++;
+
+            if (shift == 28)
+                if (nextByte >= 16)
+                    choc::value::throwError ("Malformed data");
+
+            if (nextByte < 128)
+                return result | (static_cast<uint32_t> (nextByte) << shift);
+
+            result |= static_cast<uint32_t> (nextByte & 0x7fu) << shift;
+            shift += 7;
+        }
     }
 
     bool readIncomingItem (Item& item, choc::value::InputData reader, uint64_t startFrameNumber)
@@ -368,11 +317,19 @@ private:
 
                 auto type = choc::value::Type::deserialise (reader, incomingItemAllocator.get());
                 auto dataSize = type.getValueDataSize();
+                auto dataStart = reader.start;
+                reader.start += dataSize;
 
-                if (reader.start + dataSize <= reader.end)
+                if (reader.start <= reader.end)
                 {
-                    item.dictionary.start = reinterpret_cast<const char*> (reader.start + dataSize);
-                    item.value = choc::value::ValueView (std::move (type), const_cast<uint8_t*> (reader.start), std::addressof (item.dictionary));
+                    auto stringDataSize = reader.start < reader.end ? readVariableLengthInt (reader) : 0;
+
+                    if (reader.start + stringDataSize > reader.end)
+                        choc::value::throwError ("Malformed data");
+
+                    item.dictionary.start = reinterpret_cast<const char*> (reader.start);
+                    item.dictionary.size = stringDataSize;
+                    item.value = choc::value::ValueView (std::move (type), const_cast<uint8_t*> (dataStart), std::addressof (item.dictionary));
 
                     if (item.value.isArray())
                         item.numFrames = item.value.getType().getNumElements();

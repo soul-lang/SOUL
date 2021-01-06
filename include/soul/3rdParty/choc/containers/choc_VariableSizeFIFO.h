@@ -82,28 +82,35 @@ struct VariableSizeFIFO
     bool pop (HandleItem&& handleItem);
 
     /** Allows access to all the available item in the FIFO via a callback.
-        If there are any pending items in the FIFO, the handleItem function
-        will be called for each of them. Then, when no more are available, the itemsComplete
-        function is called before the space is freed up for re-use by incoming data.
-        HandleItem must be a functor or lambda which can be called
-        as handleItems (const void* data, uint32_t size). ItemsComplete must be a functor
-        which takes no arguments and returns void.
-    */
-    template <typename HandleItem, typename ItemsComplete>
-    void popAllAvailable (HandleItem&&, ItemsComplete&&);
-
-    struct DataLocker;
-
-    /** Allows access to all the available item in the FIFO via a callback.
-        If there are any pending items in the FIFO, the handleItem function
-        will be called for each of them. Then, when no more are available, the function
-        returns a lock object which prevents the FIFO's read position being updated and
-        thus protects the the data in the returned items until the lock object is deleted.
-        HandleItem must be a functor or lambda which can be called
-        as handleItems (const void* data, uint32_t size).
+        If there are any pending items in the FIFO, the handleItem function will be called
+        for each of them. HandleItem must be a functor or lambda which can be called as
+        handleItems (const void* data, uint32_t size).
     */
     template <typename HandleItem>
-    DataLocker popAllAvailable (HandleItem&&);
+    void popAllAvailable (HandleItem&&);
+
+    /** Allows multiple items to be read from the FIFO without releasing their slots
+        until the BatchReadOperation object is deleted.
+    */
+    struct BatchReadOperation
+    {
+        explicit BatchReadOperation (VariableSizeFIFO&) noexcept;
+
+        BatchReadOperation() = default;
+        BatchReadOperation (BatchReadOperation&&);
+        BatchReadOperation& operator= (BatchReadOperation&&);
+        ~BatchReadOperation() noexcept;
+
+        template <typename HandleItem>
+        bool pop (HandleItem&& handleItem);
+
+        bool isActive() const       { return fifo != nullptr; }
+        void release() noexcept;
+
+    private:
+        VariableSizeFIFO* fifo = nullptr;
+        uint32_t newReadPos = 0;
+    };
 
     /** Returns the number of used bytes in the FIFO. */
     uint32_t getUsedSpace() const;
@@ -214,8 +221,8 @@ bool VariableSizeFIFO::pop (HandleItem&& handleItem)
     }
 }
 
-template <typename HandleItem, typename ItemsComplete>
-void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem, ItemsComplete&& itemsComplete)
+template <typename HandleItem>
+void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem)
 {
     auto originalWritePos = writePos.load();
     auto newReadPos = readPos.load();
@@ -237,50 +244,39 @@ void VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem, ItemsComplete&&
         }
     }
 
-    itemsComplete();
     readPos = newReadPos;
 }
 
-struct VariableSizeFIFO::DataLocker
-{
-    DataLocker() = default;
-    DataLocker (VariableSizeFIFO* f, uint32_t pos) : fifo (f), newReadPos (pos) {}
-    DataLocker (const DataLocker&) = delete;
-    DataLocker (DataLocker&& other) : fifo (other.fifo), newReadPos (other.newReadPos) { other.fifo = nullptr; }
-    DataLocker& operator= (DataLocker&& other) { apply(); fifo = other.fifo; newReadPos = other.newReadPos; other.fifo = nullptr; return *this; }
-    ~DataLocker() { apply(); }
-    void apply() { if (fifo != nullptr) fifo->readPos = newReadPos; }
-
-    VariableSizeFIFO* fifo = nullptr;
-    uint32_t newReadPos;
-};
+inline VariableSizeFIFO::BatchReadOperation::BatchReadOperation (VariableSizeFIFO& f) noexcept : fifo (std::addressof (f)) { newReadPos = f.readPos.load(); }
+inline VariableSizeFIFO::BatchReadOperation::BatchReadOperation (BatchReadOperation&& other) : fifo (other.fifo), newReadPos (other.newReadPos) { other.fifo = nullptr; }
+inline VariableSizeFIFO::BatchReadOperation& VariableSizeFIFO::BatchReadOperation::operator= (BatchReadOperation&& other) { release(); fifo = other.fifo; newReadPos = other.newReadPos; other.fifo = nullptr; return *this; }
+inline VariableSizeFIFO::BatchReadOperation::~BatchReadOperation() noexcept  { release(); }
+inline void VariableSizeFIFO::BatchReadOperation::release() noexcept    { if (fifo != nullptr) { fifo->readPos = newReadPos; fifo = nullptr; } }
 
 template <typename HandleItem>
-VariableSizeFIFO::DataLocker VariableSizeFIFO::popAllAvailable (HandleItem&& handleItem)
+bool VariableSizeFIFO::BatchReadOperation::pop (HandleItem&& handleItem)
 {
-    auto originalWritePos = writePos.load();
-    auto newReadPos = readPos.load();
+    SOUL_ASSERT (fifo != nullptr);
+    auto originalWritePos = fifo->writePos.load();
 
     while (newReadPos != originalWritePos)
     {
-        auto itemData = buffer.data() + static_cast<int32_t> (newReadPos);
+        auto itemData = fifo->buffer.data() + static_cast<int32_t> (newReadPos);
         ItemHeader itemSize;
         std::memcpy (std::addressof (itemSize), itemData, headerSize);
 
         if (itemSize != 0)
         {
             handleItem (static_cast<void*> (itemData + headerSize), itemSize);
-            newReadPos = (newReadPos + itemSize + headerSize) % capacity;
+            newReadPos = (newReadPos + itemSize + headerSize) % fifo->capacity;
+            return true;
         }
-        else
-        {
-            newReadPos = 0;
-        }
+
+        newReadPos = 0;
     }
 
-    return DataLocker (this, newReadPos);
+    return false;
 }
-
 
 } // namespace choc::fifo
 
