@@ -44,3 +44,40 @@ bool test_44100()
     return check1 (c.coeffs, 0.07953597068282830529, 0.49166607647985011154, 0.80207540068172422654, 0.93332158760939576414, 0.97892197623921384242, 0.99441088105986041867) &&
            check2 (c.coeffs, 0.27299246845856844912, 0.67385471864342094683, 0.88392180393340147315, 0.96223265392866863532, 0.98859401404889180043, 0.99832609558682605666);
 }
+
+
+## compile
+
+graph StereoTester [[ main ]]
+{
+    input stream float32 in;
+    output stream float32 out;
+    input filter.frequencyIn;
+
+    namespace OnePole = soul::filters (float32)::onepole;
+    let filter = OnePole::Processor;
+
+    connection
+    {
+        in -> filter.in;
+        filter.out -> out;
+    }
+}
+
+## compile
+
+graph StereoTester [[ main ]]
+{
+    input stream float32<2> in;
+    output stream float32<2> out;
+    input filter.frequencyIn;
+
+    namespace OnePole = soul::filters (float32<2>)::onepole;
+    let filter = OnePole::Processor;
+
+    connection
+    {
+        in -> filter.in;
+        filter.out -> out;
+    }
+}

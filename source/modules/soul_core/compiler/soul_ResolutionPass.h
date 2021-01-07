@@ -574,10 +574,10 @@ private:
             return false;
         }
 
-        bool validateSpecialisationArgs (const ArgList& args, const ParamList& params) const
+        bool validateSpecialisationArgs (const ArgList& args, const ParamList& params, bool shouldIgnoreErrors) const
         {
             for (size_t i = 0; i < params.size(); ++i)
-                if (! validateSpecialisationParam (params[i], false))
+                if (! validateSpecialisationParam (params[i], shouldIgnoreErrors))
                     return false;
 
             if (args.size() == params.size())
@@ -821,7 +821,7 @@ private:
                     {
                         auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
 
-                        if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
+                        if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams, false))
                             qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedDisplayPath()));
 
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
@@ -860,7 +860,7 @@ private:
                         {
                             auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
 
-                            if (! validateSpecialisationArgs (specialisationArgs, p->specialisationParams))
+                            if (! validateSpecialisationArgs (specialisationArgs, p->specialisationParams, false))
                                 return qi;
 
                             return getOrCreateImplicitProcessorInstance (qi.context, *p, {});
@@ -904,7 +904,7 @@ private:
                     {
                         auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (qi.pathSections[0].specialisationArgs);
 
-                        if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
+                        if (! validateSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams, false))
                             qi.context.throwError (Errors::wrongNumArgsForNamespace (targetNamespace->getFullyQualifiedDisplayPath()));
 
                         if (canResolveAllSpecialisationArgs (specialisationArgs, targetNamespace->specialisationParams))
@@ -2099,8 +2099,16 @@ private:
                 auto specialisationArgs = AST::CommaSeparatedList::getAsExpressionList (instance.specialisationArgs);
                 auto target = pool_ref<AST::ProcessorBase> (*p);
 
-                if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams))
+                if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams, ignoreErrors))
+                {
+                    if (ignoreErrors)
+                    {
+                        ++numFails;
+                        return instance;
+                    }
+
                     instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedDisplayPath()));
+                }
 
                 auto& graph = *cast<AST::Graph> (instance.getParentScope()->findProcessor());
                 SanityCheckPass::RecursiveGraphDetector::check (graph);
@@ -2183,7 +2191,7 @@ private:
 
             if (auto target = instance.targetNamespace->getAsNamespace())
             {
-                if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams))
+                if (! validateSpecialisationArgs (specialisationArgs, target->specialisationParams, false))
                     instance.context.throwError (Errors::wrongNumArgsForNamespace (target->getFullyQualifiedDisplayPath()));
 
                 if (canResolveAllSpecialisationArgs (specialisationArgs, target->specialisationParams))
