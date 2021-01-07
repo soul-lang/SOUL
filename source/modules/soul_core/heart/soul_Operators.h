@@ -300,8 +300,12 @@ namespace BinaryOp
 
         if (op == Op::rightShiftUnsigned)
         {
-            lhs = (b >= 0) ? Value ((IntType) (((uint64_t) a) >> b))
-                           : Value::zeroInitialiser (lhs.getType());
+            if (sizeof (a) == sizeof (int32_t))
+                lhs = (b >= 0) ? Value ((IntType) (((uint32_t) a) >> b))
+                               : Value::zeroInitialiser (lhs.getType());
+            else
+                lhs = (b >= 0) ? Value ((IntType) (((uint64_t) a) >> b))
+                               : Value::zeroInitialiser (lhs.getType());
             return true;
         }
 
