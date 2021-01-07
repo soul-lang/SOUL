@@ -75,6 +75,7 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         Status getStatus() override
         {
             auto s = session->getStatus();
+            s.sampleRate = venue.pimpl->audioSystem.getSampleRate();
             s.xruns += xruns;
             return s;
         }
