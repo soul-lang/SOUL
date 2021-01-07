@@ -51,9 +51,9 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             unload();
         }
 
-        bool load (BuildBundle build, CompileTaskFinishedCallback loadFinishedCallback) override
+        bool load (const Program& program, CompileTaskFinishedCallback loadFinishedCallback) override
         {
-            return session->load (std::move (build),
+            return session->load (program,
                                   [clientCallback = std::move (loadFinishedCallback)] (const CompileMessageList& messages)
                                   {
                                       clientCallback (messages);

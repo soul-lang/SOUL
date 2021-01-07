@@ -72,7 +72,7 @@ public:
             getInputEndpoints() and getOutputEndpoints() methods become available, so you can query
             and connect them to data sources before calling link().
         */
-        virtual bool load (BuildBundle, CompileTaskFinishedCallback loadFinishedCallback) = 0;
+        virtual bool load (const Program&, CompileTaskFinishedCallback loadFinishedCallback) = 0;
 
         /** When a program has been loaded, this returns a list of the input endpoints that
             the program provides.

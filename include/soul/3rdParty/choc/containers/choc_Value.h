@@ -557,7 +557,8 @@ public:
         @see Value::serialise
     */
     template <typename Handler>
-    static void deserialise (InputData&, Handler&& handleResult);
+    static void deserialise (InputData&, Handler&& handleResult,
+                             Allocator* allocator = nullptr);
 
 private:
     //==============================================================================
@@ -2231,11 +2232,10 @@ void ValueView::serialise (OutputStream& output) const
 }
 
 template <typename Handler>
-void ValueView::deserialise (InputData& input, Handler&& handleResult)
+void ValueView::deserialise (InputData& input, Handler&& handleResult, Allocator* allocator)
 {
-    FixedPoolAllocator<8192> localAllocator;
     ValueView result;
-    result.type = Type::deserialise (input, std::addressof (localAllocator));
+    result.type = Type::deserialise (input, allocator);
     auto valueDataSize = result.type.getValueDataSize();
     Type::SerialisationHelpers::expect (input.end >= input.start + valueDataSize);
     result.data = const_cast<uint8_t*> (input.start);
