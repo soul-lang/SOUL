@@ -124,4 +124,12 @@ namespace soul::audioplayer
         struct Pimpl;
         std::unique_ptr<Pimpl> pimpl;
     };
-}
+
+    //==============================================================================
+    // These helper functions auto-connect the standard audio and MIDI external endpoints
+    // to any suitable endpoints in the program that the session has loaded.
+    void connectDefaultAudioInputEndpoints  (soul::Venue&, soul::Venue::Session&);
+    void connectDefaultAudioOutputEndpoints (soul::Venue&, soul::Venue::Session&);
+    void connectDefaultMIDIInputEndpoints   (soul::Venue&, soul::Venue::Session&);
+
+} // namespace soul::audioplayer

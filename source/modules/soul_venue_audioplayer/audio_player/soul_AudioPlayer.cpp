@@ -21,6 +21,11 @@
 namespace soul::audioplayer
 {
 
+static constexpr auto externalAudioInID     = "audio_in";
+static constexpr auto externalAudioOutID    = "audio_out";
+static constexpr auto externalMIDIInID      = "midi_in";
+
+//==============================================================================
 struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
 {
     Pimpl (AudioPlayerVenue& v, const Requirements& r, std::unique_ptr<PerformerFactory> f)
@@ -402,12 +407,12 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
         decltype (externalEndpoints) list;
 
         if (auto numInputChannels = static_cast<uint32_t> (audioSystem.getNumInputChannels()))
-            list.push_back ({ "audio_in", "default audio input", true, false, { 0, numInputChannels } });
+            list.push_back ({ externalAudioInID, "default audio input", true, false, { 0, numInputChannels } });
 
         if (auto numOutputChannels = static_cast<uint32_t> (audioSystem.getNumOutputChannels()))
-            list.push_back ({ "audio_out", "default audio output", false, false, { 0, numOutputChannels } });
+            list.push_back ({ externalAudioOutID, "default audio output", false, false, { 0, numOutputChannels } });
 
-        list.push_back ({ "midi_in", "MIDI in", true, true, {} });
+        list.push_back ({ externalMIDIInID, "MIDI in", true, true, {} });
         return list;
     }
 
@@ -449,5 +454,57 @@ bool AudioPlayerVenue::createSession (SessionReadyCallback callback)
 
 ArrayView<const EndpointDetails> AudioPlayerVenue::getExternalInputEndpoints()  { return pimpl->getExternalInputEndpoints(); }
 ArrayView<const EndpointDetails> AudioPlayerVenue::getExternalOutputEndpoints() { return pimpl->getExternalOutputEndpoints(); }
+
+//==============================================================================
+void connectDefaultAudioInputEndpoints (Venue& venue, Venue::Session& session)
+{
+    auto externalInputs = venue.getExternalInputEndpoints();
+
+    for (auto& audioIn : getInputEndpointsOfType (session, soul::InputEndpointType::audio))
+    {
+        for (auto& i : externalInputs)
+        {
+            if (i.endpointID.toString() == externalAudioInID)
+            {
+                session.connectExternalEndpoint (audioIn.endpointID, i.endpointID);
+                break;
+            }
+        }
+    }
+}
+
+void connectDefaultAudioOutputEndpoints (Venue& venue, Venue::Session& session)
+{
+    auto externalOutputs = venue.getExternalOutputEndpoints();
+
+    for (auto& audioOut : getOutputEndpointsOfType (session, soul::OutputEndpointType::audio))
+    {
+        for (auto& o : externalOutputs)
+        {
+            if (o.endpointID.toString() == externalAudioOutID)
+            {
+                session.connectExternalEndpoint (audioOut.endpointID, o.endpointID);
+                break;
+            }
+        }
+    }
+}
+
+void connectDefaultMIDIInputEndpoints (Venue& venue, Venue::Session& session)
+{
+    auto externalInputs = venue.getExternalInputEndpoints();
+
+    for (auto& midiIn : getInputEndpointsOfType (session, soul::InputEndpointType::midi))
+    {
+        for (auto& i : externalInputs)
+        {
+            if (i.endpointID.toString() == externalMIDIInID)
+            {
+                session.connectExternalEndpoint (midiIn.endpointID, i.endpointID);
+                break;
+            }
+        }
+    }
+}
 
 }
