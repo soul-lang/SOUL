@@ -157,6 +157,9 @@ struct AudioPlayerVenue::Pimpl  : private AudioMIDISystem::Callback
             return false;
         }
 
+        ArrayView<const ExternalVariable> getExternalVariables() override                       { return session->getExternalVariables(); }
+        bool setExternalVariable (const char* name, const choc::value::ValueView& v) override   { return session->setExternalVariable (name, v); }
+
         void connectEndpoints()
         {
             midiInputList.clear();

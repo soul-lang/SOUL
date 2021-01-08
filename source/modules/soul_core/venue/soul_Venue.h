@@ -87,6 +87,14 @@ public:
         /** Connects one of the venue's external endpoints to an endpoint in the currently loaded program. */
         virtual bool connectExternalEndpoint (EndpointID programEndpoint, EndpointID externalEndpoint) = 0;
 
+        /** Returns the list of external variables that need to be resolved before a loaded
+            program can be linked.
+        */
+        virtual ArrayView<const ExternalVariable> getExternalVariables() = 0;
+
+        /** Set the value of an external in the loaded program. */
+        virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) = 0;
+
         /** When a program has been loaded successfully and its endpoints have suitable data
             sources attached, call link() to finish the process of preparing the program to be run.
 

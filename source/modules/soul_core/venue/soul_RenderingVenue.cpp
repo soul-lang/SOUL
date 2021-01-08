@@ -303,6 +303,9 @@ struct RenderingVenue::Pimpl
 
         bool connectExternalEndpoint (EndpointID, EndpointID) override      { return false; }
 
+        ArrayView<const ExternalVariable> getExternalVariables() override                      { return performer->getExternalVariables(); }
+        bool setExternalVariable (const char* name, const choc::value::ValueView& v) override  { return performer->setExternalVariable (name, v); }
+
         //==============================================================================
         EndpointHandle getEndpointHandle (const EndpointID& e) override     { return performer->getEndpointHandle (e); }
         bool isEndpointActive (const EndpointID& e) override                { return performer->isEndpointActive (e); }
