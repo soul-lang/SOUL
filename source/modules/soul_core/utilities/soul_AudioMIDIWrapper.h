@@ -21,6 +21,28 @@
 namespace soul
 {
 
+template <typename Value>
+choc::value::Value createWrappedSparseStreamEventHolder (const Value& value, uint32_t numFrames)
+{
+    return choc::value::createObject ("_RampHolder",
+                                      "rampFrames", static_cast<int32_t> (numFrames),
+                                      "target", value);
+}
+
+template <typename Target>
+bool applySparseStreamEventWrapper (Target& target, EndpointHandle endpoint, const choc::value::ValueView& v)
+{
+    if (v.isObjectWithClassName ("_RampHolder"))
+    {
+        target.setSparseInputStreamTarget (endpoint, v.getObjectMemberAt (1).value,
+                                           static_cast<uint32_t> (v.getObjectMemberAt (0).value.getInt32()));
+        return true;
+    }
+
+    return false;
+}
+
+//==============================================================================
 struct MIDIEventInputList
 {
     const MIDIEvent* listStart = nullptr;
@@ -374,10 +396,7 @@ struct ParameterStateList
     {
         valueHolder = choc::value::createFloat32 (0);
 
-        rampedValueHolder = choc::value::createObject (std::string (rampHolderName),
-                                                       "rampFrames", choc::value::createInt32 (0),
-                                                       "target", choc::value::createFloat32 (0));
-
+        rampedValueHolder = createWrappedSparseStreamEventHolder (0.0f, 0);
         rampFramesMember = rampedValueHolder.getObjectMemberAt (0).value;
         rampTargetMember = rampedValueHolder.getObjectMemberAt (1).value;
 
@@ -461,20 +480,6 @@ struct ParameterStateList
         }
 
         return true;
-    }
-
-    static constexpr std::string_view rampHolderName { "_RampHolder" };
-
-    static bool setSparseValueIfRampedParameterChange (Performer& p, EndpointHandle endpoint, const choc::value::ValueView& v)
-    {
-        if (v.getType().isObject() && v.getType().getObjectClassName() == rampHolderName)
-        {
-            p.setSparseInputStreamTarget (endpoint, v.getObjectMemberAt (1).value,
-                                          static_cast<uint32_t> (v.getObjectMemberAt (0).value.getInt32()));
-            return true;
-        }
-
-        return false;
     }
 
 private:
@@ -784,7 +789,7 @@ private:
         switch (endpoint.getType())
         {
             case EndpointType::stream:
-                if (! ParameterStateList::setSparseValueIfRampedParameterChange (performer, endpoint, value))
+                if (! applySparseStreamEventWrapper (performer, endpoint, value))
                     performer.setNextInputStreamFrames (endpoint, value);
 
                 break;

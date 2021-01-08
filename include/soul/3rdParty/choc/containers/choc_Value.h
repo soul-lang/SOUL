@@ -171,6 +171,9 @@ public:
     /** Returns the class-name of this type if it's an object, or throws an Error if it's not. */
     std::string_view getObjectClassName() const;
 
+    /** Returns true if this is an object with the given class-name. */
+    bool isObjectWithClassName (std::string_view name) const;
+
     bool operator== (const Type&) const;
     bool operator!= (const Type&) const;
 
@@ -499,6 +502,9 @@ public:
     */
     std::string_view getObjectClassName() const;
 
+    /** Returns true if this is an object with the given class-name. */
+    bool isObjectWithClassName (std::string_view name) const;
+
     /** Returns the name and value of a member by index.
         This will throw an error if the value is not an object of if the index is out of range. (Use
         size() to find out how many members there are). To get a named value from an object, you can
@@ -744,6 +750,9 @@ public:
         This will throw an error if the value is not an object.
     */
     std::string_view getObjectClassName() const                         { return value.getObjectClassName(); }
+
+    /** Returns true if this is an object with the given class-name. */
+    bool isObjectWithClassName (std::string_view name) const            { return value.isObjectWithClassName (name); }
 
     /** Returns the name and value of a member by index.
         This will throw an error if the value is not an object of if the index is out of range. (Use
@@ -1621,6 +1630,11 @@ inline std::string_view Type::getObjectClassName() const
     return content.object->className;
 }
 
+inline bool Type::isObjectWithClassName (std::string_view name) const
+{
+    return isObject() && content.object->className == name;
+}
+
 inline bool Type::operator== (const Type& other) const
 {
     if (mainType != other.mainType)
@@ -2121,7 +2135,8 @@ inline ValueView ValueView::operator[] (std::string_view name) const
     return ValueView (std::move (info.elementType), data + info.offset, stringDictionary);
 }
 
-inline std::string_view ValueView::getObjectClassName() const   { return type.getObjectClassName(); }
+inline std::string_view ValueView::getObjectClassName() const               { return type.getObjectClassName(); }
+inline bool ValueView::isObjectWithClassName (std::string_view name) const  { return type.isObjectWithClassName (name); }
 
 inline MemberNameAndValue ValueView::getObjectMemberAt (uint32_t index) const
 {

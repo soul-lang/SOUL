@@ -259,7 +259,7 @@ Annotation Annotation::fromExternalValue (const choc::value::ValueView& v)
 {
     Annotation a;
 
-    if (v.isObject() && v.getObjectClassName() == "Annotation")
+    if (v.isObjectWithClassName ("Annotation"))
     {
         v.visitObjectMembers ([&] (std::string_view name, const choc::value::ValueView& value)
                               {
