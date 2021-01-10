@@ -121,7 +121,9 @@ namespace soul::filters (using SampleType = float32,
                          a; /**< feed-back, denominator, pole, IIR coefficients */
         }
 
-        void set (Coeffs &c, CoeffType b0, CoeffType b1, CoeffType b2, CoeffType a0, CoeffType a1, CoeffType a2)
+        void set (Coeffs &c,
+                  CoeffType b0, CoeffType b1, CoeffType b2,
+                  CoeffType a0, CoeffType a1, CoeffType a2)
         {
             c.b[0] = b0; c.b[1] = b1; c.b[2] = b2; c.a[0] = a0; c.a[1] = a1; c.a[2] = a2;
         }
@@ -198,7 +200,9 @@ namespace soul::filters (using SampleType = float32,
             return y;
         }
 
-        SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
+        SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x,
+                                                                       StateArrayType& s,
+                                                                       CoeffsArrayType& c)
         {
             static_assert (StateArrayType.isArray, "states argument is not an array");
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -212,7 +216,9 @@ namespace soul::filters (using SampleType = float32,
             return y;
         }
 
-        SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
+        SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x,
+                                                                         StateArrayType& s,
+                                                                         CoeffsArrayType& c)
         {
             static_assert (StateArrayType.isArray, "states argument is not an array");
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -283,7 +289,8 @@ namespace soul::filters (using SampleType = float32,
             c.setNormalised (nc);
         }
 
-        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+        processor Processor (int initialMode = 0,
+                             float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
             output stream SampleType out;
@@ -311,7 +318,9 @@ namespace soul::filters (using SampleType = float32,
                     if (recalc)
                     {
                         recalc = false;
-                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        let clippedFrequency = clamp (float64 (frequency),
+                                                      float64 (minFreqHz),
+                                                      processor.frequency * normalisedFreqLimit);
                         update (c, processor.frequency, mode, clippedFrequency);
                     }
 
@@ -347,7 +356,9 @@ namespace soul::filters (using SampleType = float32,
             let allpass   = 7;
         }
 
-        void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gaindB)
+        void update (biquad::Coeffs& c,
+                     float64 sampleRate, int mode, float64 freqHz,
+                     float64 quality, float64 gaindB)
         {
             biquad::Coeffs nnc; // non-normalised coefficients
 
@@ -436,7 +447,10 @@ namespace soul::filters (using SampleType = float32,
             c.setNonNormalised (nnc);
         }
 
-        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+        processor Processor (int initialMode = 0,
+                             float initialFrequency = defaultFreqHz,
+                             float initialQuality   = defaultQuality,
+                             float initialGain      = defaultGain)
         {
             input stream SampleType in;
             output stream SampleType out;
@@ -588,7 +602,9 @@ namespace soul::filters (using SampleType = float32,
         /** Butterworth processor.
             The order must be > 0
         */
-        processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+        processor Processor (int order,
+                             int initialMode = 0,
+                             float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
             output stream SampleType out;
@@ -649,7 +665,8 @@ namespace soul::filters (using SampleType = float32,
         pass band but introduce more delay with respect to the input signal.
         The filter passband is from transitionBandwidthHz to nyquist - transitionBandwidthHz.
     */
-    namespace analytic (int numFilters = 6, float transitionBandwidthHz = 20.0f)
+    namespace analytic (int numFilters = 6,
+                        float transitionBandwidthHz = 20.0f)
     {
         /** Polyphase IIR Designer.
             Based on HIIR http://ldesoras.free.fr/prod.html#src_hiir
@@ -772,7 +789,7 @@ namespace soul::filters (using SampleType = float32,
 
         void update (State& s, float64 sampleRate)
         {
-            let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz/sampleRate));
+            let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz / sampleRate));
 
             for (wrap<numFilters> i)
             {
@@ -867,7 +884,9 @@ namespace soul::filters (using SampleType = float32,
             return SampleType[2] (yReal, yImag);
         }
 
-        processor Processor (float initialFrequency = defaultFreqHz, float initialDecay = 1.0f, float initialGain = 1.0f)
+        processor Processor (float initialFrequency = defaultFreqHz,
+                             float initialDecay = 1.0f,
+                             float initialGain = 1.0f)
         {
             input stream SampleType in;
             output stream SampleType realOut;
@@ -993,7 +1012,8 @@ namespace soul::filters (using SampleType = float32,
                 return lpf - hpf;
             }
 
-            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+            processor Processor (int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz)
             {
                 input stream SampleType in;
                 output stream SampleType out;
@@ -1022,18 +1042,17 @@ namespace soul::filters (using SampleType = float32,
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, clippedFrequency);
                         }
 
                         loop (16)
                         {
-                            if (mode == Mode::lowpass)
-                                out << s.processLPF (in, c);
-                            else if (mode == Mode::highpass)
-                                out << s.processHPF (in, c);
-                            else if (mode == Mode::allpass)
-                                out << s.processAPF (in, c);
+                            if (mode == Mode::lowpass)        out << s.processLPF (in, c);
+                            else if (mode == Mode::highpass)  out << s.processHPF (in, c);
+                            else if (mode == Mode::allpass)   out << s.processAPF (in, c);
 
                             advance();
                         }
@@ -1100,7 +1119,8 @@ namespace soul::filters (using SampleType = float32,
                 return SampleType[3] (lpf, hpf, bpf);
             }
 
-            processor Processor (float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality)
+            processor Processor (float initialFrequency = defaultFreqHz,
+                                 float initialQuality = defaultQuality)
             {
                 input stream SampleType in;
                 output stream SampleType lowpassOut, bandpassOut, highpassOut;
@@ -1128,7 +1148,9 @@ namespace soul::filters (using SampleType = float32,
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, clippedFrequency, quality);
                         }
 
@@ -1161,7 +1183,9 @@ namespace soul::filters (using SampleType = float32,
                 let highpass = 1;
             }
 
-            void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs, onepole::Coeffs& onepoleCoeffs, float64 sampleRate, int order, float64 freqHz)
+            void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs,
+                                             onepole::Coeffs& onepoleCoeffs,
+                                             float64 sampleRate, int order, float64 freqHz)
             {
                 static_assert (SVFCoeffsArrayType.isArray, "coeffs argument is not an array");
 
@@ -1187,9 +1211,12 @@ namespace soul::filters (using SampleType = float32,
                 }
             }
 
-            SampleType process<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& svfStates, CoeffsArrayType& svfCoeffs,
-                                                                               onepole::State& onepoleState, onepole::Coeffs& onepoleCoeffs,
-                                                                               int mode, bool oddOrder)
+            SampleType process<StateArrayType, CoeffsArrayType> (SampleType x,
+                                                                 StateArrayType& svfStates,
+                                                                 CoeffsArrayType& svfCoeffs,
+                                                                 onepole::State& onepoleState,
+                                                                 onepole::Coeffs& onepoleCoeffs,
+                                                                 int mode, bool oddOrder)
             {
                 static_assert (StateArrayType.isArray, "states argument is not an array");
                 static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -1214,7 +1241,9 @@ namespace soul::filters (using SampleType = float32,
             /* Butterworth processor.
                The order must be > 1
             */
-            processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+            processor Processor (int order,
+                                 int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz)
             {
                 input stream SampleType in;
                 output stream SampleType out;
@@ -1247,7 +1276,9 @@ namespace soul::filters (using SampleType = float32,
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             update (svfCoeffs, onepoleCoeffs, processor.frequency, order, clippedFrequency);
                         }
 
@@ -1322,7 +1353,9 @@ namespace soul::filters (using SampleType = float32,
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             update (c, processor.frequency, clippedFrequency);
                         }
 
@@ -1489,7 +1522,10 @@ namespace soul::filters (using SampleType = float32,
                 return    SampleType (c.m0 * v0 + c.m1 * v1 + c.m2 * v2);
             }
 
-            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+            processor Processor (int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz,
+                                 float initialQuality = defaultQuality,
+                                 float initialGain = defaultGain)
             {
                 input stream SampleType in;
                 output stream SampleType out;
@@ -1523,7 +1559,9 @@ namespace soul::filters (using SampleType = float32,
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, mode, clippedFrequency, quality, gain);
                         }
 

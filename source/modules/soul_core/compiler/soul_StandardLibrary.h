@@ -1129,7 +1129,9 @@ R"soul_code(
                          a; /**< feed-back, denominator, pole, IIR coefficients */
         }
 
-        void set (Coeffs &c, CoeffType b0, CoeffType b1, CoeffType b2, CoeffType a0, CoeffType a1, CoeffType a2)
+        void set (Coeffs &c,
+                  CoeffType b0, CoeffType b1, CoeffType b2,
+                  CoeffType a0, CoeffType a1, CoeffType a2)
         {
             c.b[0] = b0; c.b[1] = b1; c.b[2] = b2; c.a[0] = a0; c.a[1] = a1; c.a[2] = a2;
         }
@@ -1209,7 +1211,9 @@ R"soul_code(
             return y;
         }
 
-        SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
+        SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x,
+                                                                       StateArrayType& s,
+                                                                       CoeffsArrayType& c)
         {
             static_assert (StateArrayType.isArray, "states argument is not an array");
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -1223,13 +1227,15 @@ R"soul_code(
             return y;
         }
 
-        SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& s, CoeffsArrayType& c)
-        {
-            static_assert (StateArrayType.isArray, "states argument is not an array");
-            static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+        SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x,
 )soul_code"
 R"soul_code(
 
+                                                                         StateArrayType& s,
+                                                                         CoeffsArrayType& c)
+        {
+            static_assert (StateArrayType.isArray, "states argument is not an array");
+            static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
             static_assert (s.size == c.size, "states and coeffs arrays are not the same size");
 
             var y = x;
@@ -1289,6 +1295,9 @@ R"soul_code(
                 let w = tan (theta * 0.5);
                 let alpha = (w - 1.0) / (w + 1.0);
 
+)soul_code"
+R"soul_code(
+
                 nc.b[0] = alpha;
                 nc.b[1] = 1.0;
                 nc.a[1] = alpha;
@@ -1297,16 +1306,14 @@ R"soul_code(
             c.setNormalised (nc);
         }
 
-        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+        processor Processor (int initialMode = 0,
+                             float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
             output stream SampleType out;
 
             input event
             {
-)soul_code"
-R"soul_code(
-
                 float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
                 float modeIn      [[ name: "Mode",      min: 0,           max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
             }
@@ -1328,7 +1335,9 @@ R"soul_code(
                     if (recalc)
                     {
                         recalc = false;
-                        let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                        let clippedFrequency = clamp (float64 (frequency),
+                                                      float64 (minFreqHz),
+                                                      processor.frequency * normalisedFreqLimit);
                         update (c, processor.frequency, mode, clippedFrequency);
                     }
 
@@ -1346,6 +1355,9 @@ R"soul_code(
     /** RBJ biquad EQ, 2nd Order IIR Filter.
 
         This filter is not suitable for modulation.
+)soul_code"
+R"soul_code(
+
         See https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
     */
     namespace rbj_eq
@@ -1364,11 +1376,10 @@ R"soul_code(
             let allpass   = 7;
         }
 
-        void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gaindB)
+        void update (biquad::Coeffs& c,
+                     float64 sampleRate, int mode, float64 freqHz,
+                     float64 quality, float64 gaindB)
         {
-)soul_code"
-R"soul_code(
-
             biquad::Coeffs nnc; // non-normalised coefficients
 
             let theta = twoPi * (freqHz / sampleRate);
@@ -1406,6 +1417,9 @@ R"soul_code(
             }
             else if (mode == Mode::lowShelf)
             {
+)soul_code"
+R"soul_code(
+
                 let A = pow (10.0, gaindB / 40.0);
                 nnc.b[0] = A * ((A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
                 nnc.b[1] = 2.0 * A * ( (A - 1) - (A + 1) * cosTheta);
@@ -1417,9 +1431,6 @@ R"soul_code(
             else if (mode == Mode::highShelf)
             {
                 let A = pow (10.0, gaindB / 40.0);
-)soul_code"
-R"soul_code(
-
                 nnc.b[0] = A * ((A + 1) + (A - 1) * cosTheta + 2.0 * sqrt (A) * alpha);
                 nnc.b[1] = -2.0 * A * ( (A - 1) + (A + 1) * cosTheta);
                 nnc.b[2] = A * ((A + 1) + (A - 1) * cosTheta - 2.0 * sqrt (A) * alpha);
@@ -1451,6 +1462,9 @@ R"soul_code(
                 nnc.b[0] = 1.0 - alpha;
                 nnc.b[1] = -2.0 * cosTheta;
                 nnc.b[2] = 1.0 + alpha;
+)soul_code"
+R"soul_code(
+
                 nnc.a[0] = 1.0 + alpha;
                 nnc.a[1] = -2.0 * cosTheta;
                 nnc.a[2] = 1.0 - alpha;
@@ -1459,7 +1473,10 @@ R"soul_code(
             c.setNonNormalised (nnc);
         }
 
-        processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+        processor Processor (int initialMode = 0,
+                             float initialFrequency = defaultFreqHz,
+                             float initialQuality   = defaultQuality,
+                             float initialGain      = defaultGain)
         {
             input stream SampleType in;
             output stream SampleType out;
@@ -1467,9 +1484,6 @@ R"soul_code(
             input event
             {
                 float modeIn      [[ name: "Mode",      min: 0,           max: 7,         init: 0,         text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass"]];
-)soul_code"
-R"soul_code(
-
                 float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
                 float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality ]];
                 float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain ]];
@@ -1497,6 +1511,9 @@ R"soul_code(
                     {
                         recalc = false;
                         let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+)soul_code"
+R"soul_code(
+
                         c.update (processor.frequency, mode, clippedFrequency, quality, gain);
                     }
 
@@ -1520,9 +1537,6 @@ R"soul_code(
 
         /** Supply an array of coefficients for each SOS. The size of the array should be a multiple of 6,
             and the coefficients are expected to be normalised already
-)soul_code"
-R"soul_code(
-
         */
         processor Processor (const CoeffType[] coeffs)
         {
@@ -1556,6 +1570,9 @@ R"soul_code(
 
             void run()
             {
+)soul_code"
+R"soul_code(
+
                 loop
                 {
                     out << biquad::processCascadeTDFII (in, s, c);
@@ -1582,9 +1599,6 @@ R"soul_code(
             let lowpass  = 0;
             let highpass = 1;
         }
-
-)soul_code"
-R"soul_code(
 
         void update<CoeffsArrayType> (CoeffsArrayType& coeffs, float64 sampleRate, int order, int mode, float64 freqHz)
         {
@@ -1620,7 +1634,12 @@ R"soul_code(
         /** Butterworth processor.
             The order must be > 0
         */
-        processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+        processor Processor (int order,
+                             int initialMode = 0,
+)soul_code"
+R"soul_code(
+
+                             float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
             output stream SampleType out;
@@ -1638,9 +1657,6 @@ R"soul_code(
             int mode = initialMode;
             bool recalc = true;
             bool clear = true;
-
-)soul_code"
-R"soul_code(
 
             void run()
             {
@@ -1678,13 +1694,17 @@ R"soul_code(
     //==============================================================================
     /** Analytic filter / IIR Hilbert transformer.
 
+)soul_code"
+R"soul_code(
+
         https://dsp.stackexchange.com/a/59157
 
         Increasing numFilters will increase the accuracy of the quadrature output across the
         pass band but introduce more delay with respect to the input signal.
         The filter passband is from transitionBandwidthHz to nyquist - transitionBandwidthHz.
     */
-    namespace analytic (int numFilters = 6, float transitionBandwidthHz = 20.0f)
+    namespace analytic (int numFilters = 6,
+                        float transitionBandwidthHz = 20.0f)
     {
         /** Polyphase IIR Designer.
             Based on HIIR http://ldesoras.free.fr/prod.html#src_hiir
@@ -1698,9 +1718,6 @@ R"soul_code(
             {
                 float64[numCoefficients] coeffs;
             }
-
-)soul_code"
-R"soul_code(
 
             Coeffs compute (float64 transition)
             {
@@ -1742,6 +1759,9 @@ R"soul_code(
                     result += next;
 
                     if (abs (next) < 1e-100)
+)soul_code"
+R"soul_code(
+
                         return result;
 
                     j = -j;
@@ -1769,9 +1789,6 @@ R"soul_code(
             float64 computeCoeff (int index, TransitionParams params)
             {
                 let num = computeAccNum (params.q, index + 1)  * pow (params.q, 0.25);
-)soul_code"
-R"soul_code(
-
                 let den = computeAccDen (params.q, index + 1) + 0.5;
                 let ww = num / den;
                 let wwsq = ww * ww;
@@ -1813,7 +1830,10 @@ R"soul_code(
 
         void update (State& s, float64 sampleRate)
         {
-            let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz/sampleRate));
+            let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz / sampleRate));
+
+)soul_code"
+R"soul_code(
 
             for (wrap<numFilters> i)
             {
@@ -1845,9 +1865,6 @@ R"soul_code(
 
             void init()
             {
-)soul_code"
-R"soul_code(
-
                 s.update (processor.frequency);
             }
 
@@ -1896,6 +1913,9 @@ R"soul_code(
             let decayFactor = tau2pole (t60, sampleRate);
             let oscCoef = cexp ((jImag * twoPi) * (freqHz / sampleRate));
             c.v = decayFactor * oscCoef;
+)soul_code"
+R"soul_code(
+
         }
 
         SampleType[2] process (State& s, Coeffs& c, SampleType x)
@@ -1911,12 +1931,11 @@ R"soul_code(
             return SampleType[2] (yReal, yImag);
         }
 
-        processor Processor (float initialFrequency = defaultFreqHz, float initialDecay = 1.0f, float initialGain = 1.0f)
+        processor Processor (float initialFrequency = defaultFreqHz,
+                             float initialDecay = 1.0f,
+                             float initialGain = 1.0f)
         {
             input stream SampleType in;
-)soul_code"
-R"soul_code(
-
             output stream SampleType realOut;
             output stream SampleType imagOut;
 
@@ -1953,6 +1972,9 @@ R"soul_code(
                     if (recalc)
                     {
                         recalc = false;
+)soul_code"
+R"soul_code(
+
                         let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
                         c.update (processor.frequency, clippedFrequency, decay);
                     }
@@ -1971,9 +1993,6 @@ R"soul_code(
 
     //==============================================================================
     /**
-)soul_code"
-R"soul_code(
-
         "Topology preserving transform" filters.
     */
     namespace tpt
@@ -2024,6 +2043,9 @@ R"soul_code(
             }
 
             SampleType processLPF (State& s, SampleType x, Coeffs& c)
+)soul_code"
+R"soul_code(
+
             {
                 let vn = (x - s.z1) * SampleType (c.b);
                 let lpf = vn + s.z1;
@@ -2043,12 +2065,10 @@ R"soul_code(
                 return lpf - hpf;
             }
 
-            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz)
+            processor Processor (int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz)
             {
                 input stream SampleType in;
-)soul_code"
-R"soul_code(
-
                 output stream SampleType out;
 
                 input event
@@ -2075,18 +2095,20 @@ R"soul_code(
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, clippedFrequency);
+)soul_code"
+R"soul_code(
+
                         }
 
                         loop (16)
                         {
-                            if (mode == Mode::lowpass)
-                                out << s.processLPF (in, c);
-                            else if (mode == Mode::highpass)
-                                out << s.processHPF (in, c);
-                            else if (mode == Mode::allpass)
-                                out << s.processAPF (in, c);
+                            if (mode == Mode::lowpass)        out << s.processLPF (in, c);
+                            else if (mode == Mode::highpass)  out << s.processHPF (in, c);
+                            else if (mode == Mode::allpass)   out << s.processAPF (in, c);
 
                             advance();
                         }
@@ -2100,9 +2122,6 @@ R"soul_code(
 
             Derived from work by Zavalishin and Pirkle.
             This filter is suitable for modulation.
-)soul_code"
-R"soul_code(
-
         */
         namespace svf
         {
@@ -2147,6 +2166,9 @@ R"soul_code(
             SampleType[3] process (State& s, SampleType x, Coeffs& c)
             {
                 let hpf = SampleType (c.a0 * (x - c.p * s.z[0] - s.z[1]));
+)soul_code"
+R"soul_code(
+
                 let bpf = SampleType (c.a * hpf + s.z[0]);
                 let lpf = SampleType (c.a * bpf + s.z[1]);
 
@@ -2156,7 +2178,8 @@ R"soul_code(
                 return SampleType[3] (lpf, hpf, bpf);
             }
 
-            processor Processor (float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality)
+            processor Processor (float initialFrequency = defaultFreqHz,
+                                 float initialQuality = defaultQuality)
             {
                 input stream SampleType in;
                 output stream SampleType lowpassOut, bandpassOut, highpassOut;
@@ -2164,9 +2187,6 @@ R"soul_code(
                 input event
                 {
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-)soul_code"
-R"soul_code(
-
                     float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality ]];
                 }
 
@@ -2187,7 +2207,9 @@ R"soul_code(
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, clippedFrequency, quality);
                         }
 
@@ -2196,6 +2218,9 @@ R"soul_code(
                             let y = s.process (in, c);
                             lowpassOut  << y[0];
                             highpassOut << y[1];
+)soul_code"
+R"soul_code(
+
                             bandpassOut << y[2];
                             advance();
                         }
@@ -2220,11 +2245,10 @@ R"soul_code(
                 let highpass = 1;
             }
 
-            void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs, onepole::Coeffs& onepoleCoeffs, float64 sampleRate, int order, float64 freqHz)
+            void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs,
+                                             onepole::Coeffs& onepoleCoeffs,
+                                             float64 sampleRate, int order, float64 freqHz)
             {
-)soul_code"
-R"soul_code(
-
                 static_assert (SVFCoeffsArrayType.isArray, "coeffs argument is not an array");
 
                 bool oddOrder = (order % 2) == 1;
@@ -2249,9 +2273,15 @@ R"soul_code(
                 }
             }
 
-            SampleType process<StateArrayType, CoeffsArrayType> (SampleType x, StateArrayType& svfStates, CoeffsArrayType& svfCoeffs,
-                                                                               onepole::State& onepoleState, onepole::Coeffs& onepoleCoeffs,
-                                                                               int mode, bool oddOrder)
+            SampleType process<StateArrayType, CoeffsArrayType> (SampleType x,
+                                                                 StateArrayType& svfStates,
+)soul_code"
+R"soul_code(
+
+                                                                 CoeffsArrayType& svfCoeffs,
+                                                                 onepole::State& onepoleState,
+                                                                 onepole::Coeffs& onepoleCoeffs,
+                                                                 int mode, bool oddOrder)
             {
                 static_assert (StateArrayType.isArray, "states argument is not an array");
                 static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -2268,9 +2298,6 @@ R"soul_code(
                 }
 
                 for (wrap<svfStates.size> i)
-)soul_code"
-R"soul_code(
-
                     y = svf::process (svfStates[i], y, svfCoeffs[i])[wrap<2> (mode)]; // TODO: tidy this
 
                 return y;
@@ -2279,7 +2306,9 @@ R"soul_code(
             /* Butterworth processor.
                The order must be > 1
             */
-            processor Processor (int order, int initialMode = 0, float initialFrequency = defaultFreqHz)
+            processor Processor (int order,
+                                 int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz)
             {
                 input stream SampleType in;
                 output stream SampleType out;
@@ -2291,6 +2320,9 @@ R"soul_code(
                 }
 
                 event frequencyIn (float v)   { frequency = v; recalc = true; }
+)soul_code"
+R"soul_code(
+
                 event modeIn      (float v)   { mode = int (v); recalc = true; }
 
                 float  frequency  = initialFrequency;
@@ -2312,15 +2344,14 @@ R"soul_code(
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             update (svfCoeffs, onepoleCoeffs, processor.frequency, order, clippedFrequency);
                         }
 
                         loop (updateInterval)
                         {
-)soul_code"
-R"soul_code(
-
                             out << process (in, svfStates, svfCoeffs, onepoleState, onepoleCoeffs, mode, oddOrder);
                             advance();
                         }
@@ -2348,6 +2379,9 @@ R"soul_code(
             struct Coeffs
             {
                 SVF::Coeffs svf1, svf2;
+)soul_code"
+R"soul_code(
+
             }
 
             processor Processor (float initialFrequency = defaultFreqHz)
@@ -2377,9 +2411,6 @@ R"soul_code(
                     let svf2 = s.svf2.process (lpf1, c.svf2);
                     let lpf2 = svf2[0];
 
-)soul_code"
-R"soul_code(
-
                     return SampleType[2] (lpf2, apf1 - lpf2);
                 }
 
@@ -2393,13 +2424,18 @@ R"soul_code(
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             update (c, processor.frequency, clippedFrequency);
                         }
 
                         loop (16)
                         {
                             let y = s.process (in, c);
+)soul_code"
+R"soul_code(
+
                             lowOut  << y[0];
                             highOut << y[1];
                             advance();
@@ -2449,9 +2485,6 @@ R"soul_code(
                 s.ic2eq = SampleType();
             }
 
-)soul_code"
-R"soul_code(
-
             void update (Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gain)
             {
                 let w = tan (pi * freqHz / sampleRate);
@@ -2471,6 +2504,9 @@ R"soul_code(
                 {
                     let g = w;
                     c.a1 = 1.0 / (1.0 + g * (g + k));
+)soul_code"
+R"soul_code(
+
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = 1.0;
@@ -2506,9 +2542,6 @@ R"soul_code(
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = A * A;
-)soul_code"
-R"soul_code(
-
                     c.m1 = k * (1.0 - A) * A;
                     c.m2 = (1.0 - A * A);
                 }
@@ -2530,6 +2563,9 @@ R"soul_code(
                     c.a3 = g * c.a2;
                     c.m0 = 1.0;
                     c.m1 = -k;
+)soul_code"
+R"soul_code(
+
                     c.m2 = 0.0;
                 }
                 else if (mode == Mode::allpass)
@@ -2565,11 +2601,11 @@ R"soul_code(
                 s.ic2eq = SampleType (2.0 * v2 - s.ic2eq);
                 return    SampleType (c.m0 * v0 + c.m1 * v1 + c.m2 * v2);
             }
-)soul_code"
-R"soul_code(
 
-
-            processor Processor (int initialMode = 0, float initialFrequency = defaultFreqHz, float initialQuality = defaultQuality, float initialGain = defaultGain)
+            processor Processor (int initialMode = 0,
+                                 float initialFrequency = defaultFreqHz,
+                                 float initialQuality = defaultQuality,
+                                 float initialGain = defaultGain)
             {
                 input stream SampleType in;
                 output stream SampleType out;
@@ -2578,6 +2614,9 @@ R"soul_code(
                 {
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz  ]];
                     float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
+)soul_code"
+R"soul_code(
+
                     float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0            ]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
                 }
@@ -2603,15 +2642,14 @@ R"soul_code(
                         if (recalc)
                         {
                             recalc = false;
-                            let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
+                            let clippedFrequency = clamp (float64 (frequency),
+                                                          float64 (minFreqHz),
+                                                          processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, mode, clippedFrequency, quality, gain);
                         }
 
                         loop (updateInterval)
                         {
-)soul_code"
-R"soul_code(
-
                             out << s.process (in, c);
                             advance();
                         }
@@ -3052,7 +3090,8 @@ R"soul_code(
             SampleType getNoiseSample()
             {
                 if (phase < prevPhase)
-                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar() : rng.getNextUnipolar());
+                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar()
+                                                                            : rng.getNextUnipolar());
 
                 prevPhase = phase;
                 return noiseSample;
@@ -3093,12 +3132,12 @@ R"soul_code(
 
                 loop
                 {
-                    out << getNextSample() * depth.tick();
-
-                    if (qnMode)
 )soul_code"
 R"soul_code(
 
+                    out << getNextSample() * depth.tick();
+
+                    if (qnMode)
                     {
                         if (timelineSync && transportRunning)
                         {

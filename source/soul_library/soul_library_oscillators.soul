@@ -424,7 +424,8 @@ namespace soul::oscillators (using SampleType = float32,
             SampleType getNoiseSample()
             {
                 if (phase < prevPhase)
-                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar() : rng.getNextUnipolar());
+                    noiseSample = SampleType (polarity == Polarity::bipolar ? rng.getNextBipolar()
+                                                                            : rng.getNextUnipolar());
 
                 prevPhase = phase;
                 return noiseSample;
