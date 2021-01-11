@@ -775,61 +775,6 @@ graph ExampleGraph [optional specialisation parameters]
 }
 ```
 
-#### Parameterised modules
-
-Graphs, Namespaces and Processors can all be declared with parameters which must be supplied when instances are created. Parameters can optionally specify a default parameter value. For example:
-
-```C++
-graph Synthesiser (int voiceCount)
-{
-    ...
-}
-
-namespace biquad (using SampleType = float32)
-{
-    ...
-}
-
-processor Delay (float delayLength)
-{
-    ...
-}
-```
-
-Parameters can specify values, types, namespaces or processors. values are introduced by their type, for example `int32`, types are introduced by `using`, processors by `processor` and namespaces by `namespace`.
-
-To use a parameterised namespace, namespace aliases can be specified, using the namespace keyword:
-
-```C++
-namespace calc (using DataType = int32)
-{
-    // Returns the sum of two values
-    DataType sum (DataType v1, DataType v2)
-    {
-        return v1 + v2;
-    }
-}
-
-bool testInt()
-{
-    return calc::sum (2, 3) == 5;
-}
-
-bool testFloat32()
-{
-    return calc (float32)::sum (2.0f, 3.0f) == 5.0f;
-}
-
-// Create namespace alias
-namespace float64Calc = calc (float64);
-
-bool testFloat64()
-{
-    return float64Calc::sum (2.0, 3.0) == 5.0;
-}
-
-```
-
 ##### Processor instance declarations
 
 After declaring a graph's endpoints, you should declare the set of processor nodes that it contains. The syntax for this is a series of `let` statements to declare local names for each instance of a processor or graph, e.g.
@@ -1035,9 +980,9 @@ graph ExampleGraph
 }
 ```
 
-#### Processor/Graph specialisation parameters
+#### Module specialisation parameters
 
-A processor or graph can be declared with some constant values and type definitions that must be supplied when it is instantiated. These arguments can then be used to specialise the behaviour of the processor. e.g:
+All module types (processors, namespaces and graphs) can be declared with some constant values, types, namespace and processor definitions that must be supplied when it is instantiated. These arguments can then be used to specialise the behaviour of the processor. e.g:
 
 ```C++
 // This is a processor which requires a type definition 'SampleType'
@@ -1071,6 +1016,40 @@ graph ExampleGraph (processor DelayType, int length)
     let delay3 = DelayType(float<2>, 10000);
 }
 
+```
+
+In addition, defaults for parameters can be specified using an assignment in the declaration. This below example also demonstrates how to declare a namespace alias, which can be used to declare an instance of a namespace with the given parameters:
+
+```C++
+// This namespace takes a type definition 'DataType' which defaults to int32
+namespace calc (using DataType = int32)
+{
+    // Returns the sum of two values
+    DataType sum (DataType v1, DataType v2)
+    {
+        return v1 + v2;
+    }
+}
+
+bool testInt()
+{
+    // The default DataType is int32
+    return calc::sum (2, 3) == 5;
+}
+
+bool testFloat32()
+{
+    // Specify float32
+    return calc (float32)::sum (2.0f, 3.0f) == 5.0f;
+}
+
+// Create namespace alias for calc on float64
+namespace float64Calc = calc (float64);
+
+bool testFloat64()
+{
+    return float64Calc::sum (2.0, 3.0) == 5.0;
+}
 ```
 
 #### Event endpoints
