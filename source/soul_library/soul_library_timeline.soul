@@ -18,10 +18,14 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/**
-    This namespace contains various types and functions which are used when
+/** Title: Timeline Event Utilities.
+
+    The `timeline` namespace contains various structs and functions which are used when
     dealing with positions and tempos along a timeline.
 */
+
+/// The `timeline` namespace contains various structs and functions which are used when
+/// dealing with positions and tempos along a timeline.
 namespace soul::timeline
 {
     //==============================================================================
@@ -40,13 +44,19 @@ namespace soul::timeline
     }
 
     //==============================================================================
+    /** */
     float quarterNotesPerBeat (TimeSignature timeSig)                                       { return 4.0f / timeSig.denominator; }
+    /** */
     float beatsPerQuarterNote (TimeSignature timeSig)                                       { return timeSig.denominator / 4.0f; }
 
+    /** */
     float secondsPerBeat (Tempo tempo)                                                      { return tempo.bpm <= 0 ? 0.0f : (60.0f / tempo.bpm); }
+    /** */
     float secondsPerQuarterNote (Tempo tempo, TimeSignature timeSig)                        { return tempo.secondsPerBeat() * timeSig.beatsPerQuarterNote(); }
 
+    /** */
     float64 framesPerBeat (Tempo tempo, float64 sampleRate)                                 { return sampleRate * tempo.secondsPerBeat(); }
+    /** */
     float64 framesPerQuarterNote (Tempo tempo, TimeSignature timeSig, float64 sampleRate)   { return sampleRate * tempo.secondsPerQuarterNote (timeSig); }
 
     //==============================================================================
@@ -59,8 +69,11 @@ namespace soul::timeline
         int state;
     }
 
+    /** */
     bool isStopped   (TransportState t)       { return t.state == 0; }
+    /** */
     bool isPlaying   (TransportState t)       { return t.state == 1; }
+    /** */
     bool isRecording (TransportState t)       { return t.state == 2; }
 
     //==============================================================================

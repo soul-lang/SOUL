@@ -18,15 +18,14 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+/** Title: SOUL MIDI Utility Library.
 
-/**
-    Some MIDI-related functions and processors.
-
-    In general, the SOUL policy towards MIDI is to avoid using it any more than is
-    unavoidable, so most of the the helper functions are concerned with converting
-    MIDI messages to soul::note_events types, and all the other synth helper libraries
-    use these strongly-typed events rather than raw MIDI events.
+    In general, the SOUL policy towards MIDI is to avoid it any much as possible, so
+    most of the the helper functions are concerned with converting MIDI messages to
+    `soul::note_events` types, and the other synth libraries use these strongly-typed
+    events to model note actions, rather than raw MIDI events.
 */
+
 namespace soul::midi
 {
     /** This type is used to represent a packed short MIDI message. When you create

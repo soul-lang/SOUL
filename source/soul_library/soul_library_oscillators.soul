@@ -18,9 +18,12 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/**
-    This namespace contains various types of oscillator.
+/** Title: SOUL Oscillator Library.
+
+    This file contains a collection of oscillator implenentations for generating
+    various wave-shapes.
 */
+
 namespace soul::oscillators (using SampleType = float32,
                              using PhaseType  = float32)
 {

@@ -18,28 +18,33 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+/** Title: Miscellaneous Audio Utilities.
+
+    This file is a collection of commonly-used audio helper functions and types.
+*/
+
 namespace soul
 {
     //==============================================================================
-    /*
-        Some audio-themed helper functions
-    */
+    /// Converts a decibel level to a gain factor.
     float32 dBtoGain (float32 decibels)   { return decibels > -100.0f ? pow (10.0f, decibels * 0.05f) : 0.0f; }
+    /// Converts a decibel level to a gain factor.
     float64 dBtoGain (float64 decibels)   { return decibels > -100.0  ? pow (10.0,  decibels * 0.05)  : 0.0; }
 
+    /// Converts a gain factor to a decibel level.
     float32 gainTodB (float32 gain)       { return gain > 0 ? log10 (gain) * 20.0f : -100.0f; }
+    /// Converts a gain factor to a decibel level.
     float64 gainTodB (float64 gain)       { return gain > 0 ? log10 (gain) * 20.0  : -100.0; }
 
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
     float32 noteNumberToFrequency (float32 note)        { return 440.0f * pow (2.0f, (note - 69.0f) * (1.0f / 12.0f)); }
-    /** Converts a frequency in Hz to an equivalent MIDI note number. */
+    /// Converts a frequency in Hz to an equivalent MIDI note number.
     float32 frequencyToNoteNumber (float32 frequency)   { return 69.0f + (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)); }
 
-    /** Returns the ratio by which a sample's playback must be sped-up in order to map
-        from it native rate and note to a target rate and note.
-    */
+    /// Returns the ratio by which a sample's playback must be sped-up in order to map
+    /// from its native sample-rate and note to a target sample-rate and note.
     float64 getSpeedRatioForPitchedSample (float64 sourceSampleRate, float32 sourceMIDINote,
                                            float64 targetSampleRate, float32 targetMIDINote)
     {
@@ -47,33 +52,32 @@ namespace soul
              / (targetSampleRate * pow (2.0f, sourceMIDINote * (1.0f / 12.0f)));
     }
 
-    /* Returns the coefficient for a filter pole, based on a t60 decay time in seconds */
+    /// Returns the coefficient for a filter pole, based on a t60 decay time in seconds.
     float64 tau2pole (float64 t60, float64 sampleRate)   { return pow (0.001,  1.0  / (t60 * sampleRate)); }
+    /// Returns the coefficient for a filter pole, based on a t60 decay time in seconds.
     float32 tau2pole (float32 t60, float32 sampleRate)   { return pow (0.001f, 1.0f / (t60 * sampleRate)); }
 
-    /* Returns the t60 decay time in seconds for a filter pole coefficient in the range 0-1 */
+    /// Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.
     float64 pole2tau (float64 pole, float64 sampleRate)   { return -1.0 / (log (pole) * sampleRate); }
+    /// Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.
     float32 pole2tau (float32 pole, float32 sampleRate)   { return -1.0f / (log (pole) * sampleRate); }
 }
 
 //==============================================================================
-/** This namespace contains some handy stuctures to use when declaring external
-    variables which are going to be loaded with data from audio files.
-*/
+/// This namespace contains some handy stuctures to use when declaring `external`
+/// variables which are going to be loaded with data from audio files.
 namespace soul::audio_samples
 {
-    /** An external variable declared with the type soul::audio_samples::Mono
-        can be loaded with monoised data from an audio file.
-    */
+    /// An `external` variable declared with the type `soul::audio_samples::Mono`
+    /// can be loaded with monoised data from an audio file.
     struct Mono
     {
         float[] frames;
         float64 sampleRate;
     }
 
-    /** An external variable declared with the type soul::audio_samples::Stereo
-        can be loaded with stereo data from an audio file.
-    */
+    /// An `external` variable declared with the type `soul::audio_samples::Stereo`
+    /// can be loaded with stereo data from an audio file.
     struct Stereo
     {
         float<2>[] frames;
@@ -81,21 +85,19 @@ namespace soul::audio_samples
     }
 }
 
-/** This namespace contains various pan-related helper functions */
+/// This namespace contains various pan-related helper functions
 namespace soul::pan_law
 {
-    /** Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to
-        a (left, right) pair of stereo gains.
-    */
+    /// Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to
+    /// a (left, right) pair of stereo gains.
     float<2> linear (float pan)
     {
         return (1.0f - pan,
                 1.0f + pan);
     }
 
-    /** Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to
-        a (left, right) pair of stereo gains.
-    */
+    /// Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to
+    /// a (left, right) pair of stereo gains.
     float<2> centre3dB (float pan)
     {
         let quarterPi = float (pi / 4);

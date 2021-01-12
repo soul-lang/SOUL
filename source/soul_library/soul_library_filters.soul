@@ -27,17 +27,17 @@
     Notes:
     - Filter coefficients are typically labelled a and b. Different literature uses different
       conventions for what a and b mean. This code uses the following:
-        b: feed-forward, numerator, zero, FIR coefficients.
-        a: feed-back, denominator, pole, IIR coefficients.
+        `b`: feed-forward, numerator, zero, FIR coefficients.
+        `a`: feed-back, denominator, pole, IIR coefficients.
 
     - Although each filter comes with a Processor, they are designed so that their state,
       coefficients and functions can be used independently.
     - Each filter has a `State` struct and a `Coeffs` struct.
     - `process()` functions generate an output y for an input x.
     - `update()` functions take high level parameters such as mode, frequency, Q, mode and
-       update the filter coefficients.
+      update the filter coefficients.
     - `reset()` functions reset the filter state/histories to 0.
-    - `clear()` functions clears filter coefficients
+    - `clear()` functions clears filter coefficients.
     - The filters are designed for channel-wise vectorisation, which can be achieved by
       specialising the filter's namespace with a vector type.
     - Some filters are suitable for modulation, others are not, check the comments at the top

@@ -18,8 +18,14 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+/** Title: Mix and gain control utilities.
 
-/** Utility processors for common tasks like mixing together sources. */
+    This file provides a set of processors for common tasks like mixing together sources,
+    applying fixed gains, or applying envelope shapes.
+*/
+
+//==============================================================================
+/// This namespace contains a set of processors for common tasks like mixing together sources.
 namespace soul::mixers
 {
     //==============================================================================
@@ -89,11 +95,11 @@ namespace soul::mixers
 }
 
 //==============================================================================
-/** Utility processors for common tasks like applying gain in various ways. */
+/// Utility processors for common tasks like applying gain in various ways.
 namespace soul::gain
 {
     //==============================================================================
-    /** Simple processor which applies a fixed gain to a signal. */
+    /// Simple processor which applies a fixed gain to a signal.
     processor FixedGain (using SampleType, float fixedGain)
     {
         input  stream SampleType in;
@@ -110,7 +116,7 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Simple processor which applies a changeable gain level to a signal. */
+    /// Simple processor which applies a changeable gain level to a signal.
     processor DynamicGain (using SampleType)
     {
         input  stream SampleType in;
@@ -128,9 +134,8 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Converts an input event parameter in decibels to a smoothed stream of
-        raw gain levels.
-    */
+    /// Converts an input event parameter in decibels to a smoothed stream of
+    /// raw gain levels.
     processor SmoothedGainParameter (float slewRateSeconds)
     {
         input event float volume   [[ label: "Volume", unit: "dB", min: -85, max: 6 ]];
@@ -167,10 +172,9 @@ namespace soul::gain
 }
 
 //==============================================================================
-/** Generators for common envelope shapes. */
+/// Generators for common envelope shapes.
 namespace soul::envelope
 {
-    //==============================================================================
     /** Creates an envelope which applies convex attack and release curves based
         on a stream of NoteOn and NoteOff events.
 

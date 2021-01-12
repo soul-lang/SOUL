@@ -18,6 +18,10 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+/**
+    Title: SOUL Frequency-domain Utilities
+*/
+
 /** Discrete Fourier Transform functions. */
 namespace soul::DFT
 {
@@ -51,7 +55,7 @@ namespace soul::DFT
         performComplex (inputReal, inputImag, outputReal, outputData, 1.0f);
     }
 
-    /** For internal use by the other functions: performs a O(N^2) complex DFT. */
+    // For internal use by the other functions: performs a O(N^2) complex DFT.
     void performComplex<SampleBuffer> (const SampleBuffer& inputReal,
                                        const SampleBuffer& inputImag,
                                        SampleBuffer& outputReal,

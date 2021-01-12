@@ -18,12 +18,17 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/**
-    This namespace contains some random number generation helpers.
+/** Title: Random number and noise-generation utilities.
+    This file contains a range of simple RNG and noise generating functions and processors.
+*/
+
+/** This namespace contains some random number generation helpers.
+    We're assuming that nobody's going to be using this for security-critical cryptographic
+    applications. All the algorithms here are chosen to be fast, not cryptographically strong.
 */
 namespace soul::random
 {
-    /** State for a Park-Miller random number generator. */
+    /// State for a Park-Miller random number generator.
     struct RandomNumberState
     {
         /** The current seed.
@@ -40,7 +45,7 @@ namespace soul::random
         state.seed = seed;
     }
 
-    /** Returns the next number in the full 32-bit integer range. */
+    /// Returns the next number in the full 32-bit integer range.
     int32 getNextInt32 (RandomNumberState& state)
     {
         let s = (state.seed * 48271) % 0x7fffffff;
@@ -48,25 +53,23 @@ namespace soul::random
         return int32 (s);
     }
 
-    /** Advances the given RNG state and returns a value 0 to 1 */
+    /// Advances the given RNG state and returns a value 0 to 1.
     float getNextUnipolar (RandomNumberState& state)
     {
         return float (getNextInt32 (state)) * (1.0f / 2147483647.0f);
     }
 
-    /** Advances the given RNG state and returns a value -1 to 1 */
+    /// Advances the given RNG state and returns a value -1 to 1.
     float getNextBipolar (RandomNumberState& state)
     {
         return (float (getNextInt32 (state)) * (2.0f / 2147483647.0f)) - 1.0f;
     }
 }
 
-/**
-    This namespace contains various noise-generation utilities.
-*/
+/// This namespace contains generators for various flavours of noise.
 namespace soul::noise
 {
-    /** White noise generator */
+    /// White noise generator
     processor White
     {
         output stream float out;
@@ -83,7 +86,7 @@ namespace soul::noise
         }
     }
 
-    /** Brown noise generator */
+    /// Brown noise generator
     processor Brown
     {
         output stream float out;
@@ -109,7 +112,7 @@ namespace soul::noise
         }
     }
 
-    /** Pink noise generator */
+    /// Pink noise generator
     processor Pink
     {
         output stream float out;

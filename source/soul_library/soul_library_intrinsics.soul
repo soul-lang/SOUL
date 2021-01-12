@@ -18,13 +18,16 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/*  The intrinsics namespace contains basic functions, many of which will be performed
-    by a JIT engine in more efficient ways than the default function implementations
-    that are supplied here. The "[[intrin]]" annotation is used as a hint to the performer
-    back-end that this function should be replaced by a native implementation if
-    one is available. (Note that some of the functions here have non-functional
-    implementations and rely on the performer to use a native implementation for them to
-    work at all).
+/** Title: SOUL Intrinsics Library.
+
+    The intrinsics namespace contains low-level, commonly-used functions.
+
+    Many of these functions have reference implementations defined in this file, but which
+    will be substituted for more optimal implementations by a JIT engine if possible.
+    The "[[intrin]]" annotation is used as a hint to the performer back-end that this function
+    should be replaced by a native implementation if one is available. (Note that some of the
+    functions here have non-functional implementations and rely on the performer to use a native
+    implementation for them to work at all).
 */
 namespace soul::intrinsics
 {
