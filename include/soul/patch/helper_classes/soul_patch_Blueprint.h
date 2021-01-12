@@ -88,7 +88,7 @@ struct BlueprintEditorComponent  : public juce::AudioProcessorEditor,
 
     ~BlueprintEditorComponent() override
     {
-        patch.handleOutgoingEvent = {};
+        patch.handleOutgoingEvent = nullptr;
         patch.editorBeingDeleted (this);
         setLookAndFeel (nullptr);
     }
