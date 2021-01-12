@@ -108,6 +108,8 @@ std::string quoteName (const Identifier& name);
 
 bool sanityCheckString (const char* s, size_t maxLength = 8192);
 
+std::string toLowerCase (std::string);
+
 //==============================================================================
 /** Creates a table of strings, where each column gets padded out based on the longest
     item that it contains. Use calls to startRow/appendItem to create the table, then

@@ -35,6 +35,15 @@ struct SourceCodeOperations
 
     using ApplyModificationFn = std::function<void(const TextModificationOp&)>;
 
+    struct Comment
+    {
+        bool valid = false, isStarSlash = false, isDoxygenStyle = false, isReferringBackwards = false;
+        std::vector<std::string> lines;
+        CodeLocation start, end;
+
+        std::string getText() const;
+    };
+
     struct ModuleDeclaration
     {
         AST::ModuleBase& module;
@@ -47,28 +56,39 @@ struct SourceCodeOperations
         std::string getType() const;
         std::string getName() const;
         std::string getFullyQualifiedName() const;
-        std::string getComment() const;
+        Comment getComment() const;
+        std::vector<std::string> getSpecialisationParameters() const;
     };
 
     void clear();
     bool reload (CompileMessageList&, CodeLocation code, ApplyModificationFn applyModificationFn);
+
+    SourceCodeOperations::Comment getFileSummaryComment() const;
+    std::string getFileSummaryTitle() const;
+    std::string getFileSummaryBody() const;
 
     ArrayView<ModuleDeclaration> getAllModules() const      { return allModules; }
     ArrayView<ModuleDeclaration> getProcessors() const      { return processors; }
     ArrayView<ModuleDeclaration> getGraphs() const          { return graphs; }
     ArrayView<ModuleDeclaration> getNamespaces() const      { return namespaces; }
 
+    static Comment parseComment (CodeLocation startOfComment);
+    static CodeLocation findStartOfPrecedingComment (CodeLocation location);
+
     static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
     static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 
+    static std::vector<std::string> parseParenthesisedParameterList (CodeLocation openParen);
+
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);
+
+    CodeLocation source;
 
 private:
     AST::Allocator allocator;
     pool_ptr<AST::Namespace> topLevelNamespace;
     std::vector<ModuleDeclaration> allModules, processors, graphs, namespaces;
-    CodeLocation source;
     ApplyModificationFn applyModification;
 
     bool reparse (CompileMessageList&, CodeLocation);

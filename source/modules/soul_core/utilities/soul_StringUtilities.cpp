@@ -222,6 +222,12 @@ bool sanityCheckString (const char* s, size_t maxLength)
     return false;
 }
 
+std::string toLowerCase (std::string s)
+{
+    std::transform (s.begin(), s.end(), s.begin(), [] (auto c) { return std::tolower (c); });
+    return s;
+}
+
 //==============================================================================
 void PaddedStringTable::startRow()
 {

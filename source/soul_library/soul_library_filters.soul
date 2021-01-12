@@ -19,8 +19,31 @@
 */
 
 /**
-    Various filter implementations.
+    Title: SOUL Filter Library
+
+    This file contains a collection of filter implementations, including more traditional
+    biquad based filters and TPT variants, which are more suitable for modulation.
+
+    Notes:
+    - Filter coefficients are typically labelled a and b. Different literature uses different
+      conventions for what a and b mean. This code uses the following:
+        b: feed-forward, numerator, zero, FIR coefficients.
+        a: feed-back, denominator, pole, IIR coefficients.
+
+    - Although each filter comes with a Processor, they are designed so that their state,
+      coefficients and functions can be used independently.
+    - Each filter has a `State` struct and a `Coeffs` struct.
+    - `process()` functions generate an output y for an input x.
+    - `update()` functions take high level parameters such as mode, frequency, Q, mode and
+       update the filter coefficients.
+    - `reset()` functions reset the filter state/histories to 0.
+    - `clear()` functions clears filter coefficients
+    - The filters are designed for channel-wise vectorisation, which can be achieved by
+      specialising the filter's namespace with a vector type.
+    - Some filters are suitable for modulation, others are not, check the comments at the top
+      of the namespace.
 */
+
 namespace soul::filters (using SampleType = float32,
                          using CoeffType  = float64,
                          int updateInterval = 16)
@@ -38,32 +61,36 @@ namespace soul::filters (using SampleType = float32,
     let normalisedFreqLimit = 0.49;
 
     //==============================================================================
-    /** Highpass for removing DC offset
+    /** Highpass filter for removing DC offset.
 
-        y[n] = x[n] - x[n-1] + b0 * y[n-1]
+            y[n] = x[n] - x[n-1] + b0 * y[n-1]
 
         https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html
     */
     namespace dc_blocker
     {
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             CoeffType b1;
             CoeffType a0;
         }
 
+        /** Holds the filter state. */
         struct State
         {
             SampleType[1] x;
             SampleType[1] y;
         }
 
+        /** Resets a filter state. */
         void reset (State& s)
         {
             s.x[0] = SampleType();
             s.y[0] = SampleType();
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (Coeffs& c, float64 sampleRate, float64 freqHz)
         {
             let w = pi * freqHz / sampleRate;
@@ -104,23 +131,27 @@ namespace soul::filters (using SampleType = float32,
     /** Biquadratic (two-pole-two-zero) IIR filter building block.
 
         Direct Form I (DFI):
-           y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
+
+            y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
 
         Transposed Direct Form II (TDFII):
-           y[n] = b0 * x[n] + s1
-             s1 = b1 * x[n] + a1 * y[n] + s2
-             s2 = b2 * x[n] + a2 * y[n]
+
+            y[n] = b0 * x[n] + s1
+              s1 = b1 * x[n] + a1 * y[n] + s2
+              s2 = b2 * x[n] + a2 * y[n]
     */
     namespace biquad
     {
         // Coefficients and related functions
 
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             CoeffType<3> b, /**< feed-forward, numerator, zero, FIR coefficients */
                          a; /**< feed-back, denominator, pole, IIR coefficients */
         }
 
+        /** Initialises a set of coefficients. */
         void set (Coeffs &c,
                   CoeffType b0, CoeffType b1, CoeffType b2,
                   CoeffType a0, CoeffType a1, CoeffType a2)
@@ -143,20 +174,21 @@ namespace soul::filters (using SampleType = float32,
             c = v;
         }
 
+        /** Clears a set of coefficients. */
         void clear (Coeffs &c)
         {
             c.b = CoeffType();
             c.a = CoeffType();
         }
 
-        // State and related functions
-
+        /** Holds the filter state. */
         struct State
         {
             SampleType[2] x;
             SampleType[2] y;
         }
 
+        /** Resets a filter state. */
         void reset (State &s)
         {
             s.x[0] = SampleType();
@@ -165,8 +197,7 @@ namespace soul::filters (using SampleType = float32,
             s.y[1] = SampleType();
         }
 
-        // Process functions
-
+        /** */
         SampleType processDFI (State& s, SampleType x, Coeffs& c)
         {
             let y  = SampleType (c.b[0] * x
@@ -200,6 +231,7 @@ namespace soul::filters (using SampleType = float32,
             return y;
         }
 
+        /** */
         SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x,
                                                                        StateArrayType& s,
                                                                        CoeffsArrayType& c)
@@ -216,6 +248,7 @@ namespace soul::filters (using SampleType = float32,
             return y;
         }
 
+        /** */
         SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x,
                                                                          StateArrayType& s,
                                                                          CoeffsArrayType& c)
@@ -235,9 +268,9 @@ namespace soul::filters (using SampleType = float32,
 
     //==============================================================================
     /**
-        1st-order IIR filter.
+        First-order IIR filter.
 
-        y[n] = b0 * x[n] - a1 * y[n-1]
+            y[n] = b0 * x[n] - a1 * y[n-1]
 
         Coefficients derived from Pirkle.
         This filter is not suitable for modulation.
@@ -246,6 +279,7 @@ namespace soul::filters (using SampleType = float32,
     {
         namespace biquad = soul::filters::biquad;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
             let lowpass  = 0;
@@ -253,6 +287,7 @@ namespace soul::filters (using SampleType = float32,
             let allpass  = 2;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz)
         {
             biquad::Coeffs nc; // normalised coefficients
@@ -289,6 +324,7 @@ namespace soul::filters (using SampleType = float32,
             c.setNormalised (nc);
         }
 
+        /** A processor to render a onepole filter. */
         processor Processor (int initialMode = 0,
                              float initialFrequency = defaultFreqHz)
         {
@@ -344,6 +380,7 @@ namespace soul::filters (using SampleType = float32,
     {
         namespace biquad = soul::filters::biquad;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
             let lowpass   = 0;
@@ -356,6 +393,7 @@ namespace soul::filters (using SampleType = float32,
             let allpass   = 7;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (biquad::Coeffs& c,
                      float64 sampleRate, int mode, float64 freqHz,
                      float64 quality, float64 gaindB)
@@ -447,6 +485,7 @@ namespace soul::filters (using SampleType = float32,
             c.setNonNormalised (nnc);
         }
 
+        /** */
         processor Processor (int initialMode = 0,
                              float initialFrequency = defaultFreqHz,
                              float initialQuality   = defaultQuality,
@@ -562,12 +601,14 @@ namespace soul::filters (using SampleType = float32,
         namespace onepole = soul::filters::onepole;
         namespace rbj = soul::filters::rbj_eq;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
             let lowpass  = 0;
             let highpass = 1;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update<CoeffsArrayType> (CoeffsArrayType& coeffs, float64 sampleRate, int order, int mode, float64 freqHz)
         {
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -676,11 +717,13 @@ namespace soul::filters (using SampleType = float32,
             let numCoefficients = numFilters * 2;
             let order = numCoefficients * 2 + 1;
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 float64[numCoefficients] coeffs;
             }
 
+            /** */
             Coeffs compute (float64 transition)
             {
                 Coeffs c;
@@ -758,16 +801,19 @@ namespace soul::filters (using SampleType = float32,
         }
 
         /** Parallel 2nd-order all-pass.
-            y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
+
+                y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
         */
         namespace dual_apf
         {
+            /** Holds the filter state. */
             struct State
             {
                 SampleType[2] x1, y1, x2, y2;
                 CoeffType[2] c;
             }
 
+            /** */
             SampleType[2] process (State& s, SampleType[2] x)
             {
                 let y = SampleType[2] (SampleType (s.c[0]) * (x[0] + s.y2[0]) - s.x2[0],
@@ -781,12 +827,14 @@ namespace soul::filters (using SampleType = float32,
             }
         }
 
+        /** Holds the filter state. */
         struct State
         {
             dual_apf::State[numFilters] apfs;
             SampleType[1] x;
         }
 
+        /** Updates a filter state with the given sample rate. */
         void update (State& s, float64 sampleRate)
         {
             let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz / sampleRate));
@@ -798,6 +846,7 @@ namespace soul::filters (using SampleType = float32,
             }
         }
 
+        /** */
         SampleType[2] process (State& s, SampleType x)
         {
             var y = SampleType[2] (x, s.x[0]);
@@ -811,6 +860,7 @@ namespace soul::filters (using SampleType = float32,
             return y;
         }
 
+        /** */
         processor Processor
         {
             input stream SampleType in;
@@ -845,12 +895,14 @@ namespace soul::filters (using SampleType = float32,
     */
     namespace complex_resonator
     {
+        /** Holds the filter state. */
         struct State
         {
             SampleType yReal;
             SampleType yImag;
         }
 
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             complex64 v;
@@ -863,6 +915,7 @@ namespace soul::filters (using SampleType = float32,
             return complex64 (e * cos (c.imag), e * sin (c.imag));
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 t60)
         {
             let jImag = (0.0 + 1.0i);
@@ -871,6 +924,7 @@ namespace soul::filters (using SampleType = float32,
             c.v = decayFactor * oscCoef;
         }
 
+        /** */
         SampleType[2] process (State& s, Coeffs& c, SampleType x)
         {
             let xReal = x;
@@ -884,6 +938,7 @@ namespace soul::filters (using SampleType = float32,
             return SampleType[2] (yReal, yImag);
         }
 
+        /** */
         processor Processor (float initialFrequency = defaultFreqHz,
                              float initialDecay = 1.0f,
                              float initialGain = 1.0f)
@@ -943,7 +998,7 @@ namespace soul::filters (using SampleType = float32,
 
     //==============================================================================
     /**
-        "Topology preserving transform" filters.
+        This namespace contains a set of "Topology preserving transform" filters.
     */
     namespace tpt
     {
@@ -955,6 +1010,7 @@ namespace soul::filters (using SampleType = float32,
         */
         namespace onepole
         {
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
@@ -962,26 +1018,31 @@ namespace soul::filters (using SampleType = float32,
                 let allpass  = 2;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType b;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType z1;
             }
 
+            /** Clears a set of coefficients. */
             void clear (Coeffs& c)
             {
                 c.b = CoeffType (1);
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.z1 = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, float64 freqHz)
             {
                 let wd = twoPi * freqHz;
@@ -992,6 +1053,7 @@ namespace soul::filters (using SampleType = float32,
                 c.b = CoeffType (g / (1.0 + g));
             }
 
+            /** */
             SampleType processLPF (State& s, SampleType x, Coeffs& c)
             {
                 let vn = (x - s.z1) * SampleType (c.b);
@@ -1000,11 +1062,13 @@ namespace soul::filters (using SampleType = float32,
                 return lpf;
             }
 
+            /** */
             SampleType processHPF (State& s, SampleType x, Coeffs& c)
             {
                 return x - processLPF (s, x, c);
             }
 
+            /** */
             SampleType processAPF (State& s, SampleType x, Coeffs& c)
             {
                 let lpf = processLPF (s, x, c);
@@ -1012,6 +1076,7 @@ namespace soul::filters (using SampleType = float32,
                 return lpf - hpf;
             }
 
+            /** */
             processor Processor (int initialMode = 0,
                                  float initialFrequency = defaultFreqHz)
             {
@@ -1069,6 +1134,7 @@ namespace soul::filters (using SampleType = float32,
         */
         namespace svf
         {
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
@@ -1076,6 +1142,7 @@ namespace soul::filters (using SampleType = float32,
                 let bandpass = 2;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType a0;
@@ -1083,17 +1150,20 @@ namespace soul::filters (using SampleType = float32,
                 CoeffType p;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType[2] z;
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.z[0] = SampleType();
                 s.z[1] = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 quality)
             {
                 let Q = max (quality, 0.001);
@@ -1107,6 +1177,7 @@ namespace soul::filters (using SampleType = float32,
                 c.p = 2.0 * R + g;
             }
 
+            /** */
             SampleType[3] process (State& s, SampleType x, Coeffs& c)
             {
                 let hpf = SampleType (c.a0 * (x - c.p * s.z[0] - s.z[1]));
@@ -1119,6 +1190,7 @@ namespace soul::filters (using SampleType = float32,
                 return SampleType[3] (lpf, hpf, bpf);
             }
 
+            /** */
             processor Processor (float initialFrequency = defaultFreqHz,
                                  float initialQuality = defaultQuality)
             {
@@ -1177,12 +1249,14 @@ namespace soul::filters (using SampleType = float32,
             namespace onepole = soul::filters::tpt::onepole;
             namespace svf = soul::filters::tpt::svf;
 
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
                 let highpass = 1;
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs,
                                              onepole::Coeffs& onepoleCoeffs,
                                              float64 sampleRate, int order, float64 freqHz)
@@ -1211,6 +1285,7 @@ namespace soul::filters (using SampleType = float32,
                 }
             }
 
+            /** */
             SampleType process<StateArrayType, CoeffsArrayType> (SampleType x,
                                                                  StateArrayType& svfStates,
                                                                  CoeffsArrayType& svfCoeffs,
@@ -1303,16 +1378,19 @@ namespace soul::filters (using SampleType = float32,
         {
             namespace SVF = soul::filters::tpt::svf;
 
+            /** Holds the filter state. */
             struct State
             {
                 SVF::State svf1, svf2;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 SVF::Coeffs svf1, svf2;
             }
 
+            /** */
             processor Processor (float initialFrequency = defaultFreqHz)
             {
                 input stream float32 in;
@@ -1326,6 +1404,7 @@ namespace soul::filters (using SampleType = float32,
                 float frequency = initialFrequency;
                 bool recalc = true;
 
+                /** Updates a set of coefficients for the given settings. */
                 void update (Coeffs& c, float64 sampleRate, float64 freqHz)
                 {
                     c.svf1.update (sampleRate, freqHz, defaultQuality);
@@ -1381,6 +1460,7 @@ namespace soul::filters (using SampleType = float32,
         */
         namespace simper_eq
         {
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass   = 0;
@@ -1394,23 +1474,27 @@ namespace soul::filters (using SampleType = float32,
                 let bell      = 8;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType a1, a2, a3;
                 CoeffType m0, m1, m2;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType ic1eq, ic2eq;
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.ic1eq = SampleType();
                 s.ic2eq = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gain)
             {
                 let w = tan (pi * freqHz / sampleRate);
@@ -1511,6 +1595,7 @@ namespace soul::filters (using SampleType = float32,
                 }
             }
 
+            /** */
             SampleType process (State& s, SampleType x, Coeffs& c)
             {
                 let v0 = x;
@@ -1522,6 +1607,7 @@ namespace soul::filters (using SampleType = float32,
                 return    SampleType (c.m0 * v0 + c.m1 * v1 + c.m2 * v2);
             }
 
+            /** */
             processor Processor (int initialMode = 0,
                                  float initialFrequency = defaultFreqHz,
                                  float initialQuality = defaultQuality,
