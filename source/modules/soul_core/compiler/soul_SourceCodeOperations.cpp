@@ -279,10 +279,12 @@ CodeLocation SourceCodeOperations::findEndOfMatchingParen (CodeLocation start) {
 
 SourceCodeOperations::Comment SourceCodeOperations::parseComment (CodeLocation pos)
 {
+    if (pos.isEmpty())
+        return {};
+
     Comment result;
     pos.location = pos.location.findEndOfWhitespace();
     result.start = pos;
-    auto commentStart = pos.location;
 
     if (pos.location.advanceIfStartsWith ("/*"))
     {
