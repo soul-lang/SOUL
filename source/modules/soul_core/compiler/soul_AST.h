@@ -531,11 +531,13 @@ struct AST
         {
             auto p = i.targetProcessor->getAsProcessor();
 
-            if (p == nullptr)
-                if (auto name = cast<QualifiedIdentifier> (i.targetProcessor))
-                    return findSingleMatchingProcessor (*name);
+            if (p != nullptr)
+                return *p;
 
-            return *p;
+            if (auto name = cast<QualifiedIdentifier> (i.targetProcessor))
+                return findSingleMatchingProcessor (*name);
+
+            i.targetProcessor->context.throwError (Errors::expectedProcessorName ());
         }
 
         std::string makeUniqueName (const std::string& root) const
