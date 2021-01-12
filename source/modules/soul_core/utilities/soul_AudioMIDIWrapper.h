@@ -202,8 +202,8 @@ struct AudioOutputList
     void handleOutputData (PerformerOrSession& p, choc::buffer::ChannelArrayView<float> outputChannels)
     {
         for (auto& mapping : mappings)
-            copyIntersectionAndClearOutside (outputChannels.getChannelRange (mapping.channels),
-                                             getChannelSetFromArray (p.getOutputStreamFrames (mapping.endpoint)));
+            addIntersection (outputChannels.getChannelRange (mapping.channels),
+                             getChannelSetFromArray (p.getOutputStreamFrames (mapping.endpoint)));
     }
 
     struct OutputMapping
