@@ -30,6 +30,7 @@
 #include <thread>
 #include <iomanip>
 #include <fstream>
+#include <cctype>
 
 #include "soul_core.h"
 
