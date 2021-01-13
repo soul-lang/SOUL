@@ -18,7 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: Timeline Event Utilities.
+/** Title: Timeline Event Utilities
 
     The `timeline` namespace contains various structs and functions which are used when
     dealing with positions and tempos along a timeline.

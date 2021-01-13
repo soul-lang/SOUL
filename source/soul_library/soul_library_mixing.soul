@@ -18,7 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: Mix and gain control utilities.
+/** Title: Mix and gain control utilities
 
     This file provides a set of processors for common tasks like mixing together sources,
     applying fixed gains, or applying envelope shapes.

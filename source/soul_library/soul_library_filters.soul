@@ -18,8 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/**
-    Title: SOUL Filter Library
+/** Title: SOUL Filter Library
 
     This file contains a collection of filter implementations, including more traditional
     biquad based filters and TPT variants, which are more suitable for modulation.
@@ -29,7 +28,6 @@
       conventions for what a and b mean. This code uses the following:
         `b`: feed-forward, numerator, zero, FIR coefficients.
         `a`: feed-back, denominator, pole, IIR coefficients.
-
     - Although each filter comes with a Processor, they are designed so that their state,
       coefficients and functions can be used independently.
     - Each filter has a `State` struct and a `Coeffs` struct.

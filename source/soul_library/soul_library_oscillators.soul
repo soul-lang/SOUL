@@ -18,7 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: SOUL Oscillator Library.
+/** Title: SOUL Oscillator Library
 
     This file contains a collection of oscillator implenentations for generating
     various wave-shapes.

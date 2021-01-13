@@ -18,7 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: Musical note event utilities.
+/** Title: Musical note event utilities
 
     This file contains various structs which can be used to model note-control events
     coming from sources such as MIDI keyboards.

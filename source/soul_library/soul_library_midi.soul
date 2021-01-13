@@ -18,7 +18,7 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: SOUL MIDI Utility Library.
+/** Title: SOUL MIDI Utility Library
 
     In general, the SOUL policy towards MIDI is to avoid it any much as possible, so
     most of the the helper functions are concerned with converting MIDI messages to
@@ -26,19 +26,22 @@
     events to model note actions, rather than raw MIDI events.
 */
 
+/// Various MIDI-related types and functions.
 namespace soul::midi
 {
-    /** This type is used to represent a packed short MIDI message. When you create
-        an input event endpoint and would like it to receive MIDI, this is the type
-        that you should use for it.
-    */
+    /// This type is used to represent a packed short MIDI message. When you create
+    /// an input event endpoint and would like it to receive MIDI, this is the type
+    /// that you should use for it.
     struct Message
     {
         int midiBytes;  /**< Format: (byte[0] << 16) | (byte[1] << 8) | byte[2] */
     }
 
+    /// Extracts the first MIDI byte from a Message object
     int getByte1 (Message m)     { return (m.midiBytes >> 16) & 0xff; }
+    /// Extracts the second MIDI byte from a Message object
     int getByte2 (Message m)     { return (m.midiBytes >> 8) & 0xff; }
+    /// Extracts the third MIDI byte from a Message object
     int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
     /** This event processor receives incoming MIDI events, parses them as MPE,
