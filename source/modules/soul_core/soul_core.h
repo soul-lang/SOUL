@@ -145,6 +145,7 @@ namespace soul
 #include "compiler/soul_AST.h"
 #include "compiler/soul_Compiler.h"
 #include "compiler/soul_SourceCodeOperations.h"
+#include "compiler/soul_DocumentationModel.h"
 
 #include "venue/soul_Endpoints.h"
 #include "venue/soul_Performer.h"

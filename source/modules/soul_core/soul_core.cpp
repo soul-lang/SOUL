@@ -92,6 +92,7 @@
 #include "diagnostics/soul_Timing.cpp"
 #include "venue/soul_Endpoints.cpp"
 #include "compiler/soul_SourceCodeOperations.cpp"
+#include "compiler/soul_DocumentationModel.cpp"
 
 #ifdef __clang__
  #pragma clang diagnostic pop
