@@ -1382,14 +1382,15 @@ struct AST
         {
             pool_ref<Expression> type;
             Identifier name;
+            Context nameLocation;
         };
 
         ArrayView<Member> getMembers() const     { return members; }
 
-        void addMember (Expression& type, Identifier memberName)
+        void addMember (Expression& type, const Context& nameLocation, Identifier memberName)
         {
             SOUL_ASSERT (structure == nullptr);
-            members.push_back ({ type, memberName });
+            members.push_back ({ type, memberName, nameLocation });
         }
 
         bool isResolved() const override
@@ -2125,6 +2126,7 @@ struct AST
         bool isFunctionParameter = false;
         bool isConstant = false;
         bool isExternal = false;
+        bool isSpecialisation = false;
         bool doNotConstantFold = false;
         size_t numReads = 0, numWrites = 0;
 

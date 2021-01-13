@@ -138,7 +138,14 @@ std::string SourceCodeOperations::getFileSummaryTitle() const
         auto firstLine = choc::text::trim (summary.lines[0]);
 
         if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
-            return choc::text::trim (firstLine.substr (6));
+        {
+            auto title = choc::text::trim (firstLine.substr (6));
+
+            if (choc::text::endsWith (title, "."))
+                title = title.substr (title.length() - 1);
+
+            return title;
+        }
     }
 
     return {};
@@ -387,6 +394,9 @@ SourceCodeOperations::Comment SourceCodeOperations::parseComment (CodeLocation p
         }
     }
 
+    removeIf (result.lines, [] (const std::string& s) { return choc::text::contains (s, "================")
+                                                            || choc::text::contains (s, "****************"); });
+
     while (! result.lines.empty() && result.lines.back().empty())
         result.lines.erase (result.lines.end() - 1);
 
@@ -399,6 +409,11 @@ SourceCodeOperations::Comment SourceCodeOperations::parseComment (CodeLocation p
 std::string SourceCodeOperations::Comment::getText() const
 {
     return joinStrings (lines, "\n");
+}
+
+std::string SourceCodeOperations::getStringForType (AST::Expression& e)
+{
+    return StructuralParser::readStringForType (e);
 }
 
 std::vector<std::string> SourceCodeOperations::parseParenthesisedParameterList (CodeLocation openParen)

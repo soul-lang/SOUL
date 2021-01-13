@@ -80,6 +80,8 @@ struct SourceCodeOperations
 
     static std::vector<std::string> parseParenthesisedParameterList (CodeLocation openParen);
 
+    static std::string getStringForType (AST::Expression&);
+
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);
 
