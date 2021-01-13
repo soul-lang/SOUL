@@ -58,7 +58,7 @@ struct FrameRange
 
     constexpr FrameCount size() const                                 { return end - start; }
     constexpr bool contains (FrameCount index) const                  { return index >= start && index < end; }
-    constexpr bool contains (FrameRange range) const                  { return range.start < end && range.end > start; }
+    constexpr bool contains (FrameRange range) const                  { return range.start >= start && range.end <= end; }
     constexpr FrameRange getIntersection (FrameRange other) const     { return { start <= other.start ? start : other.start,
                                                                                  end >= other.end ? end : other.end }; }
     constexpr bool operator== (const FrameRange& other) const         { return start == other.start && end == other.end; }
@@ -73,7 +73,7 @@ struct ChannelRange
 
     constexpr ChannelCount size() const                                 { return end - start; }
     constexpr bool contains (ChannelCount index) const                  { return index >= start && index < end; }
-    constexpr bool contains (ChannelRange range) const                  { return range.start < end && range.end > start; }
+    constexpr bool contains (ChannelRange range) const                  { return range.start >= start && range.end <= end; }
     constexpr FrameRange getIntersection (ChannelRange other) const     { return { start <= other.start ? start : other.start,
                                                                                    end >= other.end ? end : other.end }; }
     constexpr bool operator== (const ChannelRange& other) const         { return start == other.start && end == other.end; }
@@ -169,9 +169,7 @@ struct BufferView
     constexpr ChannelRange getChannelRange() const                              { return size.getChannelRange(); }
 
     /** Returns a reference to a sample in the view. This will assert if the position is out-of-range. */
-    Sample& getSample (ChannelCount channel, FrameCount frame)                  { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
-    /** Returns a sample in the view. This will assert if the position is out-of-range. */
-    const Sample getSample (ChannelCount channel, FrameCount frame) const       { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
+    Sample& getSample (ChannelCount channel, FrameCount frame) const            { CHOC_ASSERT (size.contains (channel, frame)); return data.getSample (channel, frame); }
     /** Returns the value of a sample in the view, or zero if the position is out-of-range. */
     Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return size.contains (channel, frame) ? data.getSample (channel, frame) : Sample(); }
 
@@ -199,14 +197,21 @@ struct BufferView
     BufferView getChannelRange (ChannelRange channels) const
     {
         CHOC_ASSERT (getChannelRange().contains (channels));
-        return { data.getChannelRange (channels), { channels.end - channels.start, size.numFrames } };
+        return { data.fromChannel (channels.start), { channels.end - channels.start, size.numFrames } };
+    }
+
+    /** Returns a view of the first N channels. This will assert if the channels requested are out-of-range. */
+    BufferView getFirstChannels (ChannelCount numChannels) const
+    {
+        CHOC_ASSERT (numChannels <= size.numChannels);
+        return { data, { numChannels, size.numFrames } };
     }
 
     /** Returns a view of a subset of frames. This will assert if the frame numbers are out-of-range. */
     BufferView getFrameRange (FrameRange range) const
     {
         CHOC_ASSERT (getFrameRange().contains (range));
-        return { data.getFrameRange (range), { size.numChannels, range.end - range.start } };
+        return { data.fromFrame (range.start), { size.numChannels, range.end - range.start } };
     }
 
     /** Returns a view of the start section of this view, up to the given number of frames. This will assert if the frame count is out-of-range. */
@@ -216,15 +221,29 @@ struct BufferView
         return { data, { size.numChannels, numberOfFrames } };
     }
 
+    /** Returns a view of the last N frames in this view. This will assert if the frame count is out-of-range. */
+    BufferView getEnd (FrameCount numberOfFrames) const
+    {
+        CHOC_ASSERT (numberOfFrames <= size.numFrames);
+        return { data.fromFrame (size.numFrames - numberOfFrames), { size.numChannels, numberOfFrames } };
+    }
+
+    /** Returns a section of this view, from the given frame number to the end. This will assert if the frame count is out-of-range. */
+    BufferView fromFrame (FrameCount startFrame) const
+    {
+        CHOC_ASSERT (startFrame <= size.numFrames);
+        return { data.fromFrame (startFrame), { size.numChannels, size.numFrames - startFrame } };
+    }
+
     /** Returns a view of a sub-section of this view. This will assert if the range is out-of-range. */
     BufferView getSection (ChannelRange channels, FrameRange range) const
     {
         CHOC_ASSERT (getFrameRange().contains (range) && getChannelRange().contains (channels));
-        return { data.getFrameRange (range).getChannelRange (channels), { channels.end - channels.start, range.end - range.start } };
+        return { data.fromFrame (range.start).fromChannel (channels.start), { channels.end - channels.start, range.end - range.start } };
     }
 
     /** Sets all samples in the view to zero. */
-    void clear()                                                { data.clear (size); }
+    void clear() const                                          { data.clear (size); }
 
     /** Allows a view of non-const samples to be cast to one of const samples. */
     operator BufferView<const Sample, LayoutType>() const       { return { static_cast<LayoutType<const Sample>> (data), size }; }
@@ -299,9 +318,7 @@ struct AllocatedBuffer
     constexpr ChannelRange getChannelRange() const                              { return view.getChannelRange(); }
 
     /** Returns a reference to a sample in the buffer. This will assert if the position is out-of-range. */
-    Sample& getSample (ChannelCount channel, FrameCount frame)                  { return view.getSample (channel, frame); }
-    /** Returns a sample in the buffer. This will assert if the position is out-of-range. */
-    const Sample getSample (ChannelCount channel, FrameCount frame) const       { return view.getSample (channel, frame); }
+    Sample& getSample (ChannelCount channel, FrameCount frame) const            { return view.getSample (channel, frame); }
     /** Returns the value of a sample in the buffer, or zero if the position is out-of-range. */
     Sample getSampleIfInRange (ChannelCount channel, FrameCount frame) const    { return view.getSampleIfInRange (channel, frame); }
 
@@ -319,15 +336,21 @@ struct AllocatedBuffer
     BufferView<Sample, MonoLayout> getChannel (ChannelCount channel) const      { return view.getChannel (channel); }
     /** Returns a view of a subset of channels. This will assert if the channels requested are out-of-range. */
     BufferView<Sample, LayoutType> getChannelRange (ChannelRange range) const   { return view.getChannelRange (range); }
+    /** Returns a view of the first N channels. This will assert if the channels requested are out-of-range. */
+    BufferView<Sample, LayoutType> getFirstChannels (ChannelCount num) const    { return view.getFirstChannels (num); }
     /** Returns a view of a subset of frames. This will assert if the frame numbers are out-of-range. */
     BufferView<Sample, LayoutType> getFrameRange (FrameRange range) const       { return view.getFrameRange (range); }
     /** Returns a view of the start section of this buffer, up to the given number of frames. This will assert if the frame count is out-of-range. */
     BufferView<Sample, LayoutType> getStart (FrameCount numberOfFrames) const   { return view.getStart (numberOfFrames); }
+    /** Returns a view of the last N frames in this view. This will assert if the frame count is out-of-range. */
+    BufferView<Sample, LayoutType> getEnd (FrameCount numberOfFrames) const     { return view.getEnd (numberOfFrames); }
+    /** Returns a section of this view, from the given frame number to the end. This will assert if the frame count is out-of-range. */
+    BufferView<Sample, LayoutType> fromFrame (FrameCount startFrame) const      { return view.fromFrame (startFrame); }
     /** Returns a view of a sub-section of this buffer. This will assert if the range is out-of-range. */
     BufferView<Sample, LayoutType> getSection (ChannelRange channels, FrameRange range) const   { return view.getSection (channels, range); }
 
     /** Sets all samples in the buffer to zero. */
-    void clear()                                                                { view.clear(); }
+    void clear() const                                                          { view.clear(); }
 
     /** Resizes the buffer. This will try to preserve as much of the existing content as will fit into
         the new size, and will clear any newly-allocated areas.
@@ -348,18 +371,17 @@ struct MonoLayout
     SampleType* data = nullptr;
     SampleCount stride = 0;
 
-    SampleType& getSample (ChannelCount, FrameCount frame)         { return data[stride * frame]; }
-    SampleType  getSample (ChannelCount, FrameCount frame) const   { return data[stride * frame]; }
+    SampleType& getSample (ChannelCount, FrameCount frame) const   { return data[stride * frame]; }
     MonoLayout getChannelLayout (ChannelCount) const               { return *this; }
-    MonoLayout getChannelRange (ChannelRange) const                { return *this; }
-    MonoLayout getFrameRange (FrameRange range) const              { return { data + range.start, stride }; }
+    MonoLayout fromChannel (ChannelCount) const                    { return *this; }
+    MonoLayout fromFrame (FrameCount start) const                  { return { data + start * stride, stride }; }
     operator MonoLayout<const SampleType>() const                  { return { data, stride }; }
     SampleIterator<SampleType> getIterator (ChannelCount) const    { return { data, stride }; }
     static constexpr size_t getBytesNeeded (Size size)             { return sizeof (SampleType) * size.numFrames; }
     static MonoLayout createAllocated (Size size)                  { return { new SampleType[size.numFrames], 1u }; }
     void freeAllocatedData()                                       { delete[] data; }
 
-    void clear (Size size)
+    void clear (Size size) const
     {
         if (stride == 1)
             std::fill_n (data, size.numFrames, SampleType());
@@ -385,18 +407,17 @@ struct InterleavedLayout
     SampleType* data = nullptr;
     SampleCount stride = 0;
 
-    SampleType& getSample (ChannelCount channel, FrameCount frame)        { return data[channel + stride * frame]; }
-    SampleType  getSample (ChannelCount channel, FrameCount frame) const  { return data[channel + stride * frame]; }
+    SampleType& getSample (ChannelCount channel, FrameCount frame) const  { return data[channel + stride * frame]; }
     MonoLayout<SampleType> getChannelLayout (ChannelCount channel) const  { return { data + channel, stride }; }
-    InterleavedLayout getChannelRange (ChannelRange channels) const       { return { data + channels.start, stride }; }
-    InterleavedLayout getFrameRange (FrameRange range) const              { return { data + range.start * stride, stride }; }
+    InterleavedLayout fromChannel (ChannelCount start) const              { return { data + start, stride }; }
+    InterleavedLayout fromFrame (FrameCount start) const                  { return { data + start * stride, stride }; }
     operator InterleavedLayout<const SampleType>() const                  { return { data, stride }; }
     SampleIterator<SampleType> getIterator (ChannelCount channel) const   { return { data + channel, stride }; }
     static constexpr size_t getBytesNeeded (Size size)                    { return sizeof (SampleType) * size.numFrames * size.numChannels; }
     static InterleavedLayout createAllocated (Size size)                  { return { new SampleType[size.numFrames * size.numChannels], size.numChannels }; }
     void freeAllocatedData()                                              { delete[] data; }
 
-    void clear (Size size)
+    void clear (Size size) const
     {
         if (size.numChannels == stride)
             std::fill_n (data, size.numChannels * size.numFrames, SampleType());
@@ -425,15 +446,14 @@ struct SeparateChannelLayout
     SampleType* const* channels = nullptr;
     uint32_t offset = 0;
 
-    SampleType& getSample (ChannelCount channel, FrameCount frame)        { return channels[channel][offset + frame]; }
-    SampleType  getSample (ChannelCount channel, FrameCount frame) const  { return channels[channel][offset + frame]; }
+    SampleType& getSample (ChannelCount channel, FrameCount frame) const  { return channels[channel][offset + frame]; }
     MonoLayout<SampleType> getChannelLayout (ChannelCount channel) const  { return { channels[channel] + offset, 1u }; }
-    SeparateChannelLayout getChannelRange (ChannelRange range) const      { return { channels + range.start, offset }; }
-    SeparateChannelLayout getFrameRange (FrameRange range) const          { return { channels, offset + range.start }; }
+    SeparateChannelLayout fromChannel (ChannelCount start) const          { return { channels + start, offset }; }
+    SeparateChannelLayout fromFrame (FrameCount start) const              { return { channels, offset + start }; }
     operator SeparateChannelLayout<const SampleType>() const              { return { const_cast<const SampleType* const*> (channels), offset }; }
     SampleIterator<SampleType> getIterator (ChannelCount channel) const   { return { channels[channel] + offset, 1u }; }
 
-    void clear (Size size)
+    void clear (Size size) const
     {
         for (decltype(size.numChannels) i = 0; i < size.numChannels; ++i)
             std::fill_n (channels[i] + offset, size.numFrames, SampleType());
@@ -454,6 +474,13 @@ struct SeparateChannelLayout
 
     static SeparateChannelLayout createAllocated (Size size)
     {
+        if (size.numChannels == 0)
+        {
+            auto allocated = new void*[1];
+            *allocated = allocated;
+            return { reinterpret_cast<SampleType* const*> (allocated), 0 };
+        }
+
         auto channelDataSize = getChannelDataSize (size.numFrames);
         auto dataSize = channelDataSize * size.numChannels;
         auto listSize = sizeof (SampleType*) * size.numChannels;
@@ -517,6 +544,21 @@ using MonoBuffer = AllocatedBuffer<SampleType, MonoLayout>;
 template <typename BufferType, typename SampleGenerator>
 void setAllSamples (BufferType&& buffer, SampleGenerator&& getSampleValue);
 
+/** Iterates each frame in a view or buffer, setting all samples in a frame to a single
+    generated value.
+
+    The functor is called once per frame, and the value it returns is used to set all the
+    samples within that frame.
+
+    The functor must return a value of the appropriate type for the sample, but can take these
+    parameters:
+     - Sample()            : the functor can have no parameters if none are needed.
+     - Sample(FrameCount)  : if there is 1 parameter, it will be the frame number, so
+                             that the generator can use it to compute its result
+*/
+template <typename BufferType, typename SampleGenerator>
+void setAllFrames (BufferType&& buffer, SampleGenerator&& getSampleValue);
+
 /** Copies the contents of one view or buffer to a destination.
     This will assert if the two views do not have exactly the same size.
 */
@@ -539,6 +581,11 @@ static void add (DestBuffer&& dest, const SourceBuffer& source);
 template <typename DestBuffer, typename SourceBuffer>
 static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source);
 
+/** Copies as much of the source as will fit into the destination.
+*/
+template <typename DestBuffer, typename SourceBuffer>
+static void copyIntersection (DestBuffer&& dest, const SourceBuffer& source);
+
 /** Copies as much of the source as will fit into the destination, and clears any
     destination areas outside that area.
 */
@@ -548,6 +595,21 @@ static void copyIntersectionAndClearOutside (DestBuffer&& dest, const SourceBuff
 /** Applies a multiplier to all samples in the given view or buffer. */
 template <typename BufferType, typename GainType>
 void applyGain (BufferType&& buffer, GainType gainMultiplier);
+
+/** Iterates each frame in a view or buffer, multiplying all samples in a frame by a single
+    generated value.
+
+    The functor is called once per frame, and the value it returns is used to set all the
+    samples within that frame.
+
+    The functor must return a value of the appropriate type for the sample, but can take these
+    parameters:
+     - Sample()            : the functor can have no parameters if none are needed.
+     - Sample(FrameCount)  : if there is 1 parameter, it will be the frame number, so
+                             that the generator can use it to compute its result
+*/
+template <typename BufferType, typename GetGainFunction>
+void applyGainPerFrame (BufferType&& buffer, GetGainFunction&& getGainForFrame);
 
 /** Takes a BufferView or AllocatedBuffer and returns true if all its samples are zero. */
 template <typename BufferType>
@@ -648,6 +710,26 @@ void setAllSamples (BufferType&& buffer, SampleGenerator&& getSampleValue)
     }
 }
 
+template <typename Functor>
+static auto invokeGetSample (Functor&& fn, FrameCount f) -> decltype(fn (f))  { return fn (f); }
+
+template <typename Functor>
+static auto invokeGetSample (Functor&& fn, FrameCount)   -> decltype(fn())  { return fn(); }
+
+template <typename BufferType, typename SampleGenerator>
+void setAllFrames (BufferType&& buffer, SampleGenerator&& getSampleValue)
+{
+    auto size = buffer.getSize();
+
+    for (decltype (size.numFrames) i = 0; i < size.numFrames; ++i)
+    {
+        auto sample = invokeGetSample (getSampleValue, i);
+
+        for (decltype (size.numChannels) chan = 0; chan < size.numChannels; ++chan)
+            buffer.getSample (chan, i) = sample;
+    }
+}
+
 template <typename DestBuffer, typename SourceBuffer>
 static void copy (DestBuffer&& dest, const SourceBuffer& source)
 {
@@ -699,7 +781,7 @@ static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source
             return copy (dest, source);
 
         if (dstChans < srcChans)
-            return copy (dest, source.getChannelRange ({ 0, dstChans }));
+            return copy (dest, source.getFirstChannels (dstChans));
 
         // if asked to map a mono buffer to a bigger one, just copy the same source to all dest channels
         if (srcChans == 1)
@@ -710,10 +792,20 @@ static void copyRemappingChannels (DestBuffer&& dest, const SourceBuffer& source
         // For anything else, just copy as many channels as will fit, and clear any others
         else
         {
-            copy (dest.getChannelRange ({ 0, srcChans }), source);
+            copy (dest.getFirstChannels (srcChans), source);
             dest.getChannelRange ({ srcChans, dstChans }).clear();
         }
     }
+}
+
+template <typename DestBuffer, typename SourceBuffer>
+static void copyIntersection (DestBuffer&& dest, const SourceBuffer& source)
+{
+    auto overlap = dest.getSize().getIntersection (source.getSize());
+
+    if (! overlap.isEmpty())
+        copy (dest.getSection (overlap.getChannelRange(), overlap.getFrameRange()),
+              source.getSection (overlap.getChannelRange(), overlap.getFrameRange()));
 }
 
 template <typename DestBuffer, typename SourceBuffer>
@@ -739,21 +831,31 @@ static void copyIntersectionAndClearOutside (DestBuffer&& dest, const SourceBuff
 template <typename DestBuffer, typename SourceBuffer>
 static void addIntersection (DestBuffer&& dest, const SourceBuffer& source)
 {
-    auto dstSize = dest.getSize();
-    auto srcSize = source.getSize();
-    auto overlap = dstSize.getIntersection (srcSize);
+    auto overlap = dest.getSize().getIntersection (source.getSize());
 
-    if (overlap.isEmpty())
-        return;
-
-    add (dest.getSection (overlap.getChannelRange(), overlap.getFrameRange()),
-          source.getSection (overlap.getChannelRange(), overlap.getFrameRange()));
+    if (! overlap.isEmpty())
+        add (dest.getSection (overlap.getChannelRange(), overlap.getFrameRange()),
+             source.getSection (overlap.getChannelRange(), overlap.getFrameRange()));
 }
 
 template <typename BufferType, typename GainType>
 void applyGain (BufferType&& buffer, GainType gainMultiplier)
 {
     setAllSamples (buffer, [=] (auto sample) { return static_cast<decltype (sample)> (sample * gainMultiplier); });
+}
+
+template <typename BufferType, typename GetGainFunction>
+void applyGainPerFrame (BufferType&& buffer, GetGainFunction&& getGainForFrame)
+{
+    auto size = buffer.getSize();
+
+    for (decltype (size.numFrames) i = 0; i < size.numFrames; ++i)
+    {
+        auto gain = invokeGetSample (getGainForFrame, i);
+
+        for (decltype (size.numChannels) chan = 0; chan < size.numChannels; ++chan)
+            buffer.getSample (chan, i) *= gain;
+    }
 }
 
 template <typename BufferType>
