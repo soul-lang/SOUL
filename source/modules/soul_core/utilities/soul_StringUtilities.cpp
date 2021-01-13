@@ -79,6 +79,16 @@ std::string removeCharacter (std::string s, char charToRemove)
     return s;
 }
 
+std::string simplifyWhitespace (std::string s)
+{
+    s = choc::text::replace (choc::text::trim (s), "\t", " ", "\r", " ", "\n", " ");
+
+    while (choc::text::contains (s, "  "))
+        s = choc::text::replace (s, "  ", " ");
+
+    return s;
+}
+
 std::vector<std::string> splitLinesOfCode (const std::string& text, size_t targetLineLength)
 {
     std::vector<std::string> result;

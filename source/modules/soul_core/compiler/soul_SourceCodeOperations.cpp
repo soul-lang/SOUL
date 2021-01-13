@@ -416,7 +416,7 @@ std::vector<std::string> SourceCodeOperations::parseParenthesisedParameterList (
     auto params = choc::text::splitString (paramText, ',', false);
 
     for (auto& p : params)
-        p = choc::text::replace (choc::text::trim (p), "\n", "", "\r", "");
+        p = simplifyWhitespace (p);
 
     return params;
 }

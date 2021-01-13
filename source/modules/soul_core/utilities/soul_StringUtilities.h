@@ -34,6 +34,9 @@ std::string trimCharacterAtStart (const std::string& s, char charToRemove);
 std::string retainCharacters (std::string s, const std::string& charactersToRetain);
 std::string removeCharacter (std::string s, char charToRemove);
 
+// trim and coalesce whitespace into single spaces
+std::string simplifyWhitespace (std::string);
+
 template <typename StringArray>
 static std::string joinStrings (const StringArray& strings, const std::string& separator)
 {

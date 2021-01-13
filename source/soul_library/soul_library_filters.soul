@@ -908,9 +908,9 @@ namespace soul::filters (using SampleType = float32,
             complex64 v;
         }
 
-        // TODO: if cexp becomes a global function, use that
         complex64 cexp (complex64 c)
         {
+            // TODO: if cexp becomes a global function, use that
             let e = exp (c.real);
             return complex64 (e * cos (c.imag), e * sin (c.imag));
         }
