@@ -1791,7 +1791,7 @@ private:
                 return allocator.allocate<AST::ArrayElementRef> (s.context, s.lhs, s.rhs, nullptr, false);
 
             if (AST::isResolvedAsProcessor (s.lhs.get()))
-                s.context.throwError (Errors::notYetImplemented ("Processor Indexes!"));
+                s.context.throwError (Errors::notYetImplemented ("Processor Indexes"));
 
             if (ignoreErrors)
                 ++numFails;
