@@ -420,9 +420,6 @@ private:
             if (childEndpoint.isUnresolvedChildReference())
                 resolveEndpoint (allocator, *childGraph, childEndpoint, childEndpoint.childPath->sections);
 
-            if (childEndpoint.getDetails().arraySize != nullptr)
-                nameContext.throwError (Errors::notYetImplemented ("Exposing child endpoint arrays"));
-
             if (path.back().index != nullptr)
                 nameContext.throwError (Errors::targetIsNotAnArray());
 
