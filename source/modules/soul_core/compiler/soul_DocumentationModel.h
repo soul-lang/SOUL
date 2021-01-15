@@ -27,7 +27,7 @@ namespace soul
 */
 struct DocumentationModel
 {
-    void generate (std::string sourceFilename);
+    bool generate (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
 
     struct EndpointDesc
     {
@@ -75,18 +75,21 @@ struct DocumentationModel
         std::vector<StructDesc> structs;
     };
 
+    struct FileDesc
+    {
+        std::string filename, title, summary;
+        std::unique_ptr<SourceCodeOperations> source;
+        std::vector<ModuleDesc> modules;
+    };
+
     struct TOCNode
     {
-        TOCNode* parent = nullptr;
         std::string name;
-        ModuleDesc* module = nullptr;
         std::vector<TOCNode> children;
+        ModuleDesc* module = nullptr;
+        FileDesc* file = nullptr;
 
-        bool isRoot() const         { return parent == nullptr; }
-        int getDepth() const        { return parent == nullptr ? 0 : parent->getDepth() + 1; }
-
-        TOCNode& getNode (const std::string& fullPath, std::string pathNeeded);
-        void coalesceSingleItems();
+        TOCNode& getNode (ArrayView<std::string> path);
     };
 
     static SourceCodeOperations::Comment getComment (const AST::Context& context);
@@ -103,9 +106,7 @@ struct DocumentationModel
     static std::string createParameterList (std::string line, ArrayView<std::string> items);
 
     //==============================================================================
-    std::string filename, title, summary;
-    SourceCodeOperations source;
-    std::vector<ModuleDesc> allModules;
+    std::vector<FileDesc> files;
     TOCNode topLevelTOCNode;
 
 private:

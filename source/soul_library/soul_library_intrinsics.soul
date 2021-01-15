@@ -29,6 +29,7 @@
     functions here have non-functional implementations and rely on the performer to use a native
     implementation for them to work at all).
 */
+
 namespace soul::intrinsics
 {
     /** Familiar abs() function, accepting most scalar types. */

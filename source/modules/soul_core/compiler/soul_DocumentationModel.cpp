@@ -21,65 +21,55 @@
 namespace soul
 {
 
-void DocumentationModel::generate (std::string sourceFilename)
+bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
 {
-    filename = sourceFilename;
-    title = source.getFileSummaryTitle();
-    summary = source.getFileSummaryBody();
+    for (auto& f : filesToLoad)
+    {
+        FileDesc desc;
 
-    if (title.empty())
-        title = filename;
+        desc.source = std::make_unique<SourceCodeOperations>();
 
-    for (auto& m : source.getAllModules())
-        addModule (m);
+        if (! desc.source->reload (errors, f, {}))
+            return false;
+
+        desc.filename = f->filename;
+        desc.title = desc.source->getFileSummaryTitle();
+        desc.summary = desc.source->getFileSummaryBody();
+
+        if (desc.title.empty())
+            desc.title = f->filename;
+
+        for (auto& m : desc.source->getAllModules())
+            if (shouldShow (m))
+                desc.modules.push_back ({ m, m.getType(), m.getFullyQualifiedName() });
+
+        files.emplace_back (std::move (desc));
+    }
 
     buildEndpoints();
     buildFunctions();
     buildVariables();
     buildStructs();
     buildTOCNodes();
+    return true;
 }
 
-DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (const std::string& fullPath, std::string pathNeeded)
+DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std::string> path)
 {
-    if (pathNeeded == name)
+    SOUL_ASSERT (! path.empty());
+    auto& firstPart = path.front();
+
+    if (path.size() == 1 && firstPart == name)
         return *this;
 
-    auto thisPath = name;
-
-    if (! thisPath.empty())
-    {
-        thisPath += "::";
-        SOUL_ASSERT (choc::text::startsWith (pathNeeded, thisPath));
-        pathNeeded = pathNeeded.substr (thisPath.length());
-    }
-
-    TokenisedPathString remainder (pathNeeded);
-    SOUL_ASSERT (! remainder.sections.empty());
-    auto firstSection = remainder.getSection (0);
-
-    for (auto& g : children)
-        if (g.name == firstSection)
-            return g.getNode (fullPath, pathNeeded);
-
-    children.push_back ({ this, firstSection, nullptr, {} });
-    return children.back().getNode (fullPath, pathNeeded);
-}
-
-void DocumentationModel::TOCNode::coalesceSingleItems()
-{
     for (auto& c : children)
-    {
-        c.coalesceSingleItems();
+        if (firstPart == c.name)
+            return c.getNode (path.tail());
 
-        if (c.children.size() == 1)
-        {
-            auto child = c.children.front();
-            c.name += "::" + child.name;
-            c.children = std::move (child.children);
-            c.module = child.module;
-        }
-    }
+    children.push_back ({});
+    auto& n = children.back();
+    n.name = firstPart;
+    return path.size() > 1 ? n.getNode (path.tail()) : n;
 }
 
 bool DocumentationModel::shouldIncludeComment (const SourceCodeOperations::Comment& comment)
@@ -114,9 +104,6 @@ bool DocumentationModel::shouldShow (const SourceCodeOperations::ModuleDeclarati
 
     if (shouldIncludeComment (module.getComment()))
         return true;
-
-    if (module.module.isNamespace())
-        return false;
 
     if (auto functions = module.module.getFunctionList())
         for (auto& f : *functions)
@@ -171,82 +158,99 @@ std::string DocumentationModel::createParameterList (std::string line, ArrayView
     return line;
 }
 
-void DocumentationModel::addModule (const SourceCodeOperations::ModuleDeclaration& module)
-{
-    if (shouldShow (module))
-        allModules.push_back ({ module, module.getType(), module.getFullyQualifiedName() });
-}
-
 void DocumentationModel::buildTOCNodes()
 {
-    for (auto& m : allModules)
+    for (auto& f : files)
     {
-        auto fullPath = Program::stripRootNamespaceFromQualifiedPath (m.module.module.getFullyQualifiedDisplayPath().toString());
-        topLevelTOCNode.getNode (fullPath, fullPath).module = std::addressof (m);
-    }
+        std::vector<std::string> filePath { f.title };
+        topLevelTOCNode.getNode (filePath).file = std::addressof (f);
 
-    topLevelTOCNode.coalesceSingleItems();
+        for (auto& m : f.modules)
+        {
+            auto fullPath = Program::stripRootNamespaceFromQualifiedPath (m.module.module.getFullyQualifiedDisplayPath().toString());
+            TokenisedPathString path (fullPath);
+
+            auto modulePath = filePath;
+
+            if (path.sections.size() > 1 && path.getSection(0) == "soul")
+            {
+                modulePath.push_back ("soul::" + path.getSection (1));
+                path.sections.erase (path.sections.begin(), path.sections.begin() + 2);
+            }
+
+            for (size_t i = 0; i < path.sections.size(); ++i)
+                modulePath.push_back (path.getSection (i));
+
+            topLevelTOCNode.getNode (modulePath).module = std::addressof (m);
+        }
+    }
 }
 
 void DocumentationModel::buildEndpoints()
 {
-    for (auto& m : allModules)
+    for (auto& f : files)
     {
-        for (auto& e : m.module.module.getEndpoints())
+        for (auto& m : f.modules)
         {
-            EndpointDesc desc;
-            desc.comment = getComment (e->context);
-            desc.type = endpointTypeToString (e->details->endpointType);
-            desc.name = e->name.toString();
+            for (auto& e : m.module.module.getEndpoints())
+            {
+                EndpointDesc desc;
+                desc.comment = getComment (e->context);
+                desc.type = endpointTypeToString (e->details->endpointType);
+                desc.name = e->name.toString();
 
-            for (auto& type : e->details->dataTypes)
-                desc.dataTypes.push_back (SourceCodeOperations::getStringForType (type));
+                for (auto& type : e->details->dataTypes)
+                    desc.dataTypes.push_back (SourceCodeOperations::getStringForType (type));
 
-            if (e->isInput)
-                m.inputs.push_back (std::move (desc));
-            else
-                m.outputs.push_back (std::move (desc));
+                if (e->isInput)
+                    m.inputs.push_back (std::move (desc));
+                else
+                    m.outputs.push_back (std::move (desc));
+            }
         }
     }
 }
 
 void DocumentationModel::buildFunctions()
 {
-    for (auto& m : allModules)
+    for (auto& file : files)
     {
-        if (auto functions = m.module.module.getFunctionList())
+        for (auto& m : file.modules)
         {
-            for (auto& f : *functions)
+            if (auto functions = m.module.module.getFunctionList())
             {
-                if (shouldShow (f))
+                for (auto& f : *functions)
                 {
-                    FunctionDesc desc;
-                    desc.comment = getComment (f->context);
-                    desc.bareName = f->name.toString();
-
-                    auto openParen = findNextOccurrence (f->nameLocation.location, '(');
-                    SOUL_ASSERT (! openParen.isEmpty());
-                    auto closeParen = SourceCodeOperations::findEndOfMatchingParen (openParen);
-                    SOUL_ASSERT (! closeParen.isEmpty());
-
-                    desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
-
-                    if (auto ret = f->returnType.get())
-                        desc.returnType = SourceCodeOperations::getStringForType (*ret);
-
-                    auto params = simplifyWhitespace (getStringBetween (openParen, closeParen));
-                    SOUL_ASSERT (params.front() == '(' && params.back() == ')');
-                    params = simplifyWhitespace (params.substr (1, params.length() - 2));
-
-                    if (! params.empty())
+                    if (shouldShow (f))
                     {
-                        desc.parameters = choc::text::splitString (params, ',', false);
+                        FunctionDesc desc;
+                        desc.comment = getComment (f->context);
+                        desc.bareName = f->name.toString();
 
-                        for (auto& p : desc.parameters)
-                            p = simplifyWhitespace (p);
+                        auto openParen = findNextOccurrence (f->nameLocation.location, '(');
+                        SOUL_ASSERT (! openParen.isEmpty());
+                        auto closeParen = SourceCodeOperations::findEndOfMatchingParen (openParen);
+                        SOUL_ASSERT (! closeParen.isEmpty());
+
+                        desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
+
+                        if (auto ret = f->returnType.get())
+                            desc.returnType = SourceCodeOperations::getStringForType (*ret);
+
+                        auto params = simplifyWhitespace (getStringBetween (openParen, closeParen));
+                        SOUL_ASSERT (params.front() == '(' && params.back() == ')');
+                        params = simplifyWhitespace (params.substr (1, params.length() - 2));
+
+                        if (! params.empty())
+                        {
+                            desc.parameters = choc::text::splitString (params, ',', false);
+
+                            for (auto& p : desc.parameters)
+                                p = simplifyWhitespace (p);
+                        }
+
+                        m.functions.push_back (std::move (desc));
                     }
-
-                    m.functions.push_back (std::move (desc));
                 }
             }
         }
@@ -255,27 +259,30 @@ void DocumentationModel::buildFunctions()
 
 void DocumentationModel::buildStructs()
 {
-    for (auto& module : allModules)
+    for (auto& f : files)
     {
-        for (auto& s : module.module.module.getStructDeclarations())
+        for (auto& m : f.modules)
         {
-            if (shouldShow (s))
+            for (auto& s : m.module.module.getStructDeclarations())
             {
-                StructDesc desc;
-                desc.comment = getComment (s->context);
-                desc.name = s->name.toString();
-
-                for (auto& m : s->getMembers())
+                if (shouldShow (s))
                 {
-                    StructDesc::Member member;
-                    member.name = m.name.toString();
-                    member.comment = getComment (m.nameLocation);
-                    member.type = SourceCodeOperations::getStringForType (m.type);
+                    StructDesc desc;
+                    desc.comment = getComment (s->context);
+                    desc.name = s->name.toString();
 
-                    desc.members.push_back (std::move (member));
+                    for (auto& sm : s->getMembers())
+                    {
+                        StructDesc::Member member;
+                        member.name = sm.name.toString();
+                        member.comment = getComment (sm.nameLocation);
+                        member.type = SourceCodeOperations::getStringForType (sm.type);
+
+                        desc.members.push_back (std::move (member));
+                    }
+
+                    m.structs.push_back (std::move (desc));
                 }
-
-                module.structs.push_back (std::move (desc));
             }
         }
     }
@@ -283,26 +290,29 @@ void DocumentationModel::buildStructs()
 
 void DocumentationModel::buildVariables()
 {
-    for (auto& m : allModules)
+    for (auto& f : files)
     {
-        for (auto& v : m.module.module.getStateVariableList())
+        for (auto& m : f.modules)
         {
-            if (shouldShow (v))
+            for (auto& v : m.module.module.getStateVariableList())
             {
-                VariableDesc desc;
-                desc.comment = getComment (v->context);
-                desc.name = v->name.toString();
-                desc.isConstant = v->isConstant;
-                desc.isExternal = v->isExternal;
+                if (shouldShow (v))
+                {
+                    VariableDesc desc;
+                    desc.comment = getComment (v->context);
+                    desc.name = v->name.toString();
+                    desc.isConstant = v->isConstant;
+                    desc.isExternal = v->isExternal;
 
-                if (v->declaredType != nullptr)
-                    desc.type = SourceCodeOperations::getStringForType (*v->declaredType);
-                else if (v->initialValue != nullptr && v->initialValue->isResolved())
-                    desc.type = v->initialValue->getResultType().getDescription();
-                else if (auto cc = cast<AST::CallOrCast> (v->initialValue))
-                    desc.type = SourceCodeOperations::getStringForType (cc->nameOrType);
+                    if (v->declaredType != nullptr)
+                        desc.type = SourceCodeOperations::getStringForType (*v->declaredType);
+                    else if (v->initialValue != nullptr && v->initialValue->isResolved())
+                        desc.type = v->initialValue->getResultType().getDescription();
+                    else if (auto cc = cast<AST::CallOrCast> (v->initialValue))
+                        desc.type = SourceCodeOperations::getStringForType (cc->nameOrType);
 
-                m.variables.push_back (std::move (desc));
+                    m.variables.push_back (std::move (desc));
+                }
             }
         }
     }

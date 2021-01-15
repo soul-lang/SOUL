@@ -157,7 +157,7 @@ namespace soul::filters (using SampleType = float32,
             c.b[0] = b0; c.b[1] = b1; c.b[2] = b2; c.a[0] = a0; c.a[1] = a1; c.a[2] = a2;
         }
 
-        /** Sets the coefficients, normalizing based on the first feedback coefficient v.a[0] */
+        /** Sets the coefficients, normalising based on the first feedback coefficient v.a[0] */
         void setNonNormalised (Coeffs &c, const Coeffs& v)
         {
             let oneOverA0 = 1.0 / v.a[0];
@@ -166,7 +166,7 @@ namespace soul::filters (using SampleType = float32,
             c.a[0] = v.a[0]; // keep original a0
         }
 
-        /** Sets the coefficients, assuming v is already normalized. */
+        /** Sets the coefficients, assuming v is already normalised. */
         void setNormalised (Coeffs &c, Coeffs v)
         {
             c = v;
