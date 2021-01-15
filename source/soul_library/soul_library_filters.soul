@@ -26,8 +26,8 @@
     Notes:
     - Filter coefficients are typically labelled a and b. Different literature uses different
       conventions for what a and b mean. This code uses the following:
-        `b`: feed-forward, numerator, zero, FIR coefficients.
-        `a`: feed-back, denominator, pole, IIR coefficients.
+        * `b`: feed-forward, numerator, zero, FIR coefficients.
+        * `a`: feed-back, denominator, pole, IIR coefficients.
     - Although each filter comes with a Processor, they are designed so that their state,
       coefficients and functions can be used independently.
     - Each filter has a `State` struct and a `Coeffs` struct.
@@ -1367,7 +1367,7 @@ namespace soul::filters (using SampleType = float32,
 
         //==============================================================================
         /**
-            4th-order Linkwitz–Riley crossover filter, which outputs two bands of audio.
+            4th-order Linkwitz-Riley crossover filter, which outputs two bands of audio.
 
             The channels should sum together to produce a flat response.
             This filter is suitable for modulation.
