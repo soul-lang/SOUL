@@ -50,8 +50,8 @@ struct TypeRules
             if (dest.isVoid() || source.isVoid())
                 return CastType::notPossible;
 
-            if (source.isBool() && ! dest.isBool())
-                return CastType::notPossible;
+            if (source.isBool())
+                return CastType::primitiveNumericReduction;
 
             if (source.isComplex() && ! dest.isComplex())
                 return CastType::notPossible;
