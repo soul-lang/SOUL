@@ -1565,11 +1565,9 @@ private:
 
                     if (auto constant = list.items[i]->getAsConstant())
                     {
-                        auto& cv = constant->value;
-
-                        if (TypeRules::canSilentlyCastTo (memberType, cv.getType()))
+                        if (constant->canSilentlyCastTo (memberType))
                         {
-                            memberValues.push_back (cv.castToTypeExpectingSuccess (memberType));
+                            memberValues.push_back (constant->value.castToTypeExpectingSuccess (memberType));
                             continue;
                         }
 
