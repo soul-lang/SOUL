@@ -1791,7 +1791,6 @@ struct AST
             none,
             sourceType,
             makeConst,
-            makeConstSilent,
             makeReference,
             removeReference,
             elementType,
@@ -1826,7 +1825,7 @@ struct AST
 
         static constexpr bool operationReturnsAType (Op op)
         {
-            return op == Op::sourceType || op == Op::makeConst || op == Op::makeConstSilent
+            return op == Op::sourceType || op == Op::makeConst
                     || op == Op::makeReference || op == Op::removeReference
                     || op == Op::elementType || op == Op::primitiveType;
         }
@@ -1916,7 +1915,6 @@ struct AST
                 case Op::none:
                 case Op::sourceType:
                 case Op::makeConst:
-                case Op::makeConstSilent:
                 case Op::makeReference:
                 case Op::removeReference:
                 case Op::elementType:
@@ -1931,7 +1929,7 @@ struct AST
             return type.isFixedSizeArray() || type.isVector() || type.isBoundedInt();
         }
 
-        bool isMakingConst() const               { return operation == Op::makeConst || operation == Op::makeConstSilent; }
+        bool isMakingConst() const               { return operation == Op::makeConst; }
         bool isMakingReference() const           { return operation == Op::makeReference; }
         bool isRemovingReference() const         { return operation == Op::removeReference; }
         bool isChangingType() const              { return operation == Op::elementType || operation == Op::primitiveType; }
@@ -1950,8 +1948,7 @@ struct AST
         pool_ptr<StructDeclaration> getAsStruct() override
         {
             if (operation == Op::sourceType || operation == Op::makeConst
-                 || operation == Op::makeConstSilent || operation == Op::makeReference
-                 || operation == Op::removeReference)
+                 || operation == Op::makeReference || operation == Op::removeReference)
                 return source->getAsStruct();
 
             return {};
@@ -1966,7 +1963,6 @@ struct AST
 
             if (operation == Op::sourceType)       return type;
             if (operation == Op::makeConst)        return type.createConst();
-            if (operation == Op::makeConstSilent)  return type.createConstIfNotPresent();
             if (operation == Op::makeReference)    return type.isReference() ? type : type.createReference();
             if (operation == Op::removeReference)  return type.removeReferenceIfPresent();
             if (operation == Op::elementType)      return type.getElementType();
@@ -2058,7 +2054,6 @@ struct AST
                 case Op::none:
                 case Op::sourceType:
                 case Op::makeConst:
-                case Op::makeConstSilent:
                 case Op::makeReference:
                 case Op::removeReference:
                 case Op::elementType:
