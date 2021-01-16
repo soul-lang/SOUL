@@ -57,7 +57,6 @@ struct SourceCodeOperations
         std::string getName() const;
         std::string getFullyQualifiedName() const;
         Comment getComment() const;
-        std::vector<std::string> getSpecialisationParameters() const;
     };
 
     void clear();
@@ -79,8 +78,6 @@ struct SourceCodeOperations
     static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 
     static std::vector<std::string> parseParenthesisedParameterList (CodeLocation openParen);
-
-    static std::string getStringForType (AST::Expression&);
 
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);

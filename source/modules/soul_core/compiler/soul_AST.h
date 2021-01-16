@@ -1831,33 +1831,54 @@ struct AST
                     || op == Op::elementType || op == Op::primitiveType;
         }
 
+        struct NameForOp { const char* name; Op op; };
+
+        static constexpr const NameForOp names[] =
+        {
+            { "type",             Op::sourceType },
+            { "elementType",      Op::elementType },
+            { "primitiveType",    Op::primitiveType },
+            { "size",             Op::size },
+            { "removeReference",  Op::removeReference },
+            { "isStruct",         Op::isStruct },
+            { "isArray",          Op::isArray },
+            { "isDynamicArray",   Op::isDynamicArray },
+            { "isFixedSizeArray", Op::isFixedSizeArray },
+            { "isVector",         Op::isVector },
+            { "isPrimitive",      Op::isPrimitive },
+            { "isFloat",          Op::isFloat },
+            { "isFloat32",        Op::isFloat32 },
+            { "isFloat64",        Op::isFloat64 },
+            { "isInt",            Op::isInt },
+            { "isInt32",          Op::isInt32 },
+            { "isInt64",          Op::isInt64 },
+            { "isScalar",         Op::isScalar },
+            { "isString",         Op::isString },
+            { "isBool",           Op::isBool },
+            { "isComplex",        Op::isComplex },
+            { "isReference",      Op::isReference },
+            { "makeReference",    Op::makeReference },
+            { "isConst",          Op::isConst },
+            { "makeConst",        Op::makeConst }
+        };
+
         static Op getOperationForName (Identifier name)
         {
-            if (name == "type")             return Op::sourceType;
-            if (name == "elementType")      return Op::elementType;
-            if (name == "primitiveType")    return Op::primitiveType;
-            if (name == "size")             return Op::size;
-            if (name == "removeReference")  return Op::removeReference;
-            if (name == "isStruct")         return Op::isStruct;
-            if (name == "isArray")          return Op::isArray;
-            if (name == "isDynamicArray")   return Op::isDynamicArray;
-            if (name == "isFixedSizeArray") return Op::isFixedSizeArray;
-            if (name == "isVector")         return Op::isVector;
-            if (name == "isPrimitive")      return Op::isPrimitive;
-            if (name == "isFloat")          return Op::isFloat;
-            if (name == "isFloat32")        return Op::isFloat32;
-            if (name == "isFloat64")        return Op::isFloat64;
-            if (name == "isInt")            return Op::isInt;
-            if (name == "isInt32")          return Op::isInt32;
-            if (name == "isInt64")          return Op::isInt64;
-            if (name == "isScalar")         return Op::isScalar;
-            if (name == "isString")         return Op::isString;
-            if (name == "isBool")           return Op::isBool;
-            if (name == "isComplex")        return Op::isComplex;
-            if (name == "isReference")      return Op::isReference;
-            if (name == "isConst")          return Op::isConst;
+            for (auto& n : names)
+                if (name == n.name)
+                    return n.op;
 
             return Op::none;
+        }
+
+        static const char* getNameForOperation (Op op)
+        {
+            for (auto& n : names)
+                if (n.op == op)
+                    return n.name;
+
+            SOUL_ASSERT_FALSE;
+            return nullptr;
         }
 
         static Value performOp (Op op, const Type& sourceType)

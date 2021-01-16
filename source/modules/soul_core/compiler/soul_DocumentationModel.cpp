@@ -46,6 +46,7 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
         files.emplace_back (std::move (desc));
     }
 
+    buildSpecialisationParams();
     buildEndpoints();
     buildFunctions();
     buildVariables();
@@ -53,6 +54,76 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
     buildTOCNodes();
     return true;
 }
+
+static DocumentationModel::TypeDesc operator+ (DocumentationModel::TypeDesc a, DocumentationModel::TypeDesc&& b)
+{
+    a.sections.reserve (a.sections.size() + b.sections.size());
+
+    for (auto& s : b.sections)
+        a.sections.push_back (std::move (s));
+
+    return a;
+}
+
+struct TypeDescHelpers
+{
+    static DocumentationModel::TypeDesc create (AST::Expression& e)
+    {
+        if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs) + createText ("[") + createIfNotNull (s->rhs) + createText ("]");
+        if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
+        if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs) + createText (".") + createText (d->rhs.identifier.toString());
+        if (auto q = cast<AST::QualifiedIdentifier> (e))    return createStruct (q->toString());
+        if (auto m = cast<AST::TypeMetaFunction> (e))       return create (m->source) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
+        if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription());
+
+        return create (e.resolveAsType());
+    }
+
+    static DocumentationModel::TypeDesc create (const Type& t)
+    {
+        if (t.isConst())          return createKeyword ("const ") + create (t.removeConst());
+        if (t.isReference())      return create (t.removeReference()) + createText ("&");
+        if (t.isVector())         return create (t.getPrimitiveType()) + createText ("<" + std::to_string (t.getVectorSize()) + ">");
+        if (t.isUnsizedArray())   return create (t.getArrayElementType()) + createText ("[]");
+        if (t.isArray())          return create (t.getArrayElementType()) + createText ("[" + std::to_string (t.getArraySize()) + "]");
+        if (t.isWrapped())        return createKeyword ("wrap") + createText ("<" + std::to_string (t.getBoundedIntLimit()) + ">");
+        if (t.isClamped())        return createKeyword ("clamp") + createText ("<" + std::to_string (t.getBoundedIntLimit()) + ">");
+        if (t.isStruct())         return createStruct (t.getStructRef().getName());
+        if (t.isStringLiteral())  return createPrimitive ("string");
+
+        return createPrimitive (t.getPrimitiveType().getDescription());
+    }
+
+    static DocumentationModel::TypeDesc forVariable (AST::VariableDeclaration& v)
+    {
+        if (v.declaredType != nullptr)
+            return create (*v.declaredType);
+
+        SOUL_ASSERT (v.initialValue != nullptr);
+
+        if (v.initialValue->isResolved())
+            return create (v.initialValue->getResultType());
+
+        if (auto cc = cast<AST::CallOrCast> (v.initialValue))
+            return create (cc->nameOrType);
+
+        return createKeyword ("var"); SOUL_TODO // impossible to find the result type if unresolved?
+    }
+
+    static DocumentationModel::TypeDesc fromSection (DocumentationModel::TypeDesc::Section&& s)
+    {
+        DocumentationModel::TypeDesc d;
+        d.sections.push_back (std::move (s));
+        return d;
+    }
+
+    static DocumentationModel::TypeDesc createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : DocumentationModel::TypeDesc(); }
+
+    static DocumentationModel::TypeDesc createKeyword      (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::keyword }); }
+    static DocumentationModel::TypeDesc createText         (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::text }); }
+    static DocumentationModel::TypeDesc createPrimitive    (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::primitive }); }
+    static DocumentationModel::TypeDesc createStruct       (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::structure }); }
+};
 
 DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std::string> path)
 {
@@ -142,22 +213,6 @@ CodeLocation DocumentationModel::findNextOccurrence (CodeLocation start, char ch
     }
 }
 
-std::string DocumentationModel::createParameterList (std::string line, ArrayView<std::string> items)
-{
-    if (items.empty())
-        return line + "()";
-
-    line += " (";
-    auto indent = line.length();
-    line += items.front();
-
-    for (size_t i = 1; i < items.size(); ++i)
-        line += ",\n" + std::string (indent, ' ') + items[i];
-
-    line += ")";
-    return line;
-}
-
 void DocumentationModel::buildTOCNodes()
 {
     for (auto& f : files)
@@ -186,6 +241,47 @@ void DocumentationModel::buildTOCNodes()
     }
 }
 
+void DocumentationModel::buildSpecialisationParams()
+{
+    for (auto& f : files)
+    {
+        for (auto& m : f.modules)
+        {
+            for (auto& p : m.module.module.getSpecialisationParameters())
+            {
+                SpecialisationParamDesc desc;
+
+                if (auto u = cast<AST::UsingDeclaration> (p))
+                {
+                    desc.type = TypeDescHelpers::createKeyword ("using");
+                    desc.name = u->name.toString();
+                }
+                else if (auto pa = cast<AST::ProcessorAliasDeclaration> (p))
+                {
+                    desc.type = TypeDescHelpers::createKeyword ("processor");
+                    desc.name = pa->name.toString();
+                }
+                else if (auto na = cast<AST::NamespaceAliasDeclaration> (p))
+                {
+                    desc.type = TypeDescHelpers::createKeyword ("namespace");
+                    desc.name = na->name.toString();
+                }
+                else if (auto v = cast<AST::VariableDeclaration> (p))
+                {
+                    desc.type = TypeDescHelpers::forVariable (*v);
+                    desc.name = v->name.toString();
+                }
+                else
+                {
+                    SOUL_ASSERT_FALSE;
+                }
+
+                m.specialisationParams.push_back (std::move (desc));
+            }
+        }
+    }
+}
+
 void DocumentationModel::buildEndpoints()
 {
     for (auto& f : files)
@@ -200,7 +296,7 @@ void DocumentationModel::buildEndpoints()
                 desc.name = e->name.toString();
 
                 for (auto& type : e->details->dataTypes)
-                    desc.dataTypes.push_back (SourceCodeOperations::getStringForType (type));
+                    desc.dataTypes.push_back (TypeDescHelpers::create (type));
 
                 if (e->isInput)
                     m.inputs.push_back (std::move (desc));
@@ -229,25 +325,14 @@ void DocumentationModel::buildFunctions()
 
                         auto openParen = findNextOccurrence (f->nameLocation.location, '(');
                         SOUL_ASSERT (! openParen.isEmpty());
-                        auto closeParen = SourceCodeOperations::findEndOfMatchingParen (openParen);
-                        SOUL_ASSERT (! closeParen.isEmpty());
 
                         desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
 
                         if (auto ret = f->returnType.get())
-                            desc.returnType = SourceCodeOperations::getStringForType (*ret);
+                            desc.returnType = TypeDescHelpers::create (*ret);
 
-                        auto params = simplifyWhitespace (getStringBetween (openParen, closeParen));
-                        SOUL_ASSERT (params.front() == '(' && params.back() == ')');
-                        params = simplifyWhitespace (params.substr (1, params.length() - 2));
-
-                        if (! params.empty())
-                        {
-                            desc.parameters = choc::text::splitString (params, ',', false);
-
-                            for (auto& p : desc.parameters)
-                                p = simplifyWhitespace (p);
-                        }
+                        for (auto& p : f->parameters)
+                            desc.parameters.push_back ({ TypeDescHelpers::forVariable (p), p->name.toString() });
 
                         m.functions.push_back (std::move (desc));
                     }
@@ -276,7 +361,7 @@ void DocumentationModel::buildStructs()
                         StructDesc::Member member;
                         member.name = sm.name.toString();
                         member.comment = getComment (sm.nameLocation);
-                        member.type = SourceCodeOperations::getStringForType (sm.type);
+                        member.type = TypeDescHelpers::create (sm.type);
 
                         desc.members.push_back (std::move (member));
                     }
@@ -301,15 +386,8 @@ void DocumentationModel::buildVariables()
                     VariableDesc desc;
                     desc.comment = getComment (v->context);
                     desc.name = v->name.toString();
-                    desc.isConstant = v->isConstant;
                     desc.isExternal = v->isExternal;
-
-                    if (v->declaredType != nullptr)
-                        desc.type = SourceCodeOperations::getStringForType (*v->declaredType);
-                    else if (v->initialValue != nullptr && v->initialValue->isResolved())
-                        desc.type = v->initialValue->getResultType().getDescription();
-                    else if (auto cc = cast<AST::CallOrCast> (v->initialValue))
-                        desc.type = SourceCodeOperations::getStringForType (cc->nameOrType);
+                    desc.type = TypeDescHelpers::forVariable (v);
 
                     m.variables.push_back (std::move (desc));
                 }

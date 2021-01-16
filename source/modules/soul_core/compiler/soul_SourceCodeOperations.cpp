@@ -411,31 +411,6 @@ std::string SourceCodeOperations::Comment::getText() const
     return joinStrings (lines, "\n");
 }
 
-std::string SourceCodeOperations::getStringForType (AST::Expression& e)
-{
-    return StructuralParser::readStringForType (e);
-}
-
-std::vector<std::string> SourceCodeOperations::parseParenthesisedParameterList (CodeLocation openParen)
-{
-    auto closeParen = findEndOfMatchingParen (openParen);
-
-    if (closeParen.isEmpty())
-        return {};
-
-    auto paramText = choc::text::trim (std::string (openParen.location.getAddress() + 1,
-                                                    closeParen.location.getAddress()));
-    if (paramText.back() == ')')
-        paramText = paramText.substr (0, paramText.length() - 1);
-
-    auto params = choc::text::splitString (paramText, ',', false);
-
-    for (auto& p : params)
-        p = simplifyWhitespace (p);
-
-    return params;
-}
-
 SourceCodeOperations::ModuleDeclaration SourceCodeOperations::createDecl (AST::ModuleBase& m)
 {
     ModuleDeclaration d { m };
@@ -506,20 +481,5 @@ SourceCodeOperations::Comment SourceCodeOperations::ModuleDeclaration::getCommen
 {
     return parseComment (startIncludingPreamble);
 }
-
-std::vector<std::string> SourceCodeOperations::ModuleDeclaration::getSpecialisationParameters() const
-{
-    if (! module.getSpecialisationParameters().empty())
-    {
-        auto openParen = moduleKeyword;
-        openParen.location = openParen.location.find ("(");
-
-        if (! openParen.location.isEmpty())
-            return parseParenthesisedParameterList (openParen);
-    }
-
-    return {};
-}
-
 
 } // namespace soul

@@ -29,18 +29,40 @@ struct DocumentationModel
 {
     bool generate (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
 
+    //==============================================================================
+    struct TypeDesc
+    {
+        struct Section
+        {
+            enum class Type { keyword, text, structure, primitive };
+
+            std::string text;
+            Type type;
+        };
+
+        std::vector<Section> sections;
+    };
+
     struct EndpointDesc
     {
         SourceCodeOperations::Comment comment;
         std::string type, name;
-        std::vector<std::string> dataTypes;
+        std::vector<TypeDesc> dataTypes;
     };
 
     struct FunctionDesc
     {
         SourceCodeOperations::Comment comment;
-        std::string returnType, bareName, nameWithGenerics;
-        std::vector<std::string> parameters;
+        TypeDesc returnType;
+        std::string bareName, nameWithGenerics;
+
+        struct Parameter
+        {
+            TypeDesc type;
+            std::string name;
+        };
+
+        std::vector<Parameter> parameters;
     };
 
     struct StructDesc
@@ -51,7 +73,8 @@ struct DocumentationModel
         struct Member
         {
             SourceCodeOperations::Comment comment;
-            std::string type, name;
+            TypeDesc type;
+            std::string name;
         };
 
         std::vector<Member> members;
@@ -60,8 +83,15 @@ struct DocumentationModel
     struct VariableDesc
     {
         SourceCodeOperations::Comment comment;
-        std::string name, type;
-        bool isConstant = false, isExternal = false;
+        TypeDesc type;
+        std::string name;
+        bool isExternal = false;
+    };
+
+    struct SpecialisationParamDesc
+    {
+        TypeDesc type;
+        std::string name;
     };
 
     struct ModuleDesc
@@ -69,6 +99,7 @@ struct DocumentationModel
         const SourceCodeOperations::ModuleDeclaration& module;
         std::string typeName, displayName;
 
+        std::vector<SpecialisationParamDesc> specialisationParams;
         std::vector<EndpointDesc> inputs, outputs;
         std::vector<FunctionDesc> functions;
         std::vector<VariableDesc> variables;
@@ -103,7 +134,6 @@ struct DocumentationModel
     //==============================================================================
     static std::string getStringBetween (CodeLocation start, CodeLocation end);
     static CodeLocation findNextOccurrence (CodeLocation start, char character);
-    static std::string createParameterList (std::string line, ArrayView<std::string> items);
 
     //==============================================================================
     std::vector<FileDesc> files;
@@ -114,6 +144,7 @@ private:
     void addModule (const SourceCodeOperations::ModuleDeclaration&);
 
     void buildTOCNodes();
+    void buildSpecialisationParams();
     void buildEndpoints();
     void buildFunctions();
     void buildStructs();

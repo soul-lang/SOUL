@@ -112,20 +112,6 @@ struct StructuralParser   : public SOULTokeniser
         return functionList->back();
     }
 
-    static std::string readStringForType (AST::Expression& type)
-    {
-        AST::Allocator pool;
-        auto& topLevelNamespace = AST::createRootNamespace (pool);
-        auto start = findStartOfTypeExpression (type);
-        StructuralParser parser (pool, start, topLevelNamespace);
-
-        if (parser.tryParsingType (ParseTypeContext::variableType) != nullptr)
-            return simplifyWhitespace (std::string (start.location.getAddress(),
-                                                    parser.location.location.getAddress()));
-
-        return {};
-    }
-
     [[noreturn]] void throwError (const CompileMessage& message) const override
     {
         getContext().throwError (message);
@@ -2107,15 +2093,6 @@ private:
             throwError (Errors::identifierMustBeUnqualified());
 
         return allocate<AST::UnqualifiedName> (context, identifier);
-    }
-
-    static CodeLocation findStartOfTypeExpression (AST::Expression& e)
-    {
-        if (auto s = cast<AST::SubscriptWithBrackets> (e))  return findStartOfTypeExpression (s->lhs);
-        if (auto s = cast<AST::SubscriptWithChevrons> (e))  return findStartOfTypeExpression (s->lhs);
-        if (auto d = cast<AST::DotOperator> (e))            return findStartOfTypeExpression (d->lhs);
-
-        return e.context.location;
     }
 
     void giveErrorOnSemicolon()
