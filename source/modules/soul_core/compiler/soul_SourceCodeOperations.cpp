@@ -413,7 +413,7 @@ std::string SourceCodeOperations::Comment::getText() const
 
 SourceCodeOperations::ModuleDeclaration SourceCodeOperations::createDecl (AST::ModuleBase& m)
 {
-    ModuleDeclaration d { m };
+    ModuleDeclaration d { m, allocator };
 
     d.moduleKeyword = m.processorKeywordLocation;
     SOUL_ASSERT (d.moduleKeyword.location.startsWith (d.getType().c_str()));

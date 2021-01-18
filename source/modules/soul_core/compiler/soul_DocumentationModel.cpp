@@ -73,8 +73,18 @@ struct TypeDescHelpers
         if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
         if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs) + createText (".") + createText (d->rhs.identifier.toString());
         if (auto q = cast<AST::QualifiedIdentifier> (e))    return createStruct (q->toString());
-        if (auto m = cast<AST::TypeMetaFunction> (e))       return create (m->source) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
         if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription());
+
+        if (auto m = cast<AST::TypeMetaFunction> (e))
+        {
+            if (m->operation == AST::TypeMetaFunction::Op::makeReference)
+                return create (m->source) + createText ("&");
+
+            if (m->operation == AST::TypeMetaFunction::Op::makeConst)
+                return createKeyword ("const ") + create (m->source);
+
+            return create (m->source) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
+        }
 
         return create (e.resolveAsType());
     }
@@ -107,7 +117,7 @@ struct TypeDescHelpers
         if (auto cc = cast<AST::CallOrCast> (v.initialValue))
             return create (cc->nameOrType);
 
-        return createKeyword ("var"); SOUL_TODO // impossible to find the result type if unresolved?
+        return {};
     }
 
     static DocumentationModel::TypeDesc fromSection (DocumentationModel::TypeDesc::Section&& s)
@@ -119,11 +129,59 @@ struct TypeDescHelpers
 
     static DocumentationModel::TypeDesc createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : DocumentationModel::TypeDesc(); }
 
-    static DocumentationModel::TypeDesc createKeyword      (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::keyword }); }
-    static DocumentationModel::TypeDesc createText         (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::text }); }
-    static DocumentationModel::TypeDesc createPrimitive    (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::primitive }); }
-    static DocumentationModel::TypeDesc createStruct       (std::string s) { return fromSection ({ std::move (s), DocumentationModel::TypeDesc::Section::Type::structure }); }
+    static DocumentationModel::TypeDesc createKeyword      (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::keyword,    std::move (s) }); }
+    static DocumentationModel::TypeDesc createText         (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::text,       std::move (s) }); }
+    static DocumentationModel::TypeDesc createPrimitive    (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::primitive,  std::move (s) }); }
+    static DocumentationModel::TypeDesc createStruct       (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::structure,  std::move (s) }); }
 };
+
+std::string DocumentationModel::TypeDesc::toString() const
+{
+    std::string result;
+
+    for (auto& s : sections)
+        result += s.text;
+
+    return result;
+}
+
+std::string DocumentationModel::ModuleDesc::resolvePartialTypename (const std::string& partialName) const
+{
+    AST::Scope::NameSearch search;
+    search.partiallyQualifiedPath = IdentifierPath::fromString (module.allocator.identifiers, partialName);
+    search.stopAtFirstScopeWithResults = true;
+    search.findVariables = false;
+    search.findTypes = true;
+    search.findFunctions = false;
+    search.findNamespaces = true;
+    search.findProcessors = true;
+    search.findProcessorInstances = false;
+    search.findEndpoints = false;
+
+    module.module.performFullNameSearch (search, nullptr);
+
+    if (search.itemsFound.size() != 0)
+    {
+        auto item = search.itemsFound.front();
+        IdentifierPath path;
+
+        if (auto n = cast<AST::ModuleBase> (item))
+        {
+            path = n->getFullyQualifiedPath();
+        }
+        else if (auto t = cast<AST::TypeDeclarationBase> (item))
+        {
+            if (auto p = t->getParentScope())
+                path = IdentifierPath (p->getFullyQualifiedPath(), t->name);
+            else
+                path = IdentifierPath (t->name);
+        }
+
+        return Program::stripRootNamespaceFromQualifiedPath (path.toString());
+    }
+
+    return {};
+}
 
 DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std::string> path)
 {
@@ -213,6 +271,26 @@ CodeLocation DocumentationModel::findNextOccurrence (CodeLocation start, char ch
     }
 }
 
+CodeLocation DocumentationModel::findNextCommaOrSemicolon (CodeLocation start)
+{
+    while (! start.location.isEmpty())
+    {
+        auto c = *(start.location);
+
+        if (c == ',' || c == ';')
+            return start;
+
+        if (c == '(')
+            start = SourceCodeOperations::findEndOfMatchingParen (start);
+        else if (c == '{')
+            start = SourceCodeOperations::findEndOfMatchingBrace (start);
+        else
+            ++(start.location);
+    }
+
+    return {};
+}
+
 void DocumentationModel::buildTOCNodes()
 {
     for (auto& f : files)
@@ -222,9 +300,7 @@ void DocumentationModel::buildTOCNodes()
 
         for (auto& m : f.modules)
         {
-            auto fullPath = Program::stripRootNamespaceFromQualifiedPath (m.module.module.getFullyQualifiedDisplayPath().toString());
-            TokenisedPathString path (fullPath);
-
+            TokenisedPathString path (m.fullyQualifiedName);
             auto modulePath = filePath;
 
             if (path.sections.size() > 1 && path.getSection(0) == "soul")
@@ -307,6 +383,21 @@ void DocumentationModel::buildEndpoints()
     }
 }
 
+static std::string getVariableInitialiser (AST::VariableDeclaration& v)
+{
+    if (v.initialValue == nullptr)
+        return {};
+
+    auto equalsOp = DocumentationModel::findNextOccurrence (v.context.location, '=');
+    SOUL_ASSERT (! equalsOp.isEmpty());
+    ++(equalsOp.location);
+
+    auto endOfStatement = DocumentationModel::findNextCommaOrSemicolon (equalsOp);
+    SOUL_ASSERT (! endOfStatement.isEmpty());
+
+    return DocumentationModel::getStringBetween (equalsOp, endOfStatement);
+}
+
 void DocumentationModel::buildFunctions()
 {
     for (auto& file : files)
@@ -332,7 +423,15 @@ void DocumentationModel::buildFunctions()
                             desc.returnType = TypeDescHelpers::create (*ret);
 
                         for (auto& p : f->parameters)
-                            desc.parameters.push_back ({ TypeDescHelpers::forVariable (p), p->name.toString() });
+                        {
+                            VariableDesc param;
+                            param.comment = getComment (p->context);
+                            param.name = p->name.toString();
+                            param.type = TypeDescHelpers::forVariable (p);
+                            param.initialiser = getVariableInitialiser (p);
+
+                            desc.parameters.push_back (std::move (param));
+                        }
 
                         m.functions.push_back (std::move (desc));
                     }
@@ -354,7 +453,8 @@ void DocumentationModel::buildStructs()
                 {
                     StructDesc desc;
                     desc.comment = getComment (s->context);
-                    desc.name = s->name.toString();
+                    desc.shortName = s->name.toString();
+                    desc.fullName = TokenisedPathString::join (m.fullyQualifiedName, desc.shortName);
 
                     for (auto& sm : s->getMembers())
                     {
@@ -388,6 +488,7 @@ void DocumentationModel::buildVariables()
                     desc.name = v->name.toString();
                     desc.isExternal = v->isExternal;
                     desc.type = TypeDescHelpers::forVariable (v);
+                    desc.initialiser = getVariableInitialiser (v);
 
                     m.variables.push_back (std::move (desc));
                 }

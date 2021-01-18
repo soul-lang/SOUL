@@ -1,0 +1,1265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en-US">
+ <head>
+  <title>SOUL Documentation</title>
+  <link rel="stylesheet" href="souldoc_style.css"/></head>
+ <body>
+  <nav id="contents" class="contents">
+   <ul class="toc_item">
+    <li class="toc_file">
+     <a href="#SOUL_Intrinsics_Library">SOUL Intrinsics Library</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_intrinsics">soul::intrinsics</a></li></ul></li>
+    <li class="toc_file">
+     <a href="#Mix_and_gain_control_utilities">Mix and gain control utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_mixers">soul::mixers</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_mixers_FixedSum">FixedSum</a></li>
+        <li class="toc_item">
+         <a href="#soul_mixers_DynamicSum">DynamicSum</a></li>
+        <li class="toc_item">
+         <a href="#soul_mixers_DynamicMix">DynamicMix</a></li></ul></li>
+      <li class="toc_item">
+       <a href="#soul_gain">soul::gain</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_gain_FixedGain">FixedGain</a></li>
+        <li class="toc_item">
+         <a href="#soul_gain_DynamicGain">DynamicGain</a></li>
+        <li class="toc_item">
+         <a href="#soul_gain_SmoothedGainParameter">SmoothedGainParameter</a></li></ul></li>
+      <li class="toc_item">
+       <a href="#soul_envelope">soul::envelope</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_envelope_FixedAttackReleaseEnvelope">FixedAttackReleaseEnvelope</a></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#Miscellaneous_Audio_Utilities">Miscellaneous Audio Utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul">soul</a></li>
+      <li class="toc_item">
+       <a href="#soul_audio_samples">soul::audio_samples</a></li>
+      <li class="toc_item">
+       <a href="#soul_pan_law">soul::pan_law</a></li></ul></li>
+    <li class="toc_file">
+     <a href="#Musical_note_event_utilities">Musical note event utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_note_events">soul::note_events</a></li>
+      <li class="toc_item">
+       <a href="#soul_voice_allocators">soul::voice_allocators</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_voice_allocators_Basic">Basic</a></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#SOUL_Oscillator_Library">SOUL Oscillator Library</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_oscillators">soul::oscillators</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_oscillators_phasor">phasor</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_oscillators_phasor_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_oscillators_Sine">Sine</a></li>
+        <li class="toc_item">
+         <a href="#soul_oscillators_poly_blep">poly_blep</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_oscillators_poly_blep_Shape">Shape</a></li>
+          <li class="toc_item">
+           <a href="#soul_oscillators_poly_blep_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_oscillators_quadrature">quadrature</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_oscillators_quadrature_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_oscillators_lfo">lfo</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_oscillators_lfo_Shape">Shape</a></li>
+          <li class="toc_item">
+           <a href="#soul_oscillators_lfo_Polarity">Polarity</a></li>
+          <li class="toc_item">
+           <a href="#soul_oscillators_lfo_smoother">smoother</a></li>
+          <li class="toc_item">
+           <a href="#soul_oscillators_lfo_Processor">Processor</a></li></ul></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#SOUL_Filter_Library">SOUL Filter Library</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_filters">soul::filters</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_filters_dc_blocker">dc_blocker</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_dc_blocker_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_biquad">biquad</a></li>
+        <li class="toc_item">
+         <a href="#soul_filters_onepole">onepole</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_onepole_Mode">Mode</a></li>
+          <li class="toc_item">
+           <a href="#soul_filters_onepole_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_rbj_eq">rbj_eq</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_rbj_eq_Mode">Mode</a></li>
+          <li class="toc_item">
+           <a href="#soul_filters_rbj_eq_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_sos_cascade">sos_cascade</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_sos_cascade_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_butterworth">butterworth</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_butterworth_Mode">Mode</a></li>
+          <li class="toc_item">
+           <a href="#soul_filters_butterworth_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_analytic">analytic</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_analytic_polyphase_iir_design">polyphase_iir_design</a></li>
+          <li class="toc_item">
+           <a href="#soul_filters_analytic_dual_apf">dual_apf</a></li>
+          <li class="toc_item">
+           <a href="#soul_filters_analytic_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_complex_resonator">complex_resonator</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_complex_resonator_Processor">Processor</a></li></ul></li>
+        <li class="toc_item">
+         <a href="#soul_filters_tpt">tpt</a>
+         <ul class="toc_item">
+          <li class="toc_item">
+           <a href="#soul_filters_tpt_onepole">onepole</a>
+           <ul class="toc_item">
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_onepole_Mode">Mode</a></li>
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_onepole_Processor">Processor</a></li></ul></li>
+          <li class="toc_item">
+           <a href="#soul_filters_tpt_svf">svf</a>
+           <ul class="toc_item">
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_svf_Mode">Mode</a></li>
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_svf_Processor">Processor</a></li></ul></li>
+          <li class="toc_item">
+           <a href="#soul_filters_tpt_butterworth">butterworth</a>
+           <ul class="toc_item">
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_butterworth_Mode">Mode</a></li>
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_butterworth_Processor">Processor</a></li></ul></li>
+          <li class="toc_item">
+           <a href="#soul_filters_tpt_crossover">crossover</a>
+           <ul class="toc_item">
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_crossover_Processor">Processor</a></li></ul></li>
+          <li class="toc_item">
+           <a href="#soul_filters_tpt_simper_eq">simper_eq</a>
+           <ul class="toc_item">
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_simper_eq_Mode">Mode</a></li>
+            <li class="toc_item">
+             <a href="#soul_filters_tpt_simper_eq_Processor">Processor</a></li></ul></li></ul></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#SOUL_MIDI_Utility_Library">SOUL MIDI Utility Library</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_midi">soul::midi</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_midi_MPEParser">MPEParser</a></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#Random_number_and_noise-generation_utilities">Random number and noise-generation utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_random">soul::random</a></li>
+      <li class="toc_item">
+       <a href="#soul_noise">soul::noise</a>
+       <ul class="toc_item">
+        <li class="toc_item">
+         <a href="#soul_noise_White">White</a></li>
+        <li class="toc_item">
+         <a href="#soul_noise_Brown">Brown</a></li>
+        <li class="toc_item">
+         <a href="#soul_noise_Pink">Pink</a></li></ul></li></ul></li>
+    <li class="toc_file">
+     <a href="#SOUL_Frequency-domain_Utilities">SOUL Frequency-domain Utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_DFT">soul::DFT</a></li></ul></li>
+    <li class="toc_file">
+     <a href="#Timeline_Event_Utilities">Timeline Event Utilities</a>
+     <ul class="toc_item">
+      <li class="toc_item">
+       <a href="#soul_timeline">soul::timeline</a></li></ul></li></ul></nav>
+  <section id="content">
+   <h1 class="file_title" id="SOUL_Intrinsics_Library">SOUL Intrinsics Library</h1>
+   <div id="summary" class="description"><p>The intrinsics namespace contains low-level, commonly-used functions.</p><p>Many of these functions have reference implementations defined in this file, but which will be substituted for more optimal implementations by a JIT engine if possible. The <code>[[intrin]]</code> annotation is used as a hint to the performer back-end that this function should be replaced by a native implementation if one is available. (Note that some of the functions here have non-functional implementations and rely on the performer to use a native implementation for them to work at all).</p></div>
+   <div class="module" id="soul_intrinsics">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::intrinsics</span></h2>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">abs</p>
+      <div class="description"><p>Familiar abs() function, accepting most scalar types.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">abs&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">max</p>
+      <div class="description"><p>Returns the greater of two scalar values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">max&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">a</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">b</span>)</p></div>
+     <div class="function"><p class="code_block">min</p>
+      <div class="description"><p>Returns the lesser of two scalar values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">min&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">a</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">b</span>)</p></div>
+     <div class="function"><p class="code_block">min</p>
+      <div class="description"><p>Returns the lesser of two scalar values.</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">min</span> (<span class="primitive_type">int32</span> <span class="parameter_name">a</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">b</span>)</p></div>
+     <div class="function"><p class="code_block">clamp</p>
+      <div class="description"><p>Clamps a scalar value to the nearest value within a given range.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">clamp&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">low</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">high</span>)</p></div>
+     <div class="function"><p class="code_block">wrap</p>
+      <div class="description"><p>Performs a negative-number-aware modulo operation to wrap a number to a zero-based range.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">wrap&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">range</span>)</p></div>
+     <div class="function"><p class="code_block">wrap</p>
+      <div class="description"><p>Performs a negative-number-aware integer modulo operation.</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">wrap</span> (<span class="primitive_type">int32</span> <span class="parameter_name">n</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">range</span>)</p></div>
+     <div class="function"><p class="code_block">floor</p>
+      <div class="description"><p>Performs a C++-compatible floor function on a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">floor&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">ceil</p>
+      <div class="description"><p>Performs a C++-compatible ceil function on a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">ceil&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">lerp</p>
+      <div class="description"><p>Returns a linearly-interpolated value between two scalar values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">lerp&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">start</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">stop</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">amount</span>)</p></div>
+     <div class="function"><p class="code_block">fmod</p>
+      <div class="description"><p>Performs a C++-compatible fmod function on some scalar floating point values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">fmod&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">y</span>)</p></div>
+     <div class="function"><p class="code_block">remainder</p>
+      <div class="description"><p>Performs a C++-compatible remainder function on some scalar floating point values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">remainder&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">y</span>)</p></div>
+     <div class="function"><p class="code_block">sqrt</p>
+      <div class="description"><p>Returns the square root of a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">sqrt&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">pow</p>
+      <div class="description"><p>Raises a scalar floating point value to the given power.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">pow&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">a</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">b</span>)</p></div>
+     <div class="function"><p class="code_block">exp</p>
+      <div class="description"><p>Returns the exponential of a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">exp&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">log</p>
+      <div class="description"><p>Returns the log-e of a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">log&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">log10</p>
+      <div class="description"><p>Returns the log 10 of a scalar floating point value.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">log10&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">roundToInt</p>
+      <div class="description"><p>Rounds a floating point number up or down to the nearest integer.</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">roundToInt</span> (<span class="primitive_type">float32</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">roundToInt</p>
+      <div class="description"><p>Rounds a floating point number up or down to the nearest integer.</p></div><p class="code_block"><span class="primitive_type">int64</span> <span class="function_name">roundToInt</span> (<span class="primitive_type">float64</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">isnan</p>
+      <div class="description"><p>Returns true if the floating point argument is a NaN.</p></div><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isnan&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">isinf</p>
+      <div class="description"><p>Returns true if the floating point argument is an INF.</p></div><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isinf&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">n</span>)</p></div>
+     <div class="function"><p class="code_block">addModulo2Pi</p>
+      <div class="description"><p>Adds an delta to a value, and returns the resulting value modulo PI/2. A typical use-case for this is in incrementing the phase of an oscillator.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">removeReference</span> <span class="function_name">addModulo2Pi&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">value</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">T</span> <span class="parameter_name">increment</span>)</p></div>
+     <div class="function"><p class="code_block">sum</p>
+      <div class="description"><p>Returns the sum of an array or vector of scalar values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">elementType</span> <span class="function_name">sum&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">t</span>)</p></div>
+     <div class="function"><p class="code_block">product</p>
+      <div class="description"><p>Returns the product of an array or vector of scalar values.</p></div><p class="code_block"><span class="struct_name">T</span><span class="typename_text">.</span><span class="typename_text">elementType</span> <span class="function_name">product&lt;T&gt;</span> (<span class="struct_name">T</span> <span class="parameter_name">t</span>)</p></div>
+     <div class="function"><p class="code_block">read</p>
+      <div class="description"><p>Reads an element from an array, allowing the index to be any type of floating point type. If a floating point index is used, it will be rounded down to an integer index - for an interpolated read operation, see readLinearInterpolated(). Indexes beyond the range of the array will be wrapped.</p></div><p class="code_block"><span class="struct_name">Array</span><span class="typename_text">.</span><span class="typename_text">elementType</span> <span class="function_name">read&lt;Array, IndexType&gt;</span> (<span class="keyword">const </span><span class="struct_name">Array</span><span class="typename_text">&amp;</span> <span class="parameter_name">array</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">IndexType</span> <span class="parameter_name">index</span>)</p></div>
+     <div class="function"><p class="code_block">readLinearInterpolated</p>
+      <div class="description"><p>Reads a linearly-interpolated value from an array of some kind of scalar values (probably a float or float-vector type). Indexes beyond the range of the array will be wrapped.</p></div><p class="code_block"><span class="struct_name">Array</span><span class="typename_text">.</span><span class="typename_text">elementType</span> <span class="function_name">readLinearInterpolated&lt;Array, IndexType&gt;</span> (<span class="keyword">const </span><span class="struct_name">Array</span><span class="typename_text">&amp;</span> <span class="parameter_name">array</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">IndexType</span> <span class="parameter_name">index</span>)</p></div>
+     <div class="function"><p class="code_block">get_array_size</p>
+      <div class="description"><p>NB: this is used internally, not something you&#39;d want to call from user code</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">get_array_size&lt;Array&gt;</span> (<span class="keyword">const </span><span class="struct_name">Array</span><span class="typename_text">&amp;</span> <span class="parameter_name">array</span>)</p></div></section></div>
+   <h1 class="file_title" id="Mix_and_gain_control_utilities">Mix and gain control utilities</h1>
+   <div id="summary" class="description"><p>This file provides a set of processors for common tasks like mixing together sources, applying fixed gains, or applying envelope shapes.</p></div>
+   <div class="module" id="soul_mixers">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::mixers</span></h2>
+    <div class="description"><p>This namespace contains a set of processors for common tasks like mixing together sources.</p></div></div>
+   <div class="module" id="soul_mixers_FixedSum">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::mixers::FixedSum</span></h2>
+    <div class="description"><p>Simple processor which simply sums two sources together with fixed gains for each source.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::mixers::FixedSum</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_mixers_FixedSum_SampleType">SampleType</span>, <span class="primitive_type">float32</span> <span class="variable_name">gain1</span>, <span class="primitive_type">float32</span> <span class="variable_name">gain2</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in1</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_FixedSum_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in2</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_FixedSum_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_FixedSum_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_mixers_DynamicSum">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::mixers::DynamicSum</span></h2>
+    <div class="description"><p>Simple processor which simply sums two sources together with streams for the gains to apply to each source.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::mixers::DynamicSum</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_mixers_DynamicSum_SampleType">SampleType</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in1</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicSum_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in2</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicSum_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">gain1</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">gain2</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicSum_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_mixers_DynamicMix">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::mixers::DynamicMix</span></h2>
+    <div class="description"><p>Simple processor which mixes together two sources, using a stream of values to indicate the ratio.</p><p>The mixRange constant allows you to set the range of values that will be passed in the mix stream, so e.g. mixRange = 1.0 means that mix will be in the range 0 to 1, and mixRange = 100 means the values will be 0 to 100. The mix stream is expected to contain values between 0 and mixRange, where mix = 0 produces 100% in1, and mix = mixRange produces 100% in2.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::mixers::DynamicMix</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_mixers_DynamicMix_SampleType">SampleType</span>, <span class="primitive_type">float32</span> <span class="variable_name">mixRange</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in1</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicMix_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in2</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicMix_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">mix</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_mixers_DynamicMix_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_gain">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::gain</span></h2>
+    <div class="description"><p>Utility processors for common tasks like applying gain in various ways.</p></div></div>
+   <div class="module" id="soul_gain_FixedGain">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::gain::FixedGain</span></h2>
+    <div class="description"><p>Simple processor which applies a fixed gain to a signal.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::gain::FixedGain</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_gain_FixedGain_SampleType">SampleType</span>, <span class="primitive_type">float32</span> <span class="variable_name">fixedGain</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_gain_FixedGain_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_gain_FixedGain_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_gain_DynamicGain">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::gain::DynamicGain</span></h2>
+    <div class="description"><p>Simple processor which applies a changeable gain level to a signal.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::gain::DynamicGain</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_gain_DynamicGain_SampleType">SampleType</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_gain_DynamicGain_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">gain</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_gain_DynamicGain_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_gain_SmoothedGainParameter">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::gain::SmoothedGainParameter</span></h2>
+    <div class="description"><p>Converts an input event parameter in decibels to a smoothed stream of raw gain levels.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::gain::SmoothedGainParameter</span> (<span class="primitive_type">float32</span> <span class="variable_name">slewRateSeconds</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">volume</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">gain</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">targetGain</span></p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">currentGain</span></p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">increment</span></p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">remainingRampSamples</span></p></div></section></div>
+   <div class="module" id="soul_envelope">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::envelope</span></h2>
+    <div class="description"><p>Generators for common envelope shapes.</p></div></div>
+   <div class="module" id="soul_envelope_FixedAttackReleaseEnvelope">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::envelope::FixedAttackReleaseEnvelope</span></h2>
+    <div class="description"><p>Creates an envelope which applies convex attack and release curves based on a stream of NoteOn and NoteOff events.</p><p>The envelope implements fixed-length attack and release ramps where the hold level is based on the velocity of the triggering NoteOn event, multiplied by the holdLevelMultiplier parameter.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::envelope::FixedAttackReleaseEnvelope</span> (<span class="primitive_type">float32</span> <span class="variable_name">holdLevelMultiplier</span>, <span class="primitive_type">float32</span> <span class="variable_name">attackTimeSeconds</span>, <span class="primitive_type">float32</span> <span class="variable_name">releaseTimeSeconds</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">noteIn</span>&nbsp;&nbsp;(<span class="struct_name">soul::note_events::NoteOn</span>, <span class="struct_name">soul::note_events::NoteOff</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">levelOut</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">active</span> =  false</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">targetLevel</span></p></div></section></div>
+   <h1 class="file_title" id="Miscellaneous_Audio_Utilities">Miscellaneous Audio Utilities</h1>
+   <div id="summary" class="description"><p>This file is a collection of commonly-used audio helper functions and types.</p></div>
+   <div class="module" id="soul">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul</span></h2>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">dBtoGain</p>
+      <div class="description"><p>Converts a decibel level to a gain factor.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">dBtoGain</span> (<span class="primitive_type">float32</span> <span class="parameter_name">decibels</span>)</p></div>
+     <div class="function"><p class="code_block">dBtoGain</p>
+      <div class="description"><p>Converts a decibel level to a gain factor.</p></div><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">dBtoGain</span> (<span class="primitive_type">float64</span> <span class="parameter_name">decibels</span>)</p></div>
+     <div class="function"><p class="code_block">gainTodB</p>
+      <div class="description"><p>Converts a gain factor to a decibel level.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">gainTodB</span> (<span class="primitive_type">float32</span> <span class="parameter_name">gain</span>)</p></div>
+     <div class="function"><p class="code_block">gainTodB</p>
+      <div class="description"><p>Converts a gain factor to a decibel level.</p></div><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">gainTodB</span> (<span class="primitive_type">float64</span> <span class="parameter_name">gain</span>)</p></div>
+     <div class="function"><p class="code_block">noteNumberToFrequency</p>
+      <div class="description"><p>Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">noteNumberToFrequency</span> (<span class="primitive_type">int32</span> <span class="parameter_name">note</span>)</p></div>
+     <div class="function"><p class="code_block">noteNumberToFrequency</p>
+      <div class="description"><p>Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">noteNumberToFrequency</span> (<span class="primitive_type">float32</span> <span class="parameter_name">note</span>)</p></div>
+     <div class="function"><p class="code_block">frequencyToNoteNumber</p>
+      <div class="description"><p>Converts a frequency in Hz to an equivalent MIDI note number.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">frequencyToNoteNumber</span> (<span class="primitive_type">float32</span> <span class="parameter_name">frequency</span>)</p></div>
+     <div class="function"><p class="code_block">getSpeedRatioForPitchedSample</p>
+      <div class="description"><p>Returns the ratio by which a sample&#39;s playback must be sped-up in order to map from its native sample-rate and note to a target sample-rate and note.</p></div><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">getSpeedRatioForPitchedSample</span> (<span class="primitive_type">float64</span> <span class="parameter_name">sourceSampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">sourceMIDINote</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">targetSampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">targetMIDINote</span>)</p></div>
+     <div class="function"><p class="code_block">tau2pole</p>
+      <div class="description"><p>Returns the coefficient for a filter pole, based on a t60 decay time in seconds.</p></div><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">tau2pole</span> (<span class="primitive_type">float64</span> <span class="parameter_name">t60</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">tau2pole</p>
+      <div class="description"><p>Returns the coefficient for a filter pole, based on a t60 decay time in seconds.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">tau2pole</span> (<span class="primitive_type">float32</span> <span class="parameter_name">t60</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">pole2tau</p>
+      <div class="description"><p>Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.</p></div><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">pole2tau</span> (<span class="primitive_type">float64</span> <span class="parameter_name">pole</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">pole2tau</p>
+      <div class="description"><p>Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">pole2tau</span> (<span class="primitive_type">float32</span> <span class="parameter_name">pole</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">sampleRate</span>)</p></div></section></div>
+   <div class="module" id="soul_audio_samples">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::audio_samples</span></h2>
+    <div class="description"><p>This namespace contains some handy stuctures to use when declaring <code>external</code> variables which are going to be loaded with data from audio files.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_audio_samples_Mono" class="code_block"><span class="keyword">struct </span><span class="struct_name">Mono</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span><span class="typename_text">[</span><span class="typename_text">]</span> <span class="member_name">frames</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">sampleRate</span>;<br>}</p><p id="type_soul_audio_samples_Stereo" class="code_block"><span class="keyword">struct </span><span class="struct_name">Stereo</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span><span class="typename_text">&lt;</span><span class="typename_text">2</span><span class="typename_text">&gt;</span><span class="typename_text">[</span><span class="typename_text">]</span> <span class="member_name">frames</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">sampleRate</span>;<br>}</p></section></div>
+   <div class="module" id="soul_pan_law">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::pan_law</span></h2>
+    <div class="description"><p>This namespace contains various pan-related helper functions</p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">linear</p>
+      <div class="description"><p>Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to a (left, right) pair of stereo gains.</p></div><p class="code_block"><span class="primitive_type">float32</span><span class="typename_text">&lt;</span><span class="typename_text">2</span><span class="typename_text">&gt;</span> <span class="function_name">linear</span> (<span class="primitive_type">float32</span> <span class="parameter_name">pan</span>)</p></div>
+     <div class="function"><p class="code_block">centre3dB</p>
+      <div class="description"><p>Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to a (left, right) pair of stereo gains.</p></div><p class="code_block"><span class="primitive_type">float32</span><span class="typename_text">&lt;</span><span class="typename_text">2</span><span class="typename_text">&gt;</span> <span class="function_name">centre3dB</span> (<span class="primitive_type">float32</span> <span class="parameter_name">pan</span>)</p></div></section></div>
+   <h1 class="file_title" id="Musical_note_event_utilities">Musical note event utilities</h1>
+   <div id="summary" class="description"><p>This file contains various structs which can be used to model note-control events coming from sources such as MIDI keyboards.</p><p>The SOUL policy is to keep the use of actual MIDI to a minimum, so we encourage incoming MIDI data to be converted into these strongly-typed structures, and to use them internally, rather than attempting to work with MIDI bytes like it&#39;s the 1980s.</p></div>
+   <div class="module" id="soul_note_events">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::note_events</span></h2>
+    <div class="description"><p>This namespace contains some types which are handy for representing synthesiser note events. They do a similar job to MIDI events, but as strongly-typed structs instead of a group of bytes. Things like the midi::MPEParser class generate them.</p><p>The events do contain a channel number, in the same way that MIDI does, but there are no restrictions on its range.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_note_events_NoteOn" class="code_block"><span class="keyword">struct </span><span class="struct_name">NoteOn</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">note</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">velocity</span>;<br>}</p><p id="type_soul_note_events_NoteOff" class="code_block"><span class="keyword">struct </span><span class="struct_name">NoteOff</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">note</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">velocity</span>;<br>}</p><p id="type_soul_note_events_PitchBend" class="code_block"><span class="keyword">struct </span><span class="struct_name">PitchBend</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">bendSemitones</span>;<br>}</p><p id="type_soul_note_events_Pressure" class="code_block"><span class="keyword">struct </span><span class="struct_name">Pressure</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">pressure</span>;<br>}</p><p id="type_soul_note_events_Slide" class="code_block"><span class="keyword">struct </span><span class="struct_name">Slide</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">slide</span>;<br>}</p><p id="type_soul_note_events_Control" class="code_block"><span class="keyword">struct </span><span class="struct_name">Control</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">control</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">value</span>;<br>}</p></section></div>
+   <div class="module" id="soul_voice_allocators">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::voice_allocators</span></h2>
+    <div class="description"><p>Simple voice allocation helpers, which take a single stream of input events, and redirect them to an array of target voice processors.</p></div></div>
+   <div class="module" id="soul_voice_allocators_Basic">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::voice_allocators::Basic</span></h2>
+    <div class="description"><p>A simple allocator which chooses either an inactive voice, or the least-recently used active one if it needs to steal.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::voice_allocators::Basic</span> (<span class="primitive_type">int32</span> <span class="variable_name">voiceCount</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">eventIn</span>&nbsp;&nbsp;(<a href="#type_soul_note_events_NoteOn" class="struct_name">soul::note_events::NoteOn</a>, <a href="#type_soul_note_events_NoteOff" class="struct_name">soul::note_events::NoteOff</a>, <a href="#type_soul_note_events_PitchBend" class="struct_name">soul::note_events::PitchBend</a>, <a href="#type_soul_note_events_Pressure" class="struct_name">soul::note_events::Pressure</a>, <a href="#type_soul_note_events_Slide" class="struct_name">soul::note_events::Slide</a>, <a href="#type_soul_note_events_Control" class="struct_name">soul::note_events::Control</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">voiceEventOut</span>&nbsp;&nbsp;(<a href="#type_soul_note_events_NoteOn" class="struct_name">soul::note_events::NoteOn</a>, <a href="#type_soul_note_events_NoteOff" class="struct_name">soul::note_events::NoteOff</a>, <a href="#type_soul_note_events_PitchBend" class="struct_name">soul::note_events::PitchBend</a>, <a href="#type_soul_note_events_Pressure" class="struct_name">soul::note_events::Pressure</a>, <a href="#type_soul_note_events_Slide" class="struct_name">soul::note_events::Slide</a>, <a href="#type_soul_note_events_Control" class="struct_name">soul::note_events::Control</a>)</li></ul></section>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_voice_allocators_Basic_VoiceInfo" class="code_block"><span class="keyword">struct </span><span class="struct_name">VoiceInfo</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">bool</span> <span class="member_name">active</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">channel</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">note</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">voiceAge</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">nextAllocatedVoiceAge</span> =  1000000000</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">nextUnallocatedVoiceAge</span> =  1</p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_voice_allocators_Basic_VoiceInfo" class="struct_name">VoiceInfo</a><span class="typename_text">[</span><span class="struct_name">voiceCount</span><span class="typename_text">]</span> <span class="variable_name">voiceInfo</span></p></div></section></div>
+   <h1 class="file_title" id="SOUL_Oscillator_Library">SOUL Oscillator Library</h1>
+   <div id="summary" class="description"><p>This file contains a collection of oscillator implenentations for generating various wave-shapes.</p></div>
+   <div class="module" id="soul_oscillators">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_SampleType">SampleType</span>, <span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_PhaseType">PhaseType</span>)</p></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">minFreqHz</span> =  0.0f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">maxFreqHz</span> =  22000.0f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">defaultFreqHz</span> =  1000.0f</p></div></section></div>
+   <div class="module" id="soul_oscillators_phasor">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::phasor</span></h2>
+    <div class="description"><p>A unipolar ramp (phasor) oscillator. This is a non-bandlimited oscillator that will cause aliasing!</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_oscillators_phasor_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phase</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phaseIncrement</span>;<br>}</p></section></div>
+   <div class="module" id="soul_oscillators_phasor_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::phasor::Processor</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::phasor::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_phasor_State" class="struct_name">State</a> <span class="variable_name">s</span></p></div></section></div>
+   <div class="module" id="soul_oscillators_Sine">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::Sine</span></h2>
+    <div class="description"><p>A simple sinewave oscillator.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::Sine</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">phaseIncrement</span> =  float (initialFrequency * twoPi * processor.period)</p></div></section></div>
+   <div class="module" id="soul_oscillators_poly_blep">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::poly_blep</span></h2>
+    <div class="description"><p>A semi band-limited oscillator with sawtooth, square and triangle wave shapes using the PolyBLEP (Polynomial Band-Limited Step) technique. You may want to oversample this oscillator, in order to reduce aliasing.</p></div></div>
+   <div class="module" id="soul_oscillators_poly_blep_Shape">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::poly_blep::Shape</span></h2>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">sawtooth</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">triangle</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">square</span> =  2</p></div></section></div>
+   <div class="module" id="soul_oscillators_poly_blep_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::poly_blep::Processor</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::poly_blep::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">shapeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_phasor_State" class="struct_name">phasor::State</a> <span class="variable_name">s</span></p></div>
+     <div class="variable"><p class="code_block"><span class="struct_name">wrap</span><span class="typename_text">&lt;</span><span class="typename_text">3</span><span class="typename_text">&gt;</span> <span class="variable_name">shape</span> =  wrap&lt;3&gt; (initialShape)</p></div></section></div>
+   <div class="module" id="soul_oscillators_quadrature">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::quadrature</span></h2>
+    <div class="description"><p>A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously. <a href="https://vicanek.de/articles/QuadOsc.pdf">https://vicanek.de/articles/QuadOsc.pdf</a></p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators::quadrature</span> (<span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span>)</p></section>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_oscillators_quadrature_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">u</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">v</span>;<br>}</p><p id="type_soul_oscillators_quadrature_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">k1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">k2</span>;<br>}</p></section></div>
+   <div class="module" id="soul_oscillators_quadrature_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::quadrature::Processor</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::quadrature::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">sineOut</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">cosineOut</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_oscillators_lfo">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo</span></h2>
+    <div class="description"><p>A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.</p></div></div>
+   <div class="module" id="soul_oscillators_lfo_Shape">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::Shape</span></h2>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">triangle</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">square</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">rampUp</span> =  2</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">rampDown</span> =  3</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">sine</span> =  4</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">sampleAndHold</span> =  5</p></div></section></div>
+   <div class="module" id="soul_oscillators_lfo_Polarity">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::Polarity</span></h2>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">unipolar</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">bipolar</span> =  1</p></div></section></div>
+   <div class="module" id="soul_oscillators_lfo_smoother">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::smoother</span></h2>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_oscillators_lfo_smoother_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">currentValue</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">targetValue</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">increment</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">steps</span>;<br>}</p></section></div>
+   <div class="module" id="soul_oscillators_lfo_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::lfo::Processor</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::lfo::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialPolarity</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialDepth</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">positionIn</span>&nbsp;&nbsp;(<span class="struct_name">soul::timeline::Position</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">transportStateIn</span>&nbsp;&nbsp;(<span class="struct_name">soul::timeline::TransportState</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">tempoIn</span>&nbsp;&nbsp;(<span class="struct_name">soul::timeline::Tempo</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">rateHzIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">rateTempoIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">depthIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">shapeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">polarityIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">rateModeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">syncIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="variable_name">phase</span></p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">phaseIncrement</span> =  float32 (initialFrequency * processor.period)</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">shape</span> =  initialShape</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">polarity</span> =  initialPolarity</p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">smoother::State</a> <span class="variable_name">depth</span></p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">smoothingSamples</span> =  int (processor.frequency * 0.02)</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">transportRunning</span> =  false</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">qnMode</span> =  false</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">timelineSync</span> =  false</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float64</span> <span class="variable_name">qnScalar</span> =  1.0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float64</span> <span class="variable_name">qnPos</span> =  0.0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">qnPhaseIncrement</span> =  (120.0f / 60.0f) * (1.0f / 44100.0f)</p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="variable_name">prevPhase</span> =  1.0f</p></div>
+     <div class="variable"><p class="code_block"><span class="struct_name">soul::random::RandomNumberState</span> <span class="variable_name">rng</span></p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="variable_name">noiseSample</span></p></div></section></div>
+   <h1 class="file_title" id="SOUL_Filter_Library">SOUL Filter Library</h1>
+   <div id="summary" class="description"><p>This file contains a collection of filter implementations, including more traditional biquad based filters and TPT variants, which are more suitable for modulation.</p><p>Notes:</p>
+    <ul>
+     <li>Filter coefficients are typically labelled a and b. Different literature uses different  conventions for what a and b mean. This code uses the following:</li>
+     <ul>
+      <li>
+       <code>b</code>: feed-forward, numerator, zero, FIR coefficients.</li>
+      <li>
+       <code>a</code>: feed-back, denominator, pole, IIR coefficients.</li></ul>
+     <li>Although each filter comes with a Processor, they are designed so that their state,  coefficients and functions can be used independently.</li>
+     <li>Each filter has a <code>State</code> struct and a <code>Coeffs</code> struct.</li>
+     <li>
+      <code>process()</code> functions generate an output y for an input x.</li>
+     <li>
+      <code>update()</code> functions take high level parameters such as mode, frequency, Q, mode and  update the filter coefficients.</li>
+     <li>
+      <code>reset()</code> functions reset the filter state/histories to 0.</li>
+     <li>
+      <code>clear()</code> functions clears filter coefficients.</li>
+     <li>The filters are designed for channel-wise vectorisation, which can be achieved by  specialising the filter&#39;s namespace with a vector type.</li>
+     <li>Some filters are suitable for modulation, others are not, check the comments at the top  of the namespace.</li></ul></div>
+   <div class="module" id="soul_filters">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_SampleType">SampleType</span>, <span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_CoeffType">CoeffType</span>, <span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span>)</p></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">minFreqHz</span> =  5.0f</p>
+      <div class="description"><p>Processor parameter min/max/defaults</p></div></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">maxFreqHz</span> =  22000.0f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">defaultFreqHz</span> =  1000.0f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">defaultQuality</span> =  0.707107f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">defaultGain</span> =  0.f</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float64</span> <span class="variable_name">normalisedFreqLimit</span> =  0.49</p>
+      <div class="description"><p>The frequency upper-bound for update functions. (Just below nyquist, e.g 0.49 * 44100 = ~22kHz).</p></div></div></section></div>
+   <div class="module" id="soul_filters_dc_blocker">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::dc_blocker</span></h2>
+    <div class="description"><p>Highpass filter for removing DC offset.</p><p/>
+     <pre>    y[n] = x[n] - x[n-1] + b0 * y[n-1]
+</pre><p>
+      <a href="https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html">https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html</a></p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_dc_blocker_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">b1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a0</span>;<br>}</p><p id="type_soul_filters_dc_blocker_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">1</span><span class="typename_text">]</span> <span class="member_name">x</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">1</span><span class="typename_text">]</span> <span class="member_name">y</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">reset</p>
+      <div class="description"><p>Resets a filter state.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_filters_dc_blocker_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_dc_blocker_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_dc_blocker_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::dc_blocker::Processor</span></h2>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::dc_blocker::Processor</span> (<span class="primitive_type">float64</span> <span class="variable_name">frequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section></div>
+   <div class="module" id="soul_filters_biquad">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::biquad</span></h2>
+    <div class="description"><p>Biquadratic (two-pole-two-zero) IIR filter building block.</p><p>Direct Form I (DFI):</p><p/>
+     <pre>    y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
+</pre><p>Transposed Direct Form II (TDFII):</p><p/>
+     <pre>    y[n] = b0 * x[n] + s1
+</pre>
+     <pre>      s1 = b1 * x[n] + a1 * y[n] + s2      s2 = b2 * x[n] + a2 * y[n]</pre></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_biquad_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a><span class="typename_text">&lt;</span><span class="typename_text">3</span><span class="typename_text">&gt;</span> <span class="member_name">b</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a><span class="typename_text">&lt;</span><span class="typename_text">3</span><span class="typename_text">&gt;</span> <span class="member_name">a</span>;<br>}</p><p id="type_soul_filters_biquad_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">x</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">y</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">set</p>
+      <div class="description"><p>Initialises a set of coefficients.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">set</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">b0</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">b1</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">b2</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">a0</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">a1</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="parameter_name">a2</span>)</p></div>
+     <div class="function"><p class="code_block">setNonNormalised</p>
+      <div class="description"><p>Sets the coefficients, normalising based on the first feedback coefficient v.a[0]</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">setNonNormalised</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">const </span>
+       <a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">v</span>)</p></div>
+     <div class="function"><p class="code_block">setNormalised</p>
+      <div class="description"><p>Sets the coefficients, assuming v is already normalised.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">setNormalised</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a> <span class="parameter_name">v</span>)</p></div>
+     <div class="function"><p class="code_block">clear</p>
+      <div class="description"><p>Clears a set of coefficients.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">clear</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">reset</p>
+      <div class="description"><p>Resets a filter state.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_filters_biquad_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
+     <div class="function"><p class="code_block">processDFI</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processDFI</span> (<a href="#type_soul_filters_biquad_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processTDFII</p>
+      <div class="description"><p>See <a href="https://www.earlevel.com/DigitalAudio/images/BiquadTDFII.gif">https://www.earlevel.com/DigitalAudio/images/BiquadTDFII.gif</a></p></div><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processTDFII</span> (<a href="#type_soul_filters_biquad_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processOnePole</p>
+      <div class="description"><p>Like processTDFII, but optimised for c.b[2] and c.a[2] == 0.</p></div><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processOnePole</span> (<a href="#type_soul_filters_biquad_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processCascadeDFI</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processCascadeDFI&lt;StateArrayType, CoeffsArrayType&gt;</span> (<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">StateArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">CoeffsArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processCascadeTDFII</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processCascadeTDFII&lt;StateArrayType, CoeffsArrayType&gt;</span> (<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">StateArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">CoeffsArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_onepole">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::onepole</span></h2>
+    <div class="description"><p>First-order IIR filter.</p><p/>
+     <pre>     y[n] = b0 * x[n] - a1 * y[n-1]
+</pre><p>Coefficients derived from Pirkle. This filter is not suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">biquad::Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">mode</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_onepole_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::onepole::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">allpass</span> =  2</p></div></section></div>
+   <div class="module" id="soul_filters_onepole_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::onepole::Processor</span></h2>
+    <div class="description"><p>A processor to render a onepole filter.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_rbj_eq">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::rbj_eq</span></h2>
+    <div class="description"><p>RBJ biquad EQ, 2nd Order IIR Filter.</p><p>This filter is not suitable for modulation. See <a href="https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html">https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html</a></p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_biquad_Coeffs" class="struct_name">biquad::Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">mode</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">quality</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">gaindB</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_rbj_eq_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::rbj_eq::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">bandpass</span> =  2</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowShelf</span> =  3</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highShelf</span> =  4</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">peaking</span> =  5</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">notch</span> =  6</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">allpass</span> =  7</p></div></section></div>
+   <div class="module" id="soul_filters_rbj_eq_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::rbj_eq::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::rbj_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">qualityIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">gainIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">quality</span> =  initialQuality</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">gain</span> =  initialGain</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_sos_cascade">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::sos_cascade</span></h2>
+    <div class="description"><p>Generic second-order-section cascade biquad processors.</p></div></div>
+   <div class="module" id="soul_filters_sos_cascade_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::sos_cascade::Processor</span></h2>
+    <div class="description"><p>Supply an array of coefficients for each SOS. The size of the array should be a multiple of 6, and the coefficients are expected to be normalised already</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::sos_cascade::Processor</span> (<span class="keyword">const </span>
+      <a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a><span class="typename_text">[</span><span class="typename_text">]</span> <span class="variable_name">coeffs</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"> <span class="variable_name">numSOS</span> =  size (coeffs) / 6</p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_filters_biquad_State" class="struct_name">biquad::State</a><span class="typename_text">[</span><span class="struct_name">numSOS</span><span class="typename_text">]</span> <span class="variable_name">s</span></p></div>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_filters_biquad_Coeffs" class="struct_name">biquad::Coeffs</a><span class="typename_text">[</span><span class="struct_name">numSOS</span><span class="typename_text">]</span> <span class="variable_name">c</span></p></div></section></div>
+   <div class="module" id="soul_filters_butterworth">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::butterworth</span></h2>
+    <div class="description"><p>N-th order Butterworth filter, made by cascading multiple second order sections.</p><p>This filter is not suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update&lt;CoeffsArrayType&gt;</span> (<span class="struct_name">CoeffsArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">coeffs</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">order</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">mode</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_butterworth_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::butterworth::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div></section></div>
+   <div class="module" id="soul_filters_butterworth_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::butterworth::Processor</span></h2>
+    <div class="description"><p>Butterworth processor. The order must be &gt; 0</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">clear</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_analytic">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::analytic</span></h2>
+    <div class="description"><p>Analytic filter / IIR Hilbert transformer.</p><p>
+      <a href="https://dsp.stackexchange.com/a/59157">https://dsp.stackexchange.com/a/59157</a></p><p>Increasing numFilters will increase the accuracy of the quadrature output across the pass band but introduce more delay with respect to the input signal. The filter passband is from transitionBandwidthHz to nyquist - transitionBandwidthHz.</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters::analytic</span> (<span class="primitive_type">int32</span> <span class="variable_name">numFilters</span>, <span class="primitive_type">float32</span> <span class="variable_name">transitionBandwidthHz</span>)</p></section>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_analytic_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_analytic_dual_apf_State" class="struct_name">dual_apf::State</a><span class="typename_text">[</span><span class="struct_name">numFilters</span><span class="typename_text">]</span> <span class="member_name">apfs</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">1</span><span class="typename_text">]</span> <span class="member_name">x</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a filter state with the given sample rate.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_analytic_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="function_name">process</span> (<a href="#type_soul_filters_analytic_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_analytic_polyphase_iir_design">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::analytic::polyphase_iir_design</span></h2>
+    <div class="description"><p>Polyphase IIR Designer. Based on HIIR <a href="http://ldesoras.free.fr/prod.html#src_hiir">http://ldesoras.free.fr/prod.html#src_hiir</a></p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_analytic_polyphase_iir_design_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span><span class="typename_text">[</span><span class="struct_name">numCoefficients</span><span class="typename_text">]</span> <span class="member_name">coeffs</span>;<br>}</p><p id="type_soul_filters_analytic_polyphase_iir_design_TransitionParams" class="code_block"><span class="keyword">struct </span><span class="struct_name">TransitionParams</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">k</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">q</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">compute</p><p class="code_block">
+       <a href="#type_soul_filters_analytic_polyphase_iir_design_Coeffs" class="struct_name">Coeffs</a> <span class="function_name">compute</span> (<span class="primitive_type">float64</span> <span class="parameter_name">transition</span>)</p></div></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"> <span class="variable_name">numCoefficients</span> =  numFilters * 2</p></div>
+     <div class="variable"><p class="code_block"> <span class="variable_name">order</span> =  numCoefficients * 2 + 1</p></div></section></div>
+   <div class="module" id="soul_filters_analytic_dual_apf">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::analytic::dual_apf</span></h2>
+    <div class="description"><p>Parallel 2nd-order all-pass.</p><p/>
+     <pre>    y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
+</pre></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_analytic_dual_apf_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">x1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">y1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">x2</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">y2</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">c</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="function_name">process</span> (<a href="#type_soul_filters_analytic_dual_apf_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="parameter_name">x</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_analytic_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::analytic::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">realOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">imagOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block">
+       <a href="#type_soul_filters_analytic_State" class="struct_name">State</a> <span class="variable_name">s</span></p></div></section></div>
+   <div class="module" id="soul_filters_complex_resonator">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::complex_resonator</span></h2>
+    <div class="description"><p>Complex Resonator filter.</p><p>See <a href="https://ccrma.stanford.edu/~jos/smac03maxjos/smac03maxjos.pdf">https://ccrma.stanford.edu/~jos/smac03maxjos/smac03maxjos.pdf</a> This filter is suitable for modulation</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_complex_resonator_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="member_name">yReal</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="member_name">yImag</span>;<br>}</p><p id="type_soul_filters_complex_resonator_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">complex64</span> <span class="member_name">v</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_complex_resonator_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">t60</span>)</p></div>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="function_name">process</span> (<a href="#type_soul_filters_complex_resonator_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_complex_resonator_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_complex_resonator_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::complex_resonator::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::complex_resonator::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialDecay</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">decayIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">gainIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">realOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">imagOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">decay</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">gain</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_tpt">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt</span></h2>
+    <div class="description"><p>This namespace contains a set of &quot;Topology preserving transform&quot; filters.</p></div></div>
+   <div class="module" id="soul_filters_tpt_onepole">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::onepole</span></h2>
+    <div class="description"><p>&quot;Topology preserving transform&quot; one-pole filter.</p><p>Derived from work by Zavalishin and Pirkle. This filter is suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_tpt_onepole_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">b</span>;<br>}</p><p id="type_soul_filters_tpt_onepole_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="member_name">z1</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">clear</p>
+      <div class="description"><p>Clears a set of coefficients.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">clear</span> (<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">reset</p>
+      <div class="description"><p>Resets a filter state.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_filters_tpt_onepole_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div>
+     <div class="function"><p class="code_block">processLPF</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processLPF</span> (<a href="#type_soul_filters_tpt_onepole_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processHPF</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processHPF</span> (<a href="#type_soul_filters_tpt_onepole_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div>
+     <div class="function"><p class="code_block">processAPF</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">processAPF</span> (<a href="#type_soul_filters_tpt_onepole_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_onepole_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::onepole::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">allpass</span> =  2</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_onepole_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::onepole::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_svf">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::svf</span></h2>
+    <div class="description"><p>&quot;Topology preserving transform&quot; multi-mode state variable filter (SVF).</p><p>Derived from work by Zavalishin and Pirkle. This filter is suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_tpt_svf_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a0</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">p</span>;<br>}</p><p id="type_soul_filters_tpt_svf_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">2</span><span class="typename_text">]</span> <span class="member_name">z</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">reset</p>
+      <div class="description"><p>Resets a filter state.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_filters_tpt_svf_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_tpt_svf_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">quality</span>)</p></div>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">3</span><span class="typename_text">]</span> <span class="function_name">process</span> (<a href="#type_soul_filters_tpt_svf_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_svf_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_svf_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::svf::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">bandpass</span> =  2</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_svf_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::svf::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::svf::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">qualityIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">lowpassOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">bandpassOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">highpassOut</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">quality</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_butterworth">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::butterworth</span></h2>
+    <div class="description"><p>N-th order Butterworth filter, made by cascading TPT filters. This filter is suitable for modulation</p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update&lt;SVFCoeffsArrayType&gt;</span> (<span class="struct_name">SVFCoeffsArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">svfCoeffs</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">onepole::Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">onepoleCoeffs</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">order</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">process&lt;StateArrayType, CoeffsArrayType&gt;</span> (<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">StateArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">svfStates</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">CoeffsArrayType</span><span class="typename_text">&amp;</span> <span class="parameter_name">svfCoeffs</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_State" class="struct_name">onepole::State</a><span class="typename_text">&amp;</span> <span class="parameter_name">onepoleState</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_onepole_Coeffs" class="struct_name">onepole::Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">onepoleCoeffs</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">mode</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">bool</span> <span class="parameter_name">oddOrder</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_butterworth_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::butterworth::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_butterworth_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::butterworth::Processor</span></h2>
+    <div class="description"><p>Butterworth processor. The order must be &gt; 1</p></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_crossover">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::crossover</span></h2>
+    <div class="description"><p>4th-order Linkwitz-Riley crossover filter, which outputs two bands of audio.</p><p>The channels should sum together to produce a flat response. This filter is suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_tpt_crossover_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SVF::State</span> <span class="member_name">svf1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SVF::State</span> <span class="member_name">svf2</span>;<br>}</p><p id="type_soul_filters_tpt_crossover_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SVF::Coeffs</span> <span class="member_name">svf1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SVF::Coeffs</span> <span class="member_name">svf2</span>;<br>}</p></section></div>
+   <div class="module" id="soul_filters_tpt_crossover_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::crossover::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::crossover::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">lowOut</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">highOut</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_tpt_crossover_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_simper_eq">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::simper_eq</span></h2>
+    <div class="description"><p>SVF EQ.</p><p>Based on the work of Andy Simper: <a href="https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf">https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf</a></p><p>This filter is suitable for modulation.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_filters_tpt_simper_eq_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a2</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">a3</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">m0</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">m1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_CoeffType" class="struct_name">CoeffType</a> <span class="member_name">m2</span>;<br>}</p><p id="type_soul_filters_tpt_simper_eq_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="member_name">ic1eq</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="member_name">ic2eq</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">reset</p>
+      <div class="description"><p>Resets a filter state.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_filters_tpt_simper_eq_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
+     <div class="function"><p class="code_block">update</p>
+      <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_tpt_simper_eq_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">mode</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">quality</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">gain</span>)</p></div>
+     <div class="function"><p class="code_block">process</p><p class="code_block">
+       <a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="function_name">process</span> (<a href="#type_soul_filters_tpt_simper_eq_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a> <span class="parameter_name">x</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_tpt_simper_eq_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>)</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_simper_eq_Mode">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters::tpt::simper_eq::Mode</span></h2>
+    <div class="description"><p>Constants for use in specifying the filter mode.</p></div>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowpass</span> =  0</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highpass</span> =  1</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">bandpass</span> =  2</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">lowShelf</span> =  3</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">highShelf</span> =  4</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">peaking</span> =  5</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">notch</span> =  6</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">allpass</span> =  7</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">bell</span> =  8</p></div></section></div>
+   <div class="module" id="soul_filters_tpt_simper_eq_Processor">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::simper_eq::Processor</span></h2>
+    <div class="description"><p/></div>
+    <section class="module">
+     <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::simper_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">in</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">frequencyIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">qualityIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">gainIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">modeIn</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">quality</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">gain</span> =  initialFrequency</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">mode</span> =  initialMode</p></div>
+     <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div>
+   <h1 class="file_title" id="SOUL_MIDI_Utility_Library">SOUL MIDI Utility Library</h1>
+   <div id="summary" class="description"><p>In general, the SOUL policy towards MIDI is to avoid it any much as possible, so most of the the helper functions are concerned with converting MIDI messages to <code>soul::note_events</code> types, and the other synth libraries use these strongly-typed events to model note actions, rather than raw MIDI events.</p></div>
+   <div class="module" id="soul_midi">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::midi</span></h2>
+    <div class="description"><p>Various MIDI-related types and functions.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_midi_Message" class="code_block"><span class="keyword">struct </span><span class="struct_name">Message</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">midiBytes</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">getByte1</p>
+      <div class="description"><p>Extracts the first MIDI byte from a Message object</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">getByte1</span> (<a href="#type_soul_midi_Message" class="struct_name">Message</a> <span class="parameter_name">m</span>)</p></div>
+     <div class="function"><p class="code_block">getByte2</p>
+      <div class="description"><p>Extracts the second MIDI byte from a Message object</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">getByte2</span> (<a href="#type_soul_midi_Message" class="struct_name">Message</a> <span class="parameter_name">m</span>)</p></div>
+     <div class="function"><p class="code_block">getByte3</p>
+      <div class="description"><p>Extracts the third MIDI byte from a Message object</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">getByte3</span> (<a href="#type_soul_midi_Message" class="struct_name">Message</a> <span class="parameter_name">m</span>)</p></div></section></div>
+   <div class="module" id="soul_midi_MPEParser">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::midi::MPEParser</span></h2>
+    <div class="description"><p>This event processor receives incoming MIDI events, parses them as MPE, and then emits a stream of note events using the types in soul::note_events. A synthesiser can then handle the resulting events without needing to go near any actual MIDI or MPE data.</p></div>
+    <section class="module">
+     <h3>Inputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">parseMIDI</span>&nbsp;&nbsp;(<a href="#type_soul_midi_Message" class="struct_name">Message</a>)</li></ul></section>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">event</span>&nbsp;&nbsp;<span class="endpoint_name">eventOut</span>&nbsp;&nbsp;(<span class="struct_name">soul::note_events::NoteOn</span>, <span class="struct_name">soul::note_events::NoteOff</span>, <span class="struct_name">soul::note_events::PitchBend</span>, <span class="struct_name">soul::note_events::Pressure</span>, <span class="struct_name">soul::note_events::Slide</span>, <span class="struct_name">soul::note_events::Control</span>)</li></ul></section>
+    <section class="module">
+     <h3>Variables</h3>
+     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">MPESlideControllerID</span> =  74</p></div></section></div>
+   <h1 class="file_title" id="Random_number_and_noise-generation_utilities">Random number and noise-generation utilities</h1>
+   <div id="summary" class="description"><p>This file contains a range of simple RNG and noise generating functions and processors.</p></div>
+   <div class="module" id="soul_random">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::random</span></h2>
+    <div class="description"><p>This namespace contains some random number generation helpers. We&#39;re assuming that nobody&#39;s going to be using this for security-critical cryptographic applications. All the algorithms here are chosen to be fast, not cryptographically strong.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_random_RandomNumberState" class="code_block"><span class="keyword">struct </span><span class="struct_name">RandomNumberState</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int64</span> <span class="member_name">seed</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">getNextInt32</p>
+      <div class="description"><p>Returns the next number in the full 32-bit integer range.</p></div><p class="code_block"><span class="primitive_type">int32</span> <span class="function_name">getNextInt32</span> (<a href="#type_soul_random_RandomNumberState" class="struct_name">RandomNumberState</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p></div>
+     <div class="function"><p class="code_block">getNextUnipolar</p>
+      <div class="description"><p>Advances the given RNG state and returns a value 0 to 1.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">getNextUnipolar</span> (<a href="#type_soul_random_RandomNumberState" class="struct_name">RandomNumberState</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p></div>
+     <div class="function"><p class="code_block">getNextBipolar</p>
+      <div class="description"><p>Advances the given RNG state and returns a value -1 to 1.</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">getNextBipolar</span> (<a href="#type_soul_random_RandomNumberState" class="struct_name">RandomNumberState</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p></div></section></div>
+   <div class="module" id="soul_noise">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::noise</span></h2>
+    <div class="description"><p>This namespace contains generators for various flavours of noise.</p></div></div>
+   <div class="module" id="soul_noise_White">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::noise::White</span></h2>
+    <div class="description"><p>White noise generator</p></div>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section></div>
+   <div class="module" id="soul_noise_Brown">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::noise::Brown</span></h2>
+    <div class="description"><p>Brown noise generator</p></div>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section></div>
+   <div class="module" id="soul_noise_Pink">
+    <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::noise::Pink</span></h2>
+    <div class="description"><p>Pink noise generator</p></div>
+    <section class="module">
+     <h3>Outputs</h3>
+     <ul>
+      <li class="code_block"><span class="endpoint_type">stream</span>&nbsp;&nbsp;<span class="endpoint_name">out</span>&nbsp;&nbsp;(<span class="primitive_type">float32</span>)</li></ul></section></div>
+   <h1 class="file_title" id="SOUL_Frequency-domain_Utilities">SOUL Frequency-domain Utilities</h1>
+   <div class="module" id="soul_DFT">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::DFT</span></h2>
+    <div class="description"><p>Discrete Fourier Transform functions.</p></div>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">forward</p>
+      <div class="description"><p>Performs a real forward DFT from an input buffer to an output buffer.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">forward&lt;SampleBuffer&gt;</span> (<span class="keyword">const </span><span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">inputData</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">outputData</span>)</p></div>
+     <div class="function"><p class="code_block">inverse</p>
+      <div class="description"><p>Performs a real inverse DFT from an input buffer to an output buffer.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">inverse&lt;SampleBuffer&gt;</span> (<span class="keyword">const </span><span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">inputData</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">outputData</span>)</p></div>
+     <div class="function"><p class="code_block">performComplex</p>
+      <div class="description"><p>For internal use by the other functions: performs a O(N&#94;2) complex DFT.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">performComplex&lt;SampleBuffer&gt;</span> (<span class="keyword">const </span><span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">inputReal</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">const </span><span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">inputImag</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">outputReal</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SampleBuffer</span><span class="typename_text">&amp;</span> <span class="parameter_name">outputImag</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="struct_name">SampleBuffer</span><span class="typename_text">.</span><span class="typename_text">elementType</span> <span class="parameter_name">scaleFactor</span>)</p></div></section></div>
+   <h1 class="file_title" id="Timeline_Event_Utilities">Timeline Event Utilities</h1>
+   <div id="summary" class="description"><p>The <code>timeline</code> namespace contains various structs and functions which are used when dealing with positions and tempos along a timeline.</p></div>
+   <div class="module" id="soul_timeline">
+    <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::timeline</span></h2>
+    <div class="description"><p>The <code>timeline</code> namespace contains various structs and functions which are used when dealing with positions and tempos along a timeline.</p></div>
+    <section class="module">
+     <h3>Structures</h3><p id="type_soul_timeline_TimeSignature" class="code_block"><span class="keyword">struct </span><span class="struct_name">TimeSignature</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">numerator</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">denominator</span>;<br>}</p><p id="type_soul_timeline_Tempo" class="code_block"><span class="keyword">struct </span><span class="struct_name">Tempo</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">bpm</span>;<br>}</p><p id="type_soul_timeline_TransportState" class="code_block"><span class="keyword">struct </span><span class="struct_name">TransportState</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">state</span>;<br>}</p><p id="type_soul_timeline_Position" class="code_block"><span class="keyword">struct </span><span class="struct_name">Position</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int64</span> <span class="member_name">currentFrame</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">currentQuarterNote</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="member_name">lastBarStartQuarterNote</span>;<br>}</p></section>
+    <section class="module">
+     <h3>Functions</h3>
+     <div class="function"><p class="code_block">quarterNotesPerBeat</p><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">quarterNotesPerBeat</span> (<a href="#type_soul_timeline_TimeSignature" class="struct_name">TimeSignature</a> <span class="parameter_name">timeSig</span>)</p></div>
+     <div class="function"><p class="code_block">beatsPerQuarterNote</p><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">beatsPerQuarterNote</span> (<a href="#type_soul_timeline_TimeSignature" class="struct_name">TimeSignature</a> <span class="parameter_name">timeSig</span>)</p></div>
+     <div class="function"><p class="code_block">secondsPerBeat</p><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">secondsPerBeat</span> (<a href="#type_soul_timeline_Tempo" class="struct_name">Tempo</a> <span class="parameter_name">tempo</span>)</p></div>
+     <div class="function"><p class="code_block">secondsPerQuarterNote</p><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">secondsPerQuarterNote</span> (<a href="#type_soul_timeline_Tempo" class="struct_name">Tempo</a> <span class="parameter_name">tempo</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_timeline_TimeSignature" class="struct_name">TimeSignature</a> <span class="parameter_name">timeSig</span>)</p></div>
+     <div class="function"><p class="code_block">framesPerBeat</p><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">framesPerBeat</span> (<a href="#type_soul_timeline_Tempo" class="struct_name">Tempo</a> <span class="parameter_name">tempo</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">framesPerQuarterNote</p><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">framesPerQuarterNote</span> (<a href="#type_soul_timeline_Tempo" class="struct_name">Tempo</a> <span class="parameter_name">tempo</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_timeline_TimeSignature" class="struct_name">TimeSignature</a> <span class="parameter_name">timeSig</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
+     <div class="function"><p class="code_block">isStopped</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isStopped</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div>
+     <div class="function"><p class="code_block">isPlaying</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isPlaying</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div>
+     <div class="function"><p class="code_block">isRecording</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isRecording</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div></section></div></section></body></html>

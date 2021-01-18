@@ -36,11 +36,13 @@ struct DocumentationModel
         {
             enum class Type { keyword, text, structure, primitive };
 
-            std::string text;
             Type type;
+            std::string text;
         };
 
         std::vector<Section> sections;
+
+        std::string toString() const;
     };
 
     struct EndpointDesc
@@ -50,25 +52,26 @@ struct DocumentationModel
         std::vector<TypeDesc> dataTypes;
     };
 
+    struct VariableDesc
+    {
+        SourceCodeOperations::Comment comment;
+        TypeDesc type;
+        std::string name, initialiser;
+        bool isExternal = false;
+    };
+
     struct FunctionDesc
     {
         SourceCodeOperations::Comment comment;
         TypeDesc returnType;
         std::string bareName, nameWithGenerics;
-
-        struct Parameter
-        {
-            TypeDesc type;
-            std::string name;
-        };
-
-        std::vector<Parameter> parameters;
+        std::vector<VariableDesc> parameters;
     };
 
     struct StructDesc
     {
         SourceCodeOperations::Comment comment;
-        std::string name;
+        std::string fullName, shortName;
 
         struct Member
         {
@@ -80,14 +83,6 @@ struct DocumentationModel
         std::vector<Member> members;
     };
 
-    struct VariableDesc
-    {
-        SourceCodeOperations::Comment comment;
-        TypeDesc type;
-        std::string name;
-        bool isExternal = false;
-    };
-
     struct SpecialisationParamDesc
     {
         TypeDesc type;
@@ -97,13 +92,15 @@ struct DocumentationModel
     struct ModuleDesc
     {
         const SourceCodeOperations::ModuleDeclaration& module;
-        std::string typeName, displayName;
+        std::string typeOfModule, fullyQualifiedName;
 
         std::vector<SpecialisationParamDesc> specialisationParams;
         std::vector<EndpointDesc> inputs, outputs;
         std::vector<FunctionDesc> functions;
         std::vector<VariableDesc> variables;
         std::vector<StructDesc> structs;
+
+        std::string resolvePartialTypename (const std::string&) const;
     };
 
     struct FileDesc
@@ -131,9 +128,12 @@ struct DocumentationModel
     bool shouldShow (const AST::StructDeclaration&);
     bool shouldShow (const SourceCodeOperations::ModuleDeclaration&);
 
+    std::string findType (const std::string& partialType) const;
+
     //==============================================================================
     static std::string getStringBetween (CodeLocation start, CodeLocation end);
     static CodeLocation findNextOccurrence (CodeLocation start, char character);
+    static CodeLocation findNextCommaOrSemicolon (CodeLocation start);
 
     //==============================================================================
     std::vector<FileDesc> files;

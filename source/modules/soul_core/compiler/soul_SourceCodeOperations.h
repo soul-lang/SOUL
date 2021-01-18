@@ -47,6 +47,7 @@ struct SourceCodeOperations
     struct ModuleDeclaration
     {
         AST::ModuleBase& module;
+        AST::Allocator& allocator;
 
         CodeLocation startIncludingPreamble,
                      moduleKeyword,
@@ -76,8 +77,6 @@ struct SourceCodeOperations
 
     static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
     static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
-
-    static std::vector<std::string> parseParenthesisedParameterList (CodeLocation openParen);
 
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);
