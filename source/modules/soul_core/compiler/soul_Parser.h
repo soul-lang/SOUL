@@ -90,7 +90,7 @@ struct StructuralParser   : public SOULTokeniser
                                                                              AST::Namespace& parentNamespace)
     {
         StructuralParser p (allocator, code, parentNamespace);
-        auto oldNumModules = parentNamespace.subModules.size();
+        auto oldNumModules = static_cast<int> (parentNamespace.subModules.size());
         p.parseTopLevelDecls (parentNamespace);
 
         if (oldNumModules == 0)
