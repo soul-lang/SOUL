@@ -75,6 +75,10 @@ struct SourceCodeOperations
     static Comment parseComment (CodeLocation startOfComment);
     static CodeLocation findStartOfPrecedingComment (CodeLocation location);
 
+    static Comment getFileSummaryComment (CodeLocation file);
+    static std::string getFileSummaryTitle (const Comment&);
+    static std::string getFileSummaryBody (const Comment&);
+
     static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
     static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 

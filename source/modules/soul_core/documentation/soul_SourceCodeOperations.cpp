@@ -111,16 +111,16 @@ static bool isFollowedByBlankLine (CodeLocation pos)
         || choc::text::trimEnd (pos.getStartOfNextLine().getSourceLine()).empty();
 }
 
-SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment() const
+SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment (CodeLocation file)
 {
-    auto firstComment = SourceCodeOperations::parseComment (source);
+    auto firstComment = parseComment (file);
 
     if (firstComment.isDoxygenStyle && isFollowedByBlankLine (firstComment.end))
         return firstComment;
 
     if (firstComment.valid)
     {
-        auto secondComment = SourceCodeOperations::parseComment (firstComment.end);
+        auto secondComment = parseComment (firstComment.end);
 
         if (secondComment.isDoxygenStyle && isFollowedByBlankLine (secondComment.end))
             return secondComment;
@@ -129,10 +129,8 @@ SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment() cons
     return {};
 }
 
-std::string SourceCodeOperations::getFileSummaryTitle() const
+std::string SourceCodeOperations::getFileSummaryTitle (const Comment& summary)
 {
-    auto summary = getFileSummaryComment();
-
     if (summary.valid && ! summary.lines.empty())
     {
         auto firstLine = choc::text::trim (summary.lines[0]);
@@ -151,24 +149,40 @@ std::string SourceCodeOperations::getFileSummaryTitle() const
     return {};
 }
 
-std::string SourceCodeOperations::getFileSummaryBody() const
+std::string SourceCodeOperations::getFileSummaryBody (const Comment& summary)
 {
-    auto summary = getFileSummaryComment();
-
     if (summary.valid && ! summary.lines.empty())
     {
         auto firstLine = choc::text::trim (summary.lines[0]);
 
         if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
         {
-            summary.lines.erase (summary.lines.begin());
+            auto copy = summary;
+            copy.lines.erase (copy.lines.begin());
 
-            while (! summary.lines.empty() && summary.lines.front().empty())
-                summary.lines.erase (summary.lines.begin());
+            while (! copy.lines.empty() && copy.lines.front().empty())
+                copy.lines.erase (copy.lines.begin());
+
+            return  copy.getText();
         }
     }
 
     return summary.getText();
+}
+
+SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment() const
+{
+    return getFileSummaryComment (source);
+}
+
+std::string SourceCodeOperations::getFileSummaryTitle() const
+{
+    return getFileSummaryTitle (getFileSummaryComment());
+}
+
+std::string SourceCodeOperations::getFileSummaryBody() const
+{
+    return getFileSummaryBody (getFileSummaryComment());
 }
 
 CodeLocation SourceCodeOperations::findStartOfPrecedingComment (CodeLocation location)

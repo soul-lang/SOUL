@@ -90,8 +90,15 @@ struct StructuralParser   : public SOULTokeniser
                                                                              AST::Namespace& parentNamespace)
     {
         StructuralParser p (allocator, code, parentNamespace);
+        auto oldNumModules = parentNamespace.subModules.size();
         p.parseTopLevelDecls (parentNamespace);
-        return parentNamespace.subModules;
+
+        if (oldNumModules == 0)
+            return parentNamespace.subModules;
+
+        auto newModules = parentNamespace.subModules;
+        newModules.erase (newModules.begin(), newModules.begin() + oldNumModules);
+        return newModules;
     }
 
     static AST::Function& cloneFunction (AST::Allocator& allocator,

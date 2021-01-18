@@ -35,6 +35,7 @@
 #include "soul_core.h"
 
 #include "../../../include/soul/3rdParty/choc/text/choc_JSON.h"
+#include "../../../include/soul/3rdParty/choc/text/choc_HTML.h"
 
 #if SOUL_INTEL
  #include <xmmintrin.h>
@@ -91,8 +92,10 @@
 #include "diagnostics/soul_CompileMessageList.cpp"
 #include "diagnostics/soul_Timing.cpp"
 #include "venue/soul_Endpoints.cpp"
-#include "compiler/soul_SourceCodeOperations.cpp"
-#include "compiler/soul_DocumentationModel.cpp"
+
+#include "documentation/soul_SourceCodeOperations.cpp"
+#include "documentation/soul_DocumentationModel.cpp"
+#include "documentation/soul_HTMLGeneration.cpp"
 
 #ifdef __clang__
  #pragma clang diagnostic pop

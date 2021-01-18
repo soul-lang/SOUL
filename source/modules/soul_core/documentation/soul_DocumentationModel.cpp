@@ -21,29 +21,68 @@
 namespace soul
 {
 
+static DocumentationModel::ModuleDesc createModule (AST::ModuleBase& m, AST::Allocator& allocator)
+{
+    DocumentationModel::ModuleDesc d { m, allocator };
+
+    d.typeOfModule = m.isNamespace() ? "namespace"
+                                     : (m.isGraph() ? "graph" : "processor");
+
+    d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
+    d.comment = SourceCodeOperations::parseComment (SourceCodeOperations::findStartOfPrecedingComment (m.processorKeywordLocation));
+
+    return d;
+}
+
+static void recurseFindingModules (AST::ModuleBase& m, AST::Allocator& allocator,
+                                   std::vector<DocumentationModel::ModuleDesc>& results)
+{
+    if (m.originalModule != nullptr)
+        return;
+
+    // if there's no keyword then it's an outer namespace that was parsed indirectly
+    if (! m.processorKeywordLocation.isEmpty())
+        results.push_back (createModule (m, allocator));
+
+    for (auto& sub : m.getSubModules())
+        recurseFindingModules (sub, allocator, results);
+}
+
+
 bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
 {
-    for (auto& f : filesToLoad)
+    files.clear();
+    allocator.clear();
+    topLevelNamespace = AST::createRootNamespace (allocator);
+
+    files.resize (filesToLoad.size());
+
+    for (size_t i = 0; i < filesToLoad.size(); ++i)
     {
-        FileDesc desc;
+        auto& f = filesToLoad[i];
+        auto& desc = files[i];
 
-        desc.source = std::make_unique<SourceCodeOperations>();
+        try
+        {
+            CompileMessageHandler handler (errors);
 
-        if (! desc.source->reload (errors, f, {}))
+            for (auto& m : Compiler::parseTopLevelDeclarations (allocator, f, *topLevelNamespace))
+            {
+                ASTUtilities::mergeDuplicateNamespaces (*topLevelNamespace);
+                recurseFindingModules (m, allocator, desc.modules);
+            }
+        }
+        catch (AbortCompilationException) {}
+
+        if (errors.hasErrors())
             return false;
 
+        desc.source = f;
         desc.filename = f->filename;
-        desc.title = desc.source->getFileSummaryTitle();
-        desc.summary = desc.source->getFileSummaryBody();
 
-        if (desc.title.empty())
-            desc.title = f->filename;
-
-        for (auto& m : desc.source->getAllModules())
-            if (shouldShow (m))
-                desc.modules.push_back ({ m, m.getType(), m.getFullyQualifiedName() });
-
-        files.emplace_back (std::move (desc));
+        auto summary = SourceCodeOperations::getFileSummaryComment (f);
+        desc.title = SourceCodeOperations::getFileSummaryTitle (summary);
+        desc.summary = SourceCodeOperations::getFileSummaryBody (summary);
     }
 
     buildSpecialisationParams();
@@ -148,7 +187,7 @@ std::string DocumentationModel::TypeDesc::toString() const
 std::string DocumentationModel::ModuleDesc::resolvePartialTypename (const std::string& partialName) const
 {
     AST::Scope::NameSearch search;
-    search.partiallyQualifiedPath = IdentifierPath::fromString (module.allocator.identifiers, partialName);
+    search.partiallyQualifiedPath = IdentifierPath::fromString (allocator.identifiers, partialName);
     search.stopAtFirstScopeWithResults = true;
     search.findVariables = false;
     search.findTypes = true;
@@ -158,7 +197,7 @@ std::string DocumentationModel::ModuleDesc::resolvePartialTypename (const std::s
     search.findProcessorInstances = false;
     search.findEndpoints = false;
 
-    module.module.performFullNameSearch (search, nullptr);
+    module.performFullNameSearch (search, nullptr);
 
     if (search.itemsFound.size() != 0)
     {
@@ -185,7 +224,9 @@ std::string DocumentationModel::ModuleDesc::resolvePartialTypename (const std::s
 
 DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std::string> path)
 {
-    SOUL_ASSERT (! path.empty());
+    if (path.empty())
+        return *this;
+
     auto& firstPart = path.front();
 
     if (path.size() == 1 && firstPart == name)
@@ -323,7 +364,7 @@ void DocumentationModel::buildSpecialisationParams()
     {
         for (auto& m : f.modules)
         {
-            for (auto& p : m.module.module.getSpecialisationParameters())
+            for (auto& p : m.module.getSpecialisationParameters())
             {
                 SpecialisationParamDesc desc;
 
@@ -364,7 +405,7 @@ void DocumentationModel::buildEndpoints()
     {
         for (auto& m : f.modules)
         {
-            for (auto& e : m.module.module.getEndpoints())
+            for (auto& e : m.module.getEndpoints())
             {
                 EndpointDesc desc;
                 desc.comment = getComment (e->context);
@@ -404,7 +445,7 @@ void DocumentationModel::buildFunctions()
     {
         for (auto& m : file.modules)
         {
-            if (auto functions = m.module.module.getFunctionList())
+            if (auto functions = m.module.getFunctionList())
             {
                 for (auto& f : *functions)
                 {
@@ -447,7 +488,7 @@ void DocumentationModel::buildStructs()
     {
         for (auto& m : f.modules)
         {
-            for (auto& s : m.module.module.getStructDeclarations())
+            for (auto& s : m.module.getStructDeclarations())
             {
                 if (shouldShow (s))
                 {
@@ -479,7 +520,7 @@ void DocumentationModel::buildVariables()
     {
         for (auto& m : f.modules)
         {
-            for (auto& v : m.module.module.getStateVariableList())
+            for (auto& v : m.module.getStateVariableList())
             {
                 if (shouldShow (v))
                 {

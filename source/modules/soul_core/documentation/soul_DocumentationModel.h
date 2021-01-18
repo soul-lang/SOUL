@@ -91,8 +91,11 @@ struct DocumentationModel
 
     struct ModuleDesc
     {
-        const SourceCodeOperations::ModuleDeclaration& module;
+        AST::ModuleBase& module;
+        AST::Allocator& allocator;
+
         std::string typeOfModule, fullyQualifiedName;
+        SourceCodeOperations::Comment comment;
 
         std::vector<SpecialisationParamDesc> specialisationParams;
         std::vector<EndpointDesc> inputs, outputs;
@@ -105,8 +108,8 @@ struct DocumentationModel
 
     struct FileDesc
     {
+        SourceCodeText::Ptr source;
         std::string filename, title, summary;
-        std::unique_ptr<SourceCodeOperations> source;
         std::vector<ModuleDesc> modules;
     };
 
@@ -141,6 +144,9 @@ struct DocumentationModel
 
 private:
     //==============================================================================
+    AST::Allocator allocator;
+    pool_ptr<AST::Namespace> topLevelNamespace;
+
     void addModule (const SourceCodeOperations::ModuleDeclaration&);
 
     void buildTOCNodes();

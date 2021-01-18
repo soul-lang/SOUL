@@ -144,8 +144,6 @@ namespace soul
 
 #include "compiler/soul_AST.h"
 #include "compiler/soul_Compiler.h"
-#include "compiler/soul_SourceCodeOperations.h"
-#include "compiler/soul_DocumentationModel.h"
 
 #include "venue/soul_Endpoints.h"
 #include "venue/soul_Performer.h"
@@ -156,3 +154,7 @@ namespace soul
 #include "utilities/soul_MultiEndpointFIFO.h"
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"
+
+#include "documentation/soul_SourceCodeOperations.h"
+#include "documentation/soul_DocumentationModel.h"
+#include "documentation/soul_HTMLGeneration.h"
