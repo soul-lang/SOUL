@@ -9,11 +9,15 @@
 
 - #### What is the project status?
 
-    SOUL is in a public beta, under active development. It's a long-term multi-year project that spans a huge range of target devices, tools and use-cases.
+    SOUL is a long-term multi-year project that consists of a number of sub-projects.
 
-    Areas that we're actively working on include the core compiler, the web playground, the JIT engine, cross-language code generators, and we're working with partners to get built-in SOUL for audio hardware and DAWs.
-
-    If you want'd like to try writing SOUL in your browser, please visit [soul.dev/lab](https://soul.dev/lab)!
+    - __Language spec__ - the SOUL language is stable, and at a V1.0 status. Although we'll add more features in future versions, it'll mainly be syntactic sugar and we don't expect any major changes to the basic language.
+    - __Compiler__ - the SOUL command-line tool is at a V1.0 status. As well as transpiling SOUL to other languages, it can run patches in its JIT engine, run tests, generate documentation and perform various other tasks.
+    - __Core library__ - a range of basic DSP building blocks are available, and we'll be continually adding and updating the library content.
+    - __SOUL Patch Format__ - the SOUL patch format is at a V1.0 status. It may be updated in future to add new features.
+    - __soul.dev website__ - the SOUL website has been running as a simple playground since 2018. We plan to add extensive new features to the site to turn it into a very powerful development portal.
+    - __Network Venue Support__ - A goal for SOUL is to allow it to be run remotely across any kind of network. This is work-in-progress, with our network protocol expected to be public around mid-2021.
+    - __Target Devices__ - it's still early days for our support of processors other than Intel/ARM, but this is on the roadmap.
 
 - #### How can I write some SOUL code?
 

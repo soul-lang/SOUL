@@ -7,6 +7,7 @@ To read more about the project, please have a look through the files in the [doc
 - [Project Overview](./docs/SOUL_Overview.md)
 - [FAQ](./docs/SOUL_FAQ.md)
 - [Syntax Guide](./docs/SOUL_Language.md)
+- [Library Reference](./docs/soul_library.html)
 - [Code Examples](./examples) (or try them live in your browser [here!](https://soul.dev/examples))
 - [Command-line tools](./docs/SOUL_Command.md)
 - [SOUL Patch format](./docs/SOUL_Patch_Format.md) - an overview of the SOUL plugin format
