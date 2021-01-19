@@ -29,9 +29,7 @@
 namespace soul::mixers
 {
     //==============================================================================
-    /** Simple processor which simply sums two sources together with fixed gains
-        for each source.
-    */
+    /// Simple processor which adds two sources together using fixed gains for each source.
     processor FixedSum (using SampleType, float gain1, float gain2)
     {
         input  stream SampleType in1, in2;
@@ -48,9 +46,8 @@ namespace soul::mixers
     }
 
     //==============================================================================
-    /** Simple processor which simply sums two sources together with streams for the
-        gains to apply to each source.
-    */
+    /// Simple processor which adds two sources together using streams to control the
+    /// gains to apply to each source.
     processor DynamicSum (using SampleType)
     {
         input  stream SampleType in1, in2;

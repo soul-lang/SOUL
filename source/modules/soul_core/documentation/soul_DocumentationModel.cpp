@@ -21,34 +21,6 @@
 namespace soul
 {
 
-static DocumentationModel::ModuleDesc createModule (AST::ModuleBase& m, AST::Allocator& allocator)
-{
-    DocumentationModel::ModuleDesc d { m, allocator };
-
-    d.typeOfModule = m.isNamespace() ? "namespace"
-                                     : (m.isGraph() ? "graph" : "processor");
-
-    d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
-    d.comment = SourceCodeOperations::parseComment (SourceCodeOperations::findStartOfPrecedingComment (m.processorKeywordLocation));
-
-    return d;
-}
-
-static void recurseFindingModules (AST::ModuleBase& m, AST::Allocator& allocator,
-                                   std::vector<DocumentationModel::ModuleDesc>& results)
-{
-    if (m.originalModule != nullptr)
-        return;
-
-    // if there's no keyword then it's an outer namespace that was parsed indirectly
-    if (! m.processorKeywordLocation.isEmpty())
-        results.push_back (createModule (m, allocator));
-
-    for (auto& sub : m.getSubModules())
-        recurseFindingModules (sub, allocator, results);
-}
-
-
 bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
 {
     files.clear();
@@ -69,7 +41,7 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
             for (auto& m : Compiler::parseTopLevelDeclarations (allocator, f, *topLevelNamespace))
             {
                 ASTUtilities::mergeDuplicateNamespaces (*topLevelNamespace);
-                recurseFindingModules (m, allocator, desc.modules);
+                recurseFindingModules (m, desc);
             }
         }
         catch (AbortCompilationException) {}
@@ -92,6 +64,36 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
     buildStructs();
     buildTOCNodes();
     return true;
+}
+
+DocumentationModel::ModuleDesc DocumentationModel::createModule (AST::ModuleBase& m)
+{
+    DocumentationModel::ModuleDesc d { m, allocator };
+
+    d.typeOfModule = m.isNamespace() ? "namespace" : (m.isGraph() ? "graph" : "processor");
+
+    d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
+    d.comment = SourceCodeOperations::parseComment (SourceCodeOperations::findStartOfPrecedingComment (m.processorKeywordLocation));
+
+    return d;
+}
+
+void DocumentationModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& desc)
+{
+    if (m.originalModule != nullptr)
+        return;
+
+    // if there's no keyword then it's an outer namespace that was parsed indirectly
+    if (! m.processorKeywordLocation.isEmpty())
+    {
+        auto module = createModule (m);
+
+        if (shouldShow (module))
+            desc.modules.push_back (std::move (module));
+    }
+
+    for (auto& sub : m.getSubModules())
+        recurseFindingModules (sub, desc);
 }
 
 static DocumentationModel::TypeDesc operator+ (DocumentationModel::TypeDesc a, DocumentationModel::TypeDesc&& b)
@@ -267,12 +269,12 @@ bool DocumentationModel::shouldShow (const AST::StructDeclaration&)
     return true; // TODO
 }
 
-bool DocumentationModel::shouldShow (const SourceCodeOperations::ModuleDeclaration& module)
+bool DocumentationModel::shouldShow (const ModuleDesc& module)
 {
     if (module.module.isProcessor())
         return true;
 
-    if (shouldIncludeComment (module.getComment()))
+    if (shouldIncludeComment (module.comment))
         return true;
 
     if (auto functions = module.module.getFunctionList())

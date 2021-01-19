@@ -129,7 +129,7 @@ struct DocumentationModel
     bool shouldShow (const AST::Function&);
     bool shouldShow (const AST::VariableDeclaration&);
     bool shouldShow (const AST::StructDeclaration&);
-    bool shouldShow (const SourceCodeOperations::ModuleDeclaration&);
+    bool shouldShow (const ModuleDesc&);
 
     std::string findType (const std::string& partialType) const;
 
@@ -147,7 +147,8 @@ private:
     AST::Allocator allocator;
     pool_ptr<AST::Namespace> topLevelNamespace;
 
-    void addModule (const SourceCodeOperations::ModuleDeclaration&);
+    void recurseFindingModules (AST::ModuleBase&, FileDesc&);
+    ModuleDesc createModule (AST::ModuleBase&);
 
     void buildTOCNodes();
     void buildSpecialisationParams();

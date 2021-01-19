@@ -18,12 +18,12 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: SOUL MIDI Utility Library
+/** Title: MIDI utilities
 
-    In general, the SOUL policy towards MIDI is to avoid it any much as possible, so
-    most of the the helper functions are concerned with converting MIDI messages to
-    `soul::note_events` types, and the other synth libraries use these strongly-typed
-    events to model note actions, rather than raw MIDI events.
+    In general, the SOUL policy towards MIDI is to avoid it as much as is humanly possible,
+    so most of these helper functions are concerned with converting MIDI messages to
+    `soul::note_events` types, and then the other libraries use these strongly-typed
+    events to model note actions, rather than dealing with raw MIDI events.
 */
 
 /// Various MIDI-related types and functions.
@@ -44,11 +44,11 @@ namespace soul::midi
     /// Extracts the third MIDI byte from a Message object
     int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
-    /** This event processor receives incoming MIDI events, parses them as MPE,
-        and then emits a stream of note events using the types in soul::note_events.
-        A synthesiser can then handle the resulting events without needing to go
-        near any actual MIDI or MPE data.
-    */
+    /// This event processor receives incoming MIDI events, parses them as MPE,
+    /// and then emits a stream of note events using the types in soul::note_events.
+    /// A synthesiser can then handle the resulting events without needing to go
+    /// near any actual MIDI or MPE data.
+    ///
     processor MPEParser  [[ main: false ]]
     {
         input event Message parseMIDI;

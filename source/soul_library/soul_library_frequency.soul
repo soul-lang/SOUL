@@ -19,13 +19,13 @@
 */
 
 /**
-    Title: SOUL Frequency-domain Utilities
+    Title: Frequency-domain utilities
 */
 
-/** Discrete Fourier Transform functions. */
+/// Discrete Fourier Transform functions.
 namespace soul::DFT
 {
-    /** Performs a real forward DFT from an input buffer to an output buffer. */
+    /// Performs a real forward DFT from an input buffer to an output buffer.
     void forward<SampleBuffer> (const SampleBuffer& inputData, SampleBuffer& outputData)
     {
         static_assert (SampleBuffer.isFixedSizeArray || SampleBuffer.isVector, "The buffers for DFT::forward() must be fixed size arrays");
@@ -40,7 +40,7 @@ namespace soul::DFT
         outputData[harmonics:harmonics * 2] = outputImag[0:harmonics];
     }
 
-    /** Performs a real inverse DFT from an input buffer to an output buffer. */
+    /// Performs a real inverse DFT from an input buffer to an output buffer.
     void inverse<SampleBuffer> (const SampleBuffer& inputData, SampleBuffer& outputData)
     {
         static_assert (SampleBuffer.isFixedSizeArray || SampleBuffer.isVector, "The buffers for DFT::inverse() must be fixed size arrays");

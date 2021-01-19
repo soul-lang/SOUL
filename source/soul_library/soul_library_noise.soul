@@ -18,14 +18,15 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: Random number and noise-generation utilities
+/** Title: RNGs and noise-generators
 
-    This file contains a range of simple RNG and noise generating functions and processors.
+    This module contains a range of simple RNG and noise generating functions and processors.
 */
 
 /** This namespace contains some random number generation helpers.
-    We're assuming that nobody's going to be using this for security-critical cryptographic
-    applications. All the algorithms here are chosen to be fast, not cryptographically strong.
+    We're assuming that nobody's going to be using these RNGs for security-critical cryptographic
+    applications. All the algorithms here are chosen to be fast, and definitely not cryptographically
+    strong!
 */
 namespace soul::random
 {
@@ -41,6 +42,7 @@ namespace soul::random
         int64 seed;
     }
 
+    /// Resets an RNG state object with the given seed value.
     void reset (RandomNumberState& state, int64 seed)
     {
         state.seed = seed;

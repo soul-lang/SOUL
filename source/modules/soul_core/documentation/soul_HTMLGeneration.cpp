@@ -297,9 +297,9 @@ private:
         auto& li = ul.addChild ("li").setClass ("code_block");
 
         li.addSpan ("endpoint_type").addContent (e.type);
-        li.addNBSP (2);
+        li.addNBSP (1);
         li.addSpan ("endpoint_name").addContent (e.name);
-        li.addNBSP (2);
+        li.addNBSP (1);
         li.addContent ("(");
 
         bool first = true;
@@ -326,25 +326,25 @@ private:
             for (auto& s : module.structs)
             {
                 auto& desc = section.addParagraph()
-                                .setID (makeTypeID (s.fullName))
-                                .setClass ("code_block");
+                                .setID (makeTypeID (s.fullName));
 
                 if (s.comment.valid && ! s.comment.getText().empty())
                     addMarkdownAsHTML (desc.addDiv().setClass ("description"), s.comment.lines);
 
-                desc.addSpan ("keyword").addContent ("struct ");
-                desc.addSpan ("struct_name").addContent (s.shortName);
-                desc.addLineBreak().addContent ("{").addLineBreak();
+                auto& block = desc.addParagraph().setClass ("code_block");
+                block.addSpan ("keyword").addContent ("struct ");
+                block.addSpan ("struct_name").addContent (s.shortName);
+                block.addLineBreak().addContent ("{").addLineBreak();
 
                 for (auto& member : s.members)
                 {
-                    desc.addNBSP (4);
-                    printType (desc, module, member.type);
-                    desc.addContent (" ").addSpan ("member_name").addContent (member.name);
-                    desc.addContent (";").addLineBreak();
+                    block.addNBSP (4);
+                    printType (block, module, member.type);
+                    block.addContent (" ").addSpan ("member_name").addContent (member.name);
+                    block.addContent (";").addLineBreak();
                 }
 
-                desc.addContent ("}");
+                block.addContent ("}");
             }
         }
     }
@@ -359,7 +359,7 @@ private:
             {
                 auto& div = section.addDiv().setClass ("function");
 
-                div.addParagraph().setClass ("code_block")
+                div.addParagraph().setClass ("function_name")
                    .addContent (f.bareName);
 
                 if (f.comment.valid && ! f.comment.getText().empty())

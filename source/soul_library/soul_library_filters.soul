@@ -18,9 +18,9 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: SOUL Filter Library
+/** Title: Filters
 
-    This file contains a collection of filter implementations, including more traditional
+    This module contains a collection of filter implementations, including more traditional
     biquad based filters and TPT variants, which are more suitable for modulation.
 
     Notes:

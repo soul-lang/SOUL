@@ -1537,6 +1537,7 @@ Within a processor or graph, the `processor` keyword provides some compile-time 
 The SOUL standard library contains a set of modules covering various DSP tasks.
 
 [Click here to browse the library source code](../source/soul_library/)
+
 [Click here to browse the online documentation](./soul_library.html)
 
 ### HEART

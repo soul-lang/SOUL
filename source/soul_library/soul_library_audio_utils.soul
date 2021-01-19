@@ -18,9 +18,9 @@
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/** Title: Miscellaneous Audio Utilities
+/** Title: Miscellaneous audio utilities
 
-    This file is a collection of commonly-used audio helper functions and types.
+    This module is a collection of commonly-used audio helper functions and types.
 */
 
 namespace soul
