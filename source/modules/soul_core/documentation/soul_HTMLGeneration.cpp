@@ -33,33 +33,71 @@ struct HTMLGenerator
         if (! docs.generate (errors, options.sourceFiles))
             return {};
 
-        choc::html::HTMLElement root ("html");
-        root.setProperty ("lang", "en-US");
+        auto nav = createNav();
 
-        auto& head = root.addChild ("head");
-        head.addChild ("title").addContent ("SOUL Documentation");
-        head.addChild ("link").setProperty ("rel", "stylesheet")
-                              .setProperty ("href", options.cssFilename);
-
-        auto& body = root.addChild ("body");
-
-        printNav (body);
-
-        auto& main = body.addChild ("section").setID ("content");
+        choc::html::HTMLElement content ("section");
+        content.setID ("content");
 
         for (auto& f : docs.files)
         {
-            printTitle (main, f);
+            printTitle (content, f);
 
             for (auto& m : f.modules)
-                printModule (main, m);
+                printModule (content, m);
         }
 
-        return root.toDocument();
+        if (options.templateContent.empty())
+        {
+            choc::html::HTMLElement root ("html");
+            root.setProperty ("lang", "en-US");
+
+            auto& head = root.addChild ("head");
+            head.addChild ("title").addContent ("SOUL Documentation");
+            head.addChild ("link").setProperty ("rel", "stylesheet")
+                                  .setProperty ("href", options.cssFilename);
+
+            auto& body = root.addChild ("body");
+            body.addChild (std::move (nav));
+            body.addChild (std::move (content));
+            return root.toDocument (true);
+        }
+
+        std::ostringstream navText, contentText;
+
+        for (auto& c : nav.getChildren())
+            c.writeToStream (navText, false);
+
+        for (auto& c : content.getChildren())
+            c.writeToStream (contentText, false);
+
+        auto doc = options.templateContent;
+
+        if (replaceTemplatePlaceholder (errors, doc, "$NAVIGATION", navText.str())
+             && replaceTemplatePlaceholder (errors, doc, "$CONTENT", contentText.str()))
+        {
+            return doc;
+        }
+
+        return {};
     }
 
 private:
     DocumentationModel docs;
+
+    bool replaceTemplatePlaceholder (soul::CompileMessageList& errors,
+                                     std::string& templateCode,
+                                     const std::string& placeholder,
+                                     const std::string& replacement)
+    {
+        if (! choc::text::contains (templateCode, placeholder))
+        {
+            errors.addError ("Template doesn't contain placeholder " + placeholder, {});
+            return false;
+        }
+
+        templateCode = choc::text::replace (templateCode, placeholder, replacement);
+        return true;
+    }
 
     void printTitle (choc::html::HTMLElement& parent, const DocumentationModel::FileDesc& file)
     {
@@ -75,10 +113,12 @@ private:
                                choc::text::splitIntoLines (file.summary, false));
     }
 
-    void printNav (choc::html::HTMLElement& parent)
+    choc::html::HTMLElement createNav()
     {
-        auto& nav = parent.addChild ("nav").setID ("contents").setClass ("contents");
+        choc::html::HTMLElement nav ("nav");
+        nav.setID ("contents").setClass ("contents");
         printTOCNode (nav, docs.topLevelTOCNode, true);
+        return nav;
     }
 
     void printTOCNode (choc::html::HTMLElement& parent, const DocumentationModel::TOCNode& node, bool isRoot)

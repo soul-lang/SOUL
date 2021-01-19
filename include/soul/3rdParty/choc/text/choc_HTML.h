@@ -38,12 +38,19 @@ namespace choc::html
 struct HTMLElement
 {
     HTMLElement() = default;
-    HTMLElement (std::string elementName) : name (std::move (elementName)) {}
+    explicit HTMLElement (std::string elementName) : name (std::move (elementName)) {}
 
     /** Creates, adds and returns a reference to a new child element inside this one. */
     HTMLElement& addChild (std::string elementName)
     {
         children.emplace_back (std::move (elementName));
+        return children.back();
+    }
+
+    /** Appends and returns a given child element to this one. */
+    HTMLElement& addChild (HTMLElement&& childToAdd)
+    {
+        children.emplace_back (std::move (childToAdd));
         return children.back();
     }
 
@@ -84,20 +91,25 @@ struct HTMLElement
     HTMLElement& setInline (bool shouldBeInline)        { contentIsInline = shouldBeInline; return *this; }
 
     /** Returns a text version of this element. */
-    std::string toDocument() const
+    std::string toDocument (bool includeHeader) const
     {
         std::ostringstream out;
-        writeToStream (out);
+        writeToStream (out, includeHeader);
         return out.str();
     }
 
     /** Writes this element to some kind of stream object. */
     template <typename Output>
-    void writeToStream (Output& out) const
+    void writeToStream (Output& out, bool includeHeader) const
     {
-        out << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">" << std::endl;
+        if (includeHeader)
+            out << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">" << std::endl;
+
         print (out, 0, { true, false });
     }
+
+    const std::vector<HTMLElement>& getChildren() const         { return children; }
+    std::vector<HTMLElement>& getChildren()                     { return children; }
 
 private:
     std::string name;

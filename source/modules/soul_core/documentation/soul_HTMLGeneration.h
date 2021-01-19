@@ -26,6 +26,7 @@ struct HTMLGenerationOptions
 {
     std::vector<soul::SourceCodeText::Ptr> sourceFiles;
     std::string cssFilename = "souldoc_style.css";
+    std::string templateContent;
 };
 
 /**
