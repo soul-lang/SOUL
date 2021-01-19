@@ -1857,7 +1857,7 @@ private:
 
     template <typename AddToNamespaceFn>
     void parseVariableDeclaration (AST::Expression& declaredType, Identifier name, bool isExternal,
-                                   const AST::Context& context, AddToNamespaceFn&& addToNamespace)
+                                   AST::Context context, AddToNamespaceFn&& addToNamespace)
     {
         for (;;)
         {
@@ -1893,6 +1893,7 @@ private:
                 break;
 
             expect (Operator::comma);
+            context = getContext();
             name = parseIdentifier();
         }
     }
