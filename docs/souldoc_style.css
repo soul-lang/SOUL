@@ -100,7 +100,7 @@ h1.file_title {
 
 div.module {
   padding: 0;
-  margin: 0;
+  margin: 1em 0 0 0;
   border-top: 1px solid rgba(0, 0, 0, 0.2);
 }
 
@@ -117,7 +117,13 @@ h2.module {
 }
 
 .description {
+  font-family: var(--serif-font);
   padding-left: 1em;
+}
+
+.description_member {
+  font-family: var(--serif-font);
+  font-style: italic;
 }
 
 .module_type {
@@ -125,11 +131,22 @@ h2.module {
   font-style: italic;
 }
 
-.code_block {
+.code_block, .struct_members, .struct_top {
   font-family: var(--code-font);
   padding: 0;
   padding-left: 1em;
   margin: 0 0 1em 0;
+}
+
+.struct_top {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.struct_members {
+  margin-left: 4em;
+  margin-bottom: 0;
+  padding: 0;
 }
 
 .primitive_type, .typename_text, .struct_name, .function_name,
@@ -154,6 +171,12 @@ h2.module {
 
 .typename_text {
   color: rgb(60, 65, 134);
+}
+
+.endpoint_desc {
+  font-family: var(--code-font);
+  padding: 0;
+  margin: 0 0 1em 0;
 }
 
 .endpoint_type {

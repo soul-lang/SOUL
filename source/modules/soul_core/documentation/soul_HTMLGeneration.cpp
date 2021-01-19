@@ -107,9 +107,7 @@ private:
             .addContent (file.title);
 
         if (! file.summary.empty())
-            addMarkdownAsHTML (parent.addDiv()
-                                 .setID ("summary")
-                                 .setClass ("description"),
+            addMarkdownAsHTML (parent.addDiv().setID ("summary").setClass ("description"),
                                choc::text::splitIntoLines (file.summary, false));
     }
 
@@ -212,8 +210,7 @@ private:
         title.addSpan ("module_type").addContent (m.typeOfModule).addContent (" ");
         title.addSpan ("module_name").addContent (m.fullyQualifiedName);
 
-        if (m.comment.valid)
-            addMarkdownAsHTML (div.addDiv().setClass ("description"), m.comment.lines);
+        addComment (div, m.comment);
 
         printSpecialisationParams (div, m);
         printEndpoints (div, m);
@@ -294,7 +291,7 @@ private:
     void printEndpoint (choc::html::HTMLElement& ul, const DocumentationModel::ModuleDesc& parent,
                         const DocumentationModel::EndpointDesc& e)
     {
-        auto& li = ul.addChild ("li").setClass ("code_block");
+        auto& li = ul.addChild ("li").setClass ("endpoint_desc");
 
         li.addSpan ("endpoint_type").addContent (e.type);
         li.addNBSP (1);
@@ -328,23 +325,27 @@ private:
                 auto& desc = section.addParagraph()
                                 .setID (makeTypeID (s.fullName));
 
-                if (s.comment.valid && ! s.comment.getText().empty())
-                    addMarkdownAsHTML (desc.addDiv().setClass ("description"), s.comment.lines);
+                addComment (desc, s.comment);
 
-                auto& block = desc.addParagraph().setClass ("code_block");
-                block.addSpan ("keyword").addContent ("struct ");
-                block.addSpan ("struct_name").addContent (s.shortName);
-                block.addLineBreak().addContent ("{").addLineBreak();
+                auto& start = desc.addParagraph().setClass ("struct_top");
+                start.addSpan ("keyword").addContent ("struct ");
+                start.addSpan ("struct_name").addContent (s.shortName);
+                start.addLineBreak().addContent ("{").addLineBreak();
+
+                auto& memberBlock = desc.addDiv().setClass ("struct_members");
 
                 for (auto& member : s.members)
                 {
-                    block.addNBSP (4);
-                    printType (block, module, member.type);
-                    block.addContent (" ").addSpan ("member_name").addContent (member.name);
-                    block.addContent (";").addLineBreak();
+                    if (member.comment.valid && ! member.comment.getText().empty())
+                        addMarkdownAsHTML (memberBlock.addDiv().setClass ("description_member"), member.comment.lines);
+
+                    printType (memberBlock, module, member.type);
+                    memberBlock.addContent (" ").addSpan ("member_name").addContent (member.name);
+                    memberBlock.addContent (";").addLineBreak();
                 }
 
-                block.addContent ("}");
+                desc.addParagraph().setClass ("code_block")
+                    .addContent ("}");
             }
         }
     }
@@ -362,8 +363,7 @@ private:
                 div.addParagraph().setClass ("function_name")
                    .addContent (f.bareName);
 
-                if (f.comment.valid && ! f.comment.getText().empty())
-                    addMarkdownAsHTML (div.addDiv().setClass ("description"), f.comment.lines);
+                addComment (div, f.comment);
 
                 auto& proto = div.addParagraph().setClass ("code_block");
 
@@ -413,15 +413,16 @@ private:
 
                 auto& name = div.addParagraph().setClass ("code_block");
 
-                if (v.isExternal) name.addSpan ("typename_text").addContent ("external");
+                if (v.isExternal)
+                    name.addSpan ("typename_text").addContent ("external");
+
                 printType (name, m, v.type);
                 name.addContent (" ").addSpan ("variable_name").addContent (v.name);
 
                 if (! v.initialiser.empty())
                     name.addContent (" = " + v.initialiser);
 
-                if (v.comment.valid)
-                    addMarkdownAsHTML (div.addDiv().setClass ("description"), v.comment.lines);
+                addComment (div, v.comment);
             }
         }
     }
@@ -626,6 +627,12 @@ private:
 
             appendSpansForContent (getParent().addParagraph(), trimmed);
         }
+    }
+
+    static void addComment (choc::html::HTMLElement& parent, const SourceCodeOperations::Comment& comment)
+    {
+        if (comment.valid && ! comment.getText().empty())
+            addMarkdownAsHTML (parent.addDiv().setClass ("description"), comment.lines);
     }
 };
 

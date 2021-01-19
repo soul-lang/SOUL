@@ -34,10 +34,10 @@ namespace soul::random
     struct RandomNumberState
     {
         /** The current seed.
-            Top tip: when generating a seed, you might want to use the processor.id constant,
+            Top tip: when generating a seed, you might want to use the `processor.id` constant,
             to make sure that each instance of a processor has a differently-seeded RNG. If you
             want the RNG to be different each time the program runs, you could also throw the
-            processor.session constant into the mix too.
+            `processor.session` constant into the mix too.
         */
         int64 seed;
     }
