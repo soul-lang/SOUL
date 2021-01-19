@@ -518,7 +518,7 @@
   <div class="function"><p class="code_block">isRecording</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isRecording</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div></section></div><h1 class="file_title" id="SOUL_Oscillator_Library">SOUL Oscillator Library</h1><div id="summary" class="description"><p>This file contains a collection of oscillator implenentations for generating various wave-shapes.</p></div><div class="module" id="soul_oscillators">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_SampleType">SampleType</span>, <span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_PhaseType">PhaseType</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_SampleType">SampleType</span> = float32, <span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_PhaseType">PhaseType</span> = float32)</p></section>
  <section class="module">
   <h3>Variables</h3>
   <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">minFreqHz</span> =  0.0f</p></div>
@@ -530,7 +530,7 @@
   <h3>Structures</h3><p id="type_soul_oscillators_phasor_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phase</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phaseIncrement</span>;<br>}</p></section></div><div class="module" id="soul_oscillators_phasor_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::phasor::Processor</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::phasor::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::phasor::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1000)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -546,7 +546,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::Sine</span></h2>
  <div class="description"><p>A simple sinewave oscillator.</p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::Sine</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::Sine</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1000)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -569,7 +569,7 @@
   <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">square</span> =  2</p></div></section></div><div class="module" id="soul_oscillators_poly_blep_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::poly_blep::Processor</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::poly_blep::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::poly_blep::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1000)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -587,12 +587,12 @@
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::quadrature</span></h2>
  <div class="description"><p>A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously. <a href="https://vicanek.de/articles/QuadOsc.pdf">https://vicanek.de/articles/QuadOsc.pdf</a></p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators::quadrature</span> (<span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators::quadrature</span> (<span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span> = 16)</p></section>
  <section class="module">
   <h3>Structures</h3><p id="type_soul_oscillators_quadrature_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">u</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">v</span>;<br>}</p><p id="type_soul_oscillators_quadrature_Coeffs" class="code_block"><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">k1</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_SampleType" class="struct_name">SampleType</a> <span class="member_name">k2</span>;<br>}</p></section></div><div class="module" id="soul_oscillators_quadrature_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::quadrature::Processor</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::quadrature::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::quadrature::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1000)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -628,7 +628,7 @@
   <h3>Structures</h3><p id="type_soul_oscillators_lfo_smoother_State" class="code_block"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">currentValue</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">targetValue</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="member_name">increment</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="member_name">steps</span>;<br>}</p></section></div><div class="module" id="soul_oscillators_lfo_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::lfo::Processor</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::lfo::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialPolarity</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialDepth</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::lfo::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span> = 0, <span class="primitive_type">int32</span> <span class="variable_name">initialPolarity</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialDepth</span> = 1.0f, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1.0f)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -689,7 +689,7 @@
   <li>Some filters are suitable for modulation, others are not, check the comments at the top  of the namespace.</li></ul></div><div class="module" id="soul_filters">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::filters</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_SampleType">SampleType</span>, <span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_CoeffType">CoeffType</span>, <span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_SampleType">SampleType</span> = float32, <span class="keyword">using</span> <span class="variable_name" id="type_soul_filters_CoeffType">CoeffType</span> = float64, <span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span> = 16)</p></section>
  <section class="module">
   <h3>Variables</h3>
   <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">minFreqHz</span> =  5.0f</p>
@@ -717,7 +717,7 @@
    <div class="description"><p>Updates a set of coefficients for the given settings.</p></div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">update</span> (<a href="#type_soul_filters_dc_blocker_Coeffs" class="struct_name">Coeffs</a><span class="typename_text">&amp;</span> <span class="parameter_name">c</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">freqHz</span>)</p></div></section></div><div class="module" id="soul_filters_dc_blocker_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::dc_blocker::Processor</span></h2>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::dc_blocker::Processor</span> (<span class="primitive_type">float64</span> <span class="variable_name">frequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::dc_blocker::Processor</span> (<span class="primitive_type">float64</span> <span class="variable_name">frequency</span> = 30.0f)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -780,7 +780,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::onepole::Processor</span></h2>
  <div class="description"><p>A processor to render a onepole filter.</p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -817,7 +817,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::rbj_eq::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::rbj_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::rbj_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span> = defaultQuality, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span> = defaultGain)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -874,7 +874,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::butterworth::Processor</span></h2>
  <div class="description"><p>Butterworth processor. The order must be &gt; 0</p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -895,7 +895,7 @@
  <div class="description"><p>Analytic filter / IIR Hilbert transformer.</p><p>
    <a href="https://dsp.stackexchange.com/a/59157">https://dsp.stackexchange.com/a/59157</a></p><p>Increasing numFilters will increase the accuracy of the quadrature output across the pass band but introduce more delay with respect to the input signal. The filter passband is from transitionBandwidthHz to nyquist - transitionBandwidthHz.</p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters::analytic</span> (<span class="primitive_type">int32</span> <span class="variable_name">numFilters</span>, <span class="primitive_type">float32</span> <span class="variable_name">transitionBandwidthHz</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::filters::analytic</span> (<span class="primitive_type">int32</span> <span class="variable_name">numFilters</span> = 6, <span class="primitive_type">float32</span> <span class="variable_name">transitionBandwidthHz</span> = 20.0f)</p></section>
  <section class="module">
   <h3>Structures</h3><p id="type_soul_filters_analytic_State" class="code_block">
    <div class="description"><p>Holds the filter state.</p></div><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_analytic_dual_apf_State" class="struct_name">dual_apf::State</a><span class="typename_text">[</span><span class="struct_name">numFilters</span><span class="typename_text">]</span> <span class="member_name">apfs</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_filters_SampleType" class="struct_name">SampleType</a><span class="typename_text">[</span><span class="typename_text">1</span><span class="typename_text">]</span> <span class="member_name">x</span>;<br>}</p></section>
@@ -959,7 +959,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::complex_resonator::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::complex_resonator::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialDecay</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::complex_resonator::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz, <span class="primitive_type">float32</span> <span class="variable_name">initialDecay</span> = 1.0f, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span> = 1.0f)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -1010,7 +1010,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::onepole::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::onepole::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -1050,7 +1050,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::svf::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::svf::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::svf::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span> = defaultQuality)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -1085,7 +1085,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::butterworth::Processor</span></h2>
  <div class="description"><p>Butterworth processor. The order must be &gt; 1</p></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::butterworth::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">order</span>, <span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -1110,7 +1110,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::crossover::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::crossover::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::crossover::Processor</span> (<span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>
@@ -1159,7 +1159,7 @@
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::filters::tpt::simper_eq::Processor</span></h2>
  <div class="description"><p/></div>
  <section class="module">
-  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::simper_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span>, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span>)</p></section>
+  <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::filters::tpt::simper_eq::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialMode</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = defaultFreqHz, <span class="primitive_type">float32</span> <span class="variable_name">initialQuality</span> = defaultQuality, <span class="primitive_type">float32</span> <span class="variable_name">initialGain</span> = defaultGain)</p></section>
  <section class="module">
   <h3>Inputs</h3>
   <ul>

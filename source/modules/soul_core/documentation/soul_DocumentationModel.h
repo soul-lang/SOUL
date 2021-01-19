@@ -86,7 +86,7 @@ struct DocumentationModel
     struct SpecialisationParamDesc
     {
         TypeDesc type;
-        std::string name;
+        std::string name, defaultValue;
     };
 
     struct ModuleDesc
@@ -136,7 +136,7 @@ struct DocumentationModel
     //==============================================================================
     static std::string getStringBetween (CodeLocation start, CodeLocation end);
     static CodeLocation findNextOccurrence (CodeLocation start, char character);
-    static CodeLocation findNextCommaOrSemicolon (CodeLocation start);
+    static CodeLocation findEndOfExpression (CodeLocation start);
 
     //==============================================================================
     std::vector<FileDesc> files;

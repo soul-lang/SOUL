@@ -531,7 +531,6 @@ private:
                         processorAliasDeclaration.targetProcessor = parseType (ParseTypeContext::nameOrType);
 
                     module->addSpecialisationParameter (processorAliasDeclaration);
-
                 }
                 else if (matchIf (Keyword::namespace_))
                 {

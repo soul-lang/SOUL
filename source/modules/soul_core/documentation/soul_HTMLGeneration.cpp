@@ -263,6 +263,9 @@ private:
                     if (! typeID.empty())
                         name.setID (typeID);
                 }
+
+                if (! p.defaultValue.empty())
+                    desc.addContent (" = " + choc::text::trim (p.defaultValue));
             }
 
             desc.addContent (")");

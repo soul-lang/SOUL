@@ -312,13 +312,13 @@ CodeLocation DocumentationModel::findNextOccurrence (CodeLocation start, char ch
     }
 }
 
-CodeLocation DocumentationModel::findNextCommaOrSemicolon (CodeLocation start)
+CodeLocation DocumentationModel::findEndOfExpression (CodeLocation start)
 {
     while (! start.location.isEmpty())
     {
         auto c = *(start.location);
 
-        if (c == ',' || c == ';')
+        if (c == ',' || c == ';' || c == ')' || c == '}')
             return start;
 
         if (c == '(')
@@ -358,6 +358,26 @@ void DocumentationModel::buildTOCNodes()
     }
 }
 
+static std::string getInitialiserValue (CodeLocation name)
+{
+    auto equalsOp = DocumentationModel::findNextOccurrence (name, '=');
+    SOUL_ASSERT (! equalsOp.isEmpty());
+    ++(equalsOp.location);
+
+    auto endOfStatement = DocumentationModel::findEndOfExpression (equalsOp);
+    SOUL_ASSERT (! endOfStatement.isEmpty());
+
+    return DocumentationModel::getStringBetween (equalsOp, endOfStatement);
+}
+
+static std::string getInitialiserValue (AST::VariableDeclaration& v)
+{
+    if (v.initialValue == nullptr)
+        return {};
+
+    return getInitialiserValue (v.context.location);
+}
+
 void DocumentationModel::buildSpecialisationParams()
 {
     for (auto& f : files)
@@ -372,21 +392,31 @@ void DocumentationModel::buildSpecialisationParams()
                 {
                     desc.type = TypeDescHelpers::createKeyword ("using");
                     desc.name = u->name.toString();
+
+                    if (u->targetType != nullptr)
+                        desc.defaultValue = getInitialiserValue (u->context.location);
                 }
                 else if (auto pa = cast<AST::ProcessorAliasDeclaration> (p))
                 {
                     desc.type = TypeDescHelpers::createKeyword ("processor");
                     desc.name = pa->name.toString();
+
+                    if (pa->targetProcessor != nullptr)
+                        desc.defaultValue = getInitialiserValue (pa->context.location);
                 }
                 else if (auto na = cast<AST::NamespaceAliasDeclaration> (p))
                 {
                     desc.type = TypeDescHelpers::createKeyword ("namespace");
                     desc.name = na->name.toString();
+
+                    if (na->targetNamespace != nullptr)
+                        desc.defaultValue = getInitialiserValue (na->context.location);
                 }
                 else if (auto v = cast<AST::VariableDeclaration> (p))
                 {
                     desc.type = TypeDescHelpers::forVariable (*v);
                     desc.name = v->name.toString();
+                    desc.defaultValue = getInitialiserValue (*v);
                 }
                 else
                 {
@@ -424,21 +454,6 @@ void DocumentationModel::buildEndpoints()
     }
 }
 
-static std::string getVariableInitialiser (AST::VariableDeclaration& v)
-{
-    if (v.initialValue == nullptr)
-        return {};
-
-    auto equalsOp = DocumentationModel::findNextOccurrence (v.context.location, '=');
-    SOUL_ASSERT (! equalsOp.isEmpty());
-    ++(equalsOp.location);
-
-    auto endOfStatement = DocumentationModel::findNextCommaOrSemicolon (equalsOp);
-    SOUL_ASSERT (! endOfStatement.isEmpty());
-
-    return DocumentationModel::getStringBetween (equalsOp, endOfStatement);
-}
-
 void DocumentationModel::buildFunctions()
 {
     for (auto& file : files)
@@ -469,7 +484,7 @@ void DocumentationModel::buildFunctions()
                             param.comment = getComment (p->context);
                             param.name = p->name.toString();
                             param.type = TypeDescHelpers::forVariable (p);
-                            param.initialiser = getVariableInitialiser (p);
+                            param.initialiser = getInitialiserValue (p);
 
                             desc.parameters.push_back (std::move (param));
                         }
@@ -529,7 +544,7 @@ void DocumentationModel::buildVariables()
                     desc.name = v->name.toString();
                     desc.isExternal = v->isExternal;
                     desc.type = TypeDescHelpers::forVariable (v);
-                    desc.initialiser = getVariableInitialiser (v);
+                    desc.initialiser = getInitialiserValue (v);
 
                     m.variables.push_back (std::move (desc));
                 }
