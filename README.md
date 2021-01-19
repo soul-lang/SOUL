@@ -6,8 +6,8 @@ To read more about the project, please have a look through the files in the [doc
 
 - [Project Overview](./docs/SOUL_Overview.md)
 - [FAQ](./docs/SOUL_FAQ.md)
-- [Syntax Guide](./docs/SOUL_Language.md)
-- [Library Reference](./docs/soul_library.html)
+- [Language Guide](./docs/SOUL_Language.md)
+- [Library Reference](https://soul-lang.github.io/SOUL/docs/soul_library.html)
 - [Code Examples](./examples) (or try them live in your browser [here!](https://soul.dev/examples))
 - [Command-line tools](./docs/SOUL_Command.md)
 - [SOUL Patch format](./docs/SOUL_Patch_Format.md) - an overview of the SOUL plugin format
@@ -26,4 +26,4 @@ You may also want to visit:
 - Try SOUL in your browser using web-audio at [soul.dev/lab](https://soul.dev/lab)
 - Jules' [SOUL announcement](https://youtu.be/-GhleKNaPdk?t=910) keynote talk at ADC2018.
 
-SOUL was created at [ROLI](https://roli.com) by the [JUCE](https://juce.com) team.
+SOUL was created at [ROLI](https://roli.com) by Julian Storer and Cesare Ferrari.
