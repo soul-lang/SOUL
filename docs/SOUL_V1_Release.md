@@ -1,6 +1,6 @@
 ### SOUL, a new language now in V1.0, makes audio coding vastly more accessible
 
-##### January 20, 2020
+##### January 20, 2021
 
 London — Today’s release of SOUL, the new universal language for audio applications, will dramatically lower barriers and expand access for developers creating any apps that depend on audio, as well as providing a more efficient architecture for audio processing.
 
