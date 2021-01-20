@@ -8,11 +8,11 @@ To read more about the project, please have a look through the files in the [doc
 - [FAQ](./docs/SOUL_FAQ.md)
 - [Language Guide](./docs/SOUL_Language.md)
 - [Library Reference](https://soul-lang.github.io/SOUL/docs/soul_library.html)
-- [Code Examples](./examples) (or try them live in your browser [here!](https://soul.dev/examples))
+- [Code Examples](https://github.com/soul-lang/SOUL/tree/master/examples) (or try them live in your browser [here!](https://soul.dev/examples))
 - [Command-line tools](./docs/SOUL_Command.md)
 - [SOUL Patch format](./docs/SOUL_Patch_Format.md) - an overview of the SOUL plugin format
-- [SOUL Patch API](./include/soul/patch)
-- [C++ modules](./source/modules)
+- [SOUL Patch API](https://github.com/soul-lang/SOUL/tree/master/include/soul/patch)
+- [C++ modules](https://github.com/soul-lang/SOUL/tree/master/source/modules)
 
 License and legal docs are here:
 
