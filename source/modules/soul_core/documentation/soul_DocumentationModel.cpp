@@ -113,7 +113,7 @@ struct TypeDescHelpers
         if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs) + createText ("[") + createIfNotNull (s->rhs) + createText ("]");
         if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
         if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs) + createText (".") + createText (d->rhs.identifier.toString());
-        if (auto q = cast<AST::QualifiedIdentifier> (e))    return createStruct (q->toString());
+        if (auto q = cast<AST::QualifiedIdentifier> (e))    return fromIdentifier (q->toString());
         if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription());
 
         if (auto m = cast<AST::TypeMetaFunction> (e))
@@ -166,6 +166,14 @@ struct TypeDescHelpers
         DocumentationModel::TypeDesc d;
         d.sections.push_back (std::move (s));
         return d;
+    }
+
+    static DocumentationModel::TypeDesc fromIdentifier (const std::string& name)
+    {
+        if (name == "wrap" || name == "clamp")
+             return createPrimitive (name);
+
+        return createStruct (name);
     }
 
     static DocumentationModel::TypeDesc createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : DocumentationModel::TypeDesc(); }
@@ -471,6 +479,7 @@ void DocumentationModel::buildFunctions()
                         FunctionDesc desc;
                         desc.comment = getComment (f->context);
                         desc.bareName = f->name.toString();
+                        desc.fullyQualifiedName = TokenisedPathString::join (m.fullyQualifiedName, desc.bareName);
 
                         auto openParen = findNextOccurrence (f->nameLocation.location, '(');
                         SOUL_ASSERT (! openParen.isEmpty());

@@ -58,6 +58,8 @@ struct HTMLElement
     HTMLElement& addLink (std::string_view linkURL)     { return addChild ("a").setProperty ("href", linkURL); }
     /** Adds and returns a 'div' element. */
     HTMLElement& addDiv()                               { return addChild ("div"); }
+    /** Adds and returns a 'div' element with a given class name. */
+    HTMLElement& addDiv (std::string_view className)    { return addDiv().setClass (className); }
     /** Adds and returns a 'p' element. */
     HTMLElement& addParagraph()                         { return addChild ("p").setInline (true); }
     /** Adds and returns a 'span' element with the given class property. */
@@ -140,7 +142,9 @@ private:
             status.isAtStartOfLine = true;
         }
 
-        if (status.isAtStartOfLine && ! contentIsInline)
+        bool openTagIndented = status.isAtStartOfLine && ! contentIsInline;
+
+        if (openTagIndented)
             out << std::string (indent, ' ');
 
         status.isAtStartOfLine = false;
@@ -149,30 +153,27 @@ private:
         for (auto& p : properties)
             out << ' ' << p;
 
-        if (children.empty())
-        {
-            out << "/>";
-        }
-        else
-        {
-            out << '>';
-            status.isFollowingContent = false;
+        out << '>';
+        
+        status.isFollowingContent = false;
 
-            for (auto& c : children)
+        for (auto& c : children)
+        {
+            if (c.isContent)
             {
-                if (c.isContent)
-                {
-                    out << c.name;
-                    status.isFollowingContent = true;
-                }
-                else
-                {
-                    status = c.print (out, indent + 1, status);
-                }
+                out << c.name;
+                status.isFollowingContent = true;
             }
-
-            out << "</" << name << ">";
+            else
+            {
+                status = c.print (out, indent + 1, status);
+            }
         }
+
+        if (openTagIndented && ! (children.empty() || status.isFollowingContent))
+            out << "\n" << std::string (indent, ' ');
+
+        out << "</" << name << ">";
 
         status.isFollowingContent = false;
         return status;

@@ -64,7 +64,7 @@ struct DocumentationModel
     {
         SourceCodeOperations::Comment comment;
         TypeDesc returnType;
-        std::string bareName, nameWithGenerics;
+        std::string bareName, nameWithGenerics, fullyQualifiedName;
         std::vector<VariableDesc> parameters;
     };
 

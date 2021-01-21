@@ -39,12 +39,7 @@ struct HTMLGenerator
         content.setID ("content");
 
         for (auto& f : docs.files)
-        {
-            printTitle (content, f);
-
-            for (auto& m : f.modules)
-                printModule (content, m);
-        }
+            printLibrary (content, f);
 
         if (options.templateContent.empty())
         {
@@ -99,16 +94,38 @@ private:
         return true;
     }
 
-    void printTitle (choc::html::HTMLElement& parent, const DocumentationModel::FileDesc& file)
+    void printLibrary (choc::html::HTMLElement& parent, const DocumentationModel::FileDesc& library)
     {
-        parent.addChild ("h1")
-            .setClass ("file_title")
-            .setID (getFileID (file))
-            .addContent (file.title);
+        auto& libraryDiv = parent.addDiv ("library")
+                                 .setID (getLibraryID (library));
 
-        if (! file.summary.empty())
-            addMarkdownAsHTML (parent.addDiv().setID ("summary").setClass ("description"),
-                               choc::text::splitIntoLines (file.summary, false));
+        libraryDiv.addChild ("h1").addContent (library.title);
+
+        if (! library.summary.empty())
+            addMarkdownAsHTML (libraryDiv.addDiv ("summary"),
+                               choc::text::splitIntoLines (library.summary, false));
+
+        for (auto& m : library.modules)
+            printModule (libraryDiv, m);
+    }
+
+    void printModule (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    {
+        auto& moduleDiv = parent.addDiv ("module")
+                              .setID (getModuleID (m));
+
+        auto& title = moduleDiv.addChild ("h2");
+        title.addSpan ("module_type").addContent (m.typeOfModule).addContent (" ");
+        title.addSpan ("module_name").addContent (m.fullyQualifiedName);
+
+        addComment (moduleDiv, m.comment, "summary");
+
+        auto& sections = moduleDiv.addDiv ("module_sections");
+        printSpecialisationParams (sections, m);
+        printEndpoints (sections, m);
+        printStructs (sections, m);
+        printFunctions (sections, m);
+        printVariables (sections, m);
     }
 
     choc::html::HTMLElement createNav()
@@ -130,7 +147,7 @@ private:
             if (auto m = node.module)
                 li.setClass ("toc_item").addLink ("#" + getModuleID (*m)).addContent (node.name);
             else if (auto f = node.file)
-                li.setClass ("toc_file").addLink ("#" + getFileID (*f)).addContent (node.name);
+                li.setClass ("toc_module").addLink ("#" + getLibraryID (*f)).addContent (node.name);
             else
                 li.setClass ("toc_item").addContent (node.name);
 
@@ -152,9 +169,10 @@ private:
                                  "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
     }
 
-    static std::string getModuleID (const DocumentationModel::ModuleDesc& m)    { return makeID (choc::text::trim (m.fullyQualifiedName)); }
-    static std::string getFileID (const DocumentationModel::FileDesc& f)        { return makeID (f.title); }
-    static std::string makeTypeID (std::string_view type)                       { return makeID ("type_" + std::string (type)); }
+    static std::string getModuleID (const DocumentationModel::ModuleDesc& m)        { return makeID ("mod_" + choc::text::trim (m.fullyQualifiedName)); }
+    static std::string getLibraryID (const DocumentationModel::FileDesc& f)         { return makeID ("lib_" + f.title); }
+    static std::string getFunctionID (const DocumentationModel::FunctionDesc& f)    { return makeID ("fn_" + f.fullyQualifiedName); }
+    static std::string makeTypeID (std::string_view type)                           { return makeID ("type_" + std::string (type)); }
 
     std::string findTypeID (const DocumentationModel::ModuleDesc& parent, const std::string& partialName) const
     {
@@ -199,29 +217,9 @@ private:
         return parent;
     }
 
-    void printModule (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
-    {
-        auto& div = parent.addDiv()
-                          .setClass ("module")
-                          .setID (getModuleID (m));
-
-        auto& title = div.addChild ("h2").setClass ("module");
-
-        title.addSpan ("module_type").addContent (m.typeOfModule).addContent (" ");
-        title.addSpan ("module_name").addContent (m.fullyQualifiedName);
-
-        addComment (div, m.comment);
-
-        printSpecialisationParams (div, m);
-        printEndpoints (div, m);
-        printStructs (div, m);
-        printFunctions (div, m);
-        printVariables (div, m);
-    }
-
     choc::html::HTMLElement& createModuleSection (choc::html::HTMLElement& parent, std::string_view name)
     {
-        auto& list = parent.addChild ("section").setClass ("module");
+        auto& list = parent.addDiv ("module_section");
         list.addChild ("h3").addContent (name);
         return list;
     }
@@ -240,13 +238,14 @@ private:
             desc.addContent (" (");
 
             bool isFirst = true;
+            auto indent = m.typeOfModule.length() + m.fullyQualifiedName.length() + 3;
 
             for (auto& p : m.specialisationParams)
             {
                 if (isFirst)
                     isFirst = false;
                 else
-                    desc.addContent (", ");
+                    desc.addContent (",").addLineBreak().addNBSP (indent);
 
                 printType (desc, m, p.type).addContent (" ");
 
@@ -293,6 +292,8 @@ private:
     {
         auto& li = ul.addChild ("li").setClass ("endpoint_desc");
 
+        addComment (li, e.comment, "summary");
+
         li.addSpan ("endpoint_type").addContent (e.type);
         li.addNBSP (1);
         li.addSpan ("endpoint_name").addContent (e.name);
@@ -322,30 +323,31 @@ private:
 
             for (auto& s : module.structs)
             {
-                auto& desc = section.addParagraph()
-                                .setID (makeTypeID (s.fullName));
+                auto& structDiv = section.addDiv ("struct").setID (makeTypeID (s.fullName));
 
-                addComment (desc, s.comment);
+                addComment (structDiv, s.comment, "summary");
 
-                auto& start = desc.addParagraph().setClass ("struct_top");
+                auto& codeDiv = structDiv.addDiv ("listing");
+
+                auto& start = codeDiv.addParagraph();
                 start.addSpan ("keyword").addContent ("struct ");
                 start.addSpan ("struct_name").addContent (s.shortName);
                 start.addLineBreak().addContent ("{").addLineBreak();
 
-                auto& memberBlock = desc.addDiv().setClass ("struct_members");
-
                 for (auto& member : s.members)
                 {
-                    if (member.comment.valid && ! member.comment.getText().empty())
-                        addMarkdownAsHTML (memberBlock.addDiv().setClass ("description_member"), member.comment.lines);
+                    auto& memberDiv = codeDiv.addDiv().setClass ("struct_member");
 
-                    printType (memberBlock, module, member.type);
-                    memberBlock.addContent (" ").addSpan ("member_name").addContent (member.name);
-                    memberBlock.addContent (";").addLineBreak();
+                    addComment (memberDiv, member.comment, "summary");
+
+                    auto& memberLine = memberDiv.addDiv ("listing");
+                    printType (memberLine, module, member.type);
+                    memberLine.addContent (" ").addSpan ("member_name").addContent (member.name);
+                    memberLine.addContent (";").addLineBreak();
                 }
 
-                desc.addParagraph().setClass ("code_block")
-                    .addContent ("}");
+                codeDiv.addParagraph().setClass ("code_block")
+                       .addContent ("}");
             }
         }
     }
@@ -358,12 +360,13 @@ private:
 
             for (auto& f : m.functions)
             {
-                auto& div = section.addDiv().setClass ("function");
+                auto& div = section.addDiv ("function");
 
-                div.addParagraph().setClass ("function_name")
+                div.addChild ("h3").setClass ("function_name")
+                   .setID (getFunctionID (f))
                    .addContent (f.bareName);
 
-                addComment (div, f.comment);
+                addComment (div, f.comment, "summary");
 
                 auto& proto = div.addParagraph().setClass ("code_block");
 
@@ -409,7 +412,7 @@ private:
 
             for (auto& v : m.variables)
             {
-                auto& div = section.addDiv().setClass ("variable");
+                auto& div = section.addDiv ("variable");
 
                 auto& name = div.addParagraph().setClass ("code_block");
 
@@ -422,7 +425,7 @@ private:
                 if (! v.initialiser.empty())
                     name.addContent (" = " + v.initialiser);
 
-                addComment (div, v.comment);
+                addComment (div, v.comment, "summary");
             }
         }
     }
@@ -611,17 +614,25 @@ private:
 
             if (choc::text::startsWith (trimmed, "```"))
             {
-                auto firstLine = trimmed.find ('\n');
+                auto endOfLine1 = trimmed.find ('\n');
 
-                if (firstLine != std::string::npos)
-                    getParent().addChild ("pre").addContent (trimmed.substr (firstLine));
+                if (endOfLine1 != std::string::npos)
+                {
+                    auto& code = getParent().addChild ("code").setClass ("multiline");
+                    code.addContent (trimmed.substr (endOfLine1));
+
+                    auto type = choc::text::trim (trimmed.substr (3, endOfLine1 - 3));
+
+                    if (! type.empty())
+                        code.setClass (type);
+                }
 
                 continue;
             }
 
             if (leadingSpaces >= 4)
             {
-                getParent().addChild ("pre").addContent (paragraph);
+                getParent().addChild ("code").setClass ("multiline").addContent (paragraph);
                 continue;
             }
 
@@ -629,10 +640,12 @@ private:
         }
     }
 
-    static void addComment (choc::html::HTMLElement& parent, const SourceCodeOperations::Comment& comment)
+    static void addComment (choc::html::HTMLElement& parent,
+                            const SourceCodeOperations::Comment& comment,
+                            std::string_view classType)
     {
         if (comment.valid && ! comment.getText().empty())
-            addMarkdownAsHTML (parent.addDiv().setClass ("description"), comment.lines);
+            addMarkdownAsHTML (parent.addDiv (classType), comment.lines);
     }
 };
 

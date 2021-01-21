@@ -23,10 +23,10 @@ h2 {
 
 a { color: rgb(64, 122, 197); }
 
-li.toc_file a:link { text-decoration: none; }
-li.toc_file a:visited { text-decoration: none; }
-li.toc_file a:hover { text-decoration: none; }
-li.toc_file a:active { text-decoration: none; }
+li.toc_module a:link { text-decoration: none; }
+li.toc_module a:visited { text-decoration: none; }
+li.toc_module a:hover { text-decoration: none; }
+li.toc_module a:active { text-decoration: none; }
 
 code {
   font-family: var(--code-font);
@@ -34,9 +34,7 @@ code {
   color: rgb(88, 88, 88);
 }
 
-pre {
-  font-family: var(--code-font);
-  font-size: 80%;
+code.multiline {
   background-color: rgba(0, 0, 0, 0.027);
   padding: 0.5em;
   margin: 0;
@@ -78,7 +76,7 @@ ul.toc_item, li.toc_item {
   font-size: 10pt;
 }
 
-li.toc_file {
+li.toc_module {
   list-style-type: none!important;
   list-style-position: inside;
   font-size: 14pt;
@@ -93,37 +91,50 @@ li.toc_file {
   overflow-y: auto;
 }
 
-h1.file_title {
-  padding: 1em 0 0 0;
-  border-top: 2px solid rgba(0, 0, 0, 0.5);
+.summary {
+  font-family: var(--serif-font);
 }
 
-div.module {
+div.library {
   padding: 0;
   margin: 1em 0 0 0;
   border-top: 1px solid rgba(0, 0, 0, 0.2);
 }
 
-section.module {
-  padding: 0 0 1em 0;
-  margin: 0;
+h1.library {
+  padding: 1em 0 0 0;
+  border-top: 2px solid rgba(0, 0, 0, 0.5);
 }
 
-h2.module {
-  background-color: rgba(0, 0, 0, 0.046);
-  padding: 0.1em 0.5em 0.1em 0.5em;
-  margin: 0;
+.library .summary {
+  padding-left: 1em;
+  padding-bottom: 1em;
+}
+
+div.module {
+  background-color: rgba(5, 14, 146, 0.02);
+  margin-bottom: 1em;
+  padding-bottom: 1em;
+}
+
+.module_sections {
+  padding: 0 1em 0 1em;
+}
+
+.module_section {
+  padding: 0 0 0em 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.module h2 {
+  background-color: rgba(5, 14, 146, 0.05);
+  padding: 0.1em 1em 0.1em 0.5em;
+  padding-left: 0.5em;
   font-weight: normal;
 }
 
-.description {
-  font-family: var(--serif-font);
-  padding-left: 1em;
-}
-
-.description_member {
-  font-family: var(--serif-font);
-  font-style: italic;
+.module .summary {
+  padding: 0 1em 0 1em;
 }
 
 .module_type {
@@ -131,22 +142,43 @@ h2.module {
   font-style: italic;
 }
 
-.code_block, .struct_members, .struct_top {
+.code_block {
   font-family: var(--code-font);
   padding: 0;
   padding-left: 1em;
   margin: 0 0 1em 0;
 }
 
-.struct_top {
+.struct {
+  padding-bottom: 1em;
+}
+
+.struct .summary {
+  padding-left: 0;
+  padding-bottom: 1em;
+}
+
+.struct p {
+  padding-left: 1em;
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.struct_members {
-  margin-left: 4em;
+.struct_member {
+  margin-left: 3em;
   margin-bottom: 0;
-  padding: 0;
+  padding-bottom: 0.5em;
+}
+
+.struct_member .summary {
+  font-style: italic;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-bottom: 0.5em;
+}
+
+.struct_member .summary p {
+  padding-left: 0;
 }
 
 .primitive_type, .typename_text, .struct_name, .function_name,
@@ -193,4 +225,9 @@ h2.module {
 div.function {
   margin: 0;
   padding: 0 0 1em 0;
+}
+
+h3.function_name {
+  padding-bottom: 0.5em;
+  font-weight: normal;
 }

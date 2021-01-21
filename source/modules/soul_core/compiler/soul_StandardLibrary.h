@@ -695,7 +695,7 @@ R"soul_code(
     /// Returns true if the floating point argument is an INF.
     bool isinf<T> (T n)  [[intrin: "isinf"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isinf() only works with floating point types"); return false; }
 
-    /// Adds an delta to a value, and returns the resulting value modulo PI/2.
+    /// Adds a delta to a value, and returns the resulting value modulo PI/2.
     /// A typical use-case for this is in incrementing the phase of an oscillator.
     ///
     T.removeReference addModulo2Pi<T> (T value, T increment) [[intrin: "addModulo2Pi"]]
