@@ -690,6 +690,7 @@ struct AudioMIDIWrapper
                  MIDIEventOutputList& midiOut)
     {
         auto numFrames = output.getNumFrames();
+        output.clear();
 
         if (numFrames > maxInternalBlockSize)
             return renderInChunks (input, output, midiIn, midiOut);
