@@ -83,7 +83,7 @@ namespace soul::oscillators (using SampleType = float32,
         processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType out;
-            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz" ]];
             event frequencyIn (float v) { s.update (processor.period, v); }
 
             State s;
@@ -109,7 +109,7 @@ namespace soul::oscillators (using SampleType = float32,
     processor Sine (float initialFrequency = 1000)
     {
         output stream SampleType out;
-        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz" ]];
         event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
         var phaseIncrement = float (initialFrequency * twoPi * processor.period);
@@ -184,7 +184,7 @@ namespace soul::oscillators (using SampleType = float32,
         {
             output stream SampleType out;
             input event float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
-            input event float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+            input event float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 
             event shapeIn (float v)        { shape = wrap<3> (floor (v)); }
             event frequencyIn (float v)    { s.update (processor.period, v); }
@@ -277,7 +277,7 @@ namespace soul::oscillators (using SampleType = float32,
             output stream SampleType sineOut;
             output stream SampleType cosineOut;
 
-            input event float frequencyIn [[ name: "Frequency", min: -maxFreqHz, max: maxFreqHz, init: 0.0 ]]; // Default meta data allows negative frequencies
+            input event float frequencyIn [[ name: "Frequency", min: -maxFreqHz, max: maxFreqHz, init: 0.0, unit: "Hz"]]; // Default meta data allows negative frequencies
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
 

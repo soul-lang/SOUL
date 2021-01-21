@@ -331,7 +331,7 @@ namespace soul::filters (using SampleType = float32,
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                 float modeIn      [[ name: "Mode",      min: 0,           max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
             }
 
@@ -495,9 +495,9 @@ namespace soul::filters (using SampleType = float32,
             input event
             {
                 float modeIn      [[ name: "Mode",      min: 0,           max: 7,         init: 0,         text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass"]];
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality ]];
-                float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality]];
+                float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain, unit: "dB"]];
             }
 
             event frequencyIn (float v) { frequency = v;   recalc = true; }
@@ -650,7 +650,7 @@ namespace soul::filters (using SampleType = float32,
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                 float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
             }
 
@@ -947,9 +947,9 @@ namespace soul::filters (using SampleType = float32,
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                float decayIn     [[ name: "Decay (s)", min: 0.01,        max: 10.0,      init: 1.0 ]];
-                float gainIn      [[ name: "Gain",      min: 0.01,        max: 10.0,      init: 1.0 ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                float decayIn     [[ name: "Decay",     min: 0.01,        max: 10.0,      init: 1.0, unit: "Seconds"]];
+                float gainIn      [[ name: "Gain",      min: 0.01,        max: 10.0,      init: 1.0]];
             }
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
@@ -1083,7 +1083,7 @@ namespace soul::filters (using SampleType = float32,
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float modeIn      [[ name: "Mode",      min: 0,         max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
                 }
 
@@ -1197,8 +1197,8 @@ namespace soul::filters (using SampleType = float32,
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                    float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                    float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality]];
                 }
 
                 event frequencyIn (float v) { frequency = v; recalc = true; }
@@ -1323,7 +1323,7 @@ namespace soul::filters (using SampleType = float32,
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
                 }
 
@@ -1395,7 +1395,7 @@ namespace soul::filters (using SampleType = float32,
                 output stream float32 lowOut;
                 output stream float32 highOut;
 
-                input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+                input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 
                 event frequencyIn (float v) { frequency = v; recalc = true; }
 
@@ -1616,9 +1616,9 @@ namespace soul::filters (using SampleType = float32,
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz  ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
-                    float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0            ]];
+                    float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0,           unit: "dB"]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
                 }
 
