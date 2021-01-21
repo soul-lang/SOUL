@@ -531,8 +531,9 @@
   <div class="function"><p class="function_name">framesPerQuarterNote</p><p class="code_block"><span class="primitive_type">float64</span> <span class="function_name">framesPerQuarterNote</span> (<a href="#type_soul_timeline_Tempo" class="struct_name">Tempo</a> <span class="parameter_name">tempo</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_timeline_TimeSignature" class="struct_name">TimeSignature</a> <span class="parameter_name">timeSig</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float64</span> <span class="parameter_name">sampleRate</span>)</p></div>
   <div class="function"><p class="function_name">isStopped</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isStopped</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div>
   <div class="function"><p class="function_name">isPlaying</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isPlaying</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div>
-  <div class="function"><p class="function_name">isRecording</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isRecording</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div></section></div><h1 class="file_title" id="Oscillators">Oscillators</h1><div id="summary" class="description"><p>This file contains a collection of oscillator algorithms for generating various wave-shapes.</p></div><div class="module" id="soul_oscillators">
+  <div class="function"><p class="function_name">isRecording</p><p class="code_block"><span class="primitive_type">bool</span> <span class="function_name">isRecording</span> (<a href="#type_soul_timeline_TransportState" class="struct_name">TransportState</a> <span class="parameter_name">t</span>)</p></div></section></div><h1 class="file_title" id="Oscillators">Oscillators</h1><div id="summary" class="description"><p>This module contains a collection of oscillator algorithms for generating various wave-shapes. The collection covers low frequency designs and high quality alias free algotithms.</p></div><div class="module" id="soul_oscillators">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators</span></h2>
+ <div class="description"><p>The <code>oscillators</code> namespace is parameterised with a <code>SampleType</code> and <code>PhaseType</code>. The <code>SampleType</code> specifies the output type, and can be either <code>float32</code> or <code>float64</code>. The <code>PhaseType</code> is used internally to track phase position, so higher resolution data types can be used to reduce frequency inaccuracy for very critical applications.</p><p>By default the <code>SampleType</code> and <code>PhaseType</code> are float32.</p></div>
  <section class="module">
   <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators</span> (<span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_SampleType">SampleType</span> = float32, <span class="keyword">using</span> <span class="variable_name" id="type_soul_oscillators_PhaseType">PhaseType</span> = float32)</p></section>
  <section class="module">
@@ -541,12 +542,13 @@
   <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">maxFreqHz</span> =  22000.0f</p></div>
   <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">defaultFreqHz</span> =  1000.0f</p></div></section></div><div class="module" id="soul_oscillators_phasor">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::phasor</span></h2>
- <div class="description"><p>A unipolar ramp (phasor) oscillator. This is a non-bandlimited oscillator that will cause aliasing!</p></div>
+ <div class="description"><p>A unipolar ramp (phasor) oscillator. This is a non-bandlimited oscillator that will cause aliasing, but is used internally by the BLEP oscillator.</p></div>
  <section class="module">
   <h3>Structures</h3><p id="type_soul_oscillators_phasor_State"><p class="struct_top"><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br></p>
    <div class="struct_members">
     <div class="description_member"><p>The phase uses a range 0 to 1.0</p></div>
-    <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phase</span>;<br><a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phaseIncrement</span>;<br></div><p class="code_block">}</p></p></section>
+    <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phase</span>;<br><div class="description_member"><p>The increment of phase per frame</p></div>
+    <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="member_name">phaseIncrement</span>;<br></div><p class="code_block">}</p></p></section>
  <section class="module">
   <h3>Functions</h3>
   <div class="function"><p class="function_name">reset</p>
@@ -594,16 +596,16 @@
  <section class="module">
   <h3>Functions</h3>
   <div class="function"><p class="function_name">polyblep</p>
-   <div class="description"><p>Generates a polyblep.</p></div><p class="code_block">
+   <div class="description"><p>Generates a polyblep</p></div><p class="code_block">
     <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="function_name">polyblep</span> (<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="parameter_name">phase</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="parameter_name">phaseIncrement</span>)</p></div>
   <div class="function"><p class="function_name">sawtooth</p>
-   <div class="description"><p>Generates a sawtooth wave from a phasor state.</p></div><p class="code_block">
+   <div class="description"><p>Generates a sawtooth wave from a phasor state</p></div><p class="code_block">
     <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="function_name">sawtooth</span> (<a href="#type_soul_oscillators_phasor_State" class="struct_name">phasor::State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div>
   <div class="function"><p class="function_name">square</p>
-   <div class="description"><p>Generates a square wave from a phasor state.</p></div><p class="code_block">
+   <div class="description"><p>Generates a square wave from a phasor state</p></div><p class="code_block">
     <a href="#type_soul_oscillators_PhaseType" class="struct_name">PhaseType</a> <span class="function_name">square</span> (<a href="#type_soul_oscillators_phasor_State" class="struct_name">phasor::State</a><span class="typename_text">&amp;</span> <span class="parameter_name">s</span>)</p></div></section></div><div class="module" id="soul_oscillators_poly_blep_Shape">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::poly_blep::Shape</span></h2>
- <div class="description"><p>Contains constants for different wave-shapes.</p></div>
+ <div class="description"><p>Contains constants for different wave-shapes</p></div>
  <section class="module">
   <h3>Variables</h3>
   <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">sawtooth</span> =  0</p></div>
@@ -628,7 +630,7 @@
     <a href="#type_soul_oscillators_phasor_State" class="struct_name">phasor::State</a> <span class="variable_name">s</span></p></div>
   <div class="variable"><p class="code_block"><span class="struct_name">wrap</span><span class="typename_text">&lt;</span><span class="typename_text">3</span><span class="typename_text">&gt;</span> <span class="variable_name">shape</span> =  wrap&lt;3&gt; (initialShape)</p></div></section></div><div class="module" id="soul_oscillators_quadrature">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::quadrature</span></h2>
- <div class="description"><p>A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously. <a href="https://vicanek.de/articles/QuadOsc.pdf">https://vicanek.de/articles/QuadOsc.pdf</a></p></div>
+ <div class="description"><p>A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously. The <code>updateInterval</code> defines the samples between updates to the frequency taking effect. <a href="https://vicanek.de/articles/QuadOsc.pdf">https://vicanek.de/articles/QuadOsc.pdf</a></p></div>
  <section class="module">
   <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::oscillators::quadrature</span> (<span class="primitive_type">int32</span> <span class="variable_name">updateInterval</span> = 16)</p></section>
  <section class="module">
@@ -664,7 +666,7 @@
   <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">frequency</span> =  initialFrequency</p></div>
   <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">recalc</span> =  true</p></div></section></div><div class="module" id="soul_oscillators_lfo">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo</span></h2>
- <div class="description"><p>A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.</p></div></div><div class="module" id="soul_oscillators_lfo_shapers">
+ <div class="description"><p>A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output. Unipolar LFO shapes run between 0 and 1, whilst Bipolar run between -1 and 1.</p></div></div><div class="module" id="soul_oscillators_lfo_shapers">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::shapers</span></h2>
  <div class="description"><p>Various LFO shape generator functions.</p></div></div><div class="module" id="soul_oscillators_lfo_Shape">
  <h2 class="module"><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::Shape</span></h2>
@@ -697,7 +699,7 @@
   <div class="function"><p class="function_name">tick</p>
    <div class="description"><p>Advances the state of a smoother and returns the new smoothed value</p></div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">tick</span> (<a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p></div></section></div><div class="module" id="soul_oscillators_lfo_Processor">
  <h2 class="module"><span class="module_type">processor </span><span class="module_name">soul::oscillators::lfo::Processor</span></h2>
- <div class="description"><p>A processor which implements an LFO with events to control its parameters.</p></div>
+ <div class="description"><p>A processor which implements an LFO with events to control its parameters. Changes to the frequency and depth are smoothed, but expect discontinuities if the shape or polarity are updated.</p></div>
  <section class="module">
   <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">processor</span> <span class="module_name">soul::oscillators::lfo::Processor</span> (<span class="primitive_type">int32</span> <span class="variable_name">initialShape</span> = 0, <span class="primitive_type">int32</span> <span class="variable_name">initialPolarity</span> = 0, <span class="primitive_type">float32</span> <span class="variable_name">initialDepth</span> = 1.0f, <span class="primitive_type">float32</span> <span class="variable_name">initialFrequency</span> = 1.0f)</p></section>
  <section class="module">

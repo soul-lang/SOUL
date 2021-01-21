@@ -20,27 +20,39 @@
 
 /** Title: Oscillators
 
-    This file contains a collection of oscillator algorithms for generating
-    various wave-shapes.
+    This module contains a collection of oscillator algorithms for generating
+    various wave-shapes. The collection covers low frequency designs and high quality alias
+    free algotithms.
 */
 
+/**
+    The `oscillators` namespace is parameterised with a `SampleType` and `PhaseType`. The `SampleType` specifies
+    the output type, and can be either `float32` or `float64`. The `PhaseType` is used internally to track
+    phase position, so higher resolution data types can be used to reduce frequency inaccuracy for very critical
+    applications.
+
+    By default the `SampleType` and `PhaseType` are float32.
+*/
 namespace soul::oscillators (using SampleType = float32,
                              using PhaseType  = float32)
 {
+    static_assert (SampleType.isFloat, "The SampleType must be a float");
+    static_assert (PhaseType.isFloat && ! PhaseType.isVector, "The PhaseType must be a float");
+
     let minFreqHz = 0.0f;
     let maxFreqHz = 22000.0f;
     let defaultFreqHz = 1000.0f;
 
     //==============================================================================
     /// A unipolar ramp (phasor) oscillator.
-    /// This is a non-bandlimited oscillator that will cause aliasing!
-    ///
+    /// This is a non-bandlimited oscillator that will cause aliasing, but is used internally by the BLEP oscillator.
     namespace phasor
     {
         struct State
         {
             /// The phase uses a range 0 to 1.0
             PhaseType phase;
+            /// The increment of phase per frame
             PhaseType phaseIncrement;
         }
 
@@ -125,7 +137,7 @@ namespace soul::oscillators (using SampleType = float32,
         /// Contains different wave-shaping functions.
         namespace shapers
         {
-            /// Generates a polyblep.
+            /// Generates a polyblep
             PhaseType polyblep (PhaseType phase, PhaseType phaseIncrement)
             {
                 if (phase < phaseIncrement)
@@ -143,13 +155,13 @@ namespace soul::oscillators (using SampleType = float32,
                 return PhaseType (0);
             }
 
-            /// Generates a sawtooth wave from a phasor state.
+            /// Generates a sawtooth wave from a phasor state
             PhaseType sawtooth (phasor::State& s)
             {
                 return PhaseType (-1) + (PhaseType (2) * s.phase) - polyblep (s.phase, s.phaseIncrement);
             }
 
-            /// Generates a square wave from a phasor state.
+            /// Generates a square wave from a phasor state
             PhaseType square (phasor::State& s)
             {
                 return (s.phase < PhaseType (0.5) ? PhaseType (-1) : PhaseType (1))
@@ -158,7 +170,7 @@ namespace soul::oscillators (using SampleType = float32,
             }
         }
 
-        /// Contains constants for different wave-shapes.
+        /// Contains constants for different wave-shapes
         namespace Shape
         {
             let sawtooth = 0;
@@ -220,6 +232,7 @@ namespace soul::oscillators (using SampleType = float32,
 
     //==============================================================================
     /// A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously.
+    /// The `updateInterval` defines the samples between updates to the frequency taking effect.
     /// https://vicanek.de/articles/QuadOsc.pdf
     ///
     namespace quadrature (int updateInterval = 16)
@@ -301,6 +314,7 @@ namespace soul::oscillators (using SampleType = float32,
     //==============================================================================
     ///
     /// A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.
+    /// Unipolar LFO shapes run between 0 and 1, whilst Bipolar run between -1 and 1.
     ///
     namespace lfo
     {
@@ -383,6 +397,8 @@ namespace soul::oscillators (using SampleType = float32,
         }
 
         /// A processor which implements an LFO with events to control its parameters.
+        /// Changes to the frequency and depth are smoothed, but expect discontinuities if the shape or polarity
+        /// are updated.
         processor Processor (int initialShape = 0,
                              int initialPolarity = 0,
                              float initialDepth = 1.0f,

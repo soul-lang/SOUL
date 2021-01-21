@@ -55,123 +55,125 @@ inline const char* getSystemModuleCode (std::string_view moduleName)
 
     // BEGIN_INCLUDED_LIBRARY_CODE
     if (moduleName == "soul.complex")  return R"soul_code(
-namespace soul
+namespace soul::complex_lib::imp (using FloatType, int vectorSize)
 {
-    namespace complex_lib
+    namespace complex_element = imp (FloatType, 1);
+
+    struct ComplexType
     {
-        namespace imp (using FloatType, int vectorSize)
-        {
-            namespace complex_element = imp (FloatType, 1);
+        FloatType<vectorSize> real, imag;
+    }
 
-            struct ComplexType
-            {
-                FloatType<vectorSize> real, imag;
-            }
+    ComplexType negate (ComplexType v)
+    {
+        return ComplexType (-v.real, -v.imag);
+    }
 
-            ComplexType negate (ComplexType v)
-            {
-                return ComplexType (-v.real, -v.imag);
-            }
+    ComplexType conj (ComplexType v)
+    {
+        return ComplexType (v.real, -v.imag);
+    }
 
-            ComplexType conj (ComplexType v)
-            {
-                return ComplexType (v.real, -v.imag);
-            }
+    ComplexType add (ComplexType left, ComplexType right)
+    {
+        return ComplexType (left.real + right.real,
+                            left.imag + right.imag);
+    }
 
-            ComplexType add (ComplexType left, ComplexType right)
-            {
-                return ComplexType (left.real + right.real,
-                                    left.imag + right.imag);
-            }
+    ComplexType subtract (ComplexType left, ComplexType right)
+    {
+        return ComplexType (left.real - right.real,
+                            left.imag - right.imag);
+    }
 
-            ComplexType subtract (ComplexType left, ComplexType right)
-            {
-                return ComplexType (left.real - right.real,
-                                    left.imag - right.imag);
-            }
+    ComplexType multiply (ComplexType left, ComplexType right)
+    {
+        return ComplexType (left.real * right.real - left.imag * right.imag,
+                            left.real * right.imag + left.imag * right.real);
+    }
 
-            ComplexType multiply (ComplexType left, ComplexType right)
-            {
-                return ComplexType (left.real * right.real - left.imag * right.imag,
-                                    left.real * right.imag + left.imag * right.real);
-            }
+    ComplexType divide (ComplexType left, ComplexType right)
+    {
+        let c = right.conj();
+        let result = multiply (left, c);
+        let scale = multiply (right, c).real;
 
-            ComplexType divide (ComplexType left, ComplexType right)
-            {
-                let c = right.conj();
-                let result = multiply (left, c);
-                let scale = multiply (right, c).real;
+        return ComplexType (result.real / scale,
+                            result.imag / scale);
+    }
 
-                return ComplexType (result.real / scale,
-                                    result.imag / scale);
-            }
+    bool<vectorSize> equals (ComplexType left, ComplexType right)
+    {
+        var realComparison = left.real == right.real;
+        let imagComparison = left.imag == right.imag;
 
-            bool<vectorSize> equals (ComplexType left, ComplexType right)
-            {
-                var realComparison = left.real == right.real;
-                let imagComparison = left.imag == right.imag;
+        for (wrap<vectorSize> i)
+            realComparison[i] = realComparison[i] && imagComparison[i];
 
-                for (wrap<vectorSize> i)
-                    realComparison[i] = realComparison[i] && imagComparison[i];
+        return realComparison;
+    }
 
-                return realComparison;
-            }
+    bool<vectorSize> notEquals (ComplexType left, ComplexType right)
+    {
+        var r = equals (left, right);
+
+        for (wrap<vectorSize> i)
+            r[i] = ! r[i];
+
+        return r;
+    }
+
+    complex_element::ComplexType getElement (ComplexType c, int element)
+    {
+        return complex_element::ComplexType (c.real.at (element),
+                                            c.imag.at (element));
+    }
 
 )soul_code"
 R"soul_code(
 
-            bool<vectorSize> notEquals (ComplexType left, ComplexType right)
-            {
-                var r = equals (left, right);
+    complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
+    {
+        c.real.at (element) = value.real;
+        c.imag.at (element) = value.imag;
 
-                for (wrap<vectorSize> i)
-                    r[i] = ! r[i];
-
-                return r;
-            }
-
-            complex_element::ComplexType getElement (ComplexType c, int element)
-            {
-                return complex_element::ComplexType (c.real.at (element),
-                                                    c.imag.at (element));
-            }
-
-            complex_element::ComplexType setElement (ComplexType& c, int element, complex_element::ComplexType value)
-            {
-                c.real.at (element) = value.real;
-                c.imag.at (element) = value.imag;
-
-                return value;
-            }
-        }
+        return value;
     }
 }
 )soul_code";
 
     if (moduleName == "soul.noise")  return R"soul_code(
-/**
-    This namespace contains some random number generation helpers.
+/** Title: RNGs and noise-generators
+
+    This module contains a range of simple RNG and noise generating functions and processors.
+*/
+
+/** This namespace contains some random number generation helpers.
+    We're assuming that nobody's going to be using these RNGs for security-critical cryptographic
+    applications. All the algorithms here are chosen to be fast, and definitely not cryptographically
+    strong!
 */
 namespace soul::random
 {
-    /** State for a Park-Miller random number generator. */
+    /// State for a Park-Miller random number generator.
     struct RandomNumberState
     {
         /** The current seed.
-            Top tip: when generating a seed, you might want to use the processor.id constant,
+            Top tip: when generating a seed, you might want to use the `processor.id` constant,
             to make sure that each instance of a processor has a differently-seeded RNG. If you
             want the RNG to be different each time the program runs, you could also throw the
-            processor.session constant into the mix too.
+            `processor.session` constant into the mix too.
         */
         int64 seed;
     }
 
+    /// Resets an RNG state object with the given seed value.
     void reset (RandomNumberState& state, int64 seed)
     {
         state.seed = seed;
     }
 
-    /** Returns the next number in the full 32-bit integer range. */
+    /// Returns the next number in the full 32-bit integer range.
     int32 getNextInt32 (RandomNumberState& state)
     {
         let s = (state.seed * 48271) % 0x7fffffff;
@@ -179,25 +181,23 @@ namespace soul::random
         return int32 (s);
     }
 
-    /** Advances the given RNG state and returns a value 0 to 1 */
+    /// Advances the given RNG state and returns a value 0 to 1.
     float getNextUnipolar (RandomNumberState& state)
     {
         return float (getNextInt32 (state)) * (1.0f / 2147483647.0f);
     }
 
-    /** Advances the given RNG state and returns a value -1 to 1 */
+    /// Advances the given RNG state and returns a value -1 to 1.
     float getNextBipolar (RandomNumberState& state)
     {
         return (float (getNextInt32 (state)) * (2.0f / 2147483647.0f)) - 1.0f;
     }
 }
 
-/**
-    This namespace contains various noise-generation utilities.
-*/
+/// This namespace contains generators for various flavours of noise.
 namespace soul::noise
 {
-    /** White noise generator */
+    /// White noise generator
     processor White
     {
         output stream float out;
@@ -205,6 +205,9 @@ namespace soul::noise
         void run()
         {
             var rng = random::RandomNumberState (processor.id + 10);
+
+)soul_code"
+R"soul_code(
 
             loop
             {
@@ -214,7 +217,7 @@ namespace soul::noise
         }
     }
 
-    /** Brown noise generator */
+    /// Brown noise generator
     processor Brown
     {
         output stream float out;
@@ -224,9 +227,6 @@ namespace soul::noise
             let limit = 32.0f;
             float runningTotal;
             var rng = random::RandomNumberState (processor.id + 20);
-
-)soul_code"
-R"soul_code(
 
             loop
             {
@@ -243,7 +243,7 @@ R"soul_code(
         }
     }
 
-    /** Pink noise generator */
+    /// Pink noise generator
     processor Pink
     {
         output stream float out;
@@ -282,28 +282,33 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.audio.utils")  return R"soul_code(
+/** Title: Miscellaneous audio utilities
+
+    This module is a collection of commonly-used audio helper functions and types.
+*/
+
 namespace soul
 {
     //==============================================================================
-    /*
-        Some audio-themed helper functions
-    */
+    /// Converts a decibel level to a gain factor.
     float32 dBtoGain (float32 decibels)   { return decibels > -100.0f ? pow (10.0f, decibels * 0.05f) : 0.0f; }
+    /// Converts a decibel level to a gain factor.
     float64 dBtoGain (float64 decibels)   { return decibels > -100.0  ? pow (10.0,  decibels * 0.05)  : 0.0; }
 
+    /// Converts a gain factor to a decibel level.
     float32 gainTodB (float32 gain)       { return gain > 0 ? log10 (gain) * 20.0f : -100.0f; }
+    /// Converts a gain factor to a decibel level.
     float64 gainTodB (float64 gain)       { return gain > 0 ? log10 (gain) * 20.0  : -100.0; }
 
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
     float32 noteNumberToFrequency (int note)            { return 440.0f * pow (2.0f, (note - 69) * (1.0f / 12.0f)); }
-    /** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+    /// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
     float32 noteNumberToFrequency (float32 note)        { return 440.0f * pow (2.0f, (note - 69.0f) * (1.0f / 12.0f)); }
-    /** Converts a frequency in Hz to an equivalent MIDI note number. */
+    /// Converts a frequency in Hz to an equivalent MIDI note number.
     float32 frequencyToNoteNumber (float32 frequency)   { return 69.0f + (12.0f / log (2.0f)) * log (frequency * (1.0f / 440.0f)); }
 
-    /** Returns the ratio by which a sample's playback must be sped-up in order to map
-        from it native rate and note to a target rate and note.
-    */
+    /// Returns the ratio by which a sample's playback must be sped-up in order to map
+    /// from its native sample-rate and note to a target sample-rate and note.
     float64 getSpeedRatioForPitchedSample (float64 sourceSampleRate, float32 sourceMIDINote,
                                            float64 targetSampleRate, float32 targetMIDINote)
     {
@@ -311,36 +316,35 @@ namespace soul
              / (targetSampleRate * pow (2.0f, sourceMIDINote * (1.0f / 12.0f)));
     }
 
-    /* Returns the coefficient for a filter pole, based on a t60 decay time in seconds */
-    float64 tau2pole (float64 t60, float64 sampleRate)   { return pow (0.001,  1.0  / (t60 * sampleRate)); }
-    float32 tau2pole (float32 t60, float32 sampleRate)   { return pow (0.001f, 1.0f / (t60 * sampleRate)); }
-
 )soul_code"
 R"soul_code(
 
-    /* Returns the t60 decay time in seconds for a filter pole coefficient in the range 0-1 */
+    /// Returns the coefficient for a filter pole, based on a t60 decay time in seconds.
+    float64 tau2pole (float64 t60, float64 sampleRate)   { return pow (0.001,  1.0  / (t60 * sampleRate)); }
+    /// Returns the coefficient for a filter pole, based on a t60 decay time in seconds.
+    float32 tau2pole (float32 t60, float32 sampleRate)   { return pow (0.001f, 1.0f / (t60 * sampleRate)); }
+
+    /// Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.
     float64 pole2tau (float64 pole, float64 sampleRate)   { return -1.0 / (log (pole) * sampleRate); }
+    /// Returns the t60 decay time in seconds for a filter pole coefficient in the range 0 to 1.
     float32 pole2tau (float32 pole, float32 sampleRate)   { return -1.0f / (log (pole) * sampleRate); }
 }
 
 //==============================================================================
-/** This namespace contains some handy stuctures to use when declaring external
-    variables which are going to be loaded with data from audio files.
-*/
+/// This namespace contains some handy stuctures to use when declaring `external`
+/// variables which are going to be loaded with data from audio files.
 namespace soul::audio_samples
 {
-    /** An external variable declared with the type soul::audio_samples::Mono
-        can be loaded with monoised data from an audio file.
-    */
+    /// An `external` variable declared with the type `soul::audio_samples::Mono`
+    /// can be loaded with monoised data from an audio file.
     struct Mono
     {
         float[] frames;
         float64 sampleRate;
     }
 
-    /** An external variable declared with the type soul::audio_samples::Stereo
-        can be loaded with stereo data from an audio file.
-    */
+    /// An `external` variable declared with the type `soul::audio_samples::Stereo`
+    /// can be loaded with stereo data from an audio file.
     struct Stereo
     {
         float<2>[] frames;
@@ -348,23 +352,24 @@ namespace soul::audio_samples
     }
 }
 
-/** This namespace contains various pan-related helper functions */
+/// This namespace contains various pan-related helper functions
 namespace soul::pan_law
 {
-    /** Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to
-        a (left, right) pair of stereo gains.
-    */
+    /// Applies a simple linear pan law to convert a pan position (-1.0 to 1.0) to
+    /// a (left, right) pair of stereo gains.
     float<2> linear (float pan)
     {
         return (1.0f - pan,
                 1.0f + pan);
     }
 
-    /** Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to
-        a (left, right) pair of stereo gains.
-    */
+    /// Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to
+    /// a (left, right) pair of stereo gains.
     float<2> centre3dB (float pan)
     {
+)soul_code"
+R"soul_code(
+
         let quarterPi = float (pi / 4);
 
         return (sin ((1.0f - pan) * quarterPi),
@@ -374,13 +379,18 @@ namespace soul::pan_law
 )soul_code";
 
     if (moduleName == "soul.mixing")  return R"soul_code(
-/** Utility processors for common tasks like mixing together sources. */
+/** Title: Mix and gain control utilities
+
+    This file provides a set of processors for common tasks like mixing together sources,
+    applying fixed gains, or applying envelope shapes.
+*/
+
+//==============================================================================
+/// This namespace contains a set of processors for common tasks like mixing together sources.
 namespace soul::mixers
 {
     //==============================================================================
-    /** Simple processor which simply sums two sources together with fixed gains
-        for each source.
-    */
+    /// Simple processor which adds two sources together using fixed gains for each source.
     processor FixedSum (using SampleType, float gain1, float gain2)
     {
         input  stream SampleType in1, in2;
@@ -397,9 +407,8 @@ namespace soul::mixers
     }
 
     //==============================================================================
-    /** Simple processor which simply sums two sources together with streams for the
-        gains to apply to each source.
-    */
+    /// Simple processor which adds two sources together using streams to control the
+    /// gains to apply to each source.
     processor DynamicSum (using SampleType)
     {
         input  stream SampleType in1, in2;
@@ -424,6 +433,9 @@ namespace soul::mixers
         in the mix stream, so e.g. mixRange = 1.0 means that mix will be in the range 0 to 1,
         and mixRange = 100 means the values will be 0 to 100.
         The mix stream is expected to contain values between 0 and mixRange,
+)soul_code"
+R"soul_code(
+
         where mix = 0 produces 100% in1, and mix = mixRange produces 100% in2.
     */
     processor DynamicMix (using SampleType, float mixRange)
@@ -436,9 +448,6 @@ namespace soul::mixers
         {
             loop
             {
-)soul_code"
-R"soul_code(
-
                 out << lerp (in1, in2, mix * (1.0f / mixRange));
                 advance();
             }
@@ -447,11 +456,11 @@ R"soul_code(
 }
 
 //==============================================================================
-/** Utility processors for common tasks like applying gain in various ways. */
+/// Utility processors for common tasks like applying gain in various ways.
 namespace soul::gain
 {
     //==============================================================================
-    /** Simple processor which applies a fixed gain to a signal. */
+    /// Simple processor which applies a fixed gain to a signal.
     processor FixedGain (using SampleType, float fixedGain)
     {
         input  stream SampleType in;
@@ -468,7 +477,7 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Simple processor which applies a changeable gain level to a signal. */
+    /// Simple processor which applies a changeable gain level to a signal.
     processor DynamicGain (using SampleType)
     {
         input  stream SampleType in;
@@ -486,9 +495,8 @@ namespace soul::gain
     }
 
     //==============================================================================
-    /** Converts an input event parameter in decibels to a smoothed stream of
-        raw gain levels.
-    */
+    /// Converts an input event parameter in decibels to a smoothed stream of
+    /// raw gain levels.
     processor SmoothedGainParameter (float slewRateSeconds)
     {
         input event float volume   [[ label: "Volume", unit: "dB", min: -85, max: 6 ]];
@@ -497,15 +505,15 @@ namespace soul::gain
         event volume (float targetDB)
         {
             targetGain = soul::dBtoGain (targetDB);
+)soul_code"
+R"soul_code(
+
             let maxDelta = float (processor.period / slewRateSeconds);
             remainingRampSamples = max (1, int (abs (targetGain - currentGain) / maxDelta));
             increment = (targetGain - currentGain) / remainingRampSamples;
         }
 
         float targetGain, currentGain, increment;
-)soul_code"
-R"soul_code(
-
         int remainingRampSamples;
 
         void run()
@@ -528,10 +536,9 @@ R"soul_code(
 }
 
 //==============================================================================
-/** Generators for common envelope shapes. */
+/// Generators for common envelope shapes.
 namespace soul::envelope
 {
-    //==============================================================================
     /** Creates an envelope which applies convex attack and release curves based
         on a stream of NoteOn and NoteOff events.
 
@@ -562,6 +569,9 @@ namespace soul::envelope
             {
                 // Waiting for note-on
                 while (! active)
+)soul_code"
+R"soul_code(
+
                     advance();
 
                 float level;
@@ -571,9 +581,6 @@ namespace soul::envelope
                 {
                     level = targetLevel;
                 }
-)soul_code"
-R"soul_code(
-
                 else
                 {
                     let attackSamples = int (processor.frequency * attackTimeSeconds);
@@ -613,75 +620,84 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.intrinsics")  return R"soul_code(
-/*  The intrinsics namespace contains basic functions, many of which will be performed
-    by a JIT engine in more efficient ways than the default function implementations
-    that are supplied here. The "[[intrin]]" annotation is used as a hint to the performer
-    back-end that this function should be replaced by a native implementation if
-    one is available. (Note that some of the functions here have non-functional
-    implementations and rely on the performer to use a native implementation for them to
-    work at all).
+/** Title: Intrinsic functions
+*/
+
+/**
+    The `intrinsics` namespace contains low-level, commonly-used functions.
+
+    This is a special-case namespace, as the functions inside it can be used without needing to
+    specify their namespace (i.e. you can just write `abs(x)`, no need to write
+    `soul::intrinsics::abs(x)`).
+
+    Many of these functions have reference implementations defined in this file, but which
+    will be substituted for more optimal implementations by a JIT engine if possible.
+    The `[[intrin]]` annotation is used as a hint to the performer back-end that this function
+    should be replaced by a native implementation if one is available. (Note that some of the
+    functions here have non-functional implementations and rely on the performer to use a native
+    implementation for them to work at all).
 */
 namespace soul::intrinsics
 {
-    /** Familiar abs() function, accepting most scalar types. */
+    /// Familiar abs() function, accepting most scalar types.
     T.removeReference abs<T> (T n)                         [[intrin: "abs"]]       { static_assert (T.isScalar, "abs() only works with scalar types"); return n < 0 ? -n : n; }
-    /** Returns the greater of two scalar values. */
+    /// Returns the greater of two scalar values.
     T.removeReference max<T>       (T a, T b)              [[intrin: "max"]]       { static_assert (T.isScalar, "max() only works with scalar types"); return a > b ? a : b; }
-    /** Returns the lesser of two scalar values. */
+    /// Returns the lesser of two scalar values.
     T.removeReference min<T>       (T a, T b)              [[intrin: "min"]]       { static_assert (T.isScalar, "min() only works with scalar types"); return a < b ? a : b; }
-    /** Returns the lesser of two scalar values. */
+    /// Returns the lesser of two scalar values.
     int32 min                      (int32 a, int32 b)      [[intrin: "min"]]       { return a < b ? a : b; }
 
-    /** Clamps a scalar value to the nearest value within a given range. */
+    /// Clamps a scalar value to the nearest value within a given range.
     T.removeReference clamp<T>     (T n, T low, T high)    [[intrin: "clamp"]]     { static_assert (T.isScalar, "clamp() only works with scalar types"); return n < low ? low : (n > high ? high : n); }
-    /** Performs a negative-number-aware modulo operation to wrap a number to a zero-based range. */
-    T.removeReference wrap<T>      (T n, T range)          [[intrin: "wrap"]]      { static_assert (T.isScalar, "wrap() only works with scalar types");  if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
 )soul_code"
 R"soul_code(
 
-    /** Performs a negative-number-aware integer modulo operation. */
+    /// Performs a negative-number-aware modulo operation to wrap a number to a zero-based range.
+    T.removeReference wrap<T>      (T n, T range)          [[intrin: "wrap"]]      { static_assert (T.isScalar, "wrap() only works with scalar types");  if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
+    /// Performs a negative-number-aware integer modulo operation.
     int32 wrap                     (int32 n, int32 range)  [[intrin: "wrap"]]      { if (range == 0) return 0; let x = n % range; if (x < 0) return x + range; return x; }
-    /** Performs a C++-compatible floor function on a scalar floating point value. */
+    /// Performs a C++-compatible floor function on a scalar floating point value.
     T.removeReference floor<T>     (T n)                   [[intrin: "floor"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "floor() only works with scalar floating point types");     let r = T (int64 (n)); return (r == n) ? n : (n >= 0 ? r : r - 1); }
-    /** Performs a C++-compatible ceil function on a scalar floating point value. */
+    /// Performs a C++-compatible ceil function on a scalar floating point value.
     T.removeReference ceil<T>      (T n)                   [[intrin: "ceil"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "ceil() only works with scalar floating point types");      let r = T (int64 (n)); return (r == n) ? n : (n >= 0 ? r + 1 : r); }
-    /** Returns a linearly-interpolated value between two scalar values. */
+    /// Returns a linearly-interpolated value between two scalar values.
     T.removeReference lerp<T>      (T start, T stop, T amount)                     { static_assert (T.isScalar && T.primitiveType.isFloat, "lerp() only works with scalar floating point types");      return start + (stop - start) * amount; }
 
-    /** Performs a C++-compatible fmod function on some scalar floating point values. */
+    /// Performs a C++-compatible fmod function on some scalar floating point values.
     T.removeReference fmod<T>      (T x, T y)              [[intrin: "fmod"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "fmod() only works with scalar floating point types");      return x - (y * T (int (x / y))); }
-    /** Performs a C++-compatible remainder function on some scalar floating point values. */
-    T.removeReference remainder<T> (T x, T y)              [[intrin: "remainder"]] { static_assert (T.isScalar && T.primitiveType.isFloat, "remainder() only works with scalar floating point types"); return x - (y * T (int (0.5f + x / y))); }
-    /** Returns the square root of a scalar floating point value. */
+    /// Performs a C++-compatible remainder function on some scalar floating point values.
 )soul_code"
 R"soul_code(
 
+    T.removeReference remainder<T> (T x, T y)              [[intrin: "remainder"]] { static_assert (T.isScalar && T.primitiveType.isFloat, "remainder() only works with scalar floating point types"); return x - (y * T (int (0.5f + x / y))); }
+    /// Returns the square root of a scalar floating point value.
     T.removeReference sqrt<T>      (T n)                   [[intrin: "sqrt"]]      { static_assert (T.isScalar && T.primitiveType.isFloat, "sqrt() only works with scalar floating point types");      return T(); }
-    /** Raises a scalar floating point value to the given power. */
+    /// Raises a scalar floating point value to the given power.
     T.removeReference pow<T>       (T a, T b)              [[intrin: "pow"]]       { static_assert (T.isScalar && T.primitiveType.isFloat, "pow() only works with scalar floating point types");       return T(); }
-    /** Returns the exponential of a scalar floating point value. */
+    /// Returns the exponential of a scalar floating point value.
     T.removeReference exp<T>       (T n)                   [[intrin: "exp"]]       { static_assert (T.isScalar && T.primitiveType.isFloat, "exp() only works with scalar floating point types");       return T(); }
-    /** Returns the log-e of a scalar floating point value. */
+    /// Returns the log-e of a scalar floating point value.
     T.removeReference log<T>       (T n)                   [[intrin: "log"]]       { static_assert (T.isScalar && T.primitiveType.isFloat, "log() only works with scalar floating point types");       return T(); }
-    /** Returns the log 10 of a scalar floating point value. */
+    /// Returns the log 10 of a scalar floating point value.
     T.removeReference log10<T>     (T n)                   [[intrin: "log10"]]     { static_assert (T.isScalar && T.primitiveType.isFloat, "log10() only works with scalar floating point types");     return T(); }
 
-    /** Rounds a floating point number up or down to the nearest integer. */
+    /// Rounds a floating point number up or down to the nearest integer.
     int32 roundToInt (float32 n)    [[intrin: "roundToInt"]]                       { return int32 (n + (n < 0 ? -0.5f : 0.5f)); }
-    /** Rounds a floating point number up or down to the nearest integer. */
+    /// Rounds a floating point number up or down to the nearest integer.
     int64 roundToInt (float64 n)    [[intrin: "roundToInt"]]                       { return int64 (n + (n < 0 ? -0.5 : 0.5)); }
 
-    /** Returns true if the floating point argument is a NaN. */
-    bool isnan<T> (T n)  [[intrin: "isnan"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isnan() only works with floating point types"); return false; }
 )soul_code"
 R"soul_code(
 
-    /** Returns true if the floating point argument is an INF. */
+    /// Returns true if the floating point argument is a NaN.
+    bool isnan<T> (T n)  [[intrin: "isnan"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isnan() only works with floating point types"); return false; }
+    /// Returns true if the floating point argument is an INF.
     bool isinf<T> (T n)  [[intrin: "isinf"]]       { static_assert (T.isPrimitive && T.primitiveType.isFloat, "isinf() only works with floating point types"); return false; }
 
-    /** Adds an delta to a value, and returns the resulting value modulo PI/2.
-        A typical use-case for this is in incrementing the phase of an oscillator.
-    */
+    /// Adds an delta to a value, and returns the resulting value modulo PI/2.
+    /// A typical use-case for this is in incrementing the phase of an oscillator.
+    ///
     T.removeReference addModulo2Pi<T> (T value, T increment) [[intrin: "addModulo2Pi"]]
     {
         value += increment;
@@ -698,7 +714,7 @@ R"soul_code(
         return value < 0 ? value % pi2 + pi2 : value;
     }
 
-    /** Returns the sum of an array or vector of scalar values. */
+    /// Returns the sum of an array or vector of scalar values.
     T.elementType sum<T> (T t)
     {
         static_assert (T.isArray || T.isVector, "sum() only works with arrays or vectors");
@@ -731,6 +747,9 @@ R"soul_code(
             if const (remainder > 1)
             {
                 let r = t[8 * n:];
+)soul_code"
+R"soul_code(
+
                 total += sum (r);
             }
 
@@ -742,9 +761,6 @@ R"soul_code(
             wrap<t.size> i;
 
             loop (t.size - 1)
-)soul_code"
-R"soul_code(
-
                 total += t[++i];
 
             return total;
@@ -763,7 +779,7 @@ R"soul_code(
         }
     }
 
-    /** Returns the product of an array or vector of scalar values. */
+    /// Returns the product of an array or vector of scalar values.
     T.elementType product<T> (T t)
     {
         static_assert (T.isArray || T.isVector, "product() only works with arrays or vectors");
@@ -816,6 +832,9 @@ R"soul_code(
             if (t.size == 0)
                 return T.elementType();
 
+)soul_code"
+R"soul_code(
+
             var result = t[0];
 
             for (int i = 1; i < t.size; ++i)
@@ -825,14 +844,11 @@ R"soul_code(
         }
     }
 
-    /** Reads an element from an array, allowing the index to be any type of floating point type.
-)soul_code"
-R"soul_code(
-
-        If a floating point index is used, it will be rounded down to an integer index - for an
-        interpolated read operation, see readLinearInterpolated(). Indexes beyond the range of the
-        array will be wrapped.
-    */
+    /// Reads an element from an array, allowing the index to be any type of floating point type.
+    /// If a floating point index is used, it will be rounded down to an integer index - for an
+    /// interpolated read operation, see readLinearInterpolated(). Indexes beyond the range of the
+    /// array will be wrapped.
+    ///
     Array.elementType read<Array, IndexType> (const Array& array, IndexType index) [[intrin: "read"]]
     {
         static_assert (Array.isArray, "read() only works with array types");
@@ -841,9 +857,9 @@ R"soul_code(
         return array.at (int (index));
     }
 
-    /** Reads a linearly-interpolated value from an array of some kind of scalar values (probably
-        a float or float-vector type). Indexes beyond the range of the array will be wrapped.
-    */
+    /// Reads a linearly-interpolated value from an array of some kind of scalar values (probably
+    /// a float or float-vector type). Indexes beyond the range of the array will be wrapped.
+    ///
     Array.elementType readLinearInterpolated<Array, IndexType> (const Array& array, IndexType index) [[intrin: "readLinearInterpolated"]]
     {
         static_assert (Array.isArray, "readLinearInterpolated() only works with array types");
@@ -859,8 +875,12 @@ R"soul_code(
         let sample1 = array.at (intIndex);
         let sample2 = array.at (intIndex + 1);
 
+)soul_code"
+R"soul_code(
+
         return sample1 + (sample2 - sample1) * Array.elementType (index - indexFloor);
     }
+
 
     // NB: this is used internally, not something you'd want to call from user code
     int get_array_size<Array> (const Array& array) [[intrin: "get_array_size"]];
@@ -868,19 +888,16 @@ R"soul_code(
 
     // Trigonometry functions
 
-)soul_code"
-R"soul_code(
-
     T sin<T>   (T n)  [[intrin: "sin"]]      { static_assert (T.isPrimitive || T.isVector, "sin() only works with floating point types");   static_assert (T.primitiveType.isFloat, "sin() only works with floating point types");   return T(); }
     T cos<T>   (T n)  [[intrin: "cos"]]      { static_assert (T.isPrimitive || T.isVector, "cos() only works with floating point types");   static_assert (T.primitiveType.isFloat, "cos() only works with floating point types");   return T(); }
     T tan<T>   (T n)  [[intrin: "tan"]]      { static_assert (T.isPrimitive || T.isVector, "tan() only works with floating point types");   static_assert (T.primitiveType.isFloat, "tan() only works with floating point types");   return sin (n) / cos (n); }
     T sinh<T>  (T n)  [[intrin: "sinh"]]     { static_assert (T.isPrimitive || T.isVector, "sinh() only works with floating point types");  static_assert (T.primitiveType.isFloat, "sinh() only works with floating point types");  return (exp (n) - exp (-n)) / 2; }
     T cosh<T>  (T n)  [[intrin: "cosh"]]     { static_assert (T.isPrimitive || T.isVector, "cosh() only works with floating point types");  static_assert (T.primitiveType.isFloat, "cosh() only works with floating point types");  return (exp (n) + exp (-n)) / 2; }
     T tanh<T>  (T n)  [[intrin: "tanh"]]     { static_assert (T.isPrimitive || T.isVector, "tanh() only works with floating point types");  static_assert (T.primitiveType.isFloat, "tanh() only works with floating point types");  return sinh (n) / cosh (n); }
-    T asinh<T> (T n)  [[intrin: "asinh"]]    { static_assert (T.isPrimitive || T.isVector, "asinh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "asinh() only works with floating point types"); return log (n + sqrt (n * n + 1)); }
 )soul_code"
 R"soul_code(
 
+    T asinh<T> (T n)  [[intrin: "asinh"]]    { static_assert (T.isPrimitive || T.isVector, "asinh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "asinh() only works with floating point types"); return log (n + sqrt (n * n + 1)); }
     T acosh<T> (T n)  [[intrin: "acosh"]]    { static_assert (T.isPrimitive || T.isVector, "acosh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "acosh() only works with floating point types"); return log (n + sqrt (n * n - 1)); }
     T atanh<T> (T n)  [[intrin: "atanh"]]    { static_assert (T.isPrimitive || T.isVector, "atanh() only works with floating point types"); static_assert (T.primitiveType.isFloat, "atanh() only works with floating point types"); return 0.5f * log ((1 + n) / (1 - n)); }
     T asin<T>  (T n)  [[intrin: "asin"]]     { static_assert (T.isPrimitive || T.isVector, "asin() only works with floating point types");  static_assert (T.primitiveType.isFloat, "asin() only works with floating point types");  return atan (n / (sqrt (1 - (n * n)))); }
@@ -897,6 +914,9 @@ R"soul_code(
             if (y > 0) return T (pi /  2.0);
             if (y < 0) return T (pi / -2.0);
 
+)soul_code"
+R"soul_code(
+
             return 0;  // Undefined case: return 0
         }
 
@@ -910,9 +930,6 @@ R"soul_code(
     }
 
     namespace helpers
-)soul_code"
-R"soul_code(
-
     {
         T atanHelperPositive<T> (T n)
         {
@@ -946,10 +963,14 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.timeline")  return R"soul_code(
-/**
-    This namespace contains various types and functions which are used when
+/** Title: Timeline event utilities
+
+    The `timeline` namespace contains various structs and functions which are used when
     dealing with positions and tempos along a timeline.
 */
+
+/// The `timeline` namespace contains various structs and functions which are used when
+/// dealing with positions and tempos along a timeline.
 namespace soul::timeline
 {
     //==============================================================================
@@ -968,16 +989,25 @@ namespace soul::timeline
     }
 
     //==============================================================================
+    /** */
     float quarterNotesPerBeat (TimeSignature timeSig)                                       { return 4.0f / timeSig.denominator; }
+    /** */
     float beatsPerQuarterNote (TimeSignature timeSig)                                       { return timeSig.denominator / 4.0f; }
 
+    /** */
     float secondsPerBeat (Tempo tempo)                                                      { return tempo.bpm <= 0 ? 0.0f : (60.0f / tempo.bpm); }
+    /** */
     float secondsPerQuarterNote (Tempo tempo, TimeSignature timeSig)                        { return tempo.secondsPerBeat() * timeSig.beatsPerQuarterNote(); }
 
+    /** */
     float64 framesPerBeat (Tempo tempo, float64 sampleRate)                                 { return sampleRate * tempo.secondsPerBeat(); }
+    /** */
     float64 framesPerQuarterNote (Tempo tempo, TimeSignature timeSig, float64 sampleRate)   { return sampleRate * tempo.secondsPerQuarterNote (timeSig); }
 
     //==============================================================================
+)soul_code"
+R"soul_code(
+
     /** Represents the state of a host which can play timeline-based material. */
     struct TransportState
     {
@@ -987,11 +1017,11 @@ namespace soul::timeline
         int state;
     }
 
-)soul_code"
-R"soul_code(
-
+    /** */
     bool isStopped   (TransportState t)       { return t.state == 0; }
+    /** */
     bool isPlaying   (TransportState t)       { return t.state == 1; }
+    /** */
     bool isRecording (TransportState t)       { return t.state == 2; }
 
     //==============================================================================
@@ -1023,9 +1053,30 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.filters")  return R"soul_code(
-/**
-    Various filter implementations.
+/** Title: Filters
+
+    This module contains a collection of filter implementations, including more traditional
+    biquad based filters and TPT variants, which are more suitable for modulation.
+
+    Notes:
+    - Filter coefficients are typically labelled a and b. Different literature uses different
+      conventions for what a and b mean. This code uses the following:
+        * `b`: feed-forward, numerator, zero, FIR coefficients.
+        * `a`: feed-back, denominator, pole, IIR coefficients.
+    - Although each filter comes with a Processor, they are designed so that their state,
+      coefficients and functions can be used independently.
+    - Each filter has a `State` struct and a `Coeffs` struct.
+    - `process()` functions generate an output y for an input x.
+    - `update()` functions take high level parameters such as mode, frequency, Q, mode and
+      update the filter coefficients.
+    - `reset()` functions reset the filter state/histories to 0.
+    - `clear()` functions clears filter coefficients.
+    - The filters are designed for channel-wise vectorisation, which can be achieved by
+      specialising the filter's namespace with a vector type.
+    - Some filters are suitable for modulation, others are not, check the comments at the top
+      of the namespace.
 */
+
 namespace soul::filters (using SampleType = float32,
                          using CoeffType  = float64,
                          int updateInterval = 16)
@@ -1043,32 +1094,39 @@ namespace soul::filters (using SampleType = float32,
     let normalisedFreqLimit = 0.49;
 
     //==============================================================================
-    /** Highpass for removing DC offset
+    /** Highpass filter for removing DC offset.
 
-        y[n] = x[n] - x[n-1] + b0 * y[n-1]
+            y[n] = x[n] - x[n-1] + b0 * y[n-1]
+
+)soul_code"
+R"soul_code(
 
         https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html
     */
     namespace dc_blocker
     {
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             CoeffType b1;
             CoeffType a0;
         }
 
+        /** Holds the filter state. */
         struct State
         {
             SampleType[1] x;
             SampleType[1] y;
         }
 
+        /** Resets a filter state. */
         void reset (State& s)
         {
             s.x[0] = SampleType();
             s.y[0] = SampleType();
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (Coeffs& c, float64 sampleRate, float64 freqHz)
         {
             let w = pi * freqHz / sampleRate;
@@ -1099,9 +1157,6 @@ namespace soul::filters (using SampleType = float32,
                 loop
                 {
                     out << s.process (in, c);
-)soul_code"
-R"soul_code(
-
                     advance();
                 }
             }
@@ -1112,23 +1167,30 @@ R"soul_code(
     /** Biquadratic (two-pole-two-zero) IIR filter building block.
 
         Direct Form I (DFI):
-           y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
+
+            y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
 
         Transposed Direct Form II (TDFII):
-           y[n] = b0 * x[n] + s1
-             s1 = b1 * x[n] + a1 * y[n] + s2
-             s2 = b2 * x[n] + a2 * y[n]
+
+            y[n] = b0 * x[n] + s1
+              s1 = b1 * x[n] + a1 * y[n] + s2
+              s2 = b2 * x[n] + a2 * y[n]
     */
     namespace biquad
     {
+)soul_code"
+R"soul_code(
+
         // Coefficients and related functions
 
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             CoeffType<3> b, /**< feed-forward, numerator, zero, FIR coefficients */
                          a; /**< feed-back, denominator, pole, IIR coefficients */
         }
 
+        /** Initialises a set of coefficients. */
         void set (Coeffs &c,
                   CoeffType b0, CoeffType b1, CoeffType b2,
                   CoeffType a0, CoeffType a1, CoeffType a2)
@@ -1136,7 +1198,7 @@ R"soul_code(
             c.b[0] = b0; c.b[1] = b1; c.b[2] = b2; c.a[0] = a0; c.a[1] = a1; c.a[2] = a2;
         }
 
-        /** Sets the coefficients, normalizing based on the first feedback coefficient v.a[0] */
+        /** Sets the coefficients, normalising based on the first feedback coefficient v.a[0] */
         void setNonNormalised (Coeffs &c, const Coeffs& v)
         {
             let oneOverA0 = 1.0 / v.a[0];
@@ -1145,26 +1207,27 @@ R"soul_code(
             c.a[0] = v.a[0]; // keep original a0
         }
 
-        /** Sets the coefficients, assuming v is already normalized. */
+        /** Sets the coefficients, assuming v is already normalised. */
         void setNormalised (Coeffs &c, Coeffs v)
         {
             c = v;
         }
 
+        /** Clears a set of coefficients. */
         void clear (Coeffs &c)
         {
             c.b = CoeffType();
             c.a = CoeffType();
         }
 
-        // State and related functions
-
+        /** Holds the filter state. */
         struct State
         {
             SampleType[2] x;
             SampleType[2] y;
         }
 
+        /** Resets a filter state. */
         void reset (State &s)
         {
             s.x[0] = SampleType();
@@ -1173,11 +1236,7 @@ R"soul_code(
             s.y[1] = SampleType();
         }
 
-        // Process functions
-
-)soul_code"
-R"soul_code(
-
+        /** */
         SampleType processDFI (State& s, SampleType x, Coeffs& c)
         {
             let y  = SampleType (c.b[0] * x
@@ -1188,6 +1247,9 @@ R"soul_code(
 
             s.x[1] = s.x[0];
             s.x[0] = x;
+)soul_code"
+R"soul_code(
+
             s.y[1] = s.y[0];
             s.y[0] = y;
 
@@ -1211,6 +1273,7 @@ R"soul_code(
             return y;
         }
 
+        /** */
         SampleType processCascadeDFI<StateArrayType, CoeffsArrayType> (SampleType x,
                                                                        StateArrayType& s,
                                                                        CoeffsArrayType& c)
@@ -1227,15 +1290,16 @@ R"soul_code(
             return y;
         }
 
+        /** */
         SampleType processCascadeTDFII<StateArrayType, CoeffsArrayType> (SampleType x,
-)soul_code"
-R"soul_code(
-
                                                                          StateArrayType& s,
                                                                          CoeffsArrayType& c)
         {
             static_assert (StateArrayType.isArray, "states argument is not an array");
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+)soul_code"
+R"soul_code(
+
             static_assert (s.size == c.size, "states and coeffs arrays are not the same size");
 
             var y = x;
@@ -1249,9 +1313,9 @@ R"soul_code(
 
     //==============================================================================
     /**
-        1st-order IIR filter.
+        First-order IIR filter.
 
-        y[n] = b0 * x[n] - a1 * y[n-1]
+            y[n] = b0 * x[n] - a1 * y[n-1]
 
         Coefficients derived from Pirkle.
         This filter is not suitable for modulation.
@@ -1260,6 +1324,7 @@ R"soul_code(
     {
         namespace biquad = soul::filters::biquad;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
             let lowpass  = 0;
@@ -1267,6 +1332,7 @@ R"soul_code(
             let allpass  = 2;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (biquad::Coeffs& c, float64 sampleRate, int mode, float64 freqHz)
         {
             biquad::Coeffs nc; // normalised coefficients
@@ -1295,9 +1361,6 @@ R"soul_code(
                 let w = tan (theta * 0.5);
                 let alpha = (w - 1.0) / (w + 1.0);
 
-)soul_code"
-R"soul_code(
-
                 nc.b[0] = alpha;
                 nc.b[1] = 1.0;
                 nc.a[1] = alpha;
@@ -1306,7 +1369,11 @@ R"soul_code(
             c.setNormalised (nc);
         }
 
+        /** A processor to render a onepole filter. */
         processor Processor (int initialMode = 0,
+)soul_code"
+R"soul_code(
+
                              float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
@@ -1355,17 +1422,18 @@ R"soul_code(
     /** RBJ biquad EQ, 2nd Order IIR Filter.
 
         This filter is not suitable for modulation.
-)soul_code"
-R"soul_code(
-
         See https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
     */
     namespace rbj_eq
     {
         namespace biquad = soul::filters::biquad;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
+)soul_code"
+R"soul_code(
+
             let lowpass   = 0;
             let highpass  = 1;
             let bandpass  = 2;
@@ -1376,6 +1444,7 @@ R"soul_code(
             let allpass   = 7;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (biquad::Coeffs& c,
                      float64 sampleRate, int mode, float64 freqHz,
                      float64 quality, float64 gaindB)
@@ -1417,11 +1486,11 @@ R"soul_code(
             }
             else if (mode == Mode::lowShelf)
             {
+                let A = pow (10.0, gaindB / 40.0);
+                nnc.b[0] = A * ((A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
 )soul_code"
 R"soul_code(
 
-                let A = pow (10.0, gaindB / 40.0);
-                nnc.b[0] = A * ((A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
                 nnc.b[1] = 2.0 * A * ( (A - 1) - (A + 1) * cosTheta);
                 nnc.b[2] = A * ((A + 1) - (A - 1) * cosTheta - 2 * sqrt (A) * alpha);
                 nnc.a[0] = (A + 1) + (A - 1) * cosTheta + 2 * sqrt (A) * alpha;
@@ -1462,17 +1531,18 @@ R"soul_code(
                 nnc.b[0] = 1.0 - alpha;
                 nnc.b[1] = -2.0 * cosTheta;
                 nnc.b[2] = 1.0 + alpha;
-)soul_code"
-R"soul_code(
-
                 nnc.a[0] = 1.0 + alpha;
                 nnc.a[1] = -2.0 * cosTheta;
                 nnc.a[2] = 1.0 - alpha;
             }
 
+)soul_code"
+R"soul_code(
+
             c.setNonNormalised (nnc);
         }
 
+        /** */
         processor Processor (int initialMode = 0,
                              float initialFrequency = defaultFreqHz,
                              float initialQuality   = defaultQuality,
@@ -1511,11 +1581,11 @@ R"soul_code(
                     {
                         recalc = false;
                         let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
-)soul_code"
-R"soul_code(
-
                         c.update (processor.frequency, mode, clippedFrequency, quality, gain);
                     }
+
+)soul_code"
+R"soul_code(
 
                     loop (updateInterval)
                     {
@@ -1570,12 +1640,12 @@ R"soul_code(
 
             void run()
             {
-)soul_code"
-R"soul_code(
-
                 loop
                 {
                     out << biquad::processCascadeTDFII (in, s, c);
+)soul_code"
+R"soul_code(
+
                     advance();
                 }
             }
@@ -1594,12 +1664,14 @@ R"soul_code(
         namespace onepole = soul::filters::onepole;
         namespace rbj = soul::filters::rbj_eq;
 
+        /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
             let lowpass  = 0;
             let highpass = 1;
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update<CoeffsArrayType> (CoeffsArrayType& coeffs, float64 sampleRate, int order, int mode, float64 freqHz)
         {
             static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
@@ -1635,10 +1707,10 @@ R"soul_code(
             The order must be > 0
         */
         processor Processor (int order,
-                             int initialMode = 0,
 )soul_code"
 R"soul_code(
 
+                             int initialMode = 0,
                              float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
@@ -1692,10 +1764,10 @@ R"soul_code(
     }
 
     //==============================================================================
-    /** Analytic filter / IIR Hilbert transformer.
-
 )soul_code"
 R"soul_code(
+
+    /** Analytic filter / IIR Hilbert transformer.
 
         https://dsp.stackexchange.com/a/59157
 
@@ -1714,11 +1786,13 @@ R"soul_code(
             let numCoefficients = numFilters * 2;
             let order = numCoefficients * 2 + 1;
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 float64[numCoefficients] coeffs;
             }
 
+            /** */
             Coeffs compute (float64 transition)
             {
                 Coeffs c;
@@ -1755,13 +1829,13 @@ R"soul_code(
 
                 loop
                 {
+)soul_code"
+R"soul_code(
+
                     let next = pow (q, float64 (i * (i + 1))) * sin ((i * 2 + 1) * c * pi / order) * j;
                     result += next;
 
                     if (abs (next) < 1e-100)
-)soul_code"
-R"soul_code(
-
                         return result;
 
                     j = -j;
@@ -1799,16 +1873,19 @@ R"soul_code(
         }
 
         /** Parallel 2nd-order all-pass.
-            y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
+
+                y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
         */
         namespace dual_apf
         {
+            /** Holds the filter state. */
             struct State
             {
                 SampleType[2] x1, y1, x2, y2;
                 CoeffType[2] c;
             }
 
+            /** */
             SampleType[2] process (State& s, SampleType[2] x)
             {
                 let y = SampleType[2] (SampleType (s.c[0]) * (x[0] + s.y2[0]) - s.x2[0],
@@ -1822,18 +1899,20 @@ R"soul_code(
             }
         }
 
+)soul_code"
+R"soul_code(
+
+        /** Holds the filter state. */
         struct State
         {
             dual_apf::State[numFilters] apfs;
             SampleType[1] x;
         }
 
+        /** Updates a filter state with the given sample rate. */
         void update (State& s, float64 sampleRate)
         {
             let design = polyphase_iir_design::compute (2.0 * (transitionBandwidthHz / sampleRate));
-
-)soul_code"
-R"soul_code(
 
             for (wrap<numFilters> i)
             {
@@ -1842,6 +1921,7 @@ R"soul_code(
             }
         }
 
+        /** */
         SampleType[2] process (State& s, SampleType x)
         {
             var y = SampleType[2] (x, s.x[0]);
@@ -1855,6 +1935,7 @@ R"soul_code(
             return y;
         }
 
+        /** */
         processor Processor
         {
             input stream SampleType in;
@@ -1889,35 +1970,39 @@ R"soul_code(
     */
     namespace complex_resonator
     {
+        /** Holds the filter state. */
         struct State
         {
             SampleType yReal;
             SampleType yImag;
         }
 
+        /** Holds a set of filter coefficients. */
         struct Coeffs
         {
             complex64 v;
         }
 
-        // TODO: if cexp becomes a global function, use that
+)soul_code"
+R"soul_code(
+
         complex64 cexp (complex64 c)
         {
+            // TODO: if cexp becomes a global function, use that
             let e = exp (c.real);
             return complex64 (e * cos (c.imag), e * sin (c.imag));
         }
 
+        /** Updates a set of coefficients for the given settings. */
         void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 t60)
         {
             let jImag = (0.0 + 1.0i);
             let decayFactor = tau2pole (t60, sampleRate);
             let oscCoef = cexp ((jImag * twoPi) * (freqHz / sampleRate));
             c.v = decayFactor * oscCoef;
-)soul_code"
-R"soul_code(
-
         }
 
+        /** */
         SampleType[2] process (State& s, Coeffs& c, SampleType x)
         {
             let xReal = x;
@@ -1931,6 +2016,7 @@ R"soul_code(
             return SampleType[2] (yReal, yImag);
         }
 
+        /** */
         processor Processor (float initialFrequency = defaultFreqHz,
                              float initialDecay = 1.0f,
                              float initialGain = 1.0f)
@@ -1948,6 +2034,9 @@ R"soul_code(
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
             event decayIn     (float v) { decay = v; recalc = true; }
+)soul_code"
+R"soul_code(
+
             event gainIn      (float v) { gain = v; recalc = true; }
 
             float frequency = initialFrequency,
@@ -1972,9 +2061,6 @@ R"soul_code(
                     if (recalc)
                     {
                         recalc = false;
-)soul_code"
-R"soul_code(
-
                         let clippedFrequency = clamp (float64 (frequency), float64 (minFreqHz), processor.frequency * normalisedFreqLimit);
                         c.update (processor.frequency, clippedFrequency, decay);
                     }
@@ -1993,7 +2079,7 @@ R"soul_code(
 
     //==============================================================================
     /**
-        "Topology preserving transform" filters.
+        This namespace contains a set of "Topology preserving transform" filters.
     */
     namespace tpt
     {
@@ -2005,33 +2091,42 @@ R"soul_code(
         */
         namespace onepole
         {
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
                 let highpass = 1;
                 let allpass  = 2;
             }
+)soul_code"
+R"soul_code(
 
+
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType b;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType z1;
             }
 
+            /** Clears a set of coefficients. */
             void clear (Coeffs& c)
             {
                 c.b = CoeffType (1);
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.z1 = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, float64 freqHz)
             {
                 let wd = twoPi * freqHz;
@@ -2042,10 +2137,8 @@ R"soul_code(
                 c.b = CoeffType (g / (1.0 + g));
             }
 
+            /** */
             SampleType processLPF (State& s, SampleType x, Coeffs& c)
-)soul_code"
-R"soul_code(
-
             {
                 let vn = (x - s.z1) * SampleType (c.b);
                 let lpf = vn + s.z1;
@@ -2053,11 +2146,13 @@ R"soul_code(
                 return lpf;
             }
 
+            /** */
             SampleType processHPF (State& s, SampleType x, Coeffs& c)
             {
                 return x - processLPF (s, x, c);
             }
 
+            /** */
             SampleType processAPF (State& s, SampleType x, Coeffs& c)
             {
                 let lpf = processLPF (s, x, c);
@@ -2065,6 +2160,7 @@ R"soul_code(
                 return lpf - hpf;
             }
 
+            /** */
             processor Processor (int initialMode = 0,
                                  float initialFrequency = defaultFreqHz)
             {
@@ -2073,6 +2169,9 @@ R"soul_code(
 
                 input event
                 {
+)soul_code"
+R"soul_code(
+
                     float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
                     float modeIn      [[ name: "Mode",      min: 0,         max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
                 }
@@ -2099,9 +2198,6 @@ R"soul_code(
                                                           float64 (minFreqHz),
                                                           processor.frequency * normalisedFreqLimit);
                             c.update (processor.frequency, clippedFrequency);
-)soul_code"
-R"soul_code(
-
                         }
 
                         loop (16)
@@ -2125,6 +2221,10 @@ R"soul_code(
         */
         namespace svf
         {
+)soul_code"
+R"soul_code(
+
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
@@ -2132,6 +2232,7 @@ R"soul_code(
                 let bandpass = 2;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType a0;
@@ -2139,17 +2240,20 @@ R"soul_code(
                 CoeffType p;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType[2] z;
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.z[0] = SampleType();
                 s.z[1] = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 quality)
             {
                 let Q = max (quality, 0.001);
@@ -2163,12 +2267,10 @@ R"soul_code(
                 c.p = 2.0 * R + g;
             }
 
+            /** */
             SampleType[3] process (State& s, SampleType x, Coeffs& c)
             {
                 let hpf = SampleType (c.a0 * (x - c.p * s.z[0] - s.z[1]));
-)soul_code"
-R"soul_code(
-
                 let bpf = SampleType (c.a * hpf + s.z[0]);
                 let lpf = SampleType (c.a * bpf + s.z[1]);
 
@@ -2178,10 +2280,14 @@ R"soul_code(
                 return SampleType[3] (lpf, hpf, bpf);
             }
 
+            /** */
             processor Processor (float initialFrequency = defaultFreqHz,
                                  float initialQuality = defaultQuality)
             {
                 input stream SampleType in;
+)soul_code"
+R"soul_code(
+
                 output stream SampleType lowpassOut, bandpassOut, highpassOut;
 
                 input event
@@ -2218,9 +2324,6 @@ R"soul_code(
                             let y = s.process (in, c);
                             lowpassOut  << y[0];
                             highpassOut << y[1];
-)soul_code"
-R"soul_code(
-
                             bandpassOut << y[2];
                             advance();
                         }
@@ -2236,15 +2339,20 @@ R"soul_code(
         */
         namespace butterworth
         {
+)soul_code"
+R"soul_code(
+
             namespace onepole = soul::filters::tpt::onepole;
             namespace svf = soul::filters::tpt::svf;
 
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
                 let highpass = 1;
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update<SVFCoeffsArrayType> (SVFCoeffsArrayType& svfCoeffs,
                                              onepole::Coeffs& onepoleCoeffs,
                                              float64 sampleRate, int order, float64 freqHz)
@@ -2273,14 +2381,15 @@ R"soul_code(
                 }
             }
 
+            /** */
             SampleType process<StateArrayType, CoeffsArrayType> (SampleType x,
                                                                  StateArrayType& svfStates,
-)soul_code"
-R"soul_code(
-
                                                                  CoeffsArrayType& svfCoeffs,
                                                                  onepole::State& onepoleState,
                                                                  onepole::Coeffs& onepoleCoeffs,
+)soul_code"
+R"soul_code(
+
                                                                  int mode, bool oddOrder)
             {
                 static_assert (StateArrayType.isArray, "states argument is not an array");
@@ -2320,9 +2429,6 @@ R"soul_code(
                 }
 
                 event frequencyIn (float v)   { frequency = v; recalc = true; }
-)soul_code"
-R"soul_code(
-
                 event modeIn      (float v)   { mode = int (v); recalc = true; }
 
                 float  frequency  = initialFrequency;
@@ -2332,6 +2438,9 @@ R"soul_code(
                 void run()
                 {
                     let numSVFs = order / 2;
+)soul_code"
+R"soul_code(
+
                     let oddOrder = (order % 2) == 1;
 
                     svf::State[numSVFs] svfStates;
@@ -2362,7 +2471,7 @@ R"soul_code(
 
         //==============================================================================
         /**
-            4th-order Linkwitz–Riley crossover filter, which outputs two bands of audio.
+            4th-order Linkwitz-Riley crossover filter, which outputs two bands of audio.
 
             The channels should sum together to produce a flat response.
             This filter is suitable for modulation.
@@ -2371,23 +2480,26 @@ R"soul_code(
         {
             namespace SVF = soul::filters::tpt::svf;
 
+            /** Holds the filter state. */
             struct State
             {
                 SVF::State svf1, svf2;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 SVF::Coeffs svf1, svf2;
-)soul_code"
-R"soul_code(
-
             }
 
+            /** */
             processor Processor (float initialFrequency = defaultFreqHz)
             {
                 input stream float32 in;
                 output stream float32 lowOut;
+)soul_code"
+R"soul_code(
+
                 output stream float32 highOut;
 
                 input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
@@ -2397,6 +2509,7 @@ R"soul_code(
                 float frequency = initialFrequency;
                 bool recalc = true;
 
+                /** Updates a set of coefficients for the given settings. */
                 void update (Coeffs& c, float64 sampleRate, float64 freqHz)
                 {
                     c.svf1.update (sampleRate, freqHz, defaultQuality);
@@ -2433,12 +2546,12 @@ R"soul_code(
                         loop (16)
                         {
                             let y = s.process (in, c);
-)soul_code"
-R"soul_code(
-
                             lowOut  << y[0];
                             highOut << y[1];
                             advance();
+)soul_code"
+R"soul_code(
+
                         }
                     }
                 }
@@ -2455,6 +2568,7 @@ R"soul_code(
         */
         namespace simper_eq
         {
+            /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass   = 0;
@@ -2468,23 +2582,27 @@ R"soul_code(
                 let bell      = 8;
             }
 
+            /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType a1, a2, a3;
                 CoeffType m0, m1, m2;
             }
 
+            /** Holds the filter state. */
             struct State
             {
                 SampleType ic1eq, ic2eq;
             }
 
+            /** Resets a filter state. */
             void reset (State& s)
             {
                 s.ic1eq = SampleType();
                 s.ic2eq = SampleType();
             }
 
+            /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gain)
             {
                 let w = tan (pi * freqHz / sampleRate);
@@ -2500,13 +2618,13 @@ R"soul_code(
                     c.m1 = 0.0;
                     c.m2 = 1.0;
                 }
+)soul_code"
+R"soul_code(
+
                 else if (mode == Mode::highpass)
                 {
                     let g = w;
                     c.a1 = 1.0 / (1.0 + g * (g + k));
-)soul_code"
-R"soul_code(
-
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = 1.0;
@@ -2559,13 +2677,13 @@ R"soul_code(
                 {
                     let g = w;
                     c.a1 = 1.0 / (1.0 + g * (g + k));
+)soul_code"
+R"soul_code(
+
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = 1.0;
                     c.m1 = -k;
-)soul_code"
-R"soul_code(
-
                     c.m2 = 0.0;
                 }
                 else if (mode == Mode::allpass)
@@ -2591,6 +2709,7 @@ R"soul_code(
                 }
             }
 
+            /** */
             SampleType process (State& s, SampleType x, Coeffs& c)
             {
                 let v0 = x;
@@ -2602,6 +2721,7 @@ R"soul_code(
                 return    SampleType (c.m0 * v0 + c.m1 * v1 + c.m2 * v2);
             }
 
+            /** */
             processor Processor (int initialMode = 0,
                                  float initialFrequency = defaultFreqHz,
                                  float initialQuality = defaultQuality,
@@ -2613,10 +2733,10 @@ R"soul_code(
                 input event
                 {
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz  ]];
-                    float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
 )soul_code"
 R"soul_code(
 
+                    float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
                     float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0            ]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
                 }
@@ -2663,41 +2783,63 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.oscillators")  return R"soul_code(
+/** Title: Oscillators
+
+    This module contains a collection of oscillator algorithms for generating
+    various wave-shapes. The collection covers low frequency designs and high quality alias
+    free algotithms.
+*/
+
 /**
-    This namespace contains various types of oscillator.
+    The `oscillators` namespace is parameterised with a `SampleType` and `PhaseType`. The `SampleType` specifies
+    the output type, and can be either `float32` or `float64`. The `PhaseType` is used internally to track
+    phase position, so higher resolution data types can be used to reduce frequency inaccuracy for very critical
+    applications.
+
+    By default the `SampleType` and `PhaseType` are float32.
 */
 namespace soul::oscillators (using SampleType = float32,
                              using PhaseType  = float32)
 {
+    static_assert (SampleType.isFloat, "The SampleType must be a float");
+    static_assert (PhaseType.isFloat && ! PhaseType.isVector, "The PhaseType must be a float");
+
     let minFreqHz = 0.0f;
     let maxFreqHz = 22000.0f;
     let defaultFreqHz = 1000.0f;
 
     //==============================================================================
-    /** A unipolar ramp (phasor) oscillator.
-        This is a non-bandlimited oscillator that will cause aliasing!
-    */
+    /// A unipolar ramp (phasor) oscillator.
+    /// This is a non-bandlimited oscillator that will cause aliasing, but is used internally by the BLEP oscillator.
     namespace phasor
     {
         struct State
         {
-            PhaseType phase; // range 0 - 1
+            /// The phase uses a range 0 to 1.0
+            PhaseType phase;
+            /// The increment of phase per frame
             PhaseType phaseIncrement;
         }
 
+        /// Resets a phaser::State object
         void reset (State& s)
         {
             s.phase = PhaseType();
         }
 
+        /// Updates a phaser::State object for a new rate
         void update (State& s, float64 samplePeriod, float64 freqHz)
         {
             s.phaseIncrement = PhaseType (samplePeriod * freqHz);
         }
 
+        /// Increments a phaser::State object and returns the new phase
         PhaseType process (State& s)
         {
             s.phase += s.phaseIncrement;
+
+)soul_code"
+R"soul_code(
 
             while (s.phase >= PhaseType (1))
                 s.phase -= PhaseType (1);
@@ -2705,12 +2847,11 @@ namespace soul::oscillators (using SampleType = float32,
             return s.phase;
         }
 
+        /// A processor that produces a stream of phase values as its output.
         processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType out;
-
             input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
-
             event frequencyIn (float v) { s.update (processor.period, v); }
 
             State s;
@@ -2732,17 +2873,11 @@ namespace soul::oscillators (using SampleType = float32,
     }
 
     //==============================================================================
-    /** A simple sinewave oscillator.
-    */
+    /// A simple sinewave oscillator which receives input events to control its frequency.
     processor Sine (float initialFrequency = 1000)
     {
         output stream SampleType out;
-
-)soul_code"
-R"soul_code(
-
         input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
-
         event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
         var phaseIncrement = float (initialFrequency * twoPi * processor.period);
@@ -2761,14 +2896,19 @@ R"soul_code(
     }
 
     //==============================================================================
-    /** A semi band-limited oscillator with sawtooth, square and triangle wave shapes
-        using the PolyBLEP (Polynomial Band-Limited Step) technique.
-        You may want to oversample this oscillator, in order to reduce aliasing.
-    */
+    /// A semi band-limited oscillator with sawtooth, square and triangle wave shapes
+    /// using the PolyBLEP (Polynomial Band-Limited Step) technique.
+    /// You may want to oversample this oscillator, in order to reduce aliasing.
+    ///
     namespace poly_blep
     {
+)soul_code"
+R"soul_code(
+
+        /// Contains different wave-shaping functions.
         namespace shapers
         {
+            /// Generates a polyblep
             PhaseType polyblep (PhaseType phase, PhaseType phaseIncrement)
             {
                 if (phase < phaseIncrement)
@@ -2786,22 +2926,22 @@ R"soul_code(
                 return PhaseType (0);
             }
 
+            /// Generates a sawtooth wave from a phasor state
             PhaseType sawtooth (phasor::State& s)
             {
                 return PhaseType (-1) + (PhaseType (2) * s.phase) - polyblep (s.phase, s.phaseIncrement);
             }
 
+            /// Generates a square wave from a phasor state
             PhaseType square (phasor::State& s)
             {
                 return (s.phase < PhaseType (0.5) ? PhaseType (-1) : PhaseType (1))
                         - polyblep (s.phase, s.phaseIncrement)
                         + polyblep (fmod (s.phase + PhaseType (0.5), PhaseType (1)), s.phaseIncrement);
             }
-)soul_code"
-R"soul_code(
-
         }
 
+        /// Contains constants for different wave-shapes
         namespace Shape
         {
             let sawtooth = 0;
@@ -2809,16 +2949,16 @@ R"soul_code(
             let square   = 2;
         }
 
+        /// A processor which generates a dynamically adjustable wave-shape.
         processor Processor (int initialShape = 0,
                             float initialFrequency = 1000)
         {
             output stream SampleType out;
+            input event float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
+)soul_code"
+R"soul_code(
 
-            input event
-            {
-                float shapeIn       [[ name: "Shape",     min: 0,         max: 2,         init: 0,    text: "Sawtooth|Triangle|Square"]];
-                float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
-            }
+            input event float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
 
             event shapeIn (float v)        { shape = wrap<3> (floor (v)); }
             event frequencyIn (float v)    { s.update (processor.period, v); }
@@ -2864,13 +3004,11 @@ R"soul_code(
         }
     }
 
-)soul_code"
-R"soul_code(
-
     //==============================================================================
-    /** A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously.
-        https://vicanek.de/articles/QuadOsc.pdf
-    */
+    /// A quadrature sinusoidal oscillator producing sine and cosine outputs simultaneously.
+    /// The `updateInterval` defines the samples between updates to the frequency taking effect.
+    /// https://vicanek.de/articles/QuadOsc.pdf
+    ///
     namespace quadrature (int updateInterval = 16)
     {
         struct State
@@ -2883,12 +3021,17 @@ R"soul_code(
             SampleType k1, k2;
         }
 
+)soul_code"
+R"soul_code(
+
+        /// Resets a quadrature::State object.
         void reset (State& s)
         {
             s.u = SampleType (1);
             s.v = SampleType();
         }
 
+        /// Updates a quadrature::State object for a new rate.
         void update (Coeffs& c, float64 freqHz, float64 sampleRate)
         {
             let w = twoPi * (freqHz / sampleRate);
@@ -2896,6 +3039,7 @@ R"soul_code(
             c.k2 = SampleType (2.0 * c.k1 / (1.0 + c.k1 * c.k1));
         }
 
+        /// Generates the next samples for a quadrature::State object.
         SampleType[2] process (State& s, Coeffs& c)
         {
             let tmp = s.u - c.k1 * s.v;
@@ -2904,6 +3048,7 @@ R"soul_code(
             return SampleType[2] (s.v, s.u);
         }
 
+        /// A processor that generates a pair of sine/cosine output streams.
         processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType sineOut;
@@ -2935,9 +3080,6 @@ R"soul_code(
                     {
                         let y = s.process (c);
                         sineOut << y[0];
-)soul_code"
-R"soul_code(
-
                         cosineOut << y[1];
                         advance();
                     }
@@ -2946,12 +3088,17 @@ R"soul_code(
         }
     }
 
+)soul_code"
+R"soul_code(
+
     //==============================================================================
-    /**
-        A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.
-    */
+    ///
+    /// A tempo-syncable LFO with some common shapes and options for uni-polar or bi-polar output.
+    /// Unipolar LFO shapes run between 0 and 1, whilst Bipolar run between -1 and 1.
+    ///
     namespace lfo
     {
+        /// Various LFO shape generator functions.
         namespace shapers
         {
             SampleType rampUp           (PhaseType phase) { return (phase * 2.0f) - 1.0f; }
@@ -2966,6 +3113,7 @@ R"soul_code(
             SampleType sineUnipolar     (PhaseType phase) { return (sin (phase * float32 (twoPi)) + 1.0f) * 0.5f; }
         }
 
+        /// A set of constants to specify different LFO shapes.
         namespace Shape
         {
             let triangle      = 0;
@@ -2976,15 +3124,20 @@ R"soul_code(
             let sampleAndHold = 5;
         }
 
+        /// Polarity control constants.
         namespace Polarity
         {
             let unipolar = 0;
             let bipolar  = 1;
         }
 
+        /// Functions for applying a smoothing filter on a changing value.
         namespace smoother
         {
             struct State
+)soul_code"
+R"soul_code(
+
             {
                 float currentValue;
                 float targetValue;
@@ -2992,9 +3145,7 @@ R"soul_code(
                 int steps;
             }
 
-)soul_code"
-R"soul_code(
-
+            /// Resets a smoother::State object
             void reset (State& state, float initialValue)
             {
                 state.currentValue = initialValue;
@@ -3003,6 +3154,8 @@ R"soul_code(
                 state.steps = 0;
             }
 
+            /// Updates a smoother::State object with a new target value and the
+            /// number of steps to reach the target
             void setTarget (State& state, float targetValue, int steps)
             {
                 state.targetValue = targetValue;
@@ -3010,6 +3163,7 @@ R"soul_code(
                 state.steps = steps;
             }
 
+            /// Advances the state of a smoother and returns the new smoothed value
             float tick (State& state)
             {
                 if (state.steps == 0)
@@ -3025,25 +3179,29 @@ R"soul_code(
             }
         }
 
+        /// A processor which implements an LFO with events to control its parameters.
+        /// Changes to the frequency and depth are smoothed, but expect discontinuities if the shape or polarity
+        /// are updated.
         processor Processor (int initialShape = 0,
                              int initialPolarity = 0,
                              float initialDepth = 1.0f,
                              float initialFrequency = 1.0f)
         {
             output stream SampleType out;
-            input event soul::timeline::Position positionIn;
-            input event soul::timeline::TransportState transportStateIn;
-            input event soul::timeline::Tempo tempoIn;
 
             input event
             {
+                soul::timeline::Position positionIn;
+                soul::timeline::TransportState transportStateIn;
+)soul_code"
+R"soul_code(
+
+                soul::timeline::Tempo tempoIn;
+
                 float rateHzIn     [[ name: "Rate (Hz)",     min: 0.01,  max: 40.0,   init: 1.,   unit: "hz", step: 0.01 ]];
                 float rateTempoIn  [[ name: "Rate (Beats)",  min: 0.001, max: 32,     init: 0,    unit: "beat", step: 0.001]];
                 float depthIn      [[ name: "Depth",         min: 0,     max: 100,    init: 100,  unit: "%",  step: 1 ]];
                 float shapeIn      [[ name: "Shape",         min: 0,     max: 5,      init: 0,    text: "Triangle|Square|Ramp Up|Ramp Down|Sine|Sample & Hold"]];
-)soul_code"
-R"soul_code(
-
                 float polarityIn   [[ name: "Polarity",      min: 0,     max: 1,      init: 0,    text: "Unipolar|Bipolar"]];
                 float rateModeIn   [[ name: "Rate Mode",     min: 0,     max: 1,      init: 0,    text: "Hz|Tempo"]];
                 float syncIn       [[ name: "Timeline Sync", min: 0,     max: 1,      init: 0,    text: "Off|On"]];
@@ -3067,6 +3225,9 @@ R"soul_code(
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
+)soul_code"
+R"soul_code(
+
             var phaseIncrement = float32 (initialFrequency * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
@@ -3081,9 +3242,6 @@ R"soul_code(
             float32 qnPhaseIncrement = (120.0f / 60.0f) * (1.0f / 44100.0f); // Default = 1qn @ 120bpm / 44.1 sr
 
             PhaseType prevPhase = 1.0f;
-)soul_code"
-R"soul_code(
-
             soul::random::RandomNumberState rng;
             SampleType noiseSample;
 
@@ -3112,6 +3270,9 @@ R"soul_code(
                 {
                     if (shape == Shape::triangle)      return shapers::triangleUnipolar (phase);
                     if (shape == Shape::square)        return shapers::squareUnipolar (phase);
+)soul_code"
+R"soul_code(
+
                     if (shape == Shape::rampUp)        return shapers::rampUpUnipolar (phase);
                     if (shape == Shape::rampDown)      return shapers::rampDownUnipolar (phase);
                     if (shape == Shape::sine)          return shapers::sineUnipolar (phase);
@@ -3132,9 +3293,6 @@ R"soul_code(
 
                 loop
                 {
-)soul_code"
-R"soul_code(
-
                     out << getNextSample() * depth.tick();
 
                     if (qnMode)
@@ -3170,10 +3328,14 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.frequency")  return R"soul_code(
-/** Discrete Fourier Transform functions. */
+/**
+    Title: Frequency-domain utilities
+*/
+
+/// Discrete Fourier Transform functions.
 namespace soul::DFT
 {
-    /** Performs a real forward DFT from an input buffer to an output buffer. */
+    /// Performs a real forward DFT from an input buffer to an output buffer.
     void forward<SampleBuffer> (const SampleBuffer& inputData, SampleBuffer& outputData)
     {
         static_assert (SampleBuffer.isFixedSizeArray || SampleBuffer.isVector, "The buffers for DFT::forward() must be fixed size arrays");
@@ -3188,7 +3350,7 @@ namespace soul::DFT
         outputData[harmonics:harmonics * 2] = outputImag[0:harmonics];
     }
 
-    /** Performs a real inverse DFT from an input buffer to an output buffer. */
+    /// Performs a real inverse DFT from an input buffer to an output buffer.
     void inverse<SampleBuffer> (const SampleBuffer& inputData, SampleBuffer& outputData)
     {
         static_assert (SampleBuffer.isFixedSizeArray || SampleBuffer.isVector, "The buffers for DFT::inverse() must be fixed size arrays");
@@ -3203,14 +3365,14 @@ namespace soul::DFT
         performComplex (inputReal, inputImag, outputReal, outputData, 1.0f);
     }
 
-    /** For internal use by the other functions: performs a O(N^2) complex DFT. */
+    // For internal use by the other functions: performs a O(N^2) complex DFT.
     void performComplex<SampleBuffer> (const SampleBuffer& inputReal,
                                        const SampleBuffer& inputImag,
                                        SampleBuffer& outputReal,
-                                       SampleBuffer& outputImag,
 )soul_code"
 R"soul_code(
 
+                                       SampleBuffer& outputImag,
                                        SampleBuffer.elementType scaleFactor)
     {
         let size = SampleBuffer.size;
@@ -3237,13 +3399,27 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.notes")  return R"soul_code(
+/** Title: Musical note utilities
+
+    This module contains various structs which can be used to model note-control events
+    coming from sources such as MIDI keyboards.
+
+    The SOUL policy is to keep the use of actual MIDI to a minimum, so we encourage
+    incoming MIDI data to be converted into these strongly-typed structures, and to use
+    them internally, rather than attempting to work with MIDI bytes like it's the 1980s.
+*/
+
 /**
     This namespace contains some types which are handy for representing synthesiser
     note events. They do a similar job to MIDI events, but as strongly-typed structs
     instead of a group of bytes. Things like the midi::MPEParser class generate them.
+
+    The events do contain a channel number, in the same way that MIDI does, but there
+    are no restrictions on its range.
 */
 namespace soul::note_events
 {
+    /// Represents a note-on (key-down) event.
     struct NoteOn
     {
         int channel;
@@ -3251,6 +3427,7 @@ namespace soul::note_events
         float velocity;
     }
 
+    /// Represents a note-off (key-up) event.
     struct NoteOff
     {
         int channel;
@@ -3258,24 +3435,32 @@ namespace soul::note_events
         float velocity;
     }
 
+    /// Represents a change to the pitch that should be applied to any notes
+    /// being played on the channel specified.
     struct PitchBend
     {
         int channel;
         float bendSemitones;
     }
 
+    /// Represents a change to the pressure that should be applied to any notes
+    /// being played on the channel specified.
     struct Pressure
     {
         int channel;
         float pressure;
     }
 
+    /// Represents a change to the Y-axis parameter that should be applied to any notes
+    /// being played on the channel specified.
     struct Slide
     {
         int channel;
         float slide;
     }
 
+    /// Represents a change to a user-defined control parameter that should be applied
+    /// to any notes being played on the channel specified.
     struct Control
     {
         int channel;
@@ -3284,15 +3469,18 @@ namespace soul::note_events
     }
 }
 
+)soul_code"
+R"soul_code(
+
 //==============================================================================
 /**
-    Various simple voice allocation processors, which take a single stream of
-    input events, and redirect them to an array of target voices.
+    Simple voice allocation helpers, which take a single stream of input events,
+    and redirect them to an array of target voice processors.
 */
 namespace soul::voice_allocators
 {
-    /** A simple allocator which chooses either an inactive voice, or the
-        least-recently used active one if it needs to steal.
+    /** A simple voice-allocator which will find either an inactive voice, or the
+        least-recently used active voice if it needs to steal one.
     */
     processor Basic (int voiceCount)  [[ main: false ]]
     {
@@ -3313,9 +3501,6 @@ namespace soul::voice_allocators
         event eventIn (soul::note_events::NoteOn e)
         {
             wrap<voiceCount> allocatedVoice = 0;
-)soul_code"
-R"soul_code(
-
             var allocatedVoiceAge = voiceInfo[allocatedVoice].voiceAge;
 
             // Find the oldest voice to reuse
@@ -3339,6 +3524,9 @@ R"soul_code(
                 soul::note_events::NoteOff noteOff;
 
                 noteOff.channel = voiceInfo[allocatedVoice].channel;
+)soul_code"
+R"soul_code(
+
                 noteOff.note    = voiceInfo[allocatedVoice].note;
 
                 voiceEventOut[allocatedVoice] << noteOff;
@@ -3374,9 +3562,6 @@ R"soul_code(
 
         event eventIn (soul::note_events::PitchBend e)
         {
-)soul_code"
-R"soul_code(
-
             // Forward the pitch bend to all notes on this channel
             wrap<voiceCount> voice = 0;
 
@@ -3407,6 +3592,9 @@ R"soul_code(
         {
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;
+
+)soul_code"
+R"soul_code(
 
             loop (voiceCount)
             {
@@ -3448,34 +3636,37 @@ R"soul_code(
 )soul_code";
 
     if (moduleName == "soul.midi")  return R"soul_code(
-/**
-    Some MIDI-related functions and processors.
+/** Title: MIDI utilities
 
-    In general, the SOUL policy towards MIDI is to avoid using it any more than is
-    unavoidable, so most of the the helper functions are concerned with converting
-    MIDI messages to soul::note_events types, and all the other synth helper libraries
-    use these strongly-typed events rather than raw MIDI events.
+    In general, the SOUL policy towards MIDI is to avoid it as much as is humanly possible,
+    so most of these helper functions are concerned with converting MIDI messages to
+    `soul::note_events` types, and then the other libraries use these strongly-typed
+    events to model note actions, rather than dealing with raw MIDI events.
 */
+
+/// Various MIDI-related types and functions.
 namespace soul::midi
 {
-    /** This type is used to represent a packed short MIDI message. When you create
-        an input event endpoint and would like it to receive MIDI, this is the type
-        that you should use for it.
-    */
+    /// This type is used to represent a packed short MIDI message. When you create
+    /// an input event endpoint and would like it to receive MIDI, this is the type
+    /// that you should use for it.
     struct Message
     {
         int midiBytes;  /**< Format: (byte[0] << 16) | (byte[1] << 8) | byte[2] */
     }
 
+    /// Extracts the first MIDI byte from a Message object
     int getByte1 (Message m)     { return (m.midiBytes >> 16) & 0xff; }
+    /// Extracts the second MIDI byte from a Message object
     int getByte2 (Message m)     { return (m.midiBytes >> 8) & 0xff; }
+    /// Extracts the third MIDI byte from a Message object
     int getByte3 (Message m)     { return m.midiBytes & 0xff; }
 
-    /** This event processor receives incoming MIDI events, parses them as MPE,
-        and then emits a stream of note events using the types in soul::note_events.
-        A synthesiser can then handle the resulting events without needing to go
-        near any actual MIDI or MPE data.
-    */
+    /// This event processor receives incoming MIDI events, parses them as MPE,
+    /// and then emits a stream of note events using the types in soul::note_events.
+    /// A synthesiser can then handle the resulting events without needing to go
+    /// near any actual MIDI or MPE data.
+    ///
     processor MPEParser  [[ main: false ]]
     {
         input event Message parseMIDI;
@@ -3493,6 +3684,9 @@ namespace soul::midi
         {
             let messageByte1 = message.getByte1();
             let messageByte2 = message.getByte2();
+)soul_code"
+R"soul_code(
+
             let messageByte3 = message.getByte3();
 
             let messageType  = messageByte1 & 0xf0;
@@ -3500,9 +3694,6 @@ namespace soul::midi
 
             if (messageType == 0x80)
             {
-)soul_code"
-R"soul_code(
-
                 eventOut << soul::note_events::NoteOff (channel, float (messageByte2), normaliseValue (messageByte3));
             }
             else if (messageType == 0x90)
