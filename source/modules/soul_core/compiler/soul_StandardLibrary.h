@@ -1381,7 +1381,7 @@ R"soul_code(
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                 float modeIn      [[ name: "Mode",      min: 0,           max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
             }
 
@@ -1554,9 +1554,9 @@ R"soul_code(
             input event
             {
                 float modeIn      [[ name: "Mode",      min: 0,           max: 7,         init: 0,         text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass"]];
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality ]];
-                float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                float qualityIn   [[ name: "Q",         min: 0.,          max: 10.0,      init: defaultQuality]];
+                float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: defaultGain, unit: "dB"]];
             }
 
             event frequencyIn (float v) { frequency = v;   recalc = true; }
@@ -1718,7 +1718,7 @@ R"soul_code(
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                 float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
             }
 
@@ -2027,9 +2027,9 @@ R"soul_code(
 
             input event
             {
-                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                float decayIn     [[ name: "Decay (s)", min: 0.01,        max: 10.0,      init: 1.0 ]];
-                float gainIn      [[ name: "Gain",      min: 0.01,        max: 10.0,      init: 1.0 ]];
+                float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                float decayIn     [[ name: "Decay",     min: 0.01,        max: 10.0,      init: 1.0, unit: "Seconds"]];
+                float gainIn      [[ name: "Gain",      min: 0.01,        max: 10.0,      init: 1.0]];
             }
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
@@ -2172,7 +2172,7 @@ R"soul_code(
 )soul_code"
 R"soul_code(
 
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float modeIn      [[ name: "Mode",      min: 0,         max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
                 }
 
@@ -2292,8 +2292,8 @@ R"soul_code(
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
-                    float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
+                    float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality]];
                 }
 
                 event frequencyIn (float v) { frequency = v; recalc = true; }
@@ -2424,7 +2424,7 @@ R"soul_code(
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz ]];
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 1,         init: 0,         text: "Lowpass|Highpass"]];
                 }
 
@@ -2502,7 +2502,7 @@ R"soul_code(
 
                 output stream float32 highOut;
 
-                input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+                input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 
                 event frequencyIn (float v) { frequency = v; recalc = true; }
 
@@ -2548,10 +2548,10 @@ R"soul_code(
                             let y = s.process (in, c);
                             lowOut  << y[0];
                             highOut << y[1];
-                            advance();
 )soul_code"
 R"soul_code(
 
+                            advance();
                         }
                     }
                 }
@@ -2617,10 +2617,10 @@ R"soul_code(
                     c.m0 = 0.0;
                     c.m1 = 0.0;
                     c.m2 = 1.0;
-                }
 )soul_code"
 R"soul_code(
 
+                }
                 else if (mode == Mode::highpass)
                 {
                     let g = w;
@@ -2676,10 +2676,10 @@ R"soul_code(
                 else if (mode == Mode::notch)
                 {
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
 )soul_code"
 R"soul_code(
 
+                    c.a1 = 1.0 / (1.0 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = 1.0;
@@ -2732,12 +2732,12 @@ R"soul_code(
 
                 input event
                 {
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz  ]];
 )soul_code"
 R"soul_code(
 
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
-                    float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0            ]];
+                    float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0,           unit: "dB"]];
                     float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
                 }
 
@@ -2777,6 +2777,9 @@ R"soul_code(
                 }
             }
         }
+
+)soul_code"
+R"soul_code(
 
     } // (namespace tpt)
 }
@@ -2851,7 +2854,7 @@ R"soul_code(
         processor Processor (float initialFrequency = 1000)
         {
             output stream SampleType out;
-            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+            input event float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz" ]];
             event frequencyIn (float v) { s.update (processor.period, v); }
 
             State s;
@@ -2877,7 +2880,7 @@ R"soul_code(
     processor Sine (float initialFrequency = 1000)
     {
         output stream SampleType out;
-        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+        input event float frequencyIn  [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz" ]];
         event frequencyIn (float v) { phaseIncrement = float (v * twoPi * processor.period); }
 
         var phaseIncrement = float (initialFrequency * twoPi * processor.period);
@@ -2900,11 +2903,11 @@ R"soul_code(
     /// using the PolyBLEP (Polynomial Band-Limited Step) technique.
     /// You may want to oversample this oscillator, in order to reduce aliasing.
     ///
-    namespace poly_blep
-    {
 )soul_code"
 R"soul_code(
 
+    namespace poly_blep
+    {
         /// Contains different wave-shaping functions.
         namespace shapers
         {
@@ -2958,7 +2961,7 @@ R"soul_code(
 )soul_code"
 R"soul_code(
 
-            input event float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz ]];
+            input event float frequencyIn   [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 
             event shapeIn (float v)        { shape = wrap<3> (floor (v)); }
             event frequencyIn (float v)    { s.update (processor.period, v); }
@@ -3019,10 +3022,10 @@ R"soul_code(
         struct Coeffs
         {
             SampleType k1, k2;
-        }
-
 )soul_code"
 R"soul_code(
+
+        }
 
         /// Resets a quadrature::State object.
         void reset (State& s)
@@ -3054,7 +3057,7 @@ R"soul_code(
             output stream SampleType sineOut;
             output stream SampleType cosineOut;
 
-            input event float frequencyIn [[ name: "Frequency", min: -maxFreqHz, max: maxFreqHz, init: 0.0 ]]; // Default meta data allows negative frequencies
+            input event float frequencyIn [[ name: "Frequency", min: -maxFreqHz, max: maxFreqHz, init: 0.0, unit: "Hz"]]; // Default meta data allows negative frequencies
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
 
