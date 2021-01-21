@@ -7,7 +7,7 @@
 
 graph SineSynth  [[ main ]]
 {
-    input smoothedGain.volume [[ label: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
+    input smoothedGain.volume [[ name: "Volume", min: -40, max: 0, init: -6, step: 1 ]];
     input event soul::midi::Message midiIn;
     output stream float audioOut;
 

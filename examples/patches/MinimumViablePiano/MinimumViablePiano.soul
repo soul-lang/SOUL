@@ -13,7 +13,7 @@
 
 graph Piano  [[ main ]]
 {
-    input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, label: "Volume" ]];
+    input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, name: "Volume" ]];
     input event soul::midi::Message midiIn;
     output stream float audioOut;
 
