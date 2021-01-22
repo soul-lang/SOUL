@@ -488,9 +488,16 @@ private:
 
     enum class CharType { whitespace, text, other };
 
-    static CharType getCharType (char c)  { return (c == 0 || std::iswspace (c)) ? CharType::whitespace
-                                                                                 : (std::isalnum (c) ? CharType::text
-                                                                                                     : CharType::other); }
+    static CharType getCharType (char c)
+    {
+        if (c == 0 || std::iswspace (static_cast<wint_t> (c)))
+            return CharType::whitespace;
+
+        if (std::isalnum (c))
+            return CharType::text;
+
+        return CharType::other;
+    }
 
     static auto findDelimiter (std::string_view text, std::string_view delimiter, size_t startPos)
     {
