@@ -23,14 +23,14 @@ namespace soul
 
 //==============================================================================
 /**
-    Builds documentation as HTML from a set of soul files.
+    Builds documentation as HTML from a SourceCodeModel
 */
 struct HTMLGenerator
 {
     std::string run (soul::CompileMessageList& errors,
                      const HTMLGenerationOptions& options)
     {
-        if (! docs.generate (errors, options.sourceFiles))
+        if (! model.generate (errors, options.sourceFiles))
             return {};
 
         auto nav = createNav();
@@ -38,7 +38,7 @@ struct HTMLGenerator
         choc::html::HTMLElement content ("section");
         content.setID ("content");
 
-        for (auto& f : docs.files)
+        for (auto& f : model.files)
             printLibrary (content, f);
 
         if (options.templateContent.empty())
@@ -77,7 +77,7 @@ struct HTMLGenerator
     }
 
 private:
-    DocumentationModel docs;
+    SourceCodeModel model;
 
     bool replaceTemplatePlaceholder (soul::CompileMessageList& errors,
                                      std::string& templateCode,
@@ -94,10 +94,10 @@ private:
         return true;
     }
 
-    void printLibrary (choc::html::HTMLElement& parent, const DocumentationModel::FileDesc& library)
+    void printLibrary (choc::html::HTMLElement& parent, const SourceCodeModel::FileDesc& library)
     {
         auto& libraryDiv = parent.addDiv ("library")
-                                 .setID (getLibraryID (library));
+                                 .setID (library.UID);
 
         libraryDiv.addChild ("h1").addContent (library.title);
 
@@ -109,10 +109,10 @@ private:
             printModule (libraryDiv, m);
     }
 
-    void printModule (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    void printModule (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
     {
         auto& moduleDiv = parent.addDiv ("module")
-                              .setID (getModuleID (m));
+                              .setID (m.UID);
 
         auto& title = moduleDiv.addChild ("h2");
         title.addSpan ("module_type").addContent (m.typeOfModule).addContent (" ");
@@ -132,11 +132,11 @@ private:
     {
         choc::html::HTMLElement nav ("nav");
         nav.setID ("contents").setClass ("contents");
-        printTOCNode (nav, docs.topLevelTOCNode, true);
+        printTOCNode (nav, model.topLevelTOCNode, true);
         return nav;
     }
 
-    void printTOCNode (choc::html::HTMLElement& parent, const DocumentationModel::TOCNode& node, bool isRoot)
+    void printTOCNode (choc::html::HTMLElement& parent, const SourceCodeModel::TOCNode& node, bool isRoot)
     {
         auto p = &parent;
 
@@ -145,9 +145,9 @@ private:
             auto& li = parent.addChild ("li");
 
             if (auto m = node.module)
-                li.setClass ("toc_item").addLink ("#" + getModuleID (*m)).addContent (node.name);
+                li.setClass ("toc_item").addLink ("#" + m->UID).addContent (node.name);
             else if (auto f = node.file)
-                li.setClass ("toc_module").addLink ("#" + getLibraryID (*f)).addContent (node.name);
+                li.setClass ("toc_module").addLink ("#" + f->UID).addContent (node.name);
             else
                 li.setClass ("toc_item").addContent (node.name);
 
@@ -163,36 +163,17 @@ private:
         }
     }
 
-    static std::string makeID (std::string_view name)
+    choc::html::HTMLElement& printExpression (choc::html::HTMLElement& parent,
+                                              const SourceCodeModel::ModuleDesc& module,
+                                              const SourceCodeModel::Expression& type)
     {
-        return retainCharacters (choc::text::replace (name, " ", "_", "::", "_"),
-                                 "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
-    }
-
-    static std::string getModuleID (const DocumentationModel::ModuleDesc& m)        { return makeID ("mod_" + choc::text::trim (m.fullyQualifiedName)); }
-    static std::string getLibraryID (const DocumentationModel::FileDesc& f)         { return makeID ("lib_" + f.title); }
-    static std::string getFunctionID (const DocumentationModel::FunctionDesc& f)    { return makeID ("fn_" + f.fullyQualifiedName); }
-    static std::string makeTypeID (std::string_view type)                           { return makeID ("type_" + std::string (type)); }
-
-    std::string findTypeID (const DocumentationModel::ModuleDesc& parent, const std::string& partialName) const
-    {
-        auto name = parent.resolvePartialTypename (partialName);
-
-        if (! name.empty())
-            return makeTypeID (name);
-
-        return {};
-    }
-
-    choc::html::HTMLElement& printType (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& module, const DocumentationModel::TypeDesc& type)
-    {
-        auto getClassForTypeSection = [] (DocumentationModel::TypeDesc::Section::Type t) -> const char*
+        auto getClassForTypeSection = [] (SourceCodeModel::Expression::Section::Type t) -> const char*
         {
-            if (t == DocumentationModel::TypeDesc::Section::Type::keyword)   return "keyword";
-            if (t == DocumentationModel::TypeDesc::Section::Type::structure) return "struct_name";
-            if (t == DocumentationModel::TypeDesc::Section::Type::primitive) return "primitive_type";
+            if (t == SourceCodeModel::Expression::Section::Type::keyword)   return "keyword";
+            if (t == SourceCodeModel::Expression::Section::Type::structure) return "struct_name";
+            if (t == SourceCodeModel::Expression::Section::Type::primitive) return "primitive_type";
 
-            SOUL_ASSERT (t == DocumentationModel::TypeDesc::Section::Type::text);
+            SOUL_ASSERT (t == SourceCodeModel::Expression::Section::Type::text);
             return "typename_text";
         };
 
@@ -200,9 +181,9 @@ private:
         {
             auto classID = getClassForTypeSection (s.type);
 
-            if (s.type == DocumentationModel::TypeDesc::Section::Type::structure)
+            if (s.type == SourceCodeModel::Expression::Section::Type::structure)
             {
-                auto typeID = findTypeID (module, s.text);
+                auto typeID = module.resolvePartialNameAsUID (s.text);
 
                 if (! typeID.empty())
                 {
@@ -224,7 +205,7 @@ private:
         return list;
     }
 
-    void printSpecialisationParams (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    void printSpecialisationParams (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
     {
         if (! m.specialisationParams.empty())
         {
@@ -247,14 +228,14 @@ private:
                 else
                     desc.addContent (",").addLineBreak().addNBSP (indent);
 
-                printType (desc, m, p.type).addContent (" ");
+                printExpression (desc, m, p.type).addContent (" ");
 
                 auto& name = desc.addSpan ("variable_name");
                 name.addContent (p.name);
 
                 if (p.type.sections.size() == 1 && p.type.sections.front().text == "using")
                 {
-                    auto typeID = findTypeID (m, p.name);
+                    auto typeID = m.resolvePartialNameAsUID (p.name);
 
                     if (! typeID.empty())
                         name.setID (typeID);
@@ -268,7 +249,7 @@ private:
         }
     }
 
-    void printEndpoints (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    void printEndpoints (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
     {
         if (! m.inputs.empty())
         {
@@ -287,14 +268,14 @@ private:
         }
     }
 
-    void printEndpoint (choc::html::HTMLElement& ul, const DocumentationModel::ModuleDesc& parent,
-                        const DocumentationModel::EndpointDesc& e)
+    void printEndpoint (choc::html::HTMLElement& ul, const SourceCodeModel::ModuleDesc& parent,
+                        const SourceCodeModel::Endpoint& e)
     {
         auto& li = ul.addChild ("li").setClass ("endpoint_desc");
 
         addComment (li, e.comment, "summary");
 
-        li.addSpan ("endpoint_type").addContent (e.type);
+        li.addSpan ("endpoint_type").addContent (e.endpointType);
         li.addNBSP (1);
         li.addSpan ("endpoint_name").addContent (e.name);
         li.addNBSP (1);
@@ -309,13 +290,13 @@ private:
             else
                 li.addContent (", ");
 
-            printType (li, parent, t);
+            printExpression (li, parent, t);
         }
 
         li.addContent (")");
     }
 
-    void printStructs (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& module)
+    void printStructs (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& module)
     {
         if (! module.structs.empty())
         {
@@ -323,7 +304,7 @@ private:
 
             for (auto& s : module.structs)
             {
-                auto& structDiv = section.addDiv ("struct").setID (makeTypeID (s.fullName));
+                auto& structDiv = section.addDiv ("struct").setID (s.UID);
 
                 addComment (structDiv, s.comment, "summary");
 
@@ -341,7 +322,7 @@ private:
                     addComment (memberDiv, member.comment, "summary");
 
                     auto& memberLine = memberDiv.addDiv ("listing");
-                    printType (memberLine, module, member.type);
+                    printExpression (memberLine, module, member.type);
                     memberLine.addContent (" ").addSpan ("member_name").addContent (member.name);
                     memberLine.addContent (";").addLineBreak();
                 }
@@ -352,7 +333,7 @@ private:
         }
     }
 
-    void printFunctions (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    void printFunctions (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
     {
         if (! m.functions.empty())
         {
@@ -363,14 +344,14 @@ private:
                 auto& div = section.addDiv ("function");
 
                 div.addChild ("h3").setClass ("function_name")
-                   .setID (getFunctionID (f))
+                   .setID (f.UID)
                    .addContent (f.bareName);
 
                 addComment (div, f.comment, "summary");
 
                 auto& proto = div.addParagraph().setClass ("code_block");
 
-                printType (proto, m, f.returnType);
+                printExpression (proto, m, f.returnType);
                 proto.addContent (" ").addSpan ("function_name").addContent (f.nameWithGenerics);
 
                 if (f.parameters.empty())
@@ -390,7 +371,7 @@ private:
                         else
                             proto.addContent (",").addLineBreak().addNBSP (indentSpaces);
 
-                        printType (proto, m, p.type);
+                        printExpression (proto, m, p.type);
                         proto.addContent (" ");
                         proto.addSpan ("parameter_name").addContent (p.name);
 
@@ -404,7 +385,7 @@ private:
         }
     }
 
-    void printVariables (choc::html::HTMLElement& parent, const DocumentationModel::ModuleDesc& m)
+    void printVariables (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
     {
         if (! m.variables.empty())
         {
@@ -419,7 +400,7 @@ private:
                 if (v.isExternal)
                     name.addSpan ("typename_text").addContent ("external");
 
-                printType (name, m, v.type);
+                printExpression (name, m, v.type);
                 name.addContent (" ").addSpan ("variable_name").addContent (v.name);
 
                 if (! v.initialiser.empty())
@@ -729,7 +710,7 @@ private:
     }
 
     static void addComment (choc::html::HTMLElement& parent,
-                            const SourceCodeOperations::Comment& comment,
+                            const SourceCodeUtilities::Comment& comment,
                             std::string_view classType)
     {
         if (comment.valid && ! comment.getText().empty())

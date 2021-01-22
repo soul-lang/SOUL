@@ -10,7 +10,7 @@
   <nav id="contents" class="contents">
     <ul class="toc_item">
  <li class="toc_module">
-  <a href="#lib_Intrinsic_functions">Intrinsic functions</a>
+  <a href="#lib_soul_library_intrinsics">Intrinsic functions</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_intrinsics">soul::intrinsics</a>
@@ -18,7 +18,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Miscellaneous_audio_utilities">Miscellaneous audio utilities</a>
+  <a href="#lib_soul_library_audio_utils">Miscellaneous audio utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul">soul</a>
@@ -32,7 +32,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Musical_note_utilities">Musical note utilities</a>
+  <a href="#lib_soul_library_notes">Musical note utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_note_events">soul::note_events</a>
@@ -48,7 +48,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Mix_and_gain_control_utilities">Mix and gain control utilities</a>
+  <a href="#lib_soul_library_mixing">Mix and gain control utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_mixers">soul::mixers</a>
@@ -89,7 +89,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_RNGs_and_noise-generators">RNGs and noise-generators</a>
+  <a href="#lib_soul_library_noise">RNGs and noise-generators</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_random">soul::random</a>
@@ -111,7 +111,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Timeline_event_utilities">Timeline event utilities</a>
+  <a href="#lib_soul_library_timeline">Timeline event utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_timeline">soul::timeline</a>
@@ -119,7 +119,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Oscillators">Oscillators</a>
+  <a href="#lib_soul_library_oscillators">Oscillators</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_oscillators">soul::oscillators</a>
@@ -182,7 +182,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Filters">Filters</a>
+  <a href="#lib_soul_library_filters">Filters</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_filters">soul::filters</a>
@@ -323,7 +323,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_MIDI_utilities">MIDI utilities</a>
+  <a href="#lib_soul_library_midi">MIDI utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_midi">soul::midi</a>
@@ -336,7 +336,7 @@
   </ul>
  </li>
  <li class="toc_module">
-  <a href="#lib_Frequency-domain_utilities">Frequency-domain utilities</a>
+  <a href="#lib_soul_library_frequency">Frequency-domain utilities</a>
   <ul class="toc_item">
    <li class="toc_item">
     <a href="#mod_soul_DFT">soul::DFT</a>
@@ -346,7 +346,7 @@
 </ul>
   </nav>
   <section id="content">
-    <div class="library" id="lib_Intrinsic_functions">
+    <div class="library" id="lib_soul_library_intrinsics">
  <h1>Intrinsic functions</h1>
  <div class="module" id="mod_soul_intrinsics">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::intrinsics</span>
@@ -494,7 +494,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Miscellaneous_audio_utilities">
+</div><div class="library" id="lib_soul_library_audio_utils">
  <h1>Miscellaneous audio utilities</h1>
  <div class="summary"><p>This module is a collection of commonly-used audio helper functions and types.</p>
  </div>
@@ -623,7 +623,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Musical_note_utilities">
+</div><div class="library" id="lib_soul_library_notes">
  <h1>Musical note utilities</h1>
  <div class="summary"><p>This module contains various structs which can be used to model note-control events coming from sources such as MIDI keyboards.</p><p>The SOUL policy is to keep the use of actual MIDI to a minimum, so we encourage incoming MIDI data to be converted into these strongly-typed structures, and to use them internally, rather than attempting to work with MIDI bytes like it&#39;s the 1980s.</p>
  </div>
@@ -773,12 +773,13 @@
     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">nextUnallocatedVoiceAge</span> =  1</p>
     </div>
     <div class="variable"><p class="code_block">
-      <a href="#type_soul_voice_allocators_Basic_VoiceInfo" class="struct_name">VoiceInfo</a><span class="typename_text">[</span><span class="struct_name">voiceCount</span><span class="typename_text">]</span> <span class="variable_name">voiceInfo</span></p>
+      <a href="#type_soul_voice_allocators_Basic_VoiceInfo" class="struct_name">VoiceInfo</a><span class="typename_text">[</span>
+      <a href="#var_soul_voice_allocators_Basic_voiceCount" class="struct_name">voiceCount</a><span class="typename_text">]</span> <span class="variable_name">voiceInfo</span></p>
     </div>
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Mix_and_gain_control_utilities">
+</div><div class="library" id="lib_soul_library_mixing">
  <h1>Mix and gain control utilities</h1>
  <div class="summary"><p>This file provides a set of processors for common tasks like mixing together sources, applying fixed gains, or applying envelope shapes.</p>
  </div>
@@ -989,7 +990,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_RNGs_and_noise-generators">
+</div><div class="library" id="lib_soul_library_noise">
  <h1>RNGs and noise-generators</h1>
  <div class="summary"><p>This module contains a range of simple RNG and noise generating functions and processors.</p>
  </div>
@@ -1087,7 +1088,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Timeline_event_utilities">
+</div><div class="library" id="lib_soul_library_timeline">
  <h1>Timeline event utilities</h1>
  <div class="summary"><p>The <code>timeline</code> namespace contains various structs and functions which are used when dealing with positions and tempos along a timeline.</p>
  </div>
@@ -1185,7 +1186,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Oscillators">
+</div><div class="library" id="lib_soul_library_oscillators">
  <h1>Oscillators</h1>
  <div class="summary"><p>This module contains a collection of oscillator algorithms for generating various wave-shapes. The collection covers low frequency designs and high quality alias free algotithms.</p>
  </div>
@@ -1652,7 +1653,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Filters">
+</div><div class="library" id="lib_soul_library_filters">
  <h1>Filters</h1>
  <div class="summary"><p>This module contains a collection of filter implementations, including more traditional biquad based filters and TPT variants, which are more suitable for modulation.</p><p>Notes:</p>
   <ul>
@@ -2064,10 +2065,12 @@
     <div class="variable"><p class="code_block"> <span class="variable_name">numSOS</span> =  size (coeffs) / 6</p>
     </div>
     <div class="variable"><p class="code_block">
-      <a href="#type_soul_filters_biquad_State" class="struct_name">biquad::State</a><span class="typename_text">[</span><span class="struct_name">numSOS</span><span class="typename_text">]</span> <span class="variable_name">s</span></p>
+      <a href="#type_soul_filters_biquad_State" class="struct_name">biquad::State</a><span class="typename_text">[</span>
+      <a href="#var_soul_filters_sos_cascade_Processor_numSOS" class="struct_name">numSOS</a><span class="typename_text">]</span> <span class="variable_name">s</span></p>
     </div>
     <div class="variable"><p class="code_block">
-      <a href="#type_soul_filters_biquad_Coeffs" class="struct_name">biquad::Coeffs</a><span class="typename_text">[</span><span class="struct_name">numSOS</span><span class="typename_text">]</span> <span class="variable_name">c</span></p>
+      <a href="#type_soul_filters_biquad_Coeffs" class="struct_name">biquad::Coeffs</a><span class="typename_text">[</span>
+      <a href="#var_soul_filters_sos_cascade_Processor_numSOS" class="struct_name">numSOS</a><span class="typename_text">]</span> <span class="variable_name">c</span></p>
     </div>
    </div>
   </div>
@@ -2157,7 +2160,8 @@
      <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br></p>
       <div class="struct_member">
        <div class="listing">
-        <a href="#type_soul_filters_analytic_dual_apf_State" class="struct_name">dual_apf::State</a><span class="typename_text">[</span><span class="struct_name">numFilters</span><span class="typename_text">]</span> <span class="member_name">apfs</span>;<br></div>
+        <a href="#type_soul_filters_analytic_dual_apf_State" class="struct_name">dual_apf::State</a><span class="typename_text">[</span>
+        <a href="#var_soul_filters_analytic_numFilters" class="struct_name">numFilters</a><span class="typename_text">]</span> <span class="member_name">apfs</span>;<br></div>
       </div>
       <div class="struct_member">
        <div class="listing">
@@ -2193,7 +2197,8 @@
      </div>
      <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">Coeffs</span><br>{<br></p>
       <div class="struct_member">
-       <div class="listing"><span class="primitive_type">float64</span><span class="typename_text">[</span><span class="struct_name">numCoefficients</span><span class="typename_text">]</span> <span class="member_name">coeffs</span>;<br></div>
+       <div class="listing"><span class="primitive_type">float64</span><span class="typename_text">[</span>
+        <a href="#var_soul_filters_analytic_polyphase_iir_design_numCoefficients" class="struct_name">numCoefficients</a><span class="typename_text">]</span> <span class="member_name">coeffs</span>;<br></div>
       </div><p class="code_block">}</p>
      </div>
     </div>
@@ -2882,7 +2887,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_MIDI_utilities">
+</div><div class="library" id="lib_soul_library_midi">
  <h1>MIDI utilities</h1>
  <div class="summary"><p>In general, the SOUL policy towards MIDI is to avoid it as much as is humanly possible, so most of these helper functions are concerned with converting MIDI messages to <code>soul::note_events</code> types, and then the other libraries use these strongly-typed events to model note actions, rather than dealing with raw MIDI events.</p>
  </div>
@@ -2949,7 +2954,7 @@
    </div>
   </div>
  </div>
-</div><div class="library" id="lib_Frequency-domain_utilities">
+</div><div class="library" id="lib_soul_library_frequency">
  <h1>Frequency-domain utilities</h1>
  <div class="module" id="mod_soul_DFT">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::DFT</span>

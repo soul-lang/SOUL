@@ -21,7 +21,13 @@
 namespace soul
 {
 
-bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
+static std::string makeUID (std::string_view name)
+{
+    return retainCharacters (choc::text::replace (name, " ", "_", "::", "_"),
+                             "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
+}
+
+bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
 {
     files.clear();
     allocator.clear();
@@ -51,10 +57,10 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
 
         desc.source = f;
         desc.filename = f->filename;
-
-        auto summary = SourceCodeOperations::getFileSummaryComment (f);
-        desc.title = SourceCodeOperations::getFileSummaryTitle (summary);
-        desc.summary = SourceCodeOperations::getFileSummaryBody (summary);
+        desc.UID = makeUID ("lib_" + choc::text::replace (desc.filename, ".soul", ""));
+        desc.fileComment = SourceCodeUtilities::getFileSummaryComment (f);
+        desc.title = SourceCodeUtilities::getFileSummaryTitle (desc.fileComment);
+        desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
     }
 
     buildSpecialisationParams();
@@ -66,19 +72,43 @@ bool DocumentationModel::generate (CompileMessageList& errors, ArrayView<SourceC
     return true;
 }
 
-DocumentationModel::ModuleDesc DocumentationModel::createModule (AST::ModuleBase& m)
+template <typename ASTType>
+static std::string getFullPathForASTObject (ASTType& o)
 {
-    DocumentationModel::ModuleDesc d { m, allocator };
+    if (auto scope = o.getParentScope())
+    {
+        IdentifierPath parentPath;
 
+        if (auto fn = scope->getAsFunction())
+            parentPath = IdentifierPath (fn->getParentScope()->getFullyQualifiedPath(), fn->name);
+        else
+            parentPath = scope->getFullyQualifiedPath();
+
+        return Program::stripRootNamespaceFromQualifiedPath (IdentifierPath (parentPath, o.name).toString());
+    }
+
+    return o.name.toString();
+}
+
+static std::string makeUID (AST::ModuleBase& m)             { return makeUID ("mod_" + Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString())); }
+static std::string makeUID (AST::TypeDeclarationBase& t)    { return makeUID ("type_" + getFullPathForASTObject (t)); }
+static std::string makeUID (AST::VariableDeclaration& v)    { return makeUID ("var_" + getFullPathForASTObject (v)); }
+static std::string makeUID (AST::EndpointDeclaration& e)    { return makeUID ("endpoint_" + getFullPathForASTObject (e)); }
+static std::string makeUID (AST::Function& f)               { return makeUID ("fn_" + getFullPathForASTObject (f)); }
+
+SourceCodeModel::ModuleDesc SourceCodeModel::createModule (AST::ModuleBase& m)
+{
+    SourceCodeModel::ModuleDesc d { m, allocator };
+
+    d.UID = makeUID (m);
     d.typeOfModule = m.isNamespace() ? "namespace" : (m.isGraph() ? "graph" : "processor");
-
     d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
-    d.comment = SourceCodeOperations::parseComment (SourceCodeOperations::findStartOfPrecedingComment (m.processorKeywordLocation));
+    d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
 
     return d;
 }
 
-void DocumentationModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& desc)
+void SourceCodeModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& desc)
 {
     if (m.originalModule != nullptr)
         return;
@@ -96,7 +126,7 @@ void DocumentationModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& de
         recurseFindingModules (sub, desc);
 }
 
-static DocumentationModel::TypeDesc operator+ (DocumentationModel::TypeDesc a, DocumentationModel::TypeDesc&& b)
+static SourceCodeModel::Expression operator+ (SourceCodeModel::Expression a, SourceCodeModel::Expression&& b)
 {
     a.sections.reserve (a.sections.size() + b.sections.size());
 
@@ -106,9 +136,9 @@ static DocumentationModel::TypeDesc operator+ (DocumentationModel::TypeDesc a, D
     return a;
 }
 
-struct TypeDescHelpers
+struct ExpressionHelpers
 {
-    static DocumentationModel::TypeDesc create (AST::Expression& e)
+    static SourceCodeModel::Expression create (AST::Expression& e)
     {
         if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs) + createText ("[") + createIfNotNull (s->rhs) + createText ("]");
         if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
@@ -130,7 +160,7 @@ struct TypeDescHelpers
         return create (e.resolveAsType());
     }
 
-    static DocumentationModel::TypeDesc create (const Type& t)
+    static SourceCodeModel::Expression create (const Type& t)
     {
         if (t.isConst())          return createKeyword ("const ") + create (t.removeConst());
         if (t.isReference())      return create (t.removeReference()) + createText ("&");
@@ -145,7 +175,7 @@ struct TypeDescHelpers
         return createPrimitive (t.getPrimitiveType().getDescription());
     }
 
-    static DocumentationModel::TypeDesc forVariable (AST::VariableDeclaration& v)
+    static SourceCodeModel::Expression forVariable (AST::VariableDeclaration& v)
     {
         if (v.declaredType != nullptr)
             return create (*v.declaredType);
@@ -161,14 +191,14 @@ struct TypeDescHelpers
         return {};
     }
 
-    static DocumentationModel::TypeDesc fromSection (DocumentationModel::TypeDesc::Section&& s)
+    static SourceCodeModel::Expression fromSection (SourceCodeModel::Expression::Section&& s)
     {
-        DocumentationModel::TypeDesc d;
+        SourceCodeModel::Expression d;
         d.sections.push_back (std::move (s));
         return d;
     }
 
-    static DocumentationModel::TypeDesc fromIdentifier (const std::string& name)
+    static SourceCodeModel::Expression fromIdentifier (const std::string& name)
     {
         if (name == "wrap" || name == "clamp")
              return createPrimitive (name);
@@ -176,15 +206,15 @@ struct TypeDescHelpers
         return createStruct (name);
     }
 
-    static DocumentationModel::TypeDesc createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : DocumentationModel::TypeDesc(); }
+    static SourceCodeModel::Expression createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : SourceCodeModel::Expression(); }
 
-    static DocumentationModel::TypeDesc createKeyword      (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::keyword,    std::move (s) }); }
-    static DocumentationModel::TypeDesc createText         (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::text,       std::move (s) }); }
-    static DocumentationModel::TypeDesc createPrimitive    (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::primitive,  std::move (s) }); }
-    static DocumentationModel::TypeDesc createStruct       (std::string s) { return fromSection ({ DocumentationModel::TypeDesc::Section::Type::structure,  std::move (s) }); }
+    static SourceCodeModel::Expression createKeyword      (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::keyword,    std::move (s) }); }
+    static SourceCodeModel::Expression createText         (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::text,       std::move (s) }); }
+    static SourceCodeModel::Expression createPrimitive    (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::primitive,  std::move (s) }); }
+    static SourceCodeModel::Expression createStruct       (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::structure,  std::move (s) }); }
 };
 
-std::string DocumentationModel::TypeDesc::toString() const
+std::string SourceCodeModel::Expression::toString() const
 {
     std::string result;
 
@@ -194,45 +224,36 @@ std::string DocumentationModel::TypeDesc::toString() const
     return result;
 }
 
-std::string DocumentationModel::ModuleDesc::resolvePartialTypename (const std::string& partialName) const
+std::string SourceCodeModel::ModuleDesc::resolvePartialNameAsUID (const std::string& partialName) const
 {
     AST::Scope::NameSearch search;
     search.partiallyQualifiedPath = IdentifierPath::fromString (allocator.identifiers, partialName);
     search.stopAtFirstScopeWithResults = true;
-    search.findVariables = false;
+    search.findVariables = true;
     search.findTypes = true;
-    search.findFunctions = false;
+    search.findFunctions = true;
     search.findNamespaces = true;
     search.findProcessors = true;
     search.findProcessorInstances = false;
-    search.findEndpoints = false;
+    search.findEndpoints = true;
 
     module.performFullNameSearch (search, nullptr);
 
     if (search.itemsFound.size() != 0)
     {
         auto item = search.itemsFound.front();
-        IdentifierPath path;
 
-        if (auto n = cast<AST::ModuleBase> (item))
-        {
-            path = n->getFullyQualifiedPath();
-        }
-        else if (auto t = cast<AST::TypeDeclarationBase> (item))
-        {
-            if (auto p = t->getParentScope())
-                path = IdentifierPath (p->getFullyQualifiedPath(), t->name);
-            else
-                path = IdentifierPath (t->name);
-        }
-
-        return Program::stripRootNamespaceFromQualifiedPath (path.toString());
+        if (auto mb = cast<AST::ModuleBase> (item))            return makeUID (*mb);
+        if (auto t = cast<AST::TypeDeclarationBase> (item))    return makeUID (*t);
+        if (auto v = cast<AST::VariableDeclaration> (item))    return makeUID (*v);
+        if (auto e = cast<AST::EndpointDeclaration> (item))    return makeUID (*e);
+        if (auto f = cast<AST::Function> (item))               return makeUID (*f);
     }
 
     return {};
 }
 
-DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std::string> path)
+SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::string> path)
 {
     if (path.empty())
         return *this;
@@ -252,32 +273,32 @@ DocumentationModel::TOCNode& DocumentationModel::TOCNode::getNode (ArrayView<std
     return path.size() > 1 ? n.getNode (path.tail()) : n;
 }
 
-bool DocumentationModel::shouldIncludeComment (const SourceCodeOperations::Comment& comment)
+bool SourceCodeModel::shouldIncludeComment (const SourceCodeUtilities::Comment& comment)
 {
     return comment.isDoxygenStyle || ! comment.getText().empty();
 }
 
-SourceCodeOperations::Comment DocumentationModel::getComment (const AST::Context& context)
+SourceCodeUtilities::Comment SourceCodeModel::getComment (const AST::Context& context)
 {
-    return SourceCodeOperations::parseComment (SourceCodeOperations::findStartOfPrecedingComment (context.location.getStartOfLine()));
+    return SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (context.location.getStartOfLine()));
 }
 
-bool DocumentationModel::shouldShow (const AST::Function& f)
+bool SourceCodeModel::shouldShow (const AST::Function& f)
 {
     return shouldIncludeComment (getComment (f.context));
 }
 
-bool DocumentationModel::shouldShow (const AST::VariableDeclaration& v)
+bool SourceCodeModel::shouldShow (const AST::VariableDeclaration& v)
 {
     return ! v.isSpecialisation;
 }
 
-bool DocumentationModel::shouldShow (const AST::StructDeclaration&)
+bool SourceCodeModel::shouldShow (const AST::StructDeclaration&)
 {
     return true; // TODO
 }
 
-bool DocumentationModel::shouldShow (const ModuleDesc& module)
+bool SourceCodeModel::shouldShow (const ModuleDesc& module)
 {
     if (module.module.isProcessor())
         return true;
@@ -302,13 +323,13 @@ bool DocumentationModel::shouldShow (const ModuleDesc& module)
 }
 
 //==============================================================================
-std::string DocumentationModel::getStringBetween (CodeLocation start, CodeLocation end)
+std::string SourceCodeModel::getStringBetween (CodeLocation start, CodeLocation end)
 {
     SOUL_ASSERT (end.location.getAddress() >= start.location.getAddress());
     return std::string (start.location.getAddress(), end.location.getAddress());
 }
 
-CodeLocation DocumentationModel::findNextOccurrence (CodeLocation start, char character)
+CodeLocation SourceCodeModel::findNextOccurrence (CodeLocation start, char character)
 {
     for (auto pos = start;; ++(pos.location))
     {
@@ -322,7 +343,7 @@ CodeLocation DocumentationModel::findNextOccurrence (CodeLocation start, char ch
     }
 }
 
-CodeLocation DocumentationModel::findEndOfExpression (CodeLocation start)
+CodeLocation SourceCodeModel::findEndOfExpression (CodeLocation start)
 {
     while (! start.location.isEmpty())
     {
@@ -332,9 +353,9 @@ CodeLocation DocumentationModel::findEndOfExpression (CodeLocation start)
             return start;
 
         if (c == '(')
-            start = SourceCodeOperations::findEndOfMatchingParen (start);
+            start = SourceCodeUtilities::findEndOfMatchingParen (start);
         else if (c == '{')
-            start = SourceCodeOperations::findEndOfMatchingBrace (start);
+            start = SourceCodeUtilities::findEndOfMatchingBrace (start);
         else
             ++(start.location);
     }
@@ -342,7 +363,7 @@ CodeLocation DocumentationModel::findEndOfExpression (CodeLocation start)
     return {};
 }
 
-void DocumentationModel::buildTOCNodes()
+void SourceCodeModel::buildTOCNodes()
 {
     for (auto& f : files)
     {
@@ -370,14 +391,14 @@ void DocumentationModel::buildTOCNodes()
 
 static std::string getInitialiserValue (CodeLocation name)
 {
-    auto equalsOp = DocumentationModel::findNextOccurrence (name, '=');
+    auto equalsOp = SourceCodeModel::findNextOccurrence (name, '=');
     SOUL_ASSERT (! equalsOp.isEmpty());
     ++(equalsOp.location);
 
-    auto endOfStatement = DocumentationModel::findEndOfExpression (equalsOp);
+    auto endOfStatement = SourceCodeModel::findEndOfExpression (equalsOp);
     SOUL_ASSERT (! endOfStatement.isEmpty());
 
-    return DocumentationModel::getStringBetween (equalsOp, endOfStatement);
+    return SourceCodeModel::getStringBetween (equalsOp, endOfStatement);
 }
 
 static std::string getInitialiserValue (AST::VariableDeclaration& v)
@@ -388,7 +409,7 @@ static std::string getInitialiserValue (AST::VariableDeclaration& v)
     return getInitialiserValue (v.context.location);
 }
 
-void DocumentationModel::buildSpecialisationParams()
+void SourceCodeModel::buildSpecialisationParams()
 {
     for (auto& f : files)
     {
@@ -396,11 +417,11 @@ void DocumentationModel::buildSpecialisationParams()
         {
             for (auto& p : m.module.getSpecialisationParameters())
             {
-                SpecialisationParamDesc desc;
+                SpecialisationParameter desc;
 
                 if (auto u = cast<AST::UsingDeclaration> (p))
                 {
-                    desc.type = TypeDescHelpers::createKeyword ("using");
+                    desc.type = ExpressionHelpers::createKeyword ("using");
                     desc.name = u->name.toString();
 
                     if (u->targetType != nullptr)
@@ -408,7 +429,7 @@ void DocumentationModel::buildSpecialisationParams()
                 }
                 else if (auto pa = cast<AST::ProcessorAliasDeclaration> (p))
                 {
-                    desc.type = TypeDescHelpers::createKeyword ("processor");
+                    desc.type = ExpressionHelpers::createKeyword ("processor");
                     desc.name = pa->name.toString();
 
                     if (pa->targetProcessor != nullptr)
@@ -416,7 +437,7 @@ void DocumentationModel::buildSpecialisationParams()
                 }
                 else if (auto na = cast<AST::NamespaceAliasDeclaration> (p))
                 {
-                    desc.type = TypeDescHelpers::createKeyword ("namespace");
+                    desc.type = ExpressionHelpers::createKeyword ("namespace");
                     desc.name = na->name.toString();
 
                     if (na->targetNamespace != nullptr)
@@ -424,7 +445,7 @@ void DocumentationModel::buildSpecialisationParams()
                 }
                 else if (auto v = cast<AST::VariableDeclaration> (p))
                 {
-                    desc.type = TypeDescHelpers::forVariable (*v);
+                    desc.type = ExpressionHelpers::forVariable (*v);
                     desc.name = v->name.toString();
                     desc.defaultValue = getInitialiserValue (*v);
                 }
@@ -433,13 +454,14 @@ void DocumentationModel::buildSpecialisationParams()
                     SOUL_ASSERT_FALSE;
                 }
 
+                desc.UID = makeUID ("specparam_" + m.fullyQualifiedName + "_" + desc.name);
                 m.specialisationParams.push_back (std::move (desc));
             }
         }
     }
 }
 
-void DocumentationModel::buildEndpoints()
+void SourceCodeModel::buildEndpoints()
 {
     for (auto& f : files)
     {
@@ -447,13 +469,14 @@ void DocumentationModel::buildEndpoints()
         {
             for (auto& e : m.module.getEndpoints())
             {
-                EndpointDesc desc;
+                Endpoint desc;
                 desc.comment = getComment (e->context);
-                desc.type = endpointTypeToString (e->details->endpointType);
+                desc.endpointType = endpointTypeToString (e->details->endpointType);
                 desc.name = e->name.toString();
+                desc.UID = makeUID (e);
 
                 for (auto& type : e->details->dataTypes)
-                    desc.dataTypes.push_back (TypeDescHelpers::create (type));
+                    desc.dataTypes.push_back (ExpressionHelpers::create (type));
 
                 if (e->isInput)
                     m.inputs.push_back (std::move (desc));
@@ -464,7 +487,7 @@ void DocumentationModel::buildEndpoints()
     }
 }
 
-void DocumentationModel::buildFunctions()
+void SourceCodeModel::buildFunctions()
 {
     for (auto& file : files)
     {
@@ -476,10 +499,11 @@ void DocumentationModel::buildFunctions()
                 {
                     if (shouldShow (f))
                     {
-                        FunctionDesc desc;
+                        Function desc;
                         desc.comment = getComment (f->context);
                         desc.bareName = f->name.toString();
                         desc.fullyQualifiedName = TokenisedPathString::join (m.fullyQualifiedName, desc.bareName);
+                        desc.UID = makeUID (f);
 
                         auto openParen = findNextOccurrence (f->nameLocation.location, '(');
                         SOUL_ASSERT (! openParen.isEmpty());
@@ -487,14 +511,15 @@ void DocumentationModel::buildFunctions()
                         desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
 
                         if (auto ret = f->returnType.get())
-                            desc.returnType = TypeDescHelpers::create (*ret);
+                            desc.returnType = ExpressionHelpers::create (*ret);
 
                         for (auto& p : f->parameters)
                         {
-                            VariableDesc param;
+                            Variable param;
                             param.comment = getComment (p->context);
                             param.name = p->name.toString();
-                            param.type = TypeDescHelpers::forVariable (p);
+                            param.UID = makeUID (p);
+                            param.type = ExpressionHelpers::forVariable (p);
                             param.initialiser = getInitialiserValue (p);
 
                             desc.parameters.push_back (std::move (param));
@@ -508,7 +533,7 @@ void DocumentationModel::buildFunctions()
     }
 }
 
-void DocumentationModel::buildStructs()
+void SourceCodeModel::buildStructs()
 {
     for (auto& f : files)
     {
@@ -518,17 +543,18 @@ void DocumentationModel::buildStructs()
             {
                 if (shouldShow (s))
                 {
-                    StructDesc desc;
+                    Struct desc;
                     desc.comment = getComment (s->context);
                     desc.shortName = s->name.toString();
                     desc.fullName = TokenisedPathString::join (m.fullyQualifiedName, desc.shortName);
+                    desc.UID = makeUID (s);
 
                     for (auto& sm : s->getMembers())
                     {
-                        StructDesc::Member member;
+                        Struct::Member member;
                         member.name = sm.name.toString();
                         member.comment = getComment (sm.nameLocation);
-                        member.type = TypeDescHelpers::create (sm.type);
+                        member.type = ExpressionHelpers::create (sm.type);
 
                         desc.members.push_back (std::move (member));
                     }
@@ -540,7 +566,7 @@ void DocumentationModel::buildStructs()
     }
 }
 
-void DocumentationModel::buildVariables()
+void SourceCodeModel::buildVariables()
 {
     for (auto& f : files)
     {
@@ -550,11 +576,12 @@ void DocumentationModel::buildVariables()
             {
                 if (shouldShow (v))
                 {
-                    VariableDesc desc;
+                    Variable desc;
                     desc.comment = getComment (v->context);
                     desc.name = v->name.toString();
+                    desc.UID = makeUID (v);
                     desc.isExternal = v->isExternal;
-                    desc.type = TypeDescHelpers::forVariable (v);
+                    desc.type = ExpressionHelpers::forVariable (v);
                     desc.initialiser = getInitialiserValue (v);
 
                     m.variables.push_back (std::move (desc));

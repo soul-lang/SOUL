@@ -22,15 +22,19 @@ namespace soul
 {
 
 //==============================================================================
-/** A class for building a model of all the info needed to generate
-    some documentation for a soul file.
+/** A model representing the structure of a SOUL program as contained in
+    a set of source files.
+
+    The main purpose of this class is to act as a simple model for documentation
+    generation and other source-manipulation utilities to work with, where the
+    AST itself would be too complex and not expose quite the right set of properties.
 */
-struct DocumentationModel
+struct SourceCodeModel
 {
     bool generate (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
 
     //==============================================================================
-    struct TypeDesc
+    struct Expression
     {
         struct Section
         {
@@ -45,48 +49,48 @@ struct DocumentationModel
         std::string toString() const;
     };
 
-    struct EndpointDesc
+    struct Endpoint
     {
-        SourceCodeOperations::Comment comment;
-        std::string type, name;
-        std::vector<TypeDesc> dataTypes;
+        SourceCodeUtilities::Comment comment;
+        std::string UID, endpointType, name;
+        std::vector<Expression> dataTypes;
     };
 
-    struct VariableDesc
+    struct Variable
     {
-        SourceCodeOperations::Comment comment;
-        TypeDesc type;
-        std::string name, initialiser;
+        SourceCodeUtilities::Comment comment;
+        Expression type;
+        std::string UID, name, initialiser;
         bool isExternal = false;
     };
 
-    struct FunctionDesc
+    struct Function
     {
-        SourceCodeOperations::Comment comment;
-        TypeDesc returnType;
-        std::string bareName, nameWithGenerics, fullyQualifiedName;
-        std::vector<VariableDesc> parameters;
+        SourceCodeUtilities::Comment comment;
+        Expression returnType;
+        std::string UID, bareName, nameWithGenerics, fullyQualifiedName;
+        std::vector<Variable> parameters;
     };
 
-    struct StructDesc
+    struct Struct
     {
-        SourceCodeOperations::Comment comment;
-        std::string fullName, shortName;
+        SourceCodeUtilities::Comment comment;
+        std::string UID, fullName, shortName;
 
         struct Member
         {
-            SourceCodeOperations::Comment comment;
-            TypeDesc type;
-            std::string name;
+            SourceCodeUtilities::Comment comment;
+            Expression type;
+            std::string UID, name;
         };
 
         std::vector<Member> members;
     };
 
-    struct SpecialisationParamDesc
+    struct SpecialisationParameter
     {
-        TypeDesc type;
-        std::string name, defaultValue;
+        Expression type;
+        std::string UID, name, defaultValue;
     };
 
     struct ModuleDesc
@@ -94,22 +98,23 @@ struct DocumentationModel
         AST::ModuleBase& module;
         AST::Allocator& allocator;
 
-        std::string typeOfModule, fullyQualifiedName;
-        SourceCodeOperations::Comment comment;
+        std::string UID, typeOfModule, fullyQualifiedName;
+        SourceCodeUtilities::Comment comment;
 
-        std::vector<SpecialisationParamDesc> specialisationParams;
-        std::vector<EndpointDesc> inputs, outputs;
-        std::vector<FunctionDesc> functions;
-        std::vector<VariableDesc> variables;
-        std::vector<StructDesc> structs;
+        std::vector<SpecialisationParameter> specialisationParams;
+        std::vector<Endpoint> inputs, outputs;
+        std::vector<Function> functions;
+        std::vector<Variable> variables;
+        std::vector<Struct> structs;
 
-        std::string resolvePartialTypename (const std::string&) const;
+        std::string resolvePartialNameAsUID (const std::string&) const;
     };
 
     struct FileDesc
     {
         SourceCodeText::Ptr source;
-        std::string filename, title, summary;
+        SourceCodeUtilities::Comment fileComment;
+        std::string filename, UID, title, summary;
         std::vector<ModuleDesc> modules;
     };
 
@@ -123,8 +128,8 @@ struct DocumentationModel
         TOCNode& getNode (ArrayView<std::string> path);
     };
 
-    static SourceCodeOperations::Comment getComment (const AST::Context& context);
-    static bool shouldIncludeComment (const SourceCodeOperations::Comment& comment);
+    static SourceCodeUtilities::Comment getComment (const AST::Context& context);
+    static bool shouldIncludeComment (const SourceCodeUtilities::Comment& comment);
 
     bool shouldShow (const AST::Function&);
     bool shouldShow (const AST::VariableDeclaration&);

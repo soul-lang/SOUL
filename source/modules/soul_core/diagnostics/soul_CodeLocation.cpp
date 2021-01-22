@@ -84,6 +84,13 @@ std::string CodeLocation::getFilename() const
     return {};
 }
 
+size_t CodeLocation::getByteOffsetInFile() const
+{
+    auto diff = location.getAddress() - sourceCode->utf8.getAddress();
+    SOUL_ASSERT (diff >= 0);
+    return static_cast<size_t> (diff);
+}
+
 CodeLocation::LineAndColumn CodeLocation::getLineAndColumn() const
 {
     if (sourceCode == nullptr)

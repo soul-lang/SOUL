@@ -63,13 +63,16 @@ struct CodeLocation   final
     void emitMessage (CompileMessage) const;
     [[noreturn]] void throwError (CompileMessage) const;
 
+    bool isEmpty() const;
+    std::string getFilename() const;
+
+    size_t getByteOffsetInFile() const;
+
     struct LineAndColumn
     {
         uint32_t line, column;
     };
 
-    bool isEmpty() const;
-    std::string getFilename() const;
     LineAndColumn getLineAndColumn() const;
 
     /** Returns the start of the current line. */

@@ -21,6 +21,7 @@
 namespace soul
 {
 
+//==============================================================================
 SourceCodeOperations::SourceCodeOperations() = default;
 SourceCodeOperations::~SourceCodeOperations() = default;
 
@@ -105,326 +106,6 @@ void SourceCodeOperations::reparse()
     SOUL_ASSERT (ok); ignoreUnused (ok);
 }
 
-static bool isFollowedByBlankLine (CodeLocation pos)
-{
-    return choc::text::trimEnd (pos.getSourceLine()).empty()
-        || choc::text::trimEnd (pos.getStartOfNextLine().getSourceLine()).empty();
-}
-
-SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment (CodeLocation file)
-{
-    auto firstComment = parseComment (file);
-
-    if (firstComment.isDoxygenStyle && isFollowedByBlankLine (firstComment.end))
-        return firstComment;
-
-    if (firstComment.valid)
-    {
-        auto secondComment = parseComment (firstComment.end);
-
-        if (secondComment.isDoxygenStyle && isFollowedByBlankLine (secondComment.end))
-            return secondComment;
-    }
-
-    return {};
-}
-
-std::string SourceCodeOperations::getFileSummaryTitle (const Comment& summary)
-{
-    if (summary.valid && ! summary.lines.empty())
-    {
-        auto firstLine = choc::text::trim (summary.lines[0]);
-
-        if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
-        {
-            auto title = choc::text::trim (firstLine.substr (6));
-
-            if (choc::text::endsWith (title, "."))
-                title = title.substr (title.length() - 1);
-
-            return title;
-        }
-    }
-
-    return {};
-}
-
-std::string SourceCodeOperations::getFileSummaryBody (const Comment& summary)
-{
-    if (summary.valid && ! summary.lines.empty())
-    {
-        auto firstLine = choc::text::trim (summary.lines[0]);
-
-        if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
-        {
-            auto copy = summary;
-            copy.lines.erase (copy.lines.begin());
-
-            while (! copy.lines.empty() && copy.lines.front().empty())
-                copy.lines.erase (copy.lines.begin());
-
-            return  copy.getText();
-        }
-    }
-
-    return summary.getText();
-}
-
-SourceCodeOperations::Comment SourceCodeOperations::getFileSummaryComment() const
-{
-    return getFileSummaryComment (source);
-}
-
-std::string SourceCodeOperations::getFileSummaryTitle() const
-{
-    return getFileSummaryTitle (getFileSummaryComment());
-}
-
-std::string SourceCodeOperations::getFileSummaryBody() const
-{
-    return getFileSummaryBody (getFileSummaryComment());
-}
-
-CodeLocation SourceCodeOperations::findStartOfPrecedingComment (CodeLocation location)
-{
-    auto prevLineStart = location.getStartOfPreviousLine();
-
-    if (prevLineStart.isEmpty())
-        return location;
-
-    auto prevLine = prevLineStart.getSourceLine();
-
-    if (choc::text::startsWith (choc::text::trimStart (prevLine), "//"))
-    {
-        for (auto start = prevLineStart;;)
-        {
-            auto next = start.getStartOfPreviousLine();
-
-            if (next.isEmpty() || ! choc::text::startsWith (choc::text::trimStart (next.getSourceLine()), "//"))
-                return start;
-
-            start = next;
-        }
-    }
-
-    if (choc::text::endsWith (choc::text::trimEnd (prevLine), "*/"))
-    {
-        auto fileStart = prevLineStart.sourceCode->utf8;
-        auto start = prevLineStart;
-        start.location += static_cast<int> (choc::text::trimEnd (prevLine).length() - 2);
-
-        if (start.location > fileStart + 1)
-        {
-            --(start.location);
-            --(start.location);
-
-            for (;;)
-            {
-                if (start.location.startsWith ("/*"))
-                    return start;
-
-                if (start.location > fileStart)
-                    --(start.location);
-                else
-                    break;
-            }
-        }
-    }
-
-    return location;
-}
-
-struct SimpleTokeniser  : public SOULTokeniser
-{
-    SimpleTokeniser (const CodeLocation& start) { initialise (start); }
-
-    [[noreturn]] void throwError (const CompileMessage& message) const override
-    {
-        location.throwError (message);
-    }
-
-    static CodeLocation findNext (CodeLocation start, TokenType target)
-    {
-        try
-        {
-            SimpleTokeniser tokeniser (start);
-
-            while (! tokeniser.matches (Token::eof))
-            {
-                if (tokeniser.matches (target))
-                    return tokeniser.location;
-
-                tokeniser.skip();
-            }
-        }
-        catch (const AbortCompilationException&) {}
-
-        return {};
-    }
-
-    static CodeLocation findEndOfMatchingDelimiter (const CodeLocation& start, TokenType openDelim, TokenType closeDelim)
-    {
-        try
-        {
-            SimpleTokeniser tokeniser (start);
-            SOUL_ASSERT (tokeniser.matches (openDelim));
-            int depth = 0;
-
-            for (;;)
-            {
-                auto token = tokeniser.skip();
-
-                if (token == openDelim)
-                {
-                    ++depth;
-                }
-                else if (token == closeDelim)
-                {
-                    if (--depth == 0)
-                        return tokeniser.location;
-                }
-                else if (token == Token::eof)
-                {
-                    break;
-                }
-            }
-        }
-        catch (const AbortCompilationException&) {}
-
-        return {};
-    }
-};
-
-CodeLocation SourceCodeOperations::findEndOfMatchingBrace (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openBrace, Operator::closeBrace); }
-CodeLocation SourceCodeOperations::findEndOfMatchingParen (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openParen, Operator::closeParen); }
-
-SourceCodeOperations::Comment SourceCodeOperations::parseComment (CodeLocation pos)
-{
-    if (pos.isEmpty())
-        return {};
-
-    Comment result;
-    pos.location = pos.location.findEndOfWhitespace();
-    result.start = pos;
-
-    if (pos.location.advanceIfStartsWith ("/*"))
-    {
-        result.valid = true;
-        result.isStarSlash = true;
-
-        while (*pos.location == '*')
-        {
-            result.isDoxygenStyle = true;
-            ++(pos.location);
-        }
-    }
-    else if (pos.location.advanceIfStartsWith ("//"))
-    {
-        result.valid = true;
-        result.isStarSlash = false;
-
-        while (*pos.location == '/')
-        {
-            result.isDoxygenStyle = true;
-            ++(pos.location);
-        }
-    }
-    else
-    {
-        return {};
-    }
-
-    if (pos.location.advanceIfStartsWith ("<"))
-        result.isReferringBackwards = true;
-
-    while (*pos.location == ' ')
-        ++(pos.location);
-
-    if (result.isStarSlash)
-    {
-        auto closeComment = pos.location.find ("*/");
-
-        if (closeComment.isEmpty())
-            return {};
-
-        result.lines = choc::text::splitIntoLines (std::string (pos.location.getAddress(),
-                                                                closeComment.getAddress()),
-                                                   false);
-
-        auto firstLineIndent = pos.location.getAddress() - pos.getStartOfLine().location.getAddress();
-
-        for (auto& l : result.lines)
-        {
-            l = choc::text::trimEnd (l);
-            auto leadingSpacesOnLine = l.length() - choc::text::trimStart (l).length();
-
-            if (firstLineIndent > 0 && leadingSpacesOnLine >= (size_t) firstLineIndent)
-                l = l.substr ((size_t) firstLineIndent);
-        }
-
-        result.end = pos;
-        result.end.location = closeComment;
-        result.end.location += 2;
-    }
-    else
-    {
-        for (;;)
-        {
-            auto line = choc::text::trim (pos.getSourceLine());
-
-            if (! choc::text::startsWith (line, "//"))
-                break;
-
-            line = line.substr (2);
-
-            while (! line.empty() && line[0] == '/')
-                line = line.substr (1);
-
-            result.lines.push_back (line);
-            pos = pos.getStartOfNextLine();
-        }
-
-        result.end = pos;
-
-        if (! result.lines.empty())
-        {
-            auto countLeadingSpaces = [] (std::string_view s) -> size_t
-            {
-                for (size_t i = 0; i < s.length(); ++i)
-                    if (s[i] != ' ')
-                        return i;
-
-                return 0;
-            };
-
-            size_t leastLeadingSpace = 1000;
-
-            for (auto& l : result.lines)
-                leastLeadingSpace = std::min (leastLeadingSpace, countLeadingSpaces (l));
-
-            if (leastLeadingSpace != 0)
-                for (auto& l : result.lines)
-                    l = l.substr (leastLeadingSpace);
-        }
-    }
-
-    removeIf (result.lines, [] (const std::string& s) { return choc::text::contains (s, "================")
-                                                            || choc::text::contains (s, "****************"); });
-
-    while (! result.lines.empty() && result.lines.back().empty())
-        result.lines.erase (result.lines.end() - 1);
-
-    while (! result.lines.empty() && result.lines.front().empty())
-        result.lines.erase (result.lines.begin());
-
-    return result;
-}
-
-std::string SourceCodeOperations::Comment::getText() const
-{
-    return joinStrings (lines, "\n");
-}
-
 SourceCodeOperations::ModuleDeclaration SourceCodeOperations::createDecl (AST::ModuleBase& m)
 {
     ModuleDeclaration d { m, allocator };
@@ -432,9 +113,10 @@ SourceCodeOperations::ModuleDeclaration SourceCodeOperations::createDecl (AST::M
     d.moduleKeyword = m.processorKeywordLocation;
     SOUL_ASSERT (d.moduleKeyword.location.startsWith (d.getType().c_str()));
 
-    d.startIncludingPreamble = findStartOfPrecedingComment (d.moduleKeyword);
+    d.startIncludingPreamble = SourceCodeUtilities::findStartOfPrecedingComment (d.moduleKeyword);
     d.openBrace = SimpleTokeniser::findNext (d.moduleKeyword, Operator::openBrace);
-    d.endOfClosingBrace = findEndOfMatchingBrace (d.openBrace);
+    d.endOfClosingBrace = SourceCodeUtilities::findEndOfMatchingBrace (d.openBrace);
+    d.fileComment = SourceCodeUtilities::parseComment (d.startIncludingPreamble);
     return d;
 }
 
@@ -448,23 +130,16 @@ SourceCodeOperations::ModuleDeclaration* SourceCodeOperations::findDeclaration (
     return {};
 }
 
-size_t SourceCodeOperations::getFileOffset (const CodeLocation& location) const
-{
-    auto diff = location.location.getAddress() - source.location.getAddress();
-    SOUL_ASSERT (diff >= 0);
-    return static_cast<size_t> (diff);
-}
-
 void SourceCodeOperations::insertText (CodeLocation location, std::string newText)
 {
     SOUL_ASSERT (applyModification != nullptr);
-    applyModification ({ getFileOffset (location), 0, std::move (newText) });
+    applyModification ({ location.getByteOffsetInFile(), 0, std::move (newText) });
 }
 
 void SourceCodeOperations::replaceText (CodeLocation start, CodeLocation end, std::string newText)
 {
-    auto s = getFileOffset (start);
-    auto e = getFileOffset (end);
+    auto s = start.getByteOffsetInFile();
+    auto e = end.getByteOffsetInFile();
     SOUL_ASSERT (e >= s);
     SOUL_ASSERT (applyModification != nullptr);
     applyModification ({ s, e - s, std::move (newText) });
@@ -489,11 +164,6 @@ std::string SourceCodeOperations::ModuleDeclaration::getName() const
 std::string SourceCodeOperations::ModuleDeclaration::getFullyQualifiedName() const
 {
     return Program::stripRootNamespaceFromQualifiedPath (module.getFullyQualifiedDisplayPath().toString());
-}
-
-SourceCodeOperations::Comment SourceCodeOperations::ModuleDeclaration::getComment() const
-{
-    return parseComment (startIncludingPreamble);
 }
 
 } // namespace soul

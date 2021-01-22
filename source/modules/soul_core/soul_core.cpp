@@ -93,8 +93,9 @@
 #include "diagnostics/soul_Timing.cpp"
 #include "venue/soul_Endpoints.cpp"
 
+#include "documentation/soul_SourceCodeUtilities.cpp"
 #include "documentation/soul_SourceCodeOperations.cpp"
-#include "documentation/soul_DocumentationModel.cpp"
+#include "documentation/soul_SourceCodeModel.cpp"
 #include "documentation/soul_HTMLGeneration.cpp"
 
 #ifdef __clang__

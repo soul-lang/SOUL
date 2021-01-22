@@ -21,7 +21,7 @@
 namespace soul
 {
 
-/** Utilities for parsing and modifying source code textually. */
+/// Utilities for parsing and modifying a source file textually.
 struct SourceCodeOperations
 {
     SourceCodeOperations();
@@ -35,15 +35,6 @@ struct SourceCodeOperations
 
     using ApplyModificationFn = std::function<void(const TextModificationOp&)>;
 
-    struct Comment
-    {
-        bool valid = false, isStarSlash = false, isDoxygenStyle = false, isReferringBackwards = false;
-        std::vector<std::string> lines;
-        CodeLocation start, end;
-
-        std::string getText() const;
-    };
-
     struct ModuleDeclaration
     {
         AST::ModuleBase& module;
@@ -54,33 +45,20 @@ struct SourceCodeOperations
                      openBrace,
                      endOfClosingBrace;
 
+        SourceCodeUtilities::Comment fileComment;
+
         std::string getType() const;
         std::string getName() const;
         std::string getFullyQualifiedName() const;
-        Comment getComment() const;
     };
 
     void clear();
     bool reload (CompileMessageList&, CodeLocation code, ApplyModificationFn applyModificationFn);
 
-    SourceCodeOperations::Comment getFileSummaryComment() const;
-    std::string getFileSummaryTitle() const;
-    std::string getFileSummaryBody() const;
-
     ArrayView<ModuleDeclaration> getAllModules() const      { return allModules; }
     ArrayView<ModuleDeclaration> getProcessors() const      { return processors; }
     ArrayView<ModuleDeclaration> getGraphs() const          { return graphs; }
     ArrayView<ModuleDeclaration> getNamespaces() const      { return namespaces; }
-
-    static Comment parseComment (CodeLocation startOfComment);
-    static CodeLocation findStartOfPrecedingComment (CodeLocation location);
-
-    static Comment getFileSummaryComment (CodeLocation file);
-    static std::string getFileSummaryTitle (const Comment&);
-    static std::string getFileSummaryBody (const Comment&);
-
-    static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
-    static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);
@@ -98,7 +76,6 @@ private:
 
     ModuleDeclaration createDecl (AST::ModuleBase&);
     ModuleDeclaration* findDeclaration (AST::ModuleBase&);
-    size_t getFileOffset (const CodeLocation&) const;
 
     void insertText (CodeLocation, std::string newText);
     void replaceText (CodeLocation start, CodeLocation end, std::string newText);
