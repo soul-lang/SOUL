@@ -31,6 +31,7 @@
 #include <iomanip>
 #include <fstream>
 #include <cctype>
+#include <cwctype>
 
 #include "soul_core.h"
 
