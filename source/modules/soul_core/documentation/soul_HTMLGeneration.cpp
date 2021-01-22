@@ -503,77 +503,165 @@ private:
         return paragraphs;
     }
 
-    struct TextRange { std::string_view::size_type start = 0, end = 0; };
+    static char getChar (std::string_view text, size_t index)    { return index < text.length() ? text[index] : 0; }
 
-    static TextRange findLink (std::string_view text)
+    enum class CharType { whitespace, text, other };
+
+    static CharType getCharType (char c)  { return (c == 0 || std::iswspace (c)) ? CharType::whitespace
+                                                                                 : (std::isalnum (c) ? CharType::text
+                                                                                                     : CharType::other); }
+
+    static auto findDelimiter (std::string_view text, std::string_view delimiter, size_t startPos)
     {
-        for (auto* proto : { "http:", "https:", "file:" })
+        auto index = text.find (delimiter, startPos);
+
+        if (index != std::string_view::npos)
+            if (getChar (text, index - 1) != delimiter.front()
+                  && getChar (text, index + delimiter.length()) != delimiter.back())
+                return index;
+
+        return std::string_view::npos;
+    }
+
+    struct DelimitedSection
+    {
+        std::string_view::size_type outerStart = 0, outerEnd = 0, delimiterLength = 0;
+    };
+
+    static DelimitedSection findDelimitedSection (std::string_view text, std::string_view delimiter)
+    {
+        auto start = findDelimiter (text, delimiter, 0);
+
+        if (start != std::string_view::npos)
         {
-            auto start = text.find (proto);
+            auto end = findDelimiter (text, delimiter, start + delimiter.length());
 
-            if (start != std::string::npos)
+            if (end != std::string_view::npos)
             {
-                auto end = text.find (' ', start);
+                auto preStart  = getCharType (getChar (text, start - 1));
+                auto postStart = getCharType (getChar (text, start + delimiter.length()));
 
-                if (end == std::string_view::npos) end = text.find ('\n', start);
-                if (end == std::string_view::npos) end = text.length();
+                auto preEnd  = getCharType (getChar (text, end - 1));
+                auto postEnd = getCharType (getChar (text, end + delimiter.length()));
 
-                return { start, end };
+                if (preStart != CharType::text
+                     && postEnd != CharType::text
+                     && postStart != CharType::whitespace
+                     && preEnd != CharType::whitespace)
+                    return { start, end + delimiter.length(), delimiter.length() };
             }
         }
 
         return {};
     }
 
-    static TextRange findBacktickSection (std::string_view text)
+    struct DelimiterType
     {
-        auto start = text.find ('`');
+        std::function<DelimitedSection(std::string_view)> findNextMatch;
+        std::function<void(choc::html::HTMLElement&, std::string_view)> addReplacementElement;
+    };
 
-        if (start != std::string_view::npos)
+    static void appendSpansForContent (choc::html::HTMLElement& parent, std::string_view markdown)
+    {
+        static const DelimiterType delimiterTypes[] =
         {
-            auto end = text.find ('`', start + 1);
+            {
+                // `code`
+                [] (std::string_view text) -> DelimitedSection
+                {
+                    return findDelimitedSection (text, "`");
+                },
+                [] (choc::html::HTMLElement& parentElement, std::string_view text)
+                {
+                    parentElement.addChild ("code").addContent (text);
+                }
+            },
+            {
+                // _Emphasis_
+                [] (std::string_view text) -> DelimitedSection
+                {
+                    return findDelimitedSection (text, "_");
+                },
+                [] (choc::html::HTMLElement& parentElement, std::string_view text)
+                {
+                    appendSpansForContent (parentElement.addChild ("em").setInline (true), text);
+                }
+            },
+            {
+                // **Bold**
+                [] (std::string_view text) -> DelimitedSection
+                {
+                    return findDelimitedSection (text, "**");
+                },
+                [] (choc::html::HTMLElement& parentElement, std::string_view text)
+                {
+                    appendSpansForContent (parentElement.addChild ("strong").setInline (true), text);
+                }
+            },
+            {
+                // Links..
+                [] (std::string_view text) -> DelimitedSection
+                {
+                    for (auto* proto : { "http:", "https:", "file:" })
+                    {
+                        auto start = text.find (proto);
 
-            if (end != std::string_view::npos)
-                return { start, end + 1 };
+                        if (start != std::string::npos)
+                        {
+                            auto end = text.find (' ', start);
+
+                            if (end == std::string_view::npos) end = text.find ('\n', start);
+                            if (end == std::string_view::npos) end = text.length();
+
+                            return { start, end, 0 };
+                        }
+                    }
+
+                    return {};
+                },
+                [] (choc::html::HTMLElement& parentElement, std::string_view text)
+                {
+                    parentElement.addLink (text).addContent (text);
+                }
+            }
+        };
+
+        struct FoundDelimiter
+        {
+            DelimitedSection range;
+            const DelimiterType* type;
+
+            bool operator< (const FoundDelimiter& other) const    { return range.outerStart < other.range.outerStart; }
+        };
+
+        ArrayWithPreallocation<FoundDelimiter, 4> found;
+
+        for (auto& type : delimiterTypes)
+        {
+            auto range = type.findNextMatch (markdown);
+
+            if (range.outerEnd > range.outerStart)
+                found.push_back ({ range, &type });
         }
 
-        return {};
-    }
-
-    static void appendSpansForContent (choc::html::HTMLElement& parent, std::string_view text)
-    {
-        auto backticks = findBacktickSection (text);
-
-        if (backticks.end != 0)
+        if (! found.empty())
         {
-            auto part1 = text.substr (0, backticks.start);
-            auto part2 = std::string (text.substr (backticks.start + 1, backticks.end - backticks.start - 2));
-            auto part3 = text.substr (backticks.end);
+            std::sort (found.begin(), found.end());
+            auto range = found.front().range;
 
-            if (! part1.empty())
-                appendSpansForContent (parent, part1);
-
-            parent.addChild ("code").addContent (part2);
-            appendSpansForContent (parent, part3);
-            return;
-        }
-
-        auto link = findLink (text);
-
-        if (link.end != 0)
-        {
-            auto part1 = text.substr (0, link.start);
-            auto part2 = std::string (text.substr (link.start, link.end - link.start));
-            auto part3 = text.substr (link.end);
+            auto part1 = markdown.substr (0, range.outerStart);
+            auto part2 = std::string (markdown.substr (range.outerStart + range.delimiterLength,
+                                                       range.outerEnd - range.outerStart - range.delimiterLength * 2));
+            auto part3 = markdown.substr (range.outerEnd);
 
             appendSpansForContent (parent, part1);
-            parent.addLink (part2).addContent (part2);
+            found.front().type->addReplacementElement (parent, part2);
             appendSpansForContent (parent, part3);
             return;
         }
 
-        if (! text.empty())
-            parent.addContent (text);
+        if (! markdown.empty())
+            parent.addContent (markdown);
     }
 
     static void addMarkdownAsHTML (choc::html::HTMLElement& parent, const std::vector<std::string>& lines)

@@ -24,6 +24,8 @@
 #ifndef CHOC_SINGLE_READER_MULTI_WRITER_FIFO_HEADER_INCLUDED
 #define CHOC_SINGLE_READER_MULTI_WRITER_FIFO_HEADER_INCLUDED
 
+#include <mutex>
+
 #include "choc_SingleReaderSingleWriterFIFO.h"
 #include "../platform/choc_SpinLock.h"
 
