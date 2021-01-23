@@ -115,7 +115,7 @@ private:
                               .setID (m.UID);
 
         auto& title = moduleDiv.addChild ("h2");
-        title.addSpan ("module_type").addContent (m.typeOfModule).addContent (" ");
+        title.addSpan ("module_type").addContent (m.moduleTypeDescription).addContent (" ");
         title.addSpan ("module_name").addContent (m.fullyQualifiedName);
 
         addComment (moduleDiv, m.comment, "summary");
@@ -183,11 +183,9 @@ private:
 
             if (s.type == SourceCodeModel::Expression::Section::Type::structure)
             {
-                auto typeID = module.resolvePartialNameAsUID (s.text);
-
-                if (! typeID.empty())
+                if (! s.referencedUID.empty())
                 {
-                    parent.addLink ("#" + typeID).setClass (classID).addContent (s.text);
+                    parent.addLink ("#" + s.referencedUID).setClass (classID).addContent (s.text);
                     continue;
                 }
             }
@@ -213,13 +211,13 @@ private:
 
             auto& desc = section.addParagraph().setClass ("code_block");
 
-            desc.addSpan ("module_type").addContent (m.typeOfModule);
+            desc.addSpan ("module_type").addContent (m.moduleTypeDescription);
             desc.addContent (" ");
             desc.addSpan ("module_name").addContent (m.fullyQualifiedName);
             desc.addContent (" (");
 
             bool isFirst = true;
-            auto indent = m.typeOfModule.length() + m.fullyQualifiedName.length() + 3;
+            auto indent = m.moduleTypeDescription.length() + m.fullyQualifiedName.length() + 3;
 
             for (auto& p : m.specialisationParams)
             {
@@ -235,10 +233,8 @@ private:
 
                 if (p.type.sections.size() == 1 && p.type.sections.front().text == "using")
                 {
-                    auto typeID = m.resolvePartialNameAsUID (p.name);
-
-                    if (! typeID.empty())
-                        name.setID (typeID);
+                    if (! p.UID.empty())
+                        name.setID (p.UID);
                 }
 
                 if (! p.defaultValue.empty())

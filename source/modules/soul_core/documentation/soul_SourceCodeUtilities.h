@@ -33,8 +33,9 @@ struct SourceCodeUtilities
         std::string getText() const;
     };
 
-    static Comment parseComment (CodeLocation startOfComment);
     static CodeLocation findStartOfPrecedingComment (CodeLocation location);
+    static Comment parseComment (CodeLocation startOfComment);
+    static Comment findPrecedingComment (CodeLocation codeLocation);
 
     static Comment getFileSummaryComment (CodeLocation startOfFile);
     static std::string getFileSummaryTitle (const Comment&);

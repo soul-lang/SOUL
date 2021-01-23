@@ -63,11 +63,6 @@ bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCode
         desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
     }
 
-    buildSpecialisationParams();
-    buildEndpoints();
-    buildFunctions();
-    buildVariables();
-    buildStructs();
     buildTOCNodes();
     return true;
 }
@@ -96,12 +91,64 @@ static std::string makeUID (AST::VariableDeclaration& v)    { return makeUID ("v
 static std::string makeUID (AST::EndpointDeclaration& e)    { return makeUID ("endpoint_" + getFullPathForASTObject (e)); }
 static std::string makeUID (AST::Function& f)               { return makeUID ("fn_" + getFullPathForASTObject (f)); }
 
+static SourceCodeUtilities::Comment getComment (const AST::Context& context)
+{
+    return SourceCodeUtilities::findPrecedingComment (context.location);
+}
+
+static bool shouldIncludeComment (const SourceCodeUtilities::Comment& comment)
+{
+    return comment.isDoxygenStyle || ! comment.getText().empty();
+}
+
+static bool shouldShow (const AST::Function& f)
+{
+    return shouldIncludeComment (getComment (f.context));
+}
+
+static bool shouldShow (const AST::VariableDeclaration& v)
+{
+    return ! v.isSpecialisation;
+}
+
+static bool shouldShow (const AST::StructDeclaration&)
+{
+    return true; // TODO
+}
+
+static bool shouldShow (AST::ModuleBase& module, const SourceCodeModel::ModuleDesc& m)
+{
+    if (m.isProcessor)
+        return true;
+
+    if (shouldIncludeComment (m.comment))
+        return true;
+
+    if (auto functions = module.getFunctionList())
+        for (auto& f : *functions)
+            if (shouldShow (f))
+                return true;
+
+    for (auto& v : module.getStateVariableList())
+        if (shouldShow (v))
+            return true;
+
+    for (auto& s : module.getStructDeclarations())
+        if (shouldShow (s))
+            return true;
+
+    return false;
+}
+
 SourceCodeModel::ModuleDesc SourceCodeModel::createModule (AST::ModuleBase& m)
 {
-    SourceCodeModel::ModuleDesc d { m, allocator };
+    SourceCodeModel::ModuleDesc d;
 
     d.UID = makeUID (m);
-    d.typeOfModule = m.isNamespace() ? "namespace" : (m.isGraph() ? "graph" : "processor");
+    d.isNamespace = m.isNamespace();
+    d.isProcessor = m.isProcessor();
+    d.isGraph = m.isGraph();
+    d.moduleTypeDescription = d.isNamespace ? "namespace" : (d.isGraph ? "graph" : "processor");
     d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
     d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
 
@@ -118,8 +165,16 @@ void SourceCodeModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& desc)
     {
         auto module = createModule (m);
 
-        if (shouldShow (module))
+        if (shouldShow (m, module))
+        {
             desc.modules.push_back (std::move (module));
+
+            buildSpecialisationParams (m, desc.modules.back());
+            buildEndpoints (m, desc.modules.back());
+            buildFunctions (m, desc.modules.back());
+            buildVariables (m, desc.modules.back());
+            buildStructs (m, desc.modules.back());
+        }
     }
 
     for (auto& sub : m.getSubModules())
@@ -143,7 +198,7 @@ struct ExpressionHelpers
         if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs) + createText ("[") + createIfNotNull (s->rhs) + createText ("]");
         if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
         if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs) + createText (".") + createText (d->rhs.identifier.toString());
-        if (auto q = cast<AST::QualifiedIdentifier> (e))    return fromIdentifier (q->toString());
+        if (auto q = cast<AST::QualifiedIdentifier> (e))    return fromIdentifier (*q);
         if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription());
 
         if (auto m = cast<AST::TypeMetaFunction> (e))
@@ -169,7 +224,7 @@ struct ExpressionHelpers
         if (t.isArray())          return create (t.getArrayElementType()) + createText ("[" + std::to_string (t.getArraySize()) + "]");
         if (t.isWrapped())        return createKeyword ("wrap") + createText ("<" + std::to_string (t.getBoundedIntLimit()) + ">");
         if (t.isClamped())        return createKeyword ("clamp") + createText ("<" + std::to_string (t.getBoundedIntLimit()) + ">");
-        if (t.isStruct())         return createStruct (t.getStructRef().getName());
+        if (t.isStruct())         return createStruct (t.getStructRef());
         if (t.isStringLiteral())  return createPrimitive ("string");
 
         return createPrimitive (t.getPrimitiveType().getDescription());
@@ -198,12 +253,25 @@ struct ExpressionHelpers
         return d;
     }
 
-    static SourceCodeModel::Expression fromIdentifier (const std::string& name)
+    static SourceCodeModel::Expression fromIdentifier (AST::QualifiedIdentifier& q)
     {
-        if (name == "wrap" || name == "clamp")
-             return createPrimitive (name);
+        auto text = q.toString();
 
-        return createStruct (name);
+        if (text == "wrap" || text == "clamp")
+            return createPrimitive (text);
+
+        if (q.isSimplePath())
+        {
+            if (auto parentModule = q.getParentScope()->findModule())
+            {
+                auto resolvedUID = resolvePartialNameAsUID (*parentModule, q.getPath());
+
+                if (! resolvedUID.empty())
+                    return createStruct (text, resolvedUID);
+            }
+        }
+
+        return createText (text);
     }
 
     static SourceCodeModel::Expression createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : SourceCodeModel::Expression(); }
@@ -211,7 +279,48 @@ struct ExpressionHelpers
     static SourceCodeModel::Expression createKeyword      (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::keyword,    std::move (s) }); }
     static SourceCodeModel::Expression createText         (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::text,       std::move (s) }); }
     static SourceCodeModel::Expression createPrimitive    (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::primitive,  std::move (s) }); }
-    static SourceCodeModel::Expression createStruct       (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::structure,  std::move (s) }); }
+
+    static SourceCodeModel::Expression createStruct (std::string s, std::string uid)
+    {
+        return fromSection ({ SourceCodeModel::Expression::Section::Type::structure, std::move (s), std::move (uid) });
+    }
+
+    static SourceCodeModel::Expression createStruct (Structure& s)
+    {
+        if (auto structDecl = reinterpret_cast<AST::StructDeclaration*> (s.backlinkToASTObject))
+            return createStruct (s.getName(), makeUID (*structDecl));
+
+        return createStruct (s.getName(), {});
+    }
+
+    static std::string resolvePartialNameAsUID (AST::ModuleBase& module, const IdentifierPath& partialName)
+    {
+        AST::Scope::NameSearch search;
+        search.partiallyQualifiedPath = partialName;
+        search.stopAtFirstScopeWithResults = true;
+        search.findVariables = true;
+        search.findTypes = true;
+        search.findFunctions = true;
+        search.findNamespaces = true;
+        search.findProcessors = true;
+        search.findProcessorInstances = false;
+        search.findEndpoints = true;
+
+        module.performFullNameSearch (search, nullptr);
+
+        if (search.itemsFound.size() != 0)
+        {
+            auto item = search.itemsFound.front();
+
+            if (auto mb = cast<AST::ModuleBase> (item))            return makeUID (*mb);
+            if (auto t = cast<AST::TypeDeclarationBase> (item))    return makeUID (*t);
+            if (auto v = cast<AST::VariableDeclaration> (item))    return makeUID (*v);
+            if (auto e = cast<AST::EndpointDeclaration> (item))    return makeUID (*e);
+            if (auto f = cast<AST::Function> (item))               return makeUID (*f);
+        }
+
+        return {};
+    }
 };
 
 std::string SourceCodeModel::Expression::toString() const
@@ -222,35 +331,6 @@ std::string SourceCodeModel::Expression::toString() const
         result += s.text;
 
     return result;
-}
-
-std::string SourceCodeModel::ModuleDesc::resolvePartialNameAsUID (const std::string& partialName) const
-{
-    AST::Scope::NameSearch search;
-    search.partiallyQualifiedPath = IdentifierPath::fromString (allocator.identifiers, partialName);
-    search.stopAtFirstScopeWithResults = true;
-    search.findVariables = true;
-    search.findTypes = true;
-    search.findFunctions = true;
-    search.findNamespaces = true;
-    search.findProcessors = true;
-    search.findProcessorInstances = false;
-    search.findEndpoints = true;
-
-    module.performFullNameSearch (search, nullptr);
-
-    if (search.itemsFound.size() != 0)
-    {
-        auto item = search.itemsFound.front();
-
-        if (auto mb = cast<AST::ModuleBase> (item))            return makeUID (*mb);
-        if (auto t = cast<AST::TypeDeclarationBase> (item))    return makeUID (*t);
-        if (auto v = cast<AST::VariableDeclaration> (item))    return makeUID (*v);
-        if (auto e = cast<AST::EndpointDeclaration> (item))    return makeUID (*e);
-        if (auto f = cast<AST::Function> (item))               return makeUID (*f);
-    }
-
-    return {};
 }
 
 SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::string> path)
@@ -271,55 +351,6 @@ SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::stri
     auto& n = children.back();
     n.name = firstPart;
     return path.size() > 1 ? n.getNode (path.tail()) : n;
-}
-
-bool SourceCodeModel::shouldIncludeComment (const SourceCodeUtilities::Comment& comment)
-{
-    return comment.isDoxygenStyle || ! comment.getText().empty();
-}
-
-SourceCodeUtilities::Comment SourceCodeModel::getComment (const AST::Context& context)
-{
-    return SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (context.location.getStartOfLine()));
-}
-
-bool SourceCodeModel::shouldShow (const AST::Function& f)
-{
-    return shouldIncludeComment (getComment (f.context));
-}
-
-bool SourceCodeModel::shouldShow (const AST::VariableDeclaration& v)
-{
-    return ! v.isSpecialisation;
-}
-
-bool SourceCodeModel::shouldShow (const AST::StructDeclaration&)
-{
-    return true; // TODO
-}
-
-bool SourceCodeModel::shouldShow (const ModuleDesc& module)
-{
-    if (module.module.isProcessor())
-        return true;
-
-    if (shouldIncludeComment (module.comment))
-        return true;
-
-    if (auto functions = module.module.getFunctionList())
-        for (auto& f : *functions)
-            if (shouldShow (f))
-                return true;
-
-    for (auto& v : module.module.getStateVariableList())
-        if (shouldShow (v))
-            return true;
-
-    for (auto& s : module.module.getStructDeclarations())
-        if (shouldShow (s))
-            return true;
-
-    return false;
 }
 
 //==============================================================================
@@ -409,184 +440,155 @@ static std::string getInitialiserValue (AST::VariableDeclaration& v)
     return getInitialiserValue (v.context.location);
 }
 
-void SourceCodeModel::buildSpecialisationParams()
+void SourceCodeModel::buildSpecialisationParams (AST::ModuleBase& module, ModuleDesc& m)
 {
-    for (auto& f : files)
+    for (auto& p : module.getSpecialisationParameters())
     {
-        for (auto& m : f.modules)
+        SpecialisationParameter desc;
+
+        if (auto u = cast<AST::UsingDeclaration> (p))
         {
-            for (auto& p : m.module.getSpecialisationParameters())
+            desc.type = ExpressionHelpers::createKeyword ("using");
+            desc.name = u->name.toString();
+            desc.UID = makeUID (*u);
+
+            if (u->targetType != nullptr)
+                desc.defaultValue = getInitialiserValue (u->context.location);
+        }
+        else if (auto pa = cast<AST::ProcessorAliasDeclaration> (p))
+        {
+            desc.type = ExpressionHelpers::createKeyword ("processor");
+            desc.name = pa->name.toString();
+
+            if (pa->targetProcessor != nullptr)
+                desc.defaultValue = getInitialiserValue (pa->context.location);
+        }
+        else if (auto na = cast<AST::NamespaceAliasDeclaration> (p))
+        {
+            desc.type = ExpressionHelpers::createKeyword ("namespace");
+            desc.name = na->name.toString();
+
+            if (na->targetNamespace != nullptr)
+                desc.defaultValue = getInitialiserValue (na->context.location);
+        }
+        else if (auto v = cast<AST::VariableDeclaration> (p))
+        {
+            desc.type = ExpressionHelpers::forVariable (*v);
+            desc.name = v->name.toString();
+            desc.UID = makeUID (*v);
+            desc.defaultValue = getInitialiserValue (*v);
+        }
+        else
+        {
+            SOUL_ASSERT_FALSE;
+        }
+
+        m.specialisationParams.push_back (std::move (desc));
+    }
+}
+
+void SourceCodeModel::buildEndpoints (AST::ModuleBase& module, ModuleDesc& m)
+{
+    for (auto& e : module.getEndpoints())
+    {
+        Endpoint desc;
+        desc.comment = getComment (e->context);
+        desc.endpointType = endpointTypeToString (e->details->endpointType);
+        desc.name = e->name.toString();
+        desc.UID = makeUID (e);
+
+        for (auto& type : e->details->dataTypes)
+            desc.dataTypes.push_back (ExpressionHelpers::create (type));
+
+        if (e->isInput)
+            m.inputs.push_back (std::move (desc));
+        else
+            m.outputs.push_back (std::move (desc));
+    }
+}
+
+void SourceCodeModel::buildFunctions (AST::ModuleBase& module, ModuleDesc& m)
+{
+    if (auto functions = module.getFunctionList())
+    {
+        for (auto& f : *functions)
+        {
+            if (shouldShow (f))
             {
-                SpecialisationParameter desc;
+                Function desc;
+                desc.comment = getComment (f->context);
+                desc.bareName = f->name.toString();
+                desc.fullyQualifiedName = TokenisedPathString::join (m.fullyQualifiedName, desc.bareName);
+                desc.UID = makeUID (f);
 
-                if (auto u = cast<AST::UsingDeclaration> (p))
-                {
-                    desc.type = ExpressionHelpers::createKeyword ("using");
-                    desc.name = u->name.toString();
+                auto openParen = findNextOccurrence (f->nameLocation.location, '(');
+                SOUL_ASSERT (! openParen.isEmpty());
 
-                    if (u->targetType != nullptr)
-                        desc.defaultValue = getInitialiserValue (u->context.location);
-                }
-                else if (auto pa = cast<AST::ProcessorAliasDeclaration> (p))
-                {
-                    desc.type = ExpressionHelpers::createKeyword ("processor");
-                    desc.name = pa->name.toString();
+                desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
 
-                    if (pa->targetProcessor != nullptr)
-                        desc.defaultValue = getInitialiserValue (pa->context.location);
-                }
-                else if (auto na = cast<AST::NamespaceAliasDeclaration> (p))
-                {
-                    desc.type = ExpressionHelpers::createKeyword ("namespace");
-                    desc.name = na->name.toString();
+                if (auto ret = f->returnType.get())
+                    desc.returnType = ExpressionHelpers::create (*ret);
 
-                    if (na->targetNamespace != nullptr)
-                        desc.defaultValue = getInitialiserValue (na->context.location);
-                }
-                else if (auto v = cast<AST::VariableDeclaration> (p))
+                for (auto& p : f->parameters)
                 {
-                    desc.type = ExpressionHelpers::forVariable (*v);
-                    desc.name = v->name.toString();
-                    desc.defaultValue = getInitialiserValue (*v);
-                }
-                else
-                {
-                    SOUL_ASSERT_FALSE;
+                    Variable param;
+                    param.comment = getComment (p->context);
+                    param.name = p->name.toString();
+                    param.UID = makeUID (p);
+                    param.type = ExpressionHelpers::forVariable (p);
+                    param.initialiser = getInitialiserValue (p);
+
+                    desc.parameters.push_back (std::move (param));
                 }
 
-                desc.UID = makeUID ("specparam_" + m.fullyQualifiedName + "_" + desc.name);
-                m.specialisationParams.push_back (std::move (desc));
+                m.functions.push_back (std::move (desc));
             }
         }
     }
 }
 
-void SourceCodeModel::buildEndpoints()
+void SourceCodeModel::buildStructs (AST::ModuleBase& module, ModuleDesc& m)
 {
-    for (auto& f : files)
+    for (auto& s : module.getStructDeclarations())
     {
-        for (auto& m : f.modules)
+        if (shouldShow (s))
         {
-            for (auto& e : m.module.getEndpoints())
+            Struct desc;
+            desc.comment = getComment (s->context);
+            desc.shortName = s->name.toString();
+            desc.fullName = TokenisedPathString::join (m.fullyQualifiedName, desc.shortName);
+            desc.UID = makeUID (s);
+
+            for (auto& sm : s->getMembers())
             {
-                Endpoint desc;
-                desc.comment = getComment (e->context);
-                desc.endpointType = endpointTypeToString (e->details->endpointType);
-                desc.name = e->name.toString();
-                desc.UID = makeUID (e);
+                Struct::Member member;
+                member.name = sm.name.toString();
+                member.comment = getComment (sm.nameLocation);
+                member.type = ExpressionHelpers::create (sm.type);
 
-                for (auto& type : e->details->dataTypes)
-                    desc.dataTypes.push_back (ExpressionHelpers::create (type));
-
-                if (e->isInput)
-                    m.inputs.push_back (std::move (desc));
-                else
-                    m.outputs.push_back (std::move (desc));
+                desc.members.push_back (std::move (member));
             }
+
+            m.structs.push_back (std::move (desc));
         }
     }
 }
 
-void SourceCodeModel::buildFunctions()
+void SourceCodeModel::buildVariables (AST::ModuleBase& module, ModuleDesc& m)
 {
-    for (auto& file : files)
+    for (auto& v : module.getStateVariableList())
     {
-        for (auto& m : file.modules)
+        if (shouldShow (v))
         {
-            if (auto functions = m.module.getFunctionList())
-            {
-                for (auto& f : *functions)
-                {
-                    if (shouldShow (f))
-                    {
-                        Function desc;
-                        desc.comment = getComment (f->context);
-                        desc.bareName = f->name.toString();
-                        desc.fullyQualifiedName = TokenisedPathString::join (m.fullyQualifiedName, desc.bareName);
-                        desc.UID = makeUID (f);
+            Variable desc;
+            desc.comment = getComment (v->context);
+            desc.name = v->name.toString();
+            desc.UID = makeUID (v);
+            desc.isExternal = v->isExternal;
+            desc.type = ExpressionHelpers::forVariable (v);
+            desc.initialiser = getInitialiserValue (v);
 
-                        auto openParen = findNextOccurrence (f->nameLocation.location, '(');
-                        SOUL_ASSERT (! openParen.isEmpty());
-
-                        desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
-
-                        if (auto ret = f->returnType.get())
-                            desc.returnType = ExpressionHelpers::create (*ret);
-
-                        for (auto& p : f->parameters)
-                        {
-                            Variable param;
-                            param.comment = getComment (p->context);
-                            param.name = p->name.toString();
-                            param.UID = makeUID (p);
-                            param.type = ExpressionHelpers::forVariable (p);
-                            param.initialiser = getInitialiserValue (p);
-
-                            desc.parameters.push_back (std::move (param));
-                        }
-
-                        m.functions.push_back (std::move (desc));
-                    }
-                }
-            }
-        }
-    }
-}
-
-void SourceCodeModel::buildStructs()
-{
-    for (auto& f : files)
-    {
-        for (auto& m : f.modules)
-        {
-            for (auto& s : m.module.getStructDeclarations())
-            {
-                if (shouldShow (s))
-                {
-                    Struct desc;
-                    desc.comment = getComment (s->context);
-                    desc.shortName = s->name.toString();
-                    desc.fullName = TokenisedPathString::join (m.fullyQualifiedName, desc.shortName);
-                    desc.UID = makeUID (s);
-
-                    for (auto& sm : s->getMembers())
-                    {
-                        Struct::Member member;
-                        member.name = sm.name.toString();
-                        member.comment = getComment (sm.nameLocation);
-                        member.type = ExpressionHelpers::create (sm.type);
-
-                        desc.members.push_back (std::move (member));
-                    }
-
-                    m.structs.push_back (std::move (desc));
-                }
-            }
-        }
-    }
-}
-
-void SourceCodeModel::buildVariables()
-{
-    for (auto& f : files)
-    {
-        for (auto& m : f.modules)
-        {
-            for (auto& v : m.module.getStateVariableList())
-            {
-                if (shouldShow (v))
-                {
-                    Variable desc;
-                    desc.comment = getComment (v->context);
-                    desc.name = v->name.toString();
-                    desc.UID = makeUID (v);
-                    desc.isExternal = v->isExternal;
-                    desc.type = ExpressionHelpers::forVariable (v);
-                    desc.initialiser = getInitialiserValue (v);
-
-                    m.variables.push_back (std::move (desc));
-                }
-            }
+            m.variables.push_back (std::move (desc));
         }
     }
 }

@@ -1756,7 +1756,6 @@ struct AST
             pool_ptr<Expression> specialisationArgs;
         };
 
-
         std::vector<PathSection> pathSections;
         IdentifierPath pathPrefix;
     };

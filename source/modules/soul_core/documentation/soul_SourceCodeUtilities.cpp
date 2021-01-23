@@ -321,6 +321,11 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
     return result;
 }
 
+SourceCodeUtilities::Comment SourceCodeUtilities::findPrecedingComment (CodeLocation location)
+{
+    return parseComment (findStartOfPrecedingComment (location.getStartOfLine()));
+}
+
 std::string SourceCodeUtilities::Comment::getText() const
 {
     return joinStrings (lines, "\n");

@@ -41,7 +41,7 @@ struct SourceCodeModel
             enum class Type { keyword, text, structure, primitive };
 
             Type type;
-            std::string text;
+            std::string text, referencedUID;
         };
 
         std::vector<Section> sections;
@@ -95,10 +95,8 @@ struct SourceCodeModel
 
     struct ModuleDesc
     {
-        AST::ModuleBase& module;
-        AST::Allocator& allocator;
-
-        std::string UID, typeOfModule, fullyQualifiedName;
+        bool isNamespace = false, isProcessor = false, isGraph = false;
+        std::string UID, moduleTypeDescription, fullyQualifiedName;
         SourceCodeUtilities::Comment comment;
 
         std::vector<SpecialisationParameter> specialisationParams;
@@ -106,8 +104,6 @@ struct SourceCodeModel
         std::vector<Function> functions;
         std::vector<Variable> variables;
         std::vector<Struct> structs;
-
-        std::string resolvePartialNameAsUID (const std::string&) const;
     };
 
     struct FileDesc
@@ -128,16 +124,6 @@ struct SourceCodeModel
         TOCNode& getNode (ArrayView<std::string> path);
     };
 
-    static SourceCodeUtilities::Comment getComment (const AST::Context& context);
-    static bool shouldIncludeComment (const SourceCodeUtilities::Comment& comment);
-
-    bool shouldShow (const AST::Function&);
-    bool shouldShow (const AST::VariableDeclaration&);
-    bool shouldShow (const AST::StructDeclaration&);
-    bool shouldShow (const ModuleDesc&);
-
-    std::string findType (const std::string& partialType) const;
-
     //==============================================================================
     static std::string getStringBetween (CodeLocation start, CodeLocation end);
     static CodeLocation findNextOccurrence (CodeLocation start, char character);
@@ -156,11 +142,11 @@ private:
     ModuleDesc createModule (AST::ModuleBase&);
 
     void buildTOCNodes();
-    void buildSpecialisationParams();
-    void buildEndpoints();
-    void buildFunctions();
-    void buildStructs();
-    void buildVariables();
+    void buildSpecialisationParams (AST::ModuleBase&, ModuleDesc&);
+    void buildEndpoints (AST::ModuleBase&, ModuleDesc&);
+    void buildFunctions (AST::ModuleBase&, ModuleDesc&);
+    void buildStructs (AST::ModuleBase&, ModuleDesc&);
+    void buildVariables (AST::ModuleBase&, ModuleDesc&);
 };
 
 
