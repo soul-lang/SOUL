@@ -167,6 +167,8 @@ private:
                                               const SourceCodeModel::ModuleDesc& module,
                                               const SourceCodeModel::Expression& type)
     {
+        ignoreUnused (module);
+        
         auto getClassForTypeSection = [] (SourceCodeModel::Expression::Section::Type t) -> const char*
         {
             if (t == SourceCodeModel::Expression::Section::Type::keyword)   return "keyword";
