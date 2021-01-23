@@ -125,28 +125,8 @@ struct SourceCodeModel
     };
 
     //==============================================================================
-    static std::string getStringBetween (CodeLocation start, CodeLocation end);
-    static CodeLocation findNextOccurrence (CodeLocation start, char character);
-    static CodeLocation findEndOfExpression (CodeLocation start);
-
-    //==============================================================================
     std::vector<FileDesc> files;
     TOCNode topLevelTOCNode;
-
-private:
-    //==============================================================================
-    AST::Allocator allocator;
-    pool_ptr<AST::Namespace> topLevelNamespace;
-
-    void recurseFindingModules (AST::ModuleBase&, FileDesc&);
-    ModuleDesc createModule (AST::ModuleBase&);
-
-    void buildTOCNodes();
-    void buildSpecialisationParams (AST::ModuleBase&, ModuleDesc&);
-    void buildEndpoints (AST::ModuleBase&, ModuleDesc&);
-    void buildFunctions (AST::ModuleBase&, ModuleDesc&);
-    void buildStructs (AST::ModuleBase&, ModuleDesc&);
-    void buildVariables (AST::ModuleBase&, ModuleDesc&);
 };
 
 

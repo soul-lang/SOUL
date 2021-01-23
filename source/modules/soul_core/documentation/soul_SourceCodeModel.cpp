@@ -21,52 +21,6 @@
 namespace soul
 {
 
-static std::string makeUID (std::string_view name)
-{
-    return retainCharacters (choc::text::replace (name, " ", "_", "::", "_"),
-                             "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
-}
-
-bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
-{
-    files.clear();
-    allocator.clear();
-    topLevelNamespace = AST::createRootNamespace (allocator);
-
-    files.resize (filesToLoad.size());
-
-    for (size_t i = 0; i < filesToLoad.size(); ++i)
-    {
-        auto& f = filesToLoad[i];
-        auto& desc = files[i];
-
-        try
-        {
-            CompileMessageHandler handler (errors);
-
-            for (auto& m : Compiler::parseTopLevelDeclarations (allocator, f, *topLevelNamespace))
-            {
-                ASTUtilities::mergeDuplicateNamespaces (*topLevelNamespace);
-                recurseFindingModules (m, desc);
-            }
-        }
-        catch (AbortCompilationException) {}
-
-        if (errors.hasErrors())
-            return false;
-
-        desc.source = f;
-        desc.filename = f->filename;
-        desc.UID = makeUID ("lib_" + choc::text::replace (desc.filename, ".soul", ""));
-        desc.fileComment = SourceCodeUtilities::getFileSummaryComment (f);
-        desc.title = SourceCodeUtilities::getFileSummaryTitle (desc.fileComment);
-        desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
-    }
-
-    buildTOCNodes();
-    return true;
-}
-
 template <typename ASTType>
 static std::string getFullPathForASTObject (ASTType& o)
 {
@@ -85,12 +39,6 @@ static std::string getFullPathForASTObject (ASTType& o)
     return o.name.toString();
 }
 
-static std::string makeUID (AST::ModuleBase& m)             { return makeUID ("mod_" + Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString())); }
-static std::string makeUID (AST::TypeDeclarationBase& t)    { return makeUID ("type_" + getFullPathForASTObject (t)); }
-static std::string makeUID (AST::VariableDeclaration& v)    { return makeUID ("var_" + getFullPathForASTObject (v)); }
-static std::string makeUID (AST::EndpointDeclaration& e)    { return makeUID ("endpoint_" + getFullPathForASTObject (e)); }
-static std::string makeUID (AST::Function& f)               { return makeUID ("fn_" + getFullPathForASTObject (f)); }
-
 static SourceCodeUtilities::Comment getComment (const AST::Context& context)
 {
     return SourceCodeUtilities::findPrecedingComment (context.location);
@@ -101,6 +49,40 @@ static bool shouldIncludeComment (const SourceCodeUtilities::Comment& comment)
     return comment.isDoxygenStyle || ! comment.getText().empty();
 }
 
+static SourceCodeModel::Expression operator+ (SourceCodeModel::Expression a, SourceCodeModel::Expression&& b)
+{
+    a.sections.reserve (a.sections.size() + b.sections.size());
+
+    for (auto& s : b.sections)
+        a.sections.push_back (std::move (s));
+
+    return a;
+}
+
+std::string SourceCodeModel::Expression::toString() const
+{
+    std::string result;
+
+    for (auto& s : sections)
+        result += s.text;
+
+    return result;
+}
+
+//==============================================================================
+static std::string makeUID (std::string_view name)
+{
+    return retainCharacters (choc::text::replace (name, " ", "_", "::", "_"),
+                             "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
+}
+
+static std::string makeUID (AST::ModuleBase& m)             { return makeUID ("mod_" + Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString())); }
+static std::string makeUID (AST::TypeDeclarationBase& t)    { return makeUID ("type_" + getFullPathForASTObject (t)); }
+static std::string makeUID (AST::VariableDeclaration& v)    { return makeUID ("var_" + getFullPathForASTObject (v)); }
+static std::string makeUID (AST::EndpointDeclaration& e)    { return makeUID ("endpoint_" + getFullPathForASTObject (e)); }
+static std::string makeUID (AST::Function& f)               { return makeUID ("fn_" + getFullPathForASTObject (f)); }
+
+//==============================================================================
 static bool shouldShow (const AST::Function& f)
 {
     return shouldIncludeComment (getComment (f.context));
@@ -140,57 +122,7 @@ static bool shouldShow (AST::ModuleBase& module, const SourceCodeModel::ModuleDe
     return false;
 }
 
-SourceCodeModel::ModuleDesc SourceCodeModel::createModule (AST::ModuleBase& m)
-{
-    SourceCodeModel::ModuleDesc d;
-
-    d.UID = makeUID (m);
-    d.isNamespace = m.isNamespace();
-    d.isProcessor = m.isProcessor();
-    d.isGraph = m.isGraph();
-    d.moduleTypeDescription = d.isNamespace ? "namespace" : (d.isGraph ? "graph" : "processor");
-    d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
-    d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
-
-    return d;
-}
-
-void SourceCodeModel::recurseFindingModules (AST::ModuleBase& m, FileDesc& desc)
-{
-    if (m.originalModule != nullptr)
-        return;
-
-    // if there's no keyword then it's an outer namespace that was parsed indirectly
-    if (! m.processorKeywordLocation.isEmpty())
-    {
-        auto module = createModule (m);
-
-        if (shouldShow (m, module))
-        {
-            desc.modules.push_back (std::move (module));
-
-            buildSpecialisationParams (m, desc.modules.back());
-            buildEndpoints (m, desc.modules.back());
-            buildFunctions (m, desc.modules.back());
-            buildVariables (m, desc.modules.back());
-            buildStructs (m, desc.modules.back());
-        }
-    }
-
-    for (auto& sub : m.getSubModules())
-        recurseFindingModules (sub, desc);
-}
-
-static SourceCodeModel::Expression operator+ (SourceCodeModel::Expression a, SourceCodeModel::Expression&& b)
-{
-    a.sections.reserve (a.sections.size() + b.sections.size());
-
-    for (auto& s : b.sections)
-        a.sections.push_back (std::move (s));
-
-    return a;
-}
-
+//==============================================================================
 struct ExpressionHelpers
 {
     static SourceCodeModel::Expression create (AST::Expression& e)
@@ -323,113 +255,17 @@ struct ExpressionHelpers
     }
 };
 
-std::string SourceCodeModel::Expression::toString() const
-{
-    std::string result;
-
-    for (auto& s : sections)
-        result += s.text;
-
-    return result;
-}
-
-SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::string> path)
-{
-    if (path.empty())
-        return *this;
-
-    auto& firstPart = path.front();
-
-    if (path.size() == 1 && firstPart == name)
-        return *this;
-
-    for (auto& c : children)
-        if (firstPart == c.name)
-            return c.getNode (path.tail());
-
-    children.push_back ({});
-    auto& n = children.back();
-    n.name = firstPart;
-    return path.size() > 1 ? n.getNode (path.tail()) : n;
-}
-
 //==============================================================================
-std::string SourceCodeModel::getStringBetween (CodeLocation start, CodeLocation end)
-{
-    SOUL_ASSERT (end.location.getAddress() >= start.location.getAddress());
-    return std::string (start.location.getAddress(), end.location.getAddress());
-}
-
-CodeLocation SourceCodeModel::findNextOccurrence (CodeLocation start, char character)
-{
-    for (auto pos = start;; ++(pos.location))
-    {
-        auto c = *(pos.location);
-
-        if (c == static_cast<decltype(c)> (character))
-            return pos;
-
-        if (c == 0)
-            return {};
-    }
-}
-
-CodeLocation SourceCodeModel::findEndOfExpression (CodeLocation start)
-{
-    while (! start.location.isEmpty())
-    {
-        auto c = *(start.location);
-
-        if (c == ',' || c == ';' || c == ')' || c == '}')
-            return start;
-
-        if (c == '(')
-            start = SourceCodeUtilities::findEndOfMatchingParen (start);
-        else if (c == '{')
-            start = SourceCodeUtilities::findEndOfMatchingBrace (start);
-        else
-            ++(start.location);
-    }
-
-    return {};
-}
-
-void SourceCodeModel::buildTOCNodes()
-{
-    for (auto& f : files)
-    {
-        std::vector<std::string> filePath { f.title };
-        topLevelTOCNode.getNode (filePath).file = std::addressof (f);
-
-        for (auto& m : f.modules)
-        {
-            TokenisedPathString path (m.fullyQualifiedName);
-            auto modulePath = filePath;
-
-            if (path.sections.size() > 1 && path.getSection(0) == "soul")
-            {
-                modulePath.push_back ("soul::" + path.getSection (1));
-                path.sections.erase (path.sections.begin(), path.sections.begin() + 2);
-            }
-
-            for (size_t i = 0; i < path.sections.size(); ++i)
-                modulePath.push_back (path.getSection (i));
-
-            topLevelTOCNode.getNode (modulePath).module = std::addressof (m);
-        }
-    }
-}
-
 static std::string getInitialiserValue (CodeLocation name)
 {
-    auto equalsOp = SourceCodeModel::findNextOccurrence (name, '=');
+    auto equalsOp = SourceCodeUtilities::findNextOccurrence (name, '=');
     SOUL_ASSERT (! equalsOp.isEmpty());
     ++(equalsOp.location);
 
-    auto endOfStatement = SourceCodeModel::findEndOfExpression (equalsOp);
+    auto endOfStatement = SourceCodeUtilities::findEndOfExpression (equalsOp);
     SOUL_ASSERT (! endOfStatement.isEmpty());
 
-    return SourceCodeModel::getStringBetween (equalsOp, endOfStatement);
+    return SourceCodeUtilities::getStringBetween (equalsOp, endOfStatement);
 }
 
 static std::string getInitialiserValue (AST::VariableDeclaration& v)
@@ -440,11 +276,11 @@ static std::string getInitialiserValue (AST::VariableDeclaration& v)
     return getInitialiserValue (v.context.location);
 }
 
-void SourceCodeModel::buildSpecialisationParams (AST::ModuleBase& module, ModuleDesc& m)
+static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
 {
     for (auto& p : module.getSpecialisationParameters())
     {
-        SpecialisationParameter desc;
+        SourceCodeModel::SpecialisationParameter desc;
 
         if (auto u = cast<AST::UsingDeclaration> (p))
         {
@@ -487,11 +323,11 @@ void SourceCodeModel::buildSpecialisationParams (AST::ModuleBase& module, Module
     }
 }
 
-void SourceCodeModel::buildEndpoints (AST::ModuleBase& module, ModuleDesc& m)
+static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
 {
     for (auto& e : module.getEndpoints())
     {
-        Endpoint desc;
+        SourceCodeModel::Endpoint desc;
         desc.comment = getComment (e->context);
         desc.endpointType = endpointTypeToString (e->details->endpointType);
         desc.name = e->name.toString();
@@ -507,7 +343,7 @@ void SourceCodeModel::buildEndpoints (AST::ModuleBase& module, ModuleDesc& m)
     }
 }
 
-void SourceCodeModel::buildFunctions (AST::ModuleBase& module, ModuleDesc& m)
+static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
 {
     if (auto functions = module.getFunctionList())
     {
@@ -515,23 +351,23 @@ void SourceCodeModel::buildFunctions (AST::ModuleBase& module, ModuleDesc& m)
         {
             if (shouldShow (f))
             {
-                Function desc;
+                SourceCodeModel::Function desc;
                 desc.comment = getComment (f->context);
                 desc.bareName = f->name.toString();
                 desc.fullyQualifiedName = TokenisedPathString::join (m.fullyQualifiedName, desc.bareName);
                 desc.UID = makeUID (f);
 
-                auto openParen = findNextOccurrence (f->nameLocation.location, '(');
+                auto openParen = SourceCodeUtilities::findNextOccurrence (f->nameLocation.location, '(');
                 SOUL_ASSERT (! openParen.isEmpty());
 
-                desc.nameWithGenerics = simplifyWhitespace (getStringBetween (f->nameLocation.location, openParen));
+                desc.nameWithGenerics = simplifyWhitespace (SourceCodeUtilities::getStringBetween (f->nameLocation.location, openParen));
 
                 if (auto ret = f->returnType.get())
                     desc.returnType = ExpressionHelpers::create (*ret);
 
                 for (auto& p : f->parameters)
                 {
-                    Variable param;
+                    SourceCodeModel::Variable param;
                     param.comment = getComment (p->context);
                     param.name = p->name.toString();
                     param.UID = makeUID (p);
@@ -547,13 +383,13 @@ void SourceCodeModel::buildFunctions (AST::ModuleBase& module, ModuleDesc& m)
     }
 }
 
-void SourceCodeModel::buildStructs (AST::ModuleBase& module, ModuleDesc& m)
+static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
 {
     for (auto& s : module.getStructDeclarations())
     {
         if (shouldShow (s))
         {
-            Struct desc;
+            SourceCodeModel::Struct desc;
             desc.comment = getComment (s->context);
             desc.shortName = s->name.toString();
             desc.fullName = TokenisedPathString::join (m.fullyQualifiedName, desc.shortName);
@@ -561,7 +397,7 @@ void SourceCodeModel::buildStructs (AST::ModuleBase& module, ModuleDesc& m)
 
             for (auto& sm : s->getMembers())
             {
-                Struct::Member member;
+                SourceCodeModel::Struct::Member member;
                 member.name = sm.name.toString();
                 member.comment = getComment (sm.nameLocation);
                 member.type = ExpressionHelpers::create (sm.type);
@@ -574,13 +410,13 @@ void SourceCodeModel::buildStructs (AST::ModuleBase& module, ModuleDesc& m)
     }
 }
 
-void SourceCodeModel::buildVariables (AST::ModuleBase& module, ModuleDesc& m)
+static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
 {
     for (auto& v : module.getStateVariableList())
     {
         if (shouldShow (v))
         {
-            Variable desc;
+            SourceCodeModel::Variable desc;
             desc.comment = getComment (v->context);
             desc.name = v->name.toString();
             desc.UID = makeUID (v);
@@ -591,6 +427,136 @@ void SourceCodeModel::buildVariables (AST::ModuleBase& module, ModuleDesc& m)
             m.variables.push_back (std::move (desc));
         }
     }
+}
+
+//==============================================================================
+SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::string> path)
+{
+    if (path.empty())
+        return *this;
+
+    auto& firstPart = path.front();
+
+    if (path.size() == 1 && firstPart == name)
+        return *this;
+
+    for (auto& c : children)
+        if (firstPart == c.name)
+            return c.getNode (path.tail());
+
+    children.push_back ({});
+    auto& n = children.back();
+    n.name = firstPart;
+    return path.size() > 1 ? n.getNode (path.tail()) : n;
+}
+
+static void buildTOCNodes (ArrayView<SourceCodeModel::FileDesc> files,
+                           SourceCodeModel::TOCNode& topLevelTOCNode)
+{
+    for (auto& f : files)
+    {
+        std::vector<std::string> filePath { f.title };
+        topLevelTOCNode.getNode (filePath).file = std::addressof (f);
+
+        for (auto& m : f.modules)
+        {
+            TokenisedPathString path (m.fullyQualifiedName);
+            auto modulePath = filePath;
+
+            if (path.sections.size() > 1 && path.getSection(0) == "soul")
+            {
+                modulePath.push_back ("soul::" + path.getSection (1));
+                path.sections.erase (path.sections.begin(), path.sections.begin() + 2);
+            }
+
+            for (size_t i = 0; i < path.sections.size(); ++i)
+                modulePath.push_back (path.getSection (i));
+
+            topLevelTOCNode.getNode (modulePath).module = std::addressof (m);
+        }
+    }
+}
+
+//==============================================================================
+static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m)
+{
+    SourceCodeModel::ModuleDesc d;
+
+    d.UID = makeUID (m);
+    d.isNamespace = m.isNamespace();
+    d.isProcessor = m.isProcessor();
+    d.isGraph = m.isGraph();
+    d.moduleTypeDescription = d.isNamespace ? "namespace" : (d.isGraph ? "graph" : "processor");
+    d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
+    d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
+
+    return d;
+}
+
+static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc& desc)
+{
+    if (m.originalModule != nullptr)
+        return;
+
+    // if there's no keyword then it's an outer namespace that was parsed indirectly
+    if (! m.processorKeywordLocation.isEmpty())
+    {
+        auto module = createModule (m);
+
+        if (shouldShow (m, module))
+        {
+            desc.modules.push_back (std::move (module));
+
+            buildSpecialisationParams (m, desc.modules.back());
+            buildEndpoints (m, desc.modules.back());
+            buildFunctions (m, desc.modules.back());
+            buildVariables (m, desc.modules.back());
+            buildStructs (m, desc.modules.back());
+        }
+    }
+
+    for (auto& sub : m.getSubModules())
+        recurseFindingModules (sub, desc);
+}
+
+bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
+{
+    files.clear();
+    AST::Allocator allocator;
+    auto& topLevelNamespace = AST::createRootNamespace (allocator);
+
+    files.resize (filesToLoad.size());
+
+    for (size_t i = 0; i < filesToLoad.size(); ++i)
+    {
+        auto& f = filesToLoad[i];
+        auto& desc = files[i];
+
+        try
+        {
+            CompileMessageHandler handler (errors);
+
+            for (auto& m : Compiler::parseTopLevelDeclarations (allocator, f, topLevelNamespace))
+            {
+                ASTUtilities::mergeDuplicateNamespaces (topLevelNamespace);
+                recurseFindingModules (m, desc);
+            }
+        }
+        catch (AbortCompilationException) {}
+
+        if (errors.hasErrors())
+            return false;
+
+        desc.source = f;
+        desc.filename = f->filename;
+        desc.UID = makeUID ("lib_" + choc::text::replace (desc.filename, ".soul", ""));
+        desc.fileComment = SourceCodeUtilities::getFileSummaryComment (f);
+        desc.title = SourceCodeUtilities::getFileSummaryTitle (desc.fileComment);
+        desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
+    }
+
+    buildTOCNodes (files, topLevelTOCNode);
+    return true;
 }
 
 } // namespace soul

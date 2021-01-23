@@ -21,12 +21,6 @@
 namespace soul
 {
 
-static bool isFollowedByBlankLine (CodeLocation pos)
-{
-    return choc::text::trimEnd (pos.getSourceLine()).empty()
-        || choc::text::trimEnd (pos.getStartOfNextLine().getSourceLine()).empty();
-}
-
 struct SimpleTokeniser  : public SOULTokeniser
 {
     SimpleTokeniser (const CodeLocation& start) { initialise (start); }
@@ -34,6 +28,29 @@ struct SimpleTokeniser  : public SOULTokeniser
     [[noreturn]] void throwError (const CompileMessage& message) const override
     {
         location.throwError (message);
+    }
+
+    bool skipPastMatchingCloseDelimiter (TokenType openDelim, TokenType closeDelim)
+    {
+        int depth = 0;
+
+        for (;;)
+        {
+            if (matches (Token::eof))
+                return false;
+
+            auto token = skip();
+
+            if (token == openDelim)
+            {
+                ++depth;
+            }
+            else if (token == closeDelim)
+            {
+                if (--depth == 0)
+                    return true;
+            }
+        }
     }
 
     static CodeLocation findNext (CodeLocation start, TokenType target)
@@ -61,32 +78,73 @@ struct SimpleTokeniser  : public SOULTokeniser
         {
             SimpleTokeniser tokeniser (start);
             SOUL_ASSERT (tokeniser.matches (openDelim));
-            int depth = 0;
 
-            for (;;)
-            {
-                auto token = tokeniser.skip();
-
-                if (token == openDelim)
-                {
-                    ++depth;
-                }
-                else if (token == closeDelim)
-                {
-                    if (--depth == 0)
-                        return tokeniser.location;
-                }
-                else if (token == Token::eof)
-                {
-                    break;
-                }
-            }
+            if (tokeniser.skipPastMatchingCloseDelimiter (openDelim, closeDelim))
+                return tokeniser.location;
         }
         catch (const AbortCompilationException&) {}
 
         return {};
     }
 };
+
+static bool isFollowedByBlankLine (CodeLocation pos)
+{
+    return choc::text::trimEnd (pos.getSourceLine()).empty()
+        || choc::text::trimEnd (pos.getStartOfNextLine().getSourceLine()).empty();
+}
+
+CodeLocation SourceCodeUtilities::findNextOccurrence (CodeLocation start, char character)
+{
+    for (auto pos = start;; ++(pos.location))
+    {
+        auto c = *(pos.location);
+
+        if (c == static_cast<decltype(c)> (character))
+            return pos;
+
+        if (c == 0)
+            return {};
+    }
+}
+
+CodeLocation SourceCodeUtilities::findEndOfExpression (CodeLocation start)
+{
+    try
+    {
+        SimpleTokeniser tokeniser (start);
+
+        while (! tokeniser.matches (Token::eof))
+        {
+            if (tokeniser.matchesAny (Operator::comma, Operator::semicolon, Operator::closeParen, Operator::closeBrace))
+                return tokeniser.location;
+
+            if (tokeniser.matches (Operator::openParen))
+            {
+                if (! tokeniser.skipPastMatchingCloseDelimiter (Operator::openParen, Operator::closeParen))
+                    break;
+            }
+            else if (tokeniser.matches (Operator::openBrace))
+            {
+                if (! tokeniser.skipPastMatchingCloseDelimiter (Operator::openBrace, Operator::closeBrace))
+                    break;
+            }
+            else
+            {
+                tokeniser.skip();
+            }
+        }
+    }
+    catch (const AbortCompilationException&) {}
+
+    return {};
+}
+
+std::string SourceCodeUtilities::getStringBetween (CodeLocation start, CodeLocation end)
+{
+    SOUL_ASSERT (end.location.getAddress() >= start.location.getAddress());
+    return std::string (start.location.getAddress(), end.location.getAddress());
+}
 
 CodeLocation SourceCodeUtilities::findEndOfMatchingBrace (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openBrace, Operator::closeBrace); }
 CodeLocation SourceCodeUtilities::findEndOfMatchingParen (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openParen, Operator::closeParen); }

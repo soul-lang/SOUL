@@ -24,6 +24,16 @@ namespace soul
 /// Helper classes and functions for various source code parsing tasks
 struct SourceCodeUtilities
 {
+    //==============================================================================
+    static std::string getStringBetween (CodeLocation start, CodeLocation end);
+
+    static CodeLocation findNextOccurrence (CodeLocation start, char character);
+    static CodeLocation findEndOfExpression (CodeLocation start);
+
+    static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
+    static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
+
+    //==============================================================================
     struct Comment
     {
         bool valid = false, isStarSlash = false, isDoxygenStyle = false, isReferringBackwards = false;
@@ -41,8 +51,6 @@ struct SourceCodeUtilities
     static std::string getFileSummaryTitle (const Comment&);
     static std::string getFileSummaryBody (const Comment&);
 
-    static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
-    static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 };
 
 

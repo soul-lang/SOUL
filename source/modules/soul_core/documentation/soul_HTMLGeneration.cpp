@@ -164,11 +164,8 @@ private:
     }
 
     choc::html::HTMLElement& printExpression (choc::html::HTMLElement& parent,
-                                              const SourceCodeModel::ModuleDesc& module,
                                               const SourceCodeModel::Expression& type)
     {
-        ignoreUnused (module);
-        
         auto getClassForTypeSection = [] (SourceCodeModel::Expression::Section::Type t) -> const char*
         {
             if (t == SourceCodeModel::Expression::Section::Type::keyword)   return "keyword";
@@ -228,7 +225,7 @@ private:
                 else
                     desc.addContent (",").addLineBreak().addNBSP (indent);
 
-                printExpression (desc, m, p.type).addContent (" ");
+                printExpression (desc, p.type).addContent (" ");
 
                 auto& name = desc.addSpan ("variable_name");
                 name.addContent (p.name);
@@ -254,7 +251,7 @@ private:
             auto& ul = createModuleSection (parent, "Inputs").addChild ("ul");
 
             for (auto& e : m.inputs)
-                printEndpoint (ul, m, e);
+                printEndpoint (ul, e);
         }
 
         if (! m.outputs.empty())
@@ -262,12 +259,11 @@ private:
             auto& ul = createModuleSection (parent, "Outputs").addChild ("ul");
 
             for (auto& e : m.outputs)
-                printEndpoint (ul, m, e);
+                printEndpoint (ul, e);
         }
     }
 
-    void printEndpoint (choc::html::HTMLElement& ul, const SourceCodeModel::ModuleDesc& parent,
-                        const SourceCodeModel::Endpoint& e)
+    void printEndpoint (choc::html::HTMLElement& ul, const SourceCodeModel::Endpoint& e)
     {
         auto& li = ul.addChild ("li").setClass ("endpoint_desc");
 
@@ -288,7 +284,7 @@ private:
             else
                 li.addContent (", ");
 
-            printExpression (li, parent, t);
+            printExpression (li, t);
         }
 
         li.addContent (")");
@@ -320,7 +316,7 @@ private:
                     addComment (memberDiv, member.comment, "summary");
 
                     auto& memberLine = memberDiv.addDiv ("listing");
-                    printExpression (memberLine, module, member.type);
+                    printExpression (memberLine, member.type);
                     memberLine.addContent (" ").addSpan ("member_name").addContent (member.name);
                     memberLine.addContent (";").addLineBreak();
                 }
@@ -349,7 +345,7 @@ private:
 
                 auto& proto = div.addParagraph().setClass ("code_block");
 
-                printExpression (proto, m, f.returnType);
+                printExpression (proto, f.returnType);
                 proto.addContent (" ").addSpan ("function_name").addContent (f.nameWithGenerics);
 
                 if (f.parameters.empty())
@@ -369,7 +365,7 @@ private:
                         else
                             proto.addContent (",").addLineBreak().addNBSP (indentSpaces);
 
-                        printExpression (proto, m, p.type);
+                        printExpression (proto, p.type);
                         proto.addContent (" ");
                         proto.addSpan ("parameter_name").addContent (p.name);
 
@@ -398,7 +394,7 @@ private:
                 if (v.isExternal)
                     name.addSpan ("typename_text").addContent ("external");
 
-                printExpression (name, m, v.type);
+                printExpression (name, v.type);
                 name.addContent (" ").addSpan ("variable_name").addContent (v.name);
 
                 if (! v.initialiser.empty())
