@@ -30,7 +30,7 @@ struct HTMLGenerator
     std::string run (soul::CompileMessageList& errors,
                      const HTMLGenerationOptions& options)
     {
-        if (! model.generate (errors, options.sourceFiles))
+        if (! model.rebuild (errors, options.sourceFiles))
             return {};
 
         auto nav = createNav();
@@ -132,11 +132,11 @@ private:
     {
         choc::html::HTMLElement nav ("nav");
         nav.setID ("contents").setClass ("contents");
-        printTOCNode (nav, model.topLevelTOCNode, true);
+        printTOCNode (nav, model.createTableOfContentsRoot(), true);
         return nav;
     }
 
-    void printTOCNode (choc::html::HTMLElement& parent, const SourceCodeModel::TOCNode& node, bool isRoot)
+    void printTOCNode (choc::html::HTMLElement& parent, const SourceCodeModel::TableOfContentsNode& node, bool isRoot)
     {
         auto p = &parent;
 

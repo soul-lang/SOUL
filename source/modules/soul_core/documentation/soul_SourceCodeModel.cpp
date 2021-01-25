@@ -144,7 +144,13 @@ struct ExpressionHelpers
             return create (m->source) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
         }
 
-        return create (e.resolveAsType());
+        SourceCodeModel::Expression result;
+        catchParseErrors ([&] { result = create (e.resolveAsType()); });
+
+        if (! result.sections.empty())
+            return result;
+
+        return createText (getExpressionText (findStartOfExpression (e)));
     }
 
     static SourceCodeModel::Expression create (const Type& t)
@@ -253,6 +259,34 @@ struct ExpressionHelpers
 
         return {};
     }
+
+    static CodeLocation findStartOfExpression (AST::Expression& ex)
+    {
+        struct FindLexicalStartVisitor  : public ASTVisitor
+        {
+            void visitObject (AST::Expression& e) override
+            {
+                ASTVisitor::visitObject (e);
+
+                if (e.context.location.location < earliest.location)
+                    earliest = e.context.location;
+            }
+
+            CodeLocation earliest;
+        };
+
+        FindLexicalStartVisitor v;
+        v.earliest = ex.context.location;
+        v.visitObject (ex);
+        return v.earliest;
+    }
+
+    static std::string getExpressionText (CodeLocation start)
+    {
+        auto end = SourceCodeUtilities::findEndOfExpression (start);
+        SOUL_ASSERT (! end.isEmpty());
+        return choc::text::trim (SourceCodeUtilities::getStringBetween (start, end));
+    }
 };
 
 //==============================================================================
@@ -261,11 +295,7 @@ static std::string getInitialiserValue (CodeLocation name)
     auto equalsOp = SourceCodeUtilities::findNextOccurrence (name, '=');
     SOUL_ASSERT (! equalsOp.isEmpty());
     ++(equalsOp.location);
-
-    auto endOfStatement = SourceCodeUtilities::findEndOfExpression (equalsOp);
-    SOUL_ASSERT (! endOfStatement.isEmpty());
-
-    return SourceCodeUtilities::getStringBetween (equalsOp, endOfStatement);
+    return ExpressionHelpers::getExpressionText (equalsOp);
 }
 
 static std::string getInitialiserValue (AST::VariableDeclaration& v)
@@ -274,6 +304,16 @@ static std::string getInitialiserValue (AST::VariableDeclaration& v)
         return {};
 
     return getInitialiserValue (v.context.location);
+}
+
+static SourceCodeModel::Annotation createAnnotation (const AST::Annotation& a)
+{
+    SourceCodeModel::Annotation result;
+
+    for (auto& p : a.properties)
+        result.properties[p.name->toString()] = ExpressionHelpers::create (p.value);
+
+    return result;
 }
 
 static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
@@ -313,6 +353,7 @@ static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel:
             desc.name = v->name.toString();
             desc.UID = makeUID (*v);
             desc.defaultValue = getInitialiserValue (*v);
+            desc.annotation = createAnnotation (v->annotation);
         }
         else
         {
@@ -332,6 +373,7 @@ static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
         desc.endpointType = endpointTypeToString (e->details->endpointType);
         desc.name = e->name.toString();
         desc.UID = makeUID (e);
+        desc.annotation = createAnnotation (e->annotation);
 
         for (auto& type : e->details->dataTypes)
             desc.dataTypes.push_back (ExpressionHelpers::create (type));
@@ -376,6 +418,8 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
 
                     desc.parameters.push_back (std::move (param));
                 }
+
+                desc.annotation = createAnnotation (f->annotation);
 
                 m.functions.push_back (std::move (desc));
             }
@@ -430,54 +474,6 @@ static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
 }
 
 //==============================================================================
-SourceCodeModel::TOCNode& SourceCodeModel::TOCNode::getNode (ArrayView<std::string> path)
-{
-    if (path.empty())
-        return *this;
-
-    auto& firstPart = path.front();
-
-    if (path.size() == 1 && firstPart == name)
-        return *this;
-
-    for (auto& c : children)
-        if (firstPart == c.name)
-            return c.getNode (path.tail());
-
-    children.push_back ({});
-    auto& n = children.back();
-    n.name = firstPart;
-    return path.size() > 1 ? n.getNode (path.tail()) : n;
-}
-
-static void buildTOCNodes (ArrayView<SourceCodeModel::FileDesc> files,
-                           SourceCodeModel::TOCNode& topLevelTOCNode)
-{
-    for (auto& f : files)
-    {
-        std::vector<std::string> filePath { f.title };
-        topLevelTOCNode.getNode (filePath).file = std::addressof (f);
-
-        for (auto& m : f.modules)
-        {
-            TokenisedPathString path (m.fullyQualifiedName);
-            auto modulePath = filePath;
-
-            if (path.sections.size() > 1 && path.getSection(0) == "soul")
-            {
-                modulePath.push_back ("soul::" + path.getSection (1));
-                path.sections.erase (path.sections.begin(), path.sections.begin() + 2);
-            }
-
-            for (size_t i = 0; i < path.sections.size(); ++i)
-                modulePath.push_back (path.getSection (i));
-
-            topLevelTOCNode.getNode (modulePath).module = std::addressof (m);
-        }
-    }
-}
-
-//==============================================================================
 static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m)
 {
     SourceCodeModel::ModuleDesc d;
@@ -489,6 +485,9 @@ static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m)
     d.moduleTypeDescription = d.isNamespace ? "namespace" : (d.isGraph ? "graph" : "processor");
     d.fullyQualifiedName = Program::stripRootNamespaceFromQualifiedPath (m.getFullyQualifiedDisplayPath().toString());
     d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
+
+    if (auto p = cast<AST::ProcessorBase> (m))
+        d.annotation = createAnnotation (p->annotation);
 
     return d;
 }
@@ -519,7 +518,7 @@ static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc
         recurseFindingModules (sub, desc);
 }
 
-bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
+bool SourceCodeModel::rebuild (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
 {
     files.clear();
     AST::Allocator allocator;
@@ -555,8 +554,59 @@ bool SourceCodeModel::generate (CompileMessageList& errors, ArrayView<SourceCode
         desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
     }
 
-    buildTOCNodes (files, topLevelTOCNode);
     return true;
+}
+
+//==============================================================================
+static SourceCodeModel::TableOfContentsNode& findOrCreateNode (SourceCodeModel::TableOfContentsNode& node,
+                                                               ArrayView<std::string> path)
+{
+    if (path.empty())
+        return node;
+
+    auto& firstPart = path.front();
+
+    if (path.size() == 1 && firstPart == node.name)
+        return node;
+
+    for (auto& c : node.children)
+        if (firstPart == c.name)
+            return findOrCreateNode (c, path.tail());
+
+    node.children.push_back ({});
+    auto& n = node.children.back();
+    n.name = firstPart;
+    return path.size() > 1 ? findOrCreateNode (n, path.tail()) : n;
+}
+
+SourceCodeModel::TableOfContentsNode SourceCodeModel::createTableOfContentsRoot() const
+{
+    TableOfContentsNode root;
+
+    for (auto& f : files)
+    {
+        std::vector<std::string> filePath { f.title };
+        findOrCreateNode (root, filePath).file = std::addressof (f);
+
+        for (auto& m : f.modules)
+        {
+            TokenisedPathString path (m.fullyQualifiedName);
+            auto modulePath = filePath;
+
+            if (path.sections.size() > 1 && path.getSection(0) == "soul")
+            {
+                modulePath.push_back ("soul::" + path.getSection (1));
+                path.sections.erase (path.sections.begin(), path.sections.begin() + 2);
+            }
+
+            for (size_t i = 0; i < path.sections.size(); ++i)
+                modulePath.push_back (path.getSection (i));
+
+            findOrCreateNode (root, modulePath).module = std::addressof (m);
+        }
+    }
+
+    return root;
 }
 
 } // namespace soul

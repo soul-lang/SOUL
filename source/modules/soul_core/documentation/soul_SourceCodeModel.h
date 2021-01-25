@@ -31,7 +31,8 @@ namespace soul
 */
 struct SourceCodeModel
 {
-    bool generate (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
+    //==============================================================================
+    bool rebuild (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
 
     //==============================================================================
     struct Expression
@@ -49,11 +50,17 @@ struct SourceCodeModel
         std::string toString() const;
     };
 
+    struct Annotation
+    {
+        std::unordered_map<std::string, Expression> properties;
+    };
+
     struct Endpoint
     {
         SourceCodeUtilities::Comment comment;
         std::string UID, endpointType, name;
         std::vector<Expression> dataTypes;
+        Annotation annotation;
     };
 
     struct Variable
@@ -70,6 +77,7 @@ struct SourceCodeModel
         Expression returnType;
         std::string UID, bareName, nameWithGenerics, fullyQualifiedName;
         std::vector<Variable> parameters;
+        Annotation annotation;
     };
 
     struct Struct
@@ -91,6 +99,7 @@ struct SourceCodeModel
     {
         Expression type;
         std::string UID, name, defaultValue;
+        Annotation annotation;
     };
 
     struct ModuleDesc
@@ -98,6 +107,7 @@ struct SourceCodeModel
         bool isNamespace = false, isProcessor = false, isGraph = false;
         std::string UID, moduleTypeDescription, fullyQualifiedName;
         SourceCodeUtilities::Comment comment;
+        Annotation annotation;
 
         std::vector<SpecialisationParameter> specialisationParams;
         std::vector<Endpoint> inputs, outputs;
@@ -110,23 +120,23 @@ struct SourceCodeModel
     {
         SourceCodeText::Ptr source;
         SourceCodeUtilities::Comment fileComment;
-        std::string filename, UID, title, summary;
+        std::string UID, filename, title, summary;
         std::vector<ModuleDesc> modules;
-    };
-
-    struct TOCNode
-    {
-        std::string name;
-        std::vector<TOCNode> children;
-        ModuleDesc* module = nullptr;
-        FileDesc* file = nullptr;
-
-        TOCNode& getNode (ArrayView<std::string> path);
     };
 
     //==============================================================================
     std::vector<FileDesc> files;
-    TOCNode topLevelTOCNode;
+
+    //==============================================================================
+    struct TableOfContentsNode
+    {
+        std::string name;
+        std::vector<TableOfContentsNode> children;
+        const ModuleDesc* module = nullptr;
+        const FileDesc* file = nullptr;
+    };
+
+    TableOfContentsNode createTableOfContentsRoot() const;
 };
 
 
