@@ -159,10 +159,48 @@ namespace soul::random
     struct RandomNumberState
     {
         /** The current seed.
-            Top tip: when generating a seed, you might want to use the `processor.id` constant,
+
+            **Top tip:** when generating a seed, you might want to use the `processor.id` constant,
             to make sure that each instance of a processor has a differently-seeded RNG. If you
             want the RNG to be different each time the program runs, you could also throw the
             `processor.session` constant into the mix too.
+
+            For example:
+
+            ```soul
+            processor MyProcessorUsingRandomNumbers
+            {
+                ...etc...
+
+                soul::random::RandomNumberState rng;
+
+                let mySeed = 12345; // Whenever seeding a RNG, you should pick a 'salt' value
+                                    // that's as unique as possible
+
+                void run()
+                {
+                    // Initialising it like this will produce the same sequence of numbers for
+                    // every instance of this processor:
+                    rng.reset (mySeed);
+
+                    // This will result in each instance of this processor generating a different
+                    // sequence, but each time you load and run the program, you may get the
+                    // same sequences as the last run:
+                    rng.reset (processor.id + mySeed);
+
+                    // This will result in each instance of this processor generating the same
+                    // sequence, but it will be different each time you load and run the program:
+)soul_code"
+R"soul_code(
+
+                    rng.reset (processor.session + mySeed);
+
+                    // This will result in each instance of this processor producing a different
+                    // sequence, and each will also be different each time you load and run the program:
+                    rng.reset (processor.session + processor.id + mySeed);
+                }
+            }
+            ```
         */
         int64 seed;
     }
@@ -206,9 +244,6 @@ namespace soul::noise
         {
             var rng = random::RandomNumberState (processor.id + 10);
 
-)soul_code"
-R"soul_code(
-
             loop
             {
                 out << rng.getNextBipolar();
@@ -232,6 +267,9 @@ R"soul_code(
             {
                 let white = rng.getNextBipolar();
                 runningTotal += white;
+
+)soul_code"
+R"soul_code(
 
                 if (runningTotal > limit || runningTotal < -limit)
                     runningTotal -= white;

@@ -125,23 +125,23 @@ static bool shouldShow (AST::ModuleBase& module, const SourceCodeModel::ModuleDe
 //==============================================================================
 struct ExpressionHelpers
 {
-    static SourceCodeModel::Expression create (AST::Expression& e)
+    static SourceCodeModel::Expression create (AST::Expression& e, const StringDictionary& dictionary)
     {
-        if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs) + createText ("[") + createIfNotNull (s->rhs) + createText ("]");
-        if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs) + createText ("<") + createIfNotNull (s->rhs) + createText (">");
-        if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs) + createText (".") + createText (d->rhs.identifier.toString());
+        if (auto s = cast<AST::SubscriptWithBrackets> (e))  return create (s->lhs, dictionary) + createText ("[") + createIfNotNull (s->rhs, dictionary) + createText ("]");
+        if (auto s = cast<AST::SubscriptWithChevrons> (e))  return create (s->lhs, dictionary) + createText ("<") + createIfNotNull (s->rhs, dictionary) + createText (">");
+        if (auto d = cast<AST::DotOperator> (e))            return create (d->lhs, dictionary) + createText (".") + createText (d->rhs.identifier.toString());
         if (auto q = cast<AST::QualifiedIdentifier> (e))    return fromIdentifier (*q);
-        if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription());
+        if (auto c = cast<AST::Constant> (e))               return createText (c->value.getDescription (std::addressof (dictionary)));
 
         if (auto m = cast<AST::TypeMetaFunction> (e))
         {
             if (m->operation == AST::TypeMetaFunction::Op::makeReference)
-                return create (m->source) + createText ("&");
+                return create (m->source, dictionary) + createText ("&");
 
             if (m->operation == AST::TypeMetaFunction::Op::makeConst)
-                return createKeyword ("const ") + create (m->source);
+                return createKeyword ("const ") + create (m->source, dictionary);
 
-            return create (m->source) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
+            return create (m->source, dictionary) + createText (".") + createText (AST::TypeMetaFunction::getNameForOperation (m->operation));
         }
 
         SourceCodeModel::Expression result;
@@ -168,10 +168,10 @@ struct ExpressionHelpers
         return createPrimitive (t.getPrimitiveType().getDescription());
     }
 
-    static SourceCodeModel::Expression forVariable (AST::VariableDeclaration& v)
+    static SourceCodeModel::Expression forVariable (AST::VariableDeclaration& v, const StringDictionary& dictionary)
     {
         if (v.declaredType != nullptr)
-            return create (*v.declaredType);
+            return create (*v.declaredType, dictionary);
 
         SOUL_ASSERT (v.initialValue != nullptr);
 
@@ -179,7 +179,7 @@ struct ExpressionHelpers
             return create (v.initialValue->getResultType());
 
         if (auto cc = cast<AST::CallOrCast> (v.initialValue))
-            return create (cc->nameOrType);
+            return create (cc->nameOrType, dictionary);
 
         return {};
     }
@@ -212,7 +212,10 @@ struct ExpressionHelpers
         return createText (text);
     }
 
-    static SourceCodeModel::Expression createIfNotNull (pool_ptr<AST::Expression> e)    { return e != nullptr ? create (*e) : SourceCodeModel::Expression(); }
+    static SourceCodeModel::Expression createIfNotNull (pool_ptr<AST::Expression> e, const StringDictionary& dictionary)
+    {
+        return e != nullptr ? create (*e, dictionary) : SourceCodeModel::Expression();
+    }
 
     static SourceCodeModel::Expression createKeyword      (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::keyword,    std::move (s) }); }
     static SourceCodeModel::Expression createText         (std::string s) { return fromSection ({ SourceCodeModel::Expression::Section::Type::text,       std::move (s) }); }
@@ -306,17 +309,17 @@ static std::string getInitialiserValue (AST::VariableDeclaration& v)
     return getInitialiserValue (v.context.location);
 }
 
-static SourceCodeModel::Annotation createAnnotation (const AST::Annotation& a)
+static SourceCodeModel::Annotation createAnnotation (const AST::Annotation& a, const StringDictionary& dictionary)
 {
     SourceCodeModel::Annotation result;
 
     for (auto& p : a.properties)
-        result.properties[p.name->toString()] = ExpressionHelpers::create (p.value);
+        result.properties[p.name->toString()] = ExpressionHelpers::create (p.value, dictionary);
 
     return result;
 }
 
-static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
+static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
 {
     for (auto& p : module.getSpecialisationParameters())
     {
@@ -349,11 +352,11 @@ static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel:
         }
         else if (auto v = cast<AST::VariableDeclaration> (p))
         {
-            desc.type = ExpressionHelpers::forVariable (*v);
+            desc.type = ExpressionHelpers::forVariable (*v, dictionary);
             desc.name = v->name.toString();
             desc.UID = makeUID (*v);
             desc.defaultValue = getInitialiserValue (*v);
-            desc.annotation = createAnnotation (v->annotation);
+            desc.annotation = createAnnotation (v->annotation, dictionary);
         }
         else
         {
@@ -364,7 +367,7 @@ static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel:
     }
 }
 
-static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
+static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
 {
     for (auto& e : module.getEndpoints())
     {
@@ -373,10 +376,10 @@ static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
         desc.endpointType = endpointTypeToString (e->details->endpointType);
         desc.name = e->name.toString();
         desc.UID = makeUID (e);
-        desc.annotation = createAnnotation (e->annotation);
+        desc.annotation = createAnnotation (e->annotation, dictionary);
 
         for (auto& type : e->details->dataTypes)
-            desc.dataTypes.push_back (ExpressionHelpers::create (type));
+            desc.dataTypes.push_back (ExpressionHelpers::create (type, dictionary));
 
         if (e->isInput)
             m.inputs.push_back (std::move (desc));
@@ -385,7 +388,7 @@ static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
     }
 }
 
-static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
+static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
 {
     if (auto functions = module.getFunctionList())
     {
@@ -405,7 +408,7 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
                 desc.nameWithGenerics = simplifyWhitespace (SourceCodeUtilities::getStringBetween (f->nameLocation.location, openParen));
 
                 if (auto ret = f->returnType.get())
-                    desc.returnType = ExpressionHelpers::create (*ret);
+                    desc.returnType = ExpressionHelpers::create (*ret, dictionary);
 
                 for (auto& p : f->parameters)
                 {
@@ -413,13 +416,13 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
                     param.comment = getComment (p->context);
                     param.name = p->name.toString();
                     param.UID = makeUID (p);
-                    param.type = ExpressionHelpers::forVariable (p);
+                    param.type = ExpressionHelpers::forVariable (p, dictionary);
                     param.initialiser = getInitialiserValue (p);
 
                     desc.parameters.push_back (std::move (param));
                 }
 
-                desc.annotation = createAnnotation (f->annotation);
+                desc.annotation = createAnnotation (f->annotation, dictionary);
 
                 m.functions.push_back (std::move (desc));
             }
@@ -427,7 +430,7 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
     }
 }
 
-static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
+static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
 {
     for (auto& s : module.getStructDeclarations())
     {
@@ -444,7 +447,7 @@ static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& 
                 SourceCodeModel::Struct::Member member;
                 member.name = sm.name.toString();
                 member.comment = getComment (sm.nameLocation);
-                member.type = ExpressionHelpers::create (sm.type);
+                member.type = ExpressionHelpers::create (sm.type, dictionary);
 
                 desc.members.push_back (std::move (member));
             }
@@ -454,7 +457,7 @@ static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& 
     }
 }
 
-static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m)
+static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
 {
     for (auto& v : module.getStateVariableList())
     {
@@ -465,7 +468,7 @@ static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
             desc.name = v->name.toString();
             desc.UID = makeUID (v);
             desc.isExternal = v->isExternal;
-            desc.type = ExpressionHelpers::forVariable (v);
+            desc.type = ExpressionHelpers::forVariable (v, dictionary);
             desc.initialiser = getInitialiserValue (v);
 
             m.variables.push_back (std::move (desc));
@@ -474,7 +477,7 @@ static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
 }
 
 //==============================================================================
-static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m)
+static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m, const StringDictionary& dictionary)
 {
     SourceCodeModel::ModuleDesc d;
 
@@ -487,12 +490,12 @@ static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m)
     d.comment = SourceCodeUtilities::parseComment (SourceCodeUtilities::findStartOfPrecedingComment (m.processorKeywordLocation));
 
     if (auto p = cast<AST::ProcessorBase> (m))
-        d.annotation = createAnnotation (p->annotation);
+        d.annotation = createAnnotation (p->annotation, dictionary);
 
     return d;
 }
 
-static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc& desc)
+static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc& desc, const StringDictionary& dictionary)
 {
     if (m.originalModule != nullptr)
         return;
@@ -500,22 +503,22 @@ static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc
     // if there's no keyword then it's an outer namespace that was parsed indirectly
     if (! m.processorKeywordLocation.isEmpty())
     {
-        auto module = createModule (m);
+        auto module = createModule (m, dictionary);
 
         if (shouldShow (m, module))
         {
             desc.modules.push_back (std::move (module));
 
-            buildSpecialisationParams (m, desc.modules.back());
-            buildEndpoints (m, desc.modules.back());
-            buildFunctions (m, desc.modules.back());
-            buildVariables (m, desc.modules.back());
-            buildStructs (m, desc.modules.back());
+            buildSpecialisationParams (m, desc.modules.back(), dictionary);
+            buildEndpoints (m, desc.modules.back(), dictionary);
+            buildFunctions (m, desc.modules.back(), dictionary);
+            buildVariables (m, desc.modules.back(), dictionary);
+            buildStructs (m, desc.modules.back(), dictionary);
         }
     }
 
     for (auto& sub : m.getSubModules())
-        recurseFindingModules (sub, desc);
+        recurseFindingModules (sub, desc, dictionary);
 }
 
 bool SourceCodeModel::rebuild (CompileMessageList& errors, ArrayView<SourceCodeText::Ptr> filesToLoad)
@@ -538,7 +541,7 @@ bool SourceCodeModel::rebuild (CompileMessageList& errors, ArrayView<SourceCodeT
             for (auto& m : Compiler::parseTopLevelDeclarations (allocator, f, topLevelNamespace))
             {
                 ASTUtilities::mergeDuplicateNamespaces (topLevelNamespace);
-                recurseFindingModules (m, desc);
+                recurseFindingModules (m, desc, allocator.stringDictionary);
             }
         }
         catch (AbortCompilationException) {}

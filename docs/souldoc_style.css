@@ -38,6 +38,9 @@ code.multiline {
   background-color: rgba(0, 0, 0, 0.027);
   padding: 0.5em;
   margin: 0;
+  white-space: pre;
+  display: block;
+  font-style: normal;
 }
 
 nav {
@@ -93,6 +96,10 @@ li.toc_module {
 
 .summary {
   font-family: var(--serif-font);
+}
+
+.summary p {
+  padding-bottom: 0.5em;
 }
 
 div.library {
@@ -183,7 +190,7 @@ div.module {
 
 .primitive_type, .typename_text, .struct_name, .function_name,
 .parameter_name, .endpoint_name, .endpoint_type, .module_name,
-.variable_name, .member_name, .keyword {
+.variable_name, .member_name, .keyword, .annotation {
   font-family: var(--code-font);
   padding: 0;
   margin: 0;
@@ -216,10 +223,10 @@ div.module {
   opacity: 60%;
 }
 
-.decoration {
-  font-style: italic;
-  font-size: 90%;
-  opacity: 70%;
+.annotation {
+  padding-left: 1em;
+  font-size: 80%;
+  margin: 0 0 1em 0;
 }
 
 div.function {

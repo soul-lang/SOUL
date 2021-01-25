@@ -121,6 +121,7 @@ private:
         addComment (moduleDiv, m.comment, "summary");
 
         auto& sections = moduleDiv.addDiv ("module_sections");
+        printAnnotation (sections, m.annotation);
         printSpecialisationParams (sections, m);
         printEndpoints (sections, m);
         printStructs (sections, m);
@@ -164,7 +165,7 @@ private:
     }
 
     choc::html::HTMLElement& printExpression (choc::html::HTMLElement& parent,
-                                              const SourceCodeModel::Expression& type)
+                                              const SourceCodeModel::Expression& e)
     {
         auto getClassForTypeSection = [] (SourceCodeModel::Expression::Section::Type t) -> const char*
         {
@@ -176,7 +177,7 @@ private:
             return "typename_text";
         };
 
-        for (auto& s : type.sections)
+        for (auto& s : e.sections)
         {
             auto classID = getClassForTypeSection (s.type);
 
@@ -200,6 +201,31 @@ private:
         auto& list = parent.addDiv ("module_section");
         list.addChild ("h3").addContent (name);
         return list;
+    }
+
+    void printAnnotation (choc::html::HTMLElement& parent, const SourceCodeModel::Annotation& a)
+    {
+        if (! a.properties.empty())
+        {
+            auto& div = parent.addDiv ("annotation");
+            div.addContent ("[[ ");
+            bool first = true;
+
+            for (auto& prop : a.properties)
+            {
+                if (first)
+                    first = false;
+                else
+                    div.addContent (", ");
+
+                div.addSpan ("annotation_name").addContent (prop.first);
+                div.addContent (": ");
+                auto& value = div.addSpan ("annotation_value").setInline (true);
+                printExpression (value, prop.second);
+            }
+
+            div.addContent (" ]]");
+        }
     }
 
     void printSpecialisationParams (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
@@ -343,6 +369,8 @@ private:
 
                 addComment (div, f.comment, "summary");
 
+                printAnnotation (div, f.annotation);
+
                 auto& proto = div.addParagraph().setClass ("code_block");
 
                 printExpression (proto, f.returnType);
@@ -434,7 +462,7 @@ private:
                     continue;
                 }
 
-                if (leadingSpaces == codeSectionIndent)
+                if (leadingSpaces >= codeSectionIndent || trimmedLine.empty())
                 {
                     paragraphs.back() += line + '\n';
                     continue;
@@ -688,10 +716,13 @@ private:
 
                 if (endOfLine1 != std::string::npos)
                 {
+                    auto type = choc::text::trim (trimmed.substr (3, endOfLine1 - 3));
+
+                    if (endOfLine1 < trimmed.length() - 1)
+                        ++endOfLine1;
+
                     auto& code = getParent().addChild ("code").setClass ("multiline");
                     code.addContent (trimmed.substr (endOfLine1));
-
-                    auto type = choc::text::trim (trimmed.substr (3, endOfLine1 - 3));
 
                     if (! type.empty())
                         code.setClass (type);
