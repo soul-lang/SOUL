@@ -379,7 +379,8 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
     void injectMIDIMessage (uint8_t byte0, uint8_t byte1, uint8_t byte2)
     {
         auto message = choc::midi::ShortMessage (byte0, byte1, byte2);
-        midiCollector.addMessageToQueue (juce::MidiMessage (message.data, message.length(), 0.0));
+        midiCollector.addMessageToQueue (juce::MidiMessage (message.data, message.length(),
+                                                            juce::Time::getMillisecondCounterHiRes()));
     }
 
     bool sendInputEvent (const std::string& endpointID, const juce::var& value)
