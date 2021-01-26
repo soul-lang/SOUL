@@ -30,8 +30,8 @@ namespace soul
     X(noLeadingUnderscoreAllowed,           "Identifiers beginning with an underscore are reserved for system use") \
     X(illegalCharacter,                     "Unexpected character $Q0$ in source") \
     X(unterminatedComment,                  "Unterminated '/*' comment") \
-    X(integerLiteralTooLow,                 "Integer literal is too low to be represented") \
     X(integerLiteralTooLarge,               "Integer literal is too large to be represented") \
+    X(integerLiteralNeedsSuffix,            "This value is too large to fit into an int32, did you mean to add an 'i64' suffix?") \
     X(unrecognisedLiteralSuffix,            "Unrecognised suffix on literal") \
     X(noOctalLiterals,                      "Octal literals are not supported") \
     X(decimalDigitInOctal,                  "Decimal digit in octal constant") \

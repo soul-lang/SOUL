@@ -252,10 +252,10 @@ private:
         if (literalType == Token::literalInt32)
         {
             if (isNegative && literalIntValue > -static_cast<int64_t> (std::numeric_limits<int32_t>::min()))
-                throwError (Errors::integerLiteralTooLow());
+                throwError (Errors::integerLiteralNeedsSuffix());
 
             if (! isNegative && literalIntValue > static_cast<int64_t> (std::numeric_limits<int32_t>::max()))
-                throwError (Errors::integerLiteralTooLarge());
+                throwError (Errors::integerLiteralNeedsSuffix());
         }
 
         return literalType;
