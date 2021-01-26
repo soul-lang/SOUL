@@ -51,6 +51,22 @@ struct SourceCodeUtilities
     static std::string getFileSummaryTitle (const Comment&);
     static std::string getFileSummaryBody (const Comment&);
 
+    //==============================================================================
+    enum class SyntaxTokenType
+    {
+        plain,
+        comment,
+        keyword,
+        identifier,
+        operatorSymbol,
+        intLiteral,
+        floatLiteral,
+        stringLiteral,
+        error
+    };
+
+    static void iterateSyntaxTokens (CodeLocation start,
+                                     const std::function<bool(std::string_view, SyntaxTokenType)>& handleToken);
 };
 
 

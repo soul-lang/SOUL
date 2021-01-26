@@ -43,6 +43,25 @@ code.multiline {
   font-style: normal;
 }
 
+code.soul {
+  background-color: rgba(45, 48, 58);
+  padding: 0.5em;
+  margin: 0;
+  white-space: pre;
+  display: block;
+  font-style: normal;
+}
+
+.syntax_plain      { color: #d4d4d4; }
+.syntax_comment    { color: #608b4e; }
+.syntax_keyword    { color: #569cd6; }
+.syntax_identifier { color: #d4d4d4; }
+.syntax_operator   { color: #ebc36b; }
+.syntax_int        { color: #b5c3a8; }
+.syntax_float      { color: #b5c3a8; }
+.syntax_string     { color: #ce9178; }
+.syntax_error      { color: rgb(255, 74, 74); }
+
 nav {
   flex: 0 1 18em;
   background-color: rgba(61, 65, 85, 0.062);

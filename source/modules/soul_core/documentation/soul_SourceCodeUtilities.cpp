@@ -23,7 +23,11 @@ namespace soul
 
 struct SimpleTokeniser  : public SOULTokeniser
 {
-    SimpleTokeniser (const CodeLocation& start) { initialise (start); }
+    SimpleTokeniser (const CodeLocation& start, bool ignoreComments)
+    {
+        shouldIgnoreComments = ignoreComments;
+        initialise (start);
+    }
 
     [[noreturn]] void throwError (const CompileMessage& message) const override
     {
@@ -57,7 +61,7 @@ struct SimpleTokeniser  : public SOULTokeniser
     {
         try
         {
-            SimpleTokeniser tokeniser (start);
+            SimpleTokeniser tokeniser (start, true);
 
             while (! tokeniser.matches (Token::eof))
             {
@@ -76,7 +80,7 @@ struct SimpleTokeniser  : public SOULTokeniser
     {
         try
         {
-            SimpleTokeniser tokeniser (start);
+            SimpleTokeniser tokeniser (start, true);
             SOUL_ASSERT (tokeniser.matches (openDelim));
 
             if (tokeniser.skipPastMatchingCloseDelimiter (openDelim, closeDelim))
@@ -112,7 +116,7 @@ CodeLocation SourceCodeUtilities::findEndOfExpression (CodeLocation start)
 {
     try
     {
-        SimpleTokeniser tokeniser (start);
+        SimpleTokeniser tokeniser (start, true);
 
         while (! tokeniser.matches (Token::eof))
         {
@@ -388,5 +392,64 @@ std::string SourceCodeUtilities::Comment::getText() const
 {
     return joinStrings (lines, "\n");
 }
+
+//==============================================================================
+void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
+                                               const std::function<bool(std::string_view, SyntaxTokenType)>& handleToken)
+{
+    auto getTokenType = [] (TokenType t)
+    {
+       #define SOUL_COMPARE_KEYWORD(name, str) if (t == Keyword::name) return SyntaxTokenType::keyword;
+        SOUL_KEYWORDS (SOUL_COMPARE_KEYWORD)
+       #undef SOUL_COMPARE_KEYWORD
+
+       #define SOUL_COMPARE_OPERATOR(name, str) if (t == Operator::name) return SyntaxTokenType::operatorSymbol;
+        SOUL_OPERATORS (SOUL_COMPARE_OPERATOR)
+       #undef SOUL_COMPARE_OPERATOR
+
+        if (t == Token::identifier)      return SyntaxTokenType::identifier;
+        if (t == Token::literalInt32)    return SyntaxTokenType::intLiteral;
+        if (t == Token::literalInt64)    return SyntaxTokenType::intLiteral;
+        if (t == Token::literalFloat32)  return SyntaxTokenType::floatLiteral;
+        if (t == Token::literalFloat64)  return SyntaxTokenType::floatLiteral;
+        if (t == Token::literalImag32)   return SyntaxTokenType::floatLiteral;
+        if (t == Token::literalImag64)   return SyntaxTokenType::floatLiteral;
+        if (t == Token::literalString)   return SyntaxTokenType::stringLiteral;
+        if (t == Token::comment)         return SyntaxTokenType::comment;
+
+        return SyntaxTokenType::plain;
+    };
+
+    SimpleTokeniser tokeniser (start, false);
+    auto currentSectionStart = start.location;
+    auto currentTokenType = SyntaxTokenType::plain;
+
+    try
+    {
+        while (! tokeniser.matches (Token::eof))
+        {
+            auto newPos = tokeniser.location.location;
+            auto newType = getTokenType (tokeniser.currentType);
+
+            if (newType != currentTokenType)
+            {
+                if (! handleToken (std::string_view (currentSectionStart.getAddress(),
+                                                     static_cast<size_t> (newPos.getAddress() - currentSectionStart.getAddress())),
+                                   currentTokenType))
+                    break;
+
+                currentSectionStart = newPos;
+                currentTokenType = newType;
+            }
+
+            tokeniser.skip();
+        }
+    }
+    catch (const AbortCompilationException&) {}
+
+    if (currentSectionStart.isNotEmpty())
+        handleToken (currentSectionStart.getAddress(), currentTokenType);
+}
+
 
 } // namespace soul

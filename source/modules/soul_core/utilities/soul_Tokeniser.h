@@ -66,6 +66,7 @@ namespace Token
     SOUL_DECLARE_TOKEN (literalImag64,  "$imag64")
     SOUL_DECLARE_TOKEN (literalString,  "$string literal")
     SOUL_DECLARE_TOKEN (identifier,     "$identifier")
+    SOUL_DECLARE_TOKEN (comment,        "$comment")
 }
 
 //==============================================================================
@@ -88,7 +89,11 @@ struct Tokeniser
 
     TokenType skip()
     {
-        skipWhitespaceAndComments();
+        if (shouldIgnoreComments)
+            skipWhitespaceAndComments();
+        else
+            input = input.findEndOfWhitespace();
+
         location.location = input;
         auto last = currentType;
         currentType = matchNextToken();
@@ -145,6 +150,7 @@ struct Tokeniser
     int64_t literalIntValue = 0;
     double literalDoubleValue = 0;
     std::string currentStringValue;
+    bool shouldIgnoreComments = true;
 
     constexpr static const size_t maxIdentifierLength = 256;
 
@@ -197,6 +203,30 @@ private:
 
         if (currentChar == '.' && parseFloatLiteral())
             return literalType;
+
+        if (currentChar == '/' && ! shouldIgnoreComments)
+        {
+            auto c2 = *(input + 1);
+
+            if (c2 == '/')
+            {
+                auto end = input.find ("\n");
+                currentStringValue = std::string (input.getAddress(), end.getAddress());
+                input = end;
+                return Token::comment;
+            }
+
+            if (c2 == '*')
+            {
+                location.location = input;
+                auto end = (input + 2).find ("*/");
+                if (end.isEmpty()) throwError (Errors::unterminatedComment());
+                end += 2;
+                currentStringValue = std::string (input.getAddress(), end.getAddress());
+                input = end;
+                return Token::comment;
+            }
+        }
 
         if (auto op = OperatorList::match (input))
             return op;

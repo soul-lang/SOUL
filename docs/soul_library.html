@@ -1032,37 +1032,36 @@
      </div>
      <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">RandomNumberState</span><br>{<br></p>
       <div class="struct_member">
-       <div class="summary"><p>The current seed.</p><p><strong>Top tip:</strong> when generating a seed, you might want to use the <code>processor.id</code> constant, to make sure that each instance of a processor has a differently-seeded RNG. If you want the RNG to be different each time the program runs, you could also throw the <code>processor.session</code> constant into the mix too.</p><p>For example:</p><p></p>
-        <code class="multiline" class="soul">processor MyProcessorUsingRandomNumbers
-{
-    ...etc...
+       <div class="summary"><p>The current seed.</p><p><strong>Top tip:</strong> when generating a seed, you might want to use the <code>processor.id</code> constant, to make sure that each instance of a processor has a differently-seeded RNG. If you want the RNG to be different each time the program runs, you could also throw the <code>processor.session</code> constant into the mix too.</p><p>For example:</p><p></p><code class="soul"><span class="syntax_plain"></span><span class="syntax_keyword">processor </span><span class="syntax_identifier">MyProcessorUsingRandomNumbers
+</span><span class="syntax_operator">{
+    ...</span><span class="syntax_identifier">etc</span><span class="syntax_operator">...
 
-    soul::random::RandomNumberState rng;
+    </span><span class="syntax_identifier">soul</span><span class="syntax_operator">::</span><span class="syntax_identifier">random</span><span class="syntax_operator">::</span><span class="syntax_identifier">RandomNumberState rng</span><span class="syntax_operator">;
 
-    let mySeed = 12345; // Whenever seeding a RNG, you should pick a &#39;salt&#39; value
+    </span><span class="syntax_keyword">let </span><span class="syntax_identifier">mySeed </span><span class="syntax_operator">= </span><span class="syntax_int">12345</span><span class="syntax_operator">; </span><span class="syntax_comment">// Whenever seeding a RNG, you should pick a &#39;salt&#39; value
                         // that&#39;s as unique as possible
 
-    void run()
+    </span><span class="syntax_keyword">void </span><span class="syntax_identifier">run</span><span class="syntax_operator">()
     {
-        // Initialising it like this will produce the same sequence of numbers for
+        </span><span class="syntax_comment">// Initialising it like this will produce the same sequence of numbers for
         // every instance of this processor:
-        rng.reset (mySeed);
+        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
 
-        // This will result in each instance of this processor generating a different
+        </span><span class="syntax_comment">// This will result in each instance of this processor generating a different
         // sequence, but each time you load and run the program, you may get the
         // same sequences as the last run:
-        rng.reset (processor.id + mySeed);
+        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">id </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
 
-        // This will result in each instance of this processor generating the same
+        </span><span class="syntax_comment">// This will result in each instance of this processor generating the same
         // sequence, but it will be different each time you load and run the program:
-        rng.reset (processor.session + mySeed);
+        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">session </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
 
-        // This will result in each instance of this processor producing a different
+        </span><span class="syntax_comment">// This will result in each instance of this processor producing a different
         // sequence, and each will also be different each time you load and run the program:
-        rng.reset (processor.session + processor.id + mySeed);
+        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">session </span><span class="syntax_operator">+ </span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">id </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
     }
 }
-</code><p></p>
+</span></code><p></p>
        </div>
        <div class="listing"><span class="primitive_type">int64</span> <span class="member_name">seed</span>;<br></div>
       </div><p class="code_block">}</p>
