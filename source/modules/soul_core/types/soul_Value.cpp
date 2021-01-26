@@ -459,10 +459,7 @@ Value& Value::operator= (const Value&) = default;
 Value::Value (Value&&) = default;
 Value& Value::operator= (Value&& other) = default;
 
-Value::Value (Type t)  : type (std::move (t))
-{
-    allocatedData.resize (type.getPackedSizeInBytes());
-}
+Value::Value (Type t)  : type (std::move (t)), allocatedData (type.getPackedSizeInBytes()) {}
 
 Value::Value (Type t, const void* sourceData)   : Value (std::move (t))
 {
@@ -557,7 +554,7 @@ Value::operator int64_t() const                             { return getAsInt64(
 Value::operator bool() const                                { return getAsBool(); }
 
 bool Value::isValid() const                                 { return type.isValid(); }
-bool Value::isZero() const                                  { return ! isValid() || getData().isZero(); }
+bool Value::isZero() const                                  { return ! isValid() || ! allocatedData.isAllocated() || getData().isZero(); }
 
 const Type& Value::getType() const                          { return type; }
 Type& Value::getMutableType()                               { return type; }
@@ -568,7 +565,13 @@ Value::PackedData Value::getData() const
     return PackedData (type, allocatedData.data(), allocatedData.size());
 }
 
-void Value::print (ValuePrinter& p) const                   { getData().print (p); }
+void Value::print (ValuePrinter& p) const
+{
+    if (isZero() && (type.isArray() || type.isVector()))
+        p.printZeroInitialiser (type);
+    else
+        getData().print (p);
+}
 
 std::string Value::getDescription (const StringDictionary* dictionary) const
 {
@@ -657,6 +660,10 @@ bool Value::operator!= (const Value& other) const       { return ! operator== (o
 Value Value::cloneWithEquivalentType (Type newType) const
 {
     SOUL_ASSERT (newType.hasIdenticalLayout (type));
+
+    if (isZero())
+        return Value (std::move (newType));
+
     return Value (std::move (newType), getPackedData());
 }
 

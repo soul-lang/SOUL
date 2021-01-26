@@ -232,14 +232,14 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
     {
         CompileMessageHandler handler (messageList);
         sanityCheckBuildSettings (settings);
-        return link (messageList, findMainProcessor (settings));
+        return link (messageList, settings, findMainProcessor (settings));
     }
     catch (AbortCompilationException) {}
 
     return {};
 }
 
-Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& processorToRun)
+Program Compiler::link (CompileMessageList& messageList, const BuildSettings& settings, AST::ProcessorBase& processorToRun)
 {
     try
     {
@@ -259,7 +259,7 @@ Program Compiler::link (CompileMessageList& messageList, AST::ProcessorBase& pro
         program.getStringDictionary() = allocator.stringDictionary;  // Bring the existing string dictionary along so that the handles match
         compileAllModules (*topLevelNamespace, program, processorToRun);
         heart::Utilities::inlineFunctionsThatUseAdvanceOrStreams<Optimisations> (program);
-        heart::Checker::sanityCheck (program);
+        heart::Checker::sanityCheck (program, settings);
         reset();
 
         SOUL_LOG (program.getMainProcessor().originalFullName + ": linked HEART",

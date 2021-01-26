@@ -636,10 +636,6 @@ private:
             if (type.isVoid())
                 context.throwError (Errors::variableCannotBeVoid());
 
-            if (type.isPackedSizeTooBig())
-                context.throwError (Errors::typeTooBig (getReadableDescriptionOfByteSize (v.getType().getPackedSizeInBytes()),
-                                                        getReadableDescriptionOfByteSize (Type::maxPackedObjectSize)));
-
             throwErrorIfMultidimensionalArray (context, type);
         }
 

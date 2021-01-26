@@ -256,7 +256,7 @@ PrimitiveType Type::getVectorElementType() const
 
 bool Type::canBeSafelyCastToArraySize (int64_t size)
 {
-    return size > 0 && (uint64_t) size < maxArraySize;
+    return size > 0 && (uint64_t) size <= maxArraySize;
 }
 
 Type Type::createArray (ArraySize size) const
@@ -490,11 +490,6 @@ size_t Type::getPackedSizeInBytes() const
     if (isStringLiteral())  return sizeof (StringDictionary::Handle);
 
     return primitiveType.getPackedSizeInBytes();
-}
-
-bool Type::isPackedSizeTooBig() const
-{
-    return getPackedSizeInBytes() > maxPackedObjectSize;
 }
 
 choc::value::Type Type::getExternalType() const

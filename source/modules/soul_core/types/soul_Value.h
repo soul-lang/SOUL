@@ -175,7 +175,36 @@ struct Value  final
 
 private:
     Type type;
-    ArrayWithPreallocation<uint8_t, 8> allocatedData;
+
+    class LazyAllocatedData
+    {
+    public:
+        LazyAllocatedData (size_t size = 0) : allocatedSize (size) {}
+
+        uint8_t* data() const
+        {
+            if (allocatedData.size() == 0)
+                allocatedData.resize (allocatedSize);
+
+            return allocatedData.data();
+        }
+
+        size_t size() const
+        {
+            return allocatedSize;
+        }
+
+        bool isAllocated() const
+        {
+            return allocatedData.size() != 0;
+        }
+
+    private:
+        size_t allocatedSize = 0;
+        mutable ArrayWithPreallocation<uint8_t, 8> allocatedData;
+    };
+
+    LazyAllocatedData allocatedData;
 
     struct PackedData;
     PackedData getData() const;

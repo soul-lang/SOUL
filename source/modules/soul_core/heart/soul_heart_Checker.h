@@ -23,13 +23,13 @@ namespace soul
 
 struct heart::Checker
 {
-    static void sanityCheck (const Program& program)
+    static void sanityCheck (const Program& program, const BuildSettings settings = {})
     {
         ignoreUnused (program.getMainProcessor());
         sanityCheckModules (program);
         sanityCheckAdvanceAndStreamCalls (program);
         checkConnections (program);
-        checkForRecursiveFunctions (program);
+        checkForRecursiveFunctions (program, settings.maxStackSize);
         checkForInfiniteLoops (program);
         checkBlockParameters (program);
         checkForCyclesInGraphs (program);
@@ -276,7 +276,7 @@ struct heart::Checker
                     f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
 
-    static void checkForRecursiveFunctions (const Program& program)
+    static void checkForRecursiveFunctions (const Program& program, size_t maxStackSize)
     {
         auto callSequenceCheckResult = CallFlowGraph::checkFunctionCallSequences (program);
 
@@ -293,6 +293,9 @@ struct heart::Checker
             if (functionNames.size() == 2)  location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
             if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
         }
+
+        if (maxStackSize != 0 && callSequenceCheckResult.maximumStackSize > maxStackSize)
+            CodeLocation().throwError (Errors::maximumStackSizeExceeded (getReadableDescriptionOfByteSize (callSequenceCheckResult.maximumStackSize), getReadableDescriptionOfByteSize (maxStackSize)));
     }
 
     static void checkStreamOperations (const Program& program)

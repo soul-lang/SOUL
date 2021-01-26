@@ -65,7 +65,7 @@ private:
     void reset();
     void addDefaultBuiltInLibrary();
     void compile (CodeLocation);
-    Program link (CompileMessageList&, AST::ProcessorBase& processorToRun);
+    Program link (CompileMessageList&, const BuildSettings&, AST::ProcessorBase& processorToRun);
     AST::ProcessorBase& findMainProcessor (const BuildSettings&);
 
     void compileAllModules (const AST::Namespace& parentNamespace, Program&, AST::ProcessorBase& processorToRun);

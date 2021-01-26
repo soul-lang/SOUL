@@ -91,7 +91,6 @@ struct Type  final
     bool isPresentIn (ArrayView<Type> types) const;
 
     //==============================================================================
-    static constexpr uint64_t maxPackedObjectSize = 1024 * 1024;
     size_t getPackedSizeInBytes() const;
     bool isPackedSizeTooBig() const;
 
@@ -107,7 +106,7 @@ struct Type  final
     bool canBeArrayElementType() const;
 
     //==============================================================================
-    static constexpr uint64_t maxArraySize = maxPackedObjectSize;
+    static constexpr uint64_t maxArraySize = std::numeric_limits<int32_t>::max();
 
     Type createArray (ArraySize size) const;
     Type createUnsizedArray() const;

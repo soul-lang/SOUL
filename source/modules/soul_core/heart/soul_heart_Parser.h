@@ -1839,16 +1839,7 @@ private:
             return parseArrayTypeSuffixes (elementType.createArray (static_cast<Type::ArraySize> (size)));
         }
 
-        return checkTypeSize (elementType);
-    }
-
-    Type checkTypeSize (Type type)
-    {
-        if (! type.isUnsizedArray() && type.isPackedSizeTooBig())
-            throwError (Errors::typeTooBig (getReadableDescriptionOfByteSize (type.getPackedSizeInBytes()),
-                                            getReadableDescriptionOfByteSize (Type::maxPackedObjectSize)));
-
-        return type;
+        return elementType;
     }
 
     Type parseBoundedIntType (bool isWrap)

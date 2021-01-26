@@ -190,7 +190,6 @@ namespace soul
     X(cannotReferenceOtherProcessorVar,     "Cannot reference a mutable variable belonging to another processor") \
     X(externalOnlyAllowedOnStateVars,       "The 'external' flag can only be applied to state variables") \
     X(wrongTypeForUnary,                    "Illegal type for unary operator") \
-    X(typeTooBig,                           "Type size ($0$) exceeds the maximum permitted ($1$)") \
     X(identifierMustBeUnqualified,          "This identifier cannot have a namespace qualifier") \
     X(nonConstInNamespace,                  "Only constant variables can be declared inside a namespace") \
     X(nonConstInGraph,                      "Only constant variables can be declared inside a graph") \
@@ -313,6 +312,7 @@ namespace soul
 
 #define SOUL_ERRORS_LIMITS(X) \
     X(programStateTooLarge,                 "Program state requires $0$, maximum allowed is $1$") \
+    X(maximumStackSizeExceeded,             "Stack size limit exceeded - program requires $0$, maximum allowed is $1$") \
     X(unsupportedBitDepth,                  "Unsupported bit-depth") \
     X(unsupportedBlockSize,                 "Unsupported block size") \
     X(unsupportedSampleRate,                "Unsupported sample rate") \
