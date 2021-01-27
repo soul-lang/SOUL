@@ -276,7 +276,7 @@ struct heart::Checker
                     f->location.throwError (Errors::functionContainsAnInfiniteLoop (f->getReadableName()));
     }
 
-    static void checkForRecursiveFunctions (const Program& program, size_t maxStackSize)
+    static void checkForRecursiveFunctions (const Program& program, uint64_t maxStackSize)
     {
         auto callSequenceCheckResult = CallFlowGraph::checkFunctionCallSequences (program);
 

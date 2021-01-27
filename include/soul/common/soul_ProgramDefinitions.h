@@ -270,8 +270,8 @@ struct BuildSettings
 {
     double       sampleRate         = 0;
     uint32_t     maxBlockSize       = 0;
-    size_t       maxStateSize       = 20 * 1024 * 1024;
-    size_t       maxStackSize       = 20 * 1024 * 1024;
+    uint64_t     maxStateSize       = 20 * 1024 * 1024;
+    uint64_t     maxStackSize       = 20 * 1024 * 1024;
     int          optimisationLevel  = -1;
     int32_t      sessionID          = 0;
     std::string  mainProcessor;
