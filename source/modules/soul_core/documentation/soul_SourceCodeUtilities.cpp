@@ -395,34 +395,34 @@ std::string SourceCodeUtilities::Comment::getText() const
 
 //==============================================================================
 void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
-                                               const std::function<bool(std::string_view, SyntaxTokenType)>& handleToken)
+                                               const std::function<bool(std::string_view, std::string_view)>& handleToken)
 {
-    auto getTokenType = [] (TokenType t)
+    auto getTokenType = [] (TokenType t) -> std::string_view
     {
-       #define SOUL_COMPARE_KEYWORD(name, str) if (t == Keyword::name) return SyntaxTokenType::keyword;
+       #define SOUL_COMPARE_KEYWORD(name, str) if (t == Keyword::name) return "hljs-keyword";
         SOUL_KEYWORDS (SOUL_COMPARE_KEYWORD)
        #undef SOUL_COMPARE_KEYWORD
 
-       #define SOUL_COMPARE_OPERATOR(name, str) if (t == Operator::name) return SyntaxTokenType::operatorSymbol;
+       #define SOUL_COMPARE_OPERATOR(name, str) if (t == Operator::name) return "hljs-operator";
         SOUL_OPERATORS (SOUL_COMPARE_OPERATOR)
        #undef SOUL_COMPARE_OPERATOR
 
-        if (t == Token::identifier)      return SyntaxTokenType::identifier;
-        if (t == Token::literalInt32)    return SyntaxTokenType::intLiteral;
-        if (t == Token::literalInt64)    return SyntaxTokenType::intLiteral;
-        if (t == Token::literalFloat32)  return SyntaxTokenType::floatLiteral;
-        if (t == Token::literalFloat64)  return SyntaxTokenType::floatLiteral;
-        if (t == Token::literalImag32)   return SyntaxTokenType::floatLiteral;
-        if (t == Token::literalImag64)   return SyntaxTokenType::floatLiteral;
-        if (t == Token::literalString)   return SyntaxTokenType::stringLiteral;
-        if (t == Token::comment)         return SyntaxTokenType::comment;
+        if (t == Token::identifier)      return "hljs-name";
+        if (t == Token::literalInt32)    return "hljs-number";
+        if (t == Token::literalInt64)    return "hljs-number";
+        if (t == Token::literalFloat32)  return "hljs-number";
+        if (t == Token::literalFloat64)  return "hljs-number";
+        if (t == Token::literalImag32)   return "hljs-number";
+        if (t == Token::literalImag64)   return "hljs-number";
+        if (t == Token::literalString)   return "hljs-string";
+        if (t == Token::comment)         return "hljs-comment";
 
-        return SyntaxTokenType::plain;
+        return "hljs";
     };
 
     SimpleTokeniser tokeniser (start, false);
     auto currentSectionStart = start.location;
-    auto currentTokenType = SyntaxTokenType::plain;
+    std::string_view currentTokenType;
 
     try
     {
@@ -433,10 +433,12 @@ void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
 
             if (newType != currentTokenType)
             {
-                if (! handleToken (std::string_view (currentSectionStart.getAddress(),
-                                                     static_cast<size_t> (newPos.getAddress() - currentSectionStart.getAddress())),
-                                   currentTokenType))
-                    break;
+                std::string_view tokenText (currentSectionStart.getAddress(),
+                                            static_cast<size_t> (newPos.getAddress() - currentSectionStart.getAddress()));
+
+                if (! tokenText.empty())
+                    if (! handleToken (tokenText, currentTokenType))
+                        break;
 
                 currentSectionStart = newPos;
                 currentTokenType = newType;

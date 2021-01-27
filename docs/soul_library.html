@@ -1032,36 +1032,36 @@
      </div>
      <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">RandomNumberState</span><br>{<br></p>
       <div class="struct_member">
-       <div class="summary"><p>The current seed.</p><p><strong>Top tip:</strong> when generating a seed, you might want to use the <code>processor.id</code> constant, to make sure that each instance of a processor has a differently-seeded RNG. If you want the RNG to be different each time the program runs, you could also throw the <code>processor.session</code> constant into the mix too.</p><p>For example:</p><p></p><code class="soul"><span class="syntax_plain"></span><span class="syntax_keyword">processor </span><span class="syntax_identifier">MyProcessorUsingRandomNumbers
-</span><span class="syntax_operator">{
-    ...</span><span class="syntax_identifier">etc</span><span class="syntax_operator">...
+       <div class="summary"><p>The current seed.</p><p><strong>Top tip:</strong> when generating a seed, you might want to use the <code>processor.id</code> constant, to make sure that each instance of a processor has a differently-seeded RNG. If you want the RNG to be different each time the program runs, you could also throw the <code>processor.session</code> constant into the mix too.</p><p>For example:</p><code class="hljs"><span class="hljs-keyword">processor </span><span class="hljs-name">MyProcessorUsingRandomNumbers
+</span><span class="hljs-operator">{
+    ...</span><span class="hljs-name">etc</span><span class="hljs-operator">...
 
-    </span><span class="syntax_identifier">soul</span><span class="syntax_operator">::</span><span class="syntax_identifier">random</span><span class="syntax_operator">::</span><span class="syntax_identifier">RandomNumberState rng</span><span class="syntax_operator">;
+    </span><span class="hljs-name">soul</span><span class="hljs-operator">::</span><span class="hljs-name">random</span><span class="hljs-operator">::</span><span class="hljs-name">RandomNumberState rng</span><span class="hljs-operator">;
 
-    </span><span class="syntax_keyword">let </span><span class="syntax_identifier">mySeed </span><span class="syntax_operator">= </span><span class="syntax_int">12345</span><span class="syntax_operator">; </span><span class="syntax_comment">// Whenever seeding a RNG, you should pick a &#39;salt&#39; value
+    </span><span class="hljs-keyword">let </span><span class="hljs-name">mySeed </span><span class="hljs-operator">= </span><span class="hljs-number">12345</span><span class="hljs-operator">; </span><span class="hljs-comment">// Whenever seeding a RNG, you should pick a &#39;salt&#39; value
                         // that&#39;s as unique as possible
 
-    </span><span class="syntax_keyword">void </span><span class="syntax_identifier">run</span><span class="syntax_operator">()
+    </span><span class="hljs-keyword">void </span><span class="hljs-name">run</span><span class="hljs-operator">()
     {
-        </span><span class="syntax_comment">// Initialising it like this will produce the same sequence of numbers for
+        </span><span class="hljs-comment">// Initialising it like this will produce the same sequence of numbers for
         // every instance of this processor:
-        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
+        </span><span class="hljs-name">rng</span><span class="hljs-operator">.</span><span class="hljs-name">reset </span><span class="hljs-operator">(</span><span class="hljs-name">mySeed</span><span class="hljs-operator">);
 
-        </span><span class="syntax_comment">// This will result in each instance of this processor generating a different
+        </span><span class="hljs-comment">// This will result in each instance of this processor generating a different
         // sequence, but each time you load and run the program, you may get the
         // same sequences as the last run:
-        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">id </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
+        </span><span class="hljs-name">rng</span><span class="hljs-operator">.</span><span class="hljs-name">reset </span><span class="hljs-operator">(</span><span class="hljs-keyword">processor</span><span class="hljs-operator">.</span><span class="hljs-name">id </span><span class="hljs-operator">+ </span><span class="hljs-name">mySeed</span><span class="hljs-operator">);
 
-        </span><span class="syntax_comment">// This will result in each instance of this processor generating the same
+        </span><span class="hljs-comment">// This will result in each instance of this processor generating the same
         // sequence, but it will be different each time you load and run the program:
-        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">session </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
+        </span><span class="hljs-name">rng</span><span class="hljs-operator">.</span><span class="hljs-name">reset </span><span class="hljs-operator">(</span><span class="hljs-keyword">processor</span><span class="hljs-operator">.</span><span class="hljs-name">session </span><span class="hljs-operator">+ </span><span class="hljs-name">mySeed</span><span class="hljs-operator">);
 
-        </span><span class="syntax_comment">// This will result in each instance of this processor producing a different
+        </span><span class="hljs-comment">// This will result in each instance of this processor producing a different
         // sequence, and each will also be different each time you load and run the program:
-        </span><span class="syntax_identifier">rng</span><span class="syntax_operator">.</span><span class="syntax_identifier">reset </span><span class="syntax_operator">(</span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">session </span><span class="syntax_operator">+ </span><span class="syntax_keyword">processor</span><span class="syntax_operator">.</span><span class="syntax_identifier">id </span><span class="syntax_operator">+ </span><span class="syntax_identifier">mySeed</span><span class="syntax_operator">);
+        </span><span class="hljs-name">rng</span><span class="hljs-operator">.</span><span class="hljs-name">reset </span><span class="hljs-operator">(</span><span class="hljs-keyword">processor</span><span class="hljs-operator">.</span><span class="hljs-name">session </span><span class="hljs-operator">+ </span><span class="hljs-keyword">processor</span><span class="hljs-operator">.</span><span class="hljs-name">id </span><span class="hljs-operator">+ </span><span class="hljs-name">mySeed</span><span class="hljs-operator">);
     }
 }
-</span></code><p></p>
+</span></code>
        </div>
        <div class="listing"><span class="primitive_type">int64</span> <span class="member_name">seed</span>;<br></div>
       </div><p class="code_block">}</p>
@@ -1763,10 +1763,7 @@
  <div class="module" id="mod_soul_filters_dc_blocker">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::filters::dc_blocker</span>
   </h2>
-  <div class="summary"><p>Highpass filter for removing DC offset.</p><p></p>
-   <code class="multiline">    y[n] = x[n] - x[n-1] + b0 * y[n-1]
-
-</code><p>
+  <div class="summary"><p>Highpass filter for removing DC offset.</p><code class="unspecified_code">    y[n] = x[n] - x[n-1] + b0 * y[n-1]</code><p>
     <a href="https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html">https://ccrma.stanford.edu/~jos/fp/DC_Blocker.html</a></p>
   </div>
   <div class="module_sections">
@@ -1840,14 +1837,9 @@
  <div class="module" id="mod_soul_filters_biquad">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::filters::biquad</span>
   </h2>
-  <div class="summary"><p>Biquadratic (two-pole-two-zero) IIR filter building block.</p><p>Direct Form I (DFI):</p><p></p>
-   <code class="multiline">    y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]
-
-</code><p>Transposed Direct Form II (TDFII):</p><p></p>
-   <code class="multiline">    y[n] = b0 * x[n] + s1
-      s1 = b1 * x[n] + a1 * y[n] + s2
-      s2 = b2 * x[n] + a2 * y[n]
-</code>
+  <div class="summary"><p>Biquadratic (two-pole-two-zero) IIR filter building block.</p><p>Direct Form I (DFI):</p><code class="unspecified_code">    y[n] = b0 * x[n] + b1 * x[n-1] + b2 * x[n-2] - a1 * y[n-1] - a2 * y[n-2]</code><p>Transposed Direct Form II (TDFII):</p><code class="unspecified_code">    y[n] = b0 * x[n] + s1
+    s1 = b1 * x[n] + a1 * y[n] + s2
+    s2 = b2 * x[n] + a2 * y[n]</code>
   </div>
   <div class="module_sections">
    <div class="module_section">
@@ -1941,10 +1933,7 @@
  <div class="module" id="mod_soul_filters_onepole">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::filters::onepole</span>
   </h2>
-  <div class="summary"><p>First-order IIR filter.</p><p></p>
-   <code class="multiline">     y[n] = b0 * x[n] - a1 * y[n-1]
-
-</code><p>Coefficients derived from Pirkle. This filter is not suitable for modulation.</p>
+  <div class="summary"><p>First-order IIR filter.</p><code class="unspecified_code">     y[n] = b0 * x[n] - a1 * y[n-1]</code><p>Coefficients derived from Pirkle. This filter is not suitable for modulation.</p>
   </div>
   <div class="module_sections">
    <div class="module_section">
@@ -2290,9 +2279,7 @@
  <div class="module" id="mod_soul_filters_analytic_dual_apf">
   <h2><span class="module_type">namespace </span><span class="module_name">soul::filters::analytic::dual_apf</span>
   </h2>
-  <div class="summary"><p>Parallel 2nd-order all-pass.</p><p></p>
-   <code class="multiline">    y[n] = c * (x[n] + y[n - 2]) - x[n - 2]
-</code>
+  <div class="summary"><p>Parallel 2nd-order all-pass.</p><code class="unspecified_code">    y[n] = c * (x[n] + y[n - 2]) - x[n - 2]</code>
   </div>
   <div class="module_sections">
    <div class="module_section">

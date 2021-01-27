@@ -52,21 +52,11 @@ struct SourceCodeUtilities
     static std::string getFileSummaryBody (const Comment&);
 
     //==============================================================================
-    enum class SyntaxTokenType
-    {
-        plain,
-        comment,
-        keyword,
-        identifier,
-        operatorSymbol,
-        intLiteral,
-        floatLiteral,
-        stringLiteral,
-        error
-    };
-
+    /// Iterates the tokens in some soul code, returning each text section and
+    /// the CSS tag name that it should use (using the highlight.js types)
     static void iterateSyntaxTokens (CodeLocation start,
-                                     const std::function<bool(std::string_view, SyntaxTokenType)>& handleToken);
+                                     const std::function<bool(std::string_view text,
+                                                              std::string_view type)>& handleToken);
 };
 
 

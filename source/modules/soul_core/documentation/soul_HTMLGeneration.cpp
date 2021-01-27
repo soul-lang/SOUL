@@ -674,24 +674,6 @@ private:
             parent.addContent (markdown);
     }
 
-    static std::string_view getClassForSyntaxType (SourceCodeUtilities::SyntaxTokenType type)
-    {
-        switch (type)
-        {
-            case SourceCodeUtilities::SyntaxTokenType::plain:           return "syntax_plain";
-            case SourceCodeUtilities::SyntaxTokenType::comment:         return "syntax_comment";
-            case SourceCodeUtilities::SyntaxTokenType::keyword:         return "syntax_keyword";
-            case SourceCodeUtilities::SyntaxTokenType::identifier:      return "syntax_identifier";
-            case SourceCodeUtilities::SyntaxTokenType::operatorSymbol:  return "syntax_operator";
-            case SourceCodeUtilities::SyntaxTokenType::intLiteral:      return "syntax_int";
-            case SourceCodeUtilities::SyntaxTokenType::floatLiteral:    return "syntax_float";
-            case SourceCodeUtilities::SyntaxTokenType::stringLiteral:   return "syntax_string";
-            case SourceCodeUtilities::SyntaxTokenType::error:           return "syntax_error";
-        }
-
-        return {};
-    }
-
     static void addMarkdownAsHTML (choc::html::HTMLElement& parent, const std::vector<std::string>& lines)
     {
         auto paragraphs = groupMarkdownIntoParagraphs (lines);
@@ -739,37 +721,28 @@ private:
                     if (endOfLine1 < trimmed.length() - 1)
                         ++endOfLine1;
 
-                    auto& code = getParent().addChild ("code").setInline (true);
                     auto content = trimmed.substr (endOfLine1);
+                    auto& code = getParent().addChild ("code").setInline (true);
 
-                    if (type.empty())
+                    if (type == "soul")
                     {
-                        code.setClass ("multiline");
+                        code.setClass ("hljs");
+
+                        SourceCodeUtilities::iterateSyntaxTokens (CodeLocation::createFromString ({}, std::move (content)),
+                                                                  [&] (std::string_view token, std::string_view cssClass) -> bool
+                        {
+                            if (cssClass.empty())
+                                code.addContent (token);
+                            else
+                                code.addSpan (cssClass).addContent (token);
+
+                            return true;
+                        });
                     }
                     else
                     {
-                        code.setClass (type);
-
-                        if (type == "soul")
-                        {
-                            SourceCodeUtilities::iterateSyntaxTokens (CodeLocation::createFromString ({}, std::move (content)),
-                                                                      [&] (std::string_view token, SourceCodeUtilities::SyntaxTokenType tokenType) -> bool
-                            {
-                                auto typeClass = getClassForSyntaxType (tokenType);
-
-                                if (typeClass.empty())
-                                    code.addContent (token);
-                                else
-                                    code.addSpan (typeClass).addContent (token);
-
-                                return true;
-                            });
-
-                            continue;
-                        }
+                        code.setClass ("unspecified_code").addContent (content);
                     }
-
-                    code.addContent (content);
                 }
 
                 continue;
@@ -777,11 +750,14 @@ private:
 
             if (leadingSpaces >= 4)
             {
-                getParent().addChild ("code").setClass ("multiline").addContent (paragraph);
+                getParent().addChild ("code").setClass ("unspecified_code").setInline (true)
+                    .addContent (choc::text::trimEnd (paragraph));
+
                 continue;
             }
 
-            appendSpansForContent (getParent().addParagraph(), trimmed);
+            if (! trimmed.empty())
+                appendSpansForContent (getParent().addParagraph(), trimmed);
         }
     }
 

@@ -1211,8 +1211,8 @@ R"soul_code(
         Transposed Direct Form II (TDFII):
 
             y[n] = b0 * x[n] + s1
-              s1 = b1 * x[n] + a1 * y[n] + s2
-              s2 = b2 * x[n] + a2 * y[n]
+            s1 = b1 * x[n] + a1 * y[n] + s2
+            s2 = b2 * x[n] + a2 * y[n]
     */
     namespace biquad
     {

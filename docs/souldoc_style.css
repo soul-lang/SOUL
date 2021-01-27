@@ -1,7 +1,6 @@
-:root
-{
-  --serif-font: BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-  --code-font: monaco, "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
+:root {
+  --serif-font: BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --code-font: monaco, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
 
 body {
@@ -21,46 +20,33 @@ h2 {
   margin: 0;
 }
 
-a { color: rgb(64, 122, 197); }
+a {
+  color: rgb(64, 122, 197);
+}
 
-li.toc_module a:link { text-decoration: none; }
-li.toc_module a:visited { text-decoration: none; }
-li.toc_module a:hover { text-decoration: none; }
-li.toc_module a:active { text-decoration: none; }
+li.toc_module a:link {
+  text-decoration: none;
+}
+
+li.toc_module a:visited {
+  text-decoration: none;
+}
+
+li.toc_module a:hover {
+  text-decoration: none;
+}
+
+li.toc_module a:active {
+  text-decoration: none;
+}
 
 code {
   font-family: var(--code-font);
   font-size: 80%;
+  font-style: normal;
   color: rgb(88, 88, 88);
-}
-
-code.multiline {
-  background-color: rgba(0, 0, 0, 0.027);
-  padding: 0.5em;
-  margin: 0;
   white-space: pre;
-  display: block;
-  font-style: normal;
 }
-
-code.soul {
-  background-color: rgba(45, 48, 58);
-  padding: 0.5em;
-  margin: 0;
-  white-space: pre;
-  display: block;
-  font-style: normal;
-}
-
-.syntax_plain      { color: #d4d4d4; }
-.syntax_comment    { color: #608b4e; }
-.syntax_keyword    { color: #569cd6; }
-.syntax_identifier { color: #d4d4d4; }
-.syntax_operator   { color: #ebc36b; }
-.syntax_int        { color: #b5c3a8; }
-.syntax_float      { color: #b5c3a8; }
-.syntax_string     { color: #ce9178; }
-.syntax_error      { color: rgb(255, 74, 74); }
 
 nav {
   flex: 0 1 18em;
@@ -89,9 +75,10 @@ li {
   padding: 0;
 }
 
-ul.toc_item, li.toc_item {
+ul.toc_item,
+li.toc_item {
   line-height: 1.6;
-  list-style-type: none!important;
+  list-style-type: none !important;
   list-style-position: inside;
   font-weight: normal;
   font-family: var(--code-font);
@@ -99,7 +86,7 @@ ul.toc_item, li.toc_item {
 }
 
 li.toc_module {
-  list-style-type: none!important;
+  list-style-type: none !important;
   list-style-position: inside;
   font-size: 14pt;
   padding: 1em 0 0 0;
@@ -134,7 +121,7 @@ h1.library {
 
 .library .summary {
   padding-left: 1em;
-  padding-bottom: 1em;
+  margin-bottom: 1em;
 }
 
 div.module {
@@ -148,7 +135,7 @@ div.module {
 }
 
 .module_section {
-  padding: 0 0 0em 0;
+  padding: 0 0 0.5em 0;
   border-top: 1px solid rgba(0, 0, 0, 0.2);
 }
 
@@ -207,9 +194,18 @@ div.module {
   padding-left: 0;
 }
 
-.primitive_type, .typename_text, .struct_name, .function_name,
-.parameter_name, .endpoint_name, .endpoint_type, .module_name,
-.variable_name, .member_name, .keyword, .annotation {
+.primitive_type,
+.typename_text,
+.struct_name,
+.function_name,
+.parameter_name,
+.endpoint_name,
+.endpoint_type,
+.module_name,
+.variable_name,
+.member_name,
+.keyword,
+.annotation {
   font-family: var(--code-font);
   padding: 0;
   margin: 0;
@@ -256,4 +252,83 @@ div.function {
 h3.function_name {
   padding-bottom: 0.5em;
   font-weight: normal;
+}
+
+.unspecified_code {
+  background: rgba(0, 0, 0, 0.027);
+  display: block;
+  overflow-x: auto;
+  color: #444444;
+  padding: .5em;
+  /* padding: 0.5em;
+  margin: 0;
+  white-space: pre;
+  display: block;
+  font-style: normal; */
+}
+
+/**** Highlight.js theme values ****/
+
+.hljs-comment,
+.hljs-quote {
+  color: #65737e
+}
+
+.hljs-deletion,
+.hljs-name,
+.hljs-regexp,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-tag,
+.hljs-template-variable,
+.hljs-variable {
+  color: #bf616a
+}
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-link,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-params,
+.hljs-type {
+  color: #d08770
+}
+
+.hljs-attribute {
+  color: #ebcb8b
+}
+
+.hljs-addition,
+.hljs-bullet,
+.hljs-string,
+.hljs-symbol {
+  color: #a3be8c
+}
+
+.hljs-section,
+.hljs-title {
+  color: #8fa1b3
+}
+
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #b48ead
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: #2b303b;
+  color: #c0c5ce;
+  padding: .5em
+}
+
+.hljs-emphasis {
+  font-style: italic
+}
+
+.hljs-strong {
+  font-weight: 700
 }
