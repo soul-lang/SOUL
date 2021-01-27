@@ -70,7 +70,7 @@ struct PrimitiveType  final
     const char* getDescription() const;
     const char* getShortIdentifierDescription() const;
 
-    size_t getPackedSizeInBytes() const;
+    uint64_t getPackedSizeInBytes() const;
 
     Primitive type = Primitive::invalid;
 };

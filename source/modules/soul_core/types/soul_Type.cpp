@@ -81,7 +81,7 @@ const char* PrimitiveType::getShortIdentifierDescription() const
     }
 }
 
-size_t PrimitiveType::getPackedSizeInBytes() const
+uint64_t PrimitiveType::getPackedSizeInBytes() const
 {
     switch (type)
     {
@@ -481,11 +481,11 @@ std::string Type::getShortIdentifierDescription() const
     return primitiveType.getShortIdentifierDescription();
 }
 
-size_t Type::getPackedSizeInBytes() const
+uint64_t Type::getPackedSizeInBytes() const
 {
-    if (isVector())         return primitiveType.getPackedSizeInBytes() * static_cast<size_t> (getVectorSize());
+    if (isVector())         return primitiveType.getPackedSizeInBytes() * static_cast<uint64_t> (getVectorSize());
     if (isUnsizedArray())   return sizeof (void*);
-    if (isArray())          return getArrayElementType().getPackedSizeInBytes() * static_cast<size_t> (getArraySize());
+    if (isArray())          return getArrayElementType().getPackedSizeInBytes() * static_cast<uint64_t> (getArraySize());
     if (isStruct())         return structure->getPackedSizeInBytes();
     if (isStringLiteral())  return sizeof (StringDictionary::Handle);
 

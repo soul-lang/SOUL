@@ -91,7 +91,7 @@ struct Type  final
     bool isPresentIn (ArrayView<Type> types) const;
 
     //==============================================================================
-    size_t getPackedSizeInBytes() const;
+    uint64_t getPackedSizeInBytes() const;
     bool isPackedSizeTooBig() const;
 
     //==============================================================================
