@@ -379,7 +379,7 @@ struct Value::PackedData
     {
         ArrayIterator (const PackedData& p)
             : elementType (p.type.getElementType()), element (p.data),
-              numElements (p.type.getArrayOrVectorSize()), elementSize (elementType.getPackedSizeInBytes())
+              numElements (p.type.getArrayOrVectorSize()), elementSize ((size_t) elementType.getPackedSizeInBytes())
         {}
 
         bool next()
@@ -415,7 +415,7 @@ struct Value::PackedData
                 return false;
 
             member += memberSize;
-            memberSize = structure.getMemberType (index++).getPackedSizeInBytes();
+            memberSize = (size_t) structure.getMemberType (index++).getPackedSizeInBytes();
             return true;
         }
 
@@ -459,7 +459,7 @@ Value& Value::operator= (const Value&) = default;
 Value::Value (Value&&) = default;
 Value& Value::operator= (Value&& other) = default;
 
-Value::Value (Type t)  : type (std::move (t)), allocatedData (type.getPackedSizeInBytes()) {}
+Value::Value (Type t)  : type (std::move (t)), allocatedData ((size_t) type.getPackedSizeInBytes()) {}
 
 Value::Value (Type t, const void* sourceData)   : Value (std::move (t))
 {
@@ -596,7 +596,7 @@ Value Value::getSubElement (const SubElementPath& path) const
 void Value::modifySubElementInPlace (const SubElementPath& path, const void* newData)
 {
     auto typeAndOffset = path.getElement (type);
-    memcpy (allocatedData.data() + typeAndOffset.offset, newData, typeAndOffset.type.getPackedSizeInBytes());
+    memcpy (allocatedData.data() + typeAndOffset.offset, newData, (size_t) typeAndOffset.type.getPackedSizeInBytes());
 }
 
 void Value::modifySubElementInPlace (const SubElementPath& path, const Value& newValue)

@@ -91,14 +91,14 @@ bool Structure::isEmpty() const noexcept
     return members.empty();
 }
 
-size_t Structure::getPackedSizeInBytes() const
+uint64_t Structure::getPackedSizeInBytes() const
 {
-    size_t total = 0;
+    uint64_t total = 0;
 
     for (auto& m : members)
         total += m.type.getPackedSizeInBytes();
 
-    return std::max ((size_t) 1, total);
+    return std::max ((uint64_t) 1, total);
 }
 
 static void checkStructRecursion (Structure* structToCheck, const CodeLocation& location,

@@ -70,7 +70,7 @@ public:
     std::string addMemberWithUniqueName (Type, const std::string& memberName);
 
     bool isEmpty() const noexcept;
-    size_t getPackedSizeInBytes() const;
+    uint64_t getPackedSizeInBytes() const;
 
     void checkForRecursiveNestedStructs (const CodeLocation&);
 

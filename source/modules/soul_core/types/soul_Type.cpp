@@ -559,7 +559,7 @@ SubElementPath::TypeAndOffset SubElementPath::getElement (const Type& parentType
             SOUL_ASSERT (e.type.isValidArrayOrVectorIndex (index));
 
             e.type = e.type.getElementType();
-            e.offset += e.type.getPackedSizeInBytes() * index;
+            e.offset += ((size_t) e.type.getPackedSizeInBytes()) * index;
             continue;
         }
 
@@ -570,7 +570,7 @@ SubElementPath::TypeAndOffset SubElementPath::getElement (const Type& parentType
             e.type = members[index].type;
 
             for (size_t i = 0; i < index; ++i)
-                e.offset += members[i].type.getPackedSizeInBytes();
+                e.offset += (size_t) members[i].type.getPackedSizeInBytes();
 
             continue;
         }
