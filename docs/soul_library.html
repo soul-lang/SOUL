@@ -748,7 +748,11 @@
   </h2>
   <div class="summary"><p>Simple voice allocation helpers, which take a single stream of input events, and redirect them to an array of target voice processors.</p>
   </div>
-  <div class="module_sections"></div>
+  <div class="module_sections">
+   <div class="module_section">
+    <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">namespace</span> <span class="module_name">soul::voice_allocators</span> (<span class="primitive_type">int32</span> <span class="variable_name">mpeMasterChannel</span> = 0)</p>
+   </div>
+  </div>
  </div>
  <div class="module" id="mod_soul_voice_allocators_Basic">
   <h2><span class="module_type">processor </span><span class="module_name">soul::voice_allocators::Basic</span>
@@ -787,6 +791,9 @@
       </div>
       <div class="struct_member">
        <div class="listing"><span class="primitive_type">int32</span> <span class="member_name">voiceAge</span>;<br></div>
+      </div>
+      <div class="struct_member">
+       <div class="listing"><span class="primitive_type">bool</span> <span class="member_name">noteReleased</span>;<br></div>
       </div><p class="code_block">}</p>
      </div>
     </div>
@@ -797,9 +804,15 @@
     </div>
     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">nextUnallocatedVoiceAge</span> = 1</p>
     </div>
+    <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">sustainCC</span> = 64</p>
+    </div>
     <div class="variable"><p class="code_block">
       <a href="#type_soul_voice_allocators_Basic_VoiceInfo" class="struct_name">VoiceInfo</a><span class="typename_text">[</span>
       <a href="#var_soul_voice_allocators_Basic_voiceCount" class="struct_name">voiceCount</a><span class="typename_text">]</span> <span class="variable_name">voiceInfo</span></p>
+    </div>
+    <div class="variable"><p class="code_block"><span class="primitive_type">bool</span><span class="typename_text">[</span><span class="typename_text">16</span><span class="typename_text">]</span> <span class="variable_name">channelSustainActive</span></p>
+    </div>
+    <div class="variable"><p class="code_block"><span class="primitive_type">bool</span> <span class="variable_name">masterSustainActive</span></p>
     </div>
    </div>
   </div>
