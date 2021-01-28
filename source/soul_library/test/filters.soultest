@@ -81,3 +81,68 @@ graph StereoTester [[ main ]]
         filter.out -> out;
     }
 }
+
+## compile
+
+namespace constants
+{
+    let coeffs = float32[6] (1, 2, 3, 4, 5, 6);
+}
+
+graph Test [[ main ]]
+{
+    output stream float32 out32;
+    output stream float64 out64;
+
+    let filter32_64 = FilterTest (float32, float64)::TestOutput;
+    let filter64_64 = FilterTest (float64, float64)::TestOutput;
+    let filter32_32 = FilterTest (float32, float32)::TestOutput;
+    let filter64_32 = FilterTest (float64, float32)::TestOutput;
+
+    connection
+    {
+        filter32_64.out -> out32;
+        filter64_64.out -> out64;
+        filter32_32.out -> out32;
+        filter64_32.out -> out64;
+    }
+}
+
+namespace FilterTest (using SampleType, using CoeffType)
+{
+    graph TestOutput
+    {
+        input stream SampleType in;
+        output stream SampleType out;
+
+        let dcBlocker           = soul::filters (SampleType, CoeffType)::dc_blocker::Processor;
+        let onePole             = soul::filters (SampleType, CoeffType)::onepole::Processor;
+        let rbjEq               = soul::filters (SampleType, CoeffType)::rbj_eq::Processor;
+        let sosCascade          = soul::filters (SampleType, CoeffType)::sos_cascade::Processor (constants::coeffs);
+        let butterworth         = soul::filters (SampleType, CoeffType)::butterworth::Processor (2);
+        let analytic            = soul::filters (SampleType, CoeffType)::analytic::Processor;
+        let complexResonator    = soul::filters (SampleType, CoeffType)::complex_resonator::Processor;
+        let tptOnepole          = soul::filters (SampleType, CoeffType)::tpt::onepole::Processor;
+        let tptSvf              = soul::filters (SampleType, CoeffType)::tpt::svf::Processor;
+        let tptButterworth      = soul::filters (SampleType, CoeffType)::tpt::butterworth::Processor (3);
+        let tptCrossover        = soul::filters (SampleType, CoeffType)::tpt::crossover::Processor;
+        let tptSimper           = soul::filters (SampleType, CoeffType)::tpt::simper_eq::Processor;
+
+        connection
+        {
+            in -> dcBlocker -> out;
+
+            onePole.out                 -> out;
+            rbjEq.out                   -> out;
+            sosCascade.out              -> out;
+            butterworth.out             -> out;
+            analytic.realOut            -> out;
+            complexResonator.realOut    -> out;
+            tptOnepole.out              -> out;
+            tptSvf.lowpassOut           -> out;
+            tptButterworth.out          -> out;
+            tptCrossover.lowOut         -> out;
+            tptSimper.out               -> out;
+        }
+    }
+}

@@ -1360,8 +1360,6 @@ R"soul_code(
     */
     namespace onepole
     {
-        namespace biquad = soul::filters::biquad;
-
         /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
@@ -1380,24 +1378,24 @@ R"soul_code(
 
             if (mode == Mode::lowpass)
             {
-                let gamma = cos (theta) / (1.0 + sin (theta));
+                let gamma = CoeffType (cos (theta) / (1.0 + sin (theta)));
 
-                nc.b[0] = (1.0 - gamma) / 2.0;
-                nc.b[1] = (1.0 - gamma) / 2.0;
+                nc.b[0] = (1 - gamma) / 2;
+                nc.b[1] = (1 - gamma) / 2;
                 nc.a[1] = -gamma;
             }
             else if (mode == Mode::highpass)
             {
-                let gamma = cos (theta) / (1.0 + sin (theta));
+                let gamma = CoeffType (cos (theta) / (1.0 + sin (theta)));
 
-                nc.b[0] = (1.0 + gamma) / 2.0;
-                nc.b[1] = -(1.0 + gamma) / 2.0;
+                nc.b[0] = (1 + gamma) / 2;
+                nc.b[1] = -(1 + gamma) / 2;
                 nc.a[1] = -gamma;
             }
             else if (mode == Mode::allpass)
             {
-                let w = tan (theta * 0.5);
-                let alpha = (w - 1.0) / (w + 1.0);
+                let w = CoeffType (tan (theta * 0.5));
+                let alpha = (w - 1) / (w + 1);
 
                 nc.b[0] = alpha;
                 nc.b[1] = 1.0;
@@ -1464,15 +1462,13 @@ R"soul_code(
     */
     namespace rbj_eq
     {
-        namespace biquad = soul::filters::biquad;
-
         /** Constants for use in specifying the filter mode. */
         namespace Mode
         {
+            let lowpass   = 0;
 )soul_code"
 R"soul_code(
 
-            let lowpass   = 0;
             let highpass  = 1;
             let bandpass  = 2;
             let lowShelf  = 3;
@@ -1489,99 +1485,99 @@ R"soul_code(
         {
             biquad::Coeffs nnc; // non-normalised coefficients
 
-            let theta = twoPi * (freqHz / sampleRate);
+            let theta = CoeffType (twoPi * (freqHz / sampleRate));
             let sinTheta = sin (theta);
             let cosTheta = cos (theta);
             let Q = max (quality, 0.001);
-            let alpha = sinTheta / (2.0 * Q);
+            let alpha = CoeffType (sinTheta / (2.0 * Q));
 
             if (mode == Mode::lowpass)
             {
-                nnc.b[0] = (1.0 - cosTheta) / 2.0;
-                nnc.b[1] =  1.0 - cosTheta;
-                nnc.b[2] = (1.0 - cosTheta) / 2.0;
-                nnc.a[0] =  1.0 + alpha;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] =  1.0 - alpha;
+                nnc.b[0] = (1 - cosTheta) / 2;
+                nnc.b[1] =  1 - cosTheta;
+                nnc.b[2] = (1 - cosTheta) / 2;
+                nnc.a[0] =  1 + alpha;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] =  1 - alpha;
             }
             else if (mode == Mode::highpass)
             {
-                nnc.b[0] = (1.0 + cosTheta) / 2.0;
-                nnc.b[1] = -(1.0 + cosTheta);
-                nnc.b[2] = (1.0 + cosTheta) / 2.0;
-                nnc.a[0] =  1.0 + alpha;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] =  1.0 - alpha;
+                nnc.b[0] = (1 + cosTheta) / 2;
+                nnc.b[1] = -(1 + cosTheta);
+                nnc.b[2] = (1 + cosTheta) / 2;
+                nnc.a[0] =  1 + alpha;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] =  1 - alpha;
             }
             else if (mode == Mode::bandpass) // (constant 0 dB peak gain)
             {
                 nnc.b[0] = alpha;
-                nnc.b[1] = 0.0;
+                nnc.b[1] = 0;
                 nnc.b[2] = -alpha;
-                nnc.a[0] =  1.0 + alpha;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] =  1.0 - alpha;
+                nnc.a[0] =  1 + alpha;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] =  1 - alpha;
             }
             else if (mode == Mode::lowShelf)
             {
-                let A = pow (10.0, gaindB / 40.0);
+                let A = CoeffType (pow (10.0, gaindB / 40.0));
                 nnc.b[0] = A * ((A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
+                nnc.b[1] = 2 * A * ( (A - 1) - (A + 1) * cosTheta);
 )soul_code"
 R"soul_code(
 
-                nnc.b[1] = 2.0 * A * ( (A - 1) - (A + 1) * cosTheta);
                 nnc.b[2] = A * ((A + 1) - (A - 1) * cosTheta - 2 * sqrt (A) * alpha);
                 nnc.a[0] = (A + 1) + (A - 1) * cosTheta + 2 * sqrt (A) * alpha;
-                nnc.a[1] = -2.0 * ( (A - 1) + (A + 1) * cosTheta);
+                nnc.a[1] = -2 * ( (A - 1) + (A + 1) * cosTheta);
                 nnc.a[2] = (A + 1) + (A - 1) * cosTheta - 2 * sqrt (A) * alpha;
             }
             else if (mode == Mode::highShelf)
             {
-                let A = pow (10.0, gaindB / 40.0);
-                nnc.b[0] = A * ((A + 1) + (A - 1) * cosTheta + 2.0 * sqrt (A) * alpha);
-                nnc.b[1] = -2.0 * A * ( (A - 1) + (A + 1) * cosTheta);
-                nnc.b[2] = A * ((A + 1) + (A - 1) * cosTheta - 2.0 * sqrt (A) * alpha);
-                nnc.a[0] = (A + 1) - (A - 1) * cosTheta + 2.0 * sqrt (A) * alpha;
-                nnc.a[1] = 2.0 * ( (A - 1) - (A + 1) * cosTheta);
-                nnc.a[2] = (A + 1) - (A - 1) * cosTheta - 2.0 * sqrt (A) * alpha;
+                let A = CoeffType (pow (10.0, gaindB / 40.0));
+                nnc.b[0] = A * ((A + 1) + (A - 1) * cosTheta + 2 * sqrt (A) * alpha);
+                nnc.b[1] = -2 * A * ( (A - 1) + (A + 1) * cosTheta);
+                nnc.b[2] = A * ((A + 1) + (A - 1) * cosTheta - 2 * sqrt (A) * alpha);
+                nnc.a[0] = (A + 1) - (A - 1) * cosTheta + 2 * sqrt (A) * alpha;
+                nnc.a[1] = 2 * ( (A - 1) - (A + 1) * cosTheta);
+                nnc.a[2] = (A + 1) - (A - 1) * cosTheta - 2 * sqrt (A) * alpha;
             }
             else if (mode == Mode::peaking)
             {
-                let A = pow (10.0, gaindB / 40.0);
-                nnc.b[0] = 1.0 + alpha * A;
-                nnc.b[1] = -2.0 * cosTheta;
-                nnc.b[2] = 1.0 - alpha * A;
-                nnc.a[0] = 1.0 + alpha / A;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] = 1.0 - alpha / A;
+                let A = CoeffType (pow (10.0, gaindB / 40.0));
+                nnc.b[0] = 1 + alpha * A;
+                nnc.b[1] = -2 * cosTheta;
+                nnc.b[2] = 1 - alpha * A;
+                nnc.a[0] = 1 + alpha / A;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] = 1 - alpha / A;
             }
             else if (mode == Mode::notch)
             {
-                nnc.b[0] = 1.0;
-                nnc.b[1] = -2.0 * cosTheta;
-                nnc.b[2] = 1.0;
-                nnc.a[0] = 1.0 + alpha;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] = 1.0 - alpha;
+                nnc.b[0] = 1;
+                nnc.b[1] = -2 * cosTheta;
+                nnc.b[2] = 1;
+                nnc.a[0] = 1 + alpha;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] = 1 - alpha;
             }
             else if (mode == Mode::allpass)
             {
-                nnc.b[0] = 1.0 - alpha;
-                nnc.b[1] = -2.0 * cosTheta;
-                nnc.b[2] = 1.0 + alpha;
-                nnc.a[0] = 1.0 + alpha;
-                nnc.a[1] = -2.0 * cosTheta;
-                nnc.a[2] = 1.0 - alpha;
+                nnc.b[0] = 1 - alpha;
+                nnc.b[1] = -2 * cosTheta;
+                nnc.b[2] = 1 + alpha;
+                nnc.a[0] = 1 + alpha;
+                nnc.a[1] = -2 * cosTheta;
+                nnc.a[2] = 1 - alpha;
             }
-
-)soul_code"
-R"soul_code(
 
             c.setNonNormalised (nnc);
         }
 
         /** */
         processor Processor (int initialMode = 0,
+)soul_code"
+R"soul_code(
+
                              float initialFrequency = defaultFreqHz,
                              float initialQuality   = defaultQuality,
                              float initialGain      = defaultGain)
@@ -1622,11 +1618,11 @@ R"soul_code(
                         c.update (processor.frequency, mode, clippedFrequency, quality, gain);
                     }
 
+                    loop (updateInterval)
+                    {
 )soul_code"
 R"soul_code(
 
-                    loop (updateInterval)
-                    {
                         out << s.processTDFII (in, c);
                         advance();
                     }
@@ -1641,8 +1637,6 @@ R"soul_code(
     */
     namespace sos_cascade
     {
-        namespace biquad = soul::filters::biquad;
-
         /** Supply an array of coefficients for each SOS. The size of the array should be a multiple of 6,
             and the coefficients are expected to be normalised already
         */
@@ -1681,14 +1675,14 @@ R"soul_code(
                 loop
                 {
                     out << biquad::processCascadeTDFII (in, s, c);
-)soul_code"
-R"soul_code(
-
                     advance();
                 }
             }
         }
     }
+
+)soul_code"
+R"soul_code(
 
     //==============================================================================
     /**
@@ -1698,9 +1692,9 @@ R"soul_code(
     */
     namespace butterworth
     {
-        namespace biquad = soul::filters::biquad;
-        namespace onepole = soul::filters::onepole;
-        namespace rbj = soul::filters::rbj_eq;
+        // namespace biquad = soul::filters::biquad;
+        // namespace onepole = soul::filters::onepole;
+        // namespace rbj = soul::filters::rbj_eq;
 
         /** Constants for use in specifying the filter mode. */
         namespace Mode
@@ -1726,7 +1720,7 @@ R"soul_code(
                 for (int i=0; i<order/2; i++)
                 {
                     let Q = 1.0 / (2.0 * cos ((CoeffType (i) + 1.0) * pi / order));
-                    rbj::update (nc, sampleRate, mode, freqHz, Q, 0.);
+                    rbj_eq::update (nc, sampleRate, mode, freqHz, Q, 0.);
                     coeffs.at (i+1).setNormalised (nc);
                 }
             }
@@ -1735,7 +1729,7 @@ R"soul_code(
                 for (wrap<coeffs.size> i)
                 {
                     let Q = 1.0 / (2.0 * cos ((2.0 * CoeffType (i) + 1.0) * pi / (order * 2.0)));
-                    rbj::update (nc, sampleRate, mode, freqHz, Q, 0.);
+                    rbj_eq::update (nc, sampleRate, mode, freqHz, Q, 0.);
                     coeffs.at (i).setNormalised (nc);
                 }
             }
@@ -1745,10 +1739,10 @@ R"soul_code(
             The order must be > 0
         */
         processor Processor (int order,
+                             int initialMode = 0,
 )soul_code"
 R"soul_code(
 
-                             int initialMode = 0,
                              float initialFrequency = defaultFreqHz)
         {
             input stream SampleType in;
@@ -1802,10 +1796,10 @@ R"soul_code(
     }
 
     //==============================================================================
+    /** Analytic filter / IIR Hilbert transformer.
+
 )soul_code"
 R"soul_code(
-
-    /** Analytic filter / IIR Hilbert transformer.
 
         https://dsp.stackexchange.com/a/59157
 
@@ -1827,7 +1821,7 @@ R"soul_code(
             /** Holds a set of filter coefficients. */
             struct Coeffs
             {
-                float64[numCoefficients] coeffs;
+                CoeffType[numCoefficients] coeffs;
             }
 
             /** */
@@ -1867,10 +1861,10 @@ R"soul_code(
 
                 loop
                 {
+                    let next = pow (q, float64 (i * (i + 1))) * sin ((i * 2 + 1) * c * pi / order) * j;
 )soul_code"
 R"soul_code(
 
-                    let next = pow (q, float64 (i * (i + 1))) * sin ((i * 2 + 1) * c * pi / order) * j;
                     result += next;
 
                     if (abs (next) < 1e-100)
@@ -1898,15 +1892,15 @@ R"soul_code(
                 }
             }
 
-            float64 computeCoeff (int index, TransitionParams params)
+            CoeffType computeCoeff (int index, TransitionParams params)
             {
                 let num = computeAccNum (params.q, index + 1)  * pow (params.q, 0.25);
                 let den = computeAccDen (params.q, index + 1) + 0.5;
                 let ww = num / den;
-                let wwsq = ww * ww;
+                let wwsq = CoeffType (ww * ww);
 
-                let x = sqrt ((1 - wwsq * params.k) * (1.0 - wwsq / params.k)) / (1.0 + wwsq);
-                return (1.0 - x) / (1.0 + x);
+                let x = CoeffType (sqrt ((1 - wwsq * params.k) * (1 - wwsq / params.k)) / (1 + wwsq));
+                return (1 - x) / (1 + x);
             }
         }
 
@@ -1937,13 +1931,13 @@ R"soul_code(
             }
         }
 
-)soul_code"
-R"soul_code(
-
         /** Holds the filter state. */
         struct State
         {
             dual_apf::State[numFilters] apfs;
+)soul_code"
+R"soul_code(
+
             SampleType[1] x;
         }
 
@@ -2021,12 +2015,12 @@ R"soul_code(
             complex64 v;
         }
 
-)soul_code"
-R"soul_code(
-
         complex64 cexp (complex64 c)
         {
             // TODO: if cexp becomes a global function, use that
+)soul_code"
+R"soul_code(
+
             let e = exp (c.real);
             return complex64 (e * cos (c.imag), e * sin (c.imag));
         }
@@ -2072,25 +2066,23 @@ R"soul_code(
 
             event frequencyIn (float v) { frequency = v; recalc = true; }
             event decayIn     (float v) { decay = v; recalc = true; }
-)soul_code"
-R"soul_code(
-
             event gainIn      (float v) { gain = v; recalc = true; }
 
             float frequency = initialFrequency,
+)soul_code"
+R"soul_code(
+
                       decay = initialDecay,
                        gain = initialGain;
             bool recalc = true;
-
-            namespace DCBlocker = soul::filters::dc_blocker;
 
             void run()
             {
                 State s;
                 Coeffs c;
 
-                DCBlocker::Coeffs dcc;
-                DCBlocker::State realDCBlocker, imagDCBlocker;
+                dc_blocker::Coeffs dcc;
+                dc_blocker::State realDCBlocker, imagDCBlocker;
 
                 dcc.update (processor.frequency, 30.0f);
 
@@ -2136,15 +2128,15 @@ R"soul_code(
                 let highpass = 1;
                 let allpass  = 2;
             }
-)soul_code"
-R"soul_code(
-
 
             /** Holds a set of filter coefficients. */
             struct Coeffs
             {
                 CoeffType b;
             }
+
+)soul_code"
+R"soul_code(
 
             /** Holds the filter state. */
             struct State
@@ -2207,10 +2199,10 @@ R"soul_code(
 
                 input event
                 {
+                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 )soul_code"
 R"soul_code(
 
-                    float frequencyIn [[ name: "Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float modeIn      [[ name: "Mode",      min: 0,         max: 2,         init: 0,         text: "Lowpass|Highpass|Allpass"]];
                 }
 
@@ -2259,13 +2251,13 @@ R"soul_code(
         */
         namespace svf
         {
-)soul_code"
-R"soul_code(
-
             /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
+)soul_code"
+R"soul_code(
+
                 let highpass = 1;
                 let bandpass = 2;
             }
@@ -2294,15 +2286,15 @@ R"soul_code(
             /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, float64 freqHz, float64 quality)
             {
-                let Q = max (quality, 0.001);
-                let wd = twoPi * freqHz;
-                let T  = 1.0 / sampleRate;
-                let wa = (2.0 / T) * tan (wd * T / 2.0);
-                let g  = wa * T / 2.0;
-                let R = 1.0 / (2.0 * Q);
-                c.a0 = 1.0 / (1.0 + 2.0 * R * g + g * g);
+                let Q = CoeffType (max (quality, 0.001));
+                let wd = CoeffType (twoPi * freqHz);
+                let T  = CoeffType (1 / sampleRate);
+                let wa = (2 / T) * tan (wd * T / 2);
+                let g  = wa * T / 2;
+                let R = 1 / (2 * Q);
+                c.a0 = 1 / (1 + 2 * R * g + g * g);
                 c.a = g;
-                c.p = 2.0 * R + g;
+                c.p = 2 * R + g;
             }
 
             /** */
@@ -2323,13 +2315,13 @@ R"soul_code(
                                  float initialQuality = defaultQuality)
             {
                 input stream SampleType in;
-)soul_code"
-R"soul_code(
-
                 output stream SampleType lowpassOut, bandpassOut, highpassOut;
 
                 input event
                 {
+)soul_code"
+R"soul_code(
+
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality]];
                 }
@@ -2377,16 +2369,13 @@ R"soul_code(
         */
         namespace butterworth
         {
-)soul_code"
-R"soul_code(
-
-            namespace onepole = soul::filters::tpt::onepole;
-            namespace svf = soul::filters::tpt::svf;
-
             /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
                 let lowpass  = 0;
+)soul_code"
+R"soul_code(
+
                 let highpass = 1;
             }
 
@@ -2425,13 +2414,13 @@ R"soul_code(
                                                                  CoeffsArrayType& svfCoeffs,
                                                                  onepole::State& onepoleState,
                                                                  onepole::Coeffs& onepoleCoeffs,
-)soul_code"
-R"soul_code(
-
                                                                  int mode, bool oddOrder)
             {
                 static_assert (StateArrayType.isArray, "states argument is not an array");
                 static_assert (CoeffsArrayType.isArray, "coeffs argument is not an array");
+)soul_code"
+R"soul_code(
+
                 static_assert (svfStates.size == svfCoeffs.size, "states and coeffs arrays are not the same size");
 
                 var y = x;
@@ -2476,9 +2465,6 @@ R"soul_code(
                 void run()
                 {
                     let numSVFs = order / 2;
-)soul_code"
-R"soul_code(
-
                     let oddOrder = (order % 2) == 1;
 
                     svf::State[numSVFs] svfStates;
@@ -2487,6 +2473,9 @@ R"soul_code(
                     onepole::Coeffs onepoleCoeffs;
 
                     loop
+)soul_code"
+R"soul_code(
+
                     {
                         if (recalc)
                         {
@@ -2516,35 +2505,33 @@ R"soul_code(
         */
         namespace crossover
         {
-            namespace SVF = soul::filters::tpt::svf;
-
             /** Holds the filter state. */
             struct State
             {
-                SVF::State svf1, svf2;
+                svf::State svf1, svf2;
             }
 
             /** Holds a set of filter coefficients. */
             struct Coeffs
             {
-                SVF::Coeffs svf1, svf2;
+                svf::Coeffs svf1, svf2;
             }
 
             /** */
             processor Processor (float initialFrequency = defaultFreqHz)
             {
-                input stream float32 in;
-                output stream float32 lowOut;
-)soul_code"
-R"soul_code(
-
-                output stream float32 highOut;
+                input stream SampleType in;
+                output stream SampleType lowOut;
+                output stream SampleType highOut;
 
                 input event float frequencyIn [[ name: "Split Frequency", min: minFreqHz, max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
 
                 event frequencyIn (float v) { frequency = v; recalc = true; }
 
                 float frequency = initialFrequency;
+)soul_code"
+R"soul_code(
+
                 bool recalc = true;
 
                 /** Updates a set of coefficients for the given settings. */
@@ -2586,9 +2573,6 @@ R"soul_code(
                             let y = s.process (in, c);
                             lowOut  << y[0];
                             highOut << y[1];
-)soul_code"
-R"soul_code(
-
                             advance();
                         }
                     }
@@ -2600,6 +2584,9 @@ R"soul_code(
         /** SVF EQ.
 
             Based on the work of Andy Simper:
+)soul_code"
+R"soul_code(
+
             https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 
             This filter is suitable for modulation.
@@ -2643,107 +2630,107 @@ R"soul_code(
             /** Updates a set of coefficients for the given settings. */
             void update (Coeffs& c, float64 sampleRate, int mode, float64 freqHz, float64 quality, float64 gain)
             {
-                let w = tan (pi * freqHz / sampleRate);
-                let k = 1.0 / clamp (quality, 0.01, 100.0);
+                let w = CoeffType (tan (pi * freqHz / sampleRate));
+                let k = CoeffType (1  / clamp (quality, 0.01, 100.0));
 
                 if (mode == Mode::lowpass)
                 {
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 0.0;
-                    c.m1 = 0.0;
-                    c.m2 = 1.0;
-)soul_code"
-R"soul_code(
-
+                    c.m0 = 0;
+                    c.m1 = 0;
+                    c.m2 = 1;
                 }
                 else if (mode == Mode::highpass)
                 {
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 1.0;
+                    c.m0 = 1;
+)soul_code"
+R"soul_code(
+
                     c.m1 = -k;
-                    c.m2 = -1.0;
+                    c.m2 = -1;
                 }
                 else if (mode == Mode::bandpass)
                 {
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 0.0;
-                    c.m1 = 1.0;
-                    c.m2 = 0.0;
+                    c.m0 = 0;
+                    c.m1 = 1;
+                    c.m2 = 0;
                 }
                 else if (mode == Mode::lowShelf)
                 {
-                    let A = pow (10.0, gain / 40.0);
+                    let A = CoeffType (pow (10.0, gain / 40.0));
                     let g = w / sqrt (A);
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 1.0;
-                    c.m1 = k * (A - 1.0);
-                    c.m2 = (A * A - 1.0);
+                    c.m0 = 1;
+                    c.m1 = k * (A - 1);
+                    c.m2 = (A * A - 1);
                 }
                 else if (mode == Mode::highShelf)
                 {
-                    let A = pow (10.0, gain / 40.0);
+                    let A = CoeffType (pow (10.0, gain / 40.0));
                     let g = w / sqrt (A);
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
                     c.m0 = A * A;
-                    c.m1 = k * (1.0 - A) * A;
-                    c.m2 = (1.0 - A * A);
+                    c.m1 = k * (1 - A) * A;
+                    c.m2 = (1 - A * A);
                 }
                 else if (mode == Mode::peaking)
                 {
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 1.0;
+                    c.m0 = 1;
                     c.m1 = -k;
-                    c.m2 = -2.0;
+                    c.m2 = -2;
                 }
                 else if (mode == Mode::notch)
+                {
+                    let g = w;
+                    c.a1 = 1 / (1 + g * (g + k));
+                    c.a2 = g * c.a1;
+                    c.a3 = g * c.a2;
+                    c.m0 = 1;
+                    c.m1 = -k;
+                    c.m2 = 0;
+                }
+                else if (mode == Mode::allpass)
                 {
                     let g = w;
 )soul_code"
 R"soul_code(
 
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 1.0;
-                    c.m1 = -k;
-                    c.m2 = 0.0;
-                }
-                else if (mode == Mode::allpass)
-                {
-                    let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
-                    c.a2 = g * c.a1;
-                    c.a3 = g * c.a2;
-                    c.m0 = 1.0;
-                    c.m1 = -2.0 * k;
-                    c.m2 = 0.0;
+                    c.m0 = 1;
+                    c.m1 = -2 * k;
+                    c.m2 = 0;
                 }
                 else if (mode == Mode::bell)
                 {
-                    let A = pow (10.0, gain / 40.0);
+                    let A = CoeffType (pow (10.0, gain / 40.0));
                     let g = w;
-                    c.a1 = 1.0 / (1.0 + g * (g + k));
+                    c.a1 = 1 / (1 + g * (g + k));
                     c.a2 = g * c.a1;
                     c.a3 = g * c.a2;
-                    c.m0 = 1.0;
-                    c.m1 = k * (A * A - 1.0);
-                    c.m2 = 0.0;
+                    c.m0 = 1;
+                    c.m1 = k * (A * A - 1);
+                    c.m2 = 0;
                 }
             }
 
@@ -2770,12 +2757,12 @@ R"soul_code(
 
                 input event
                 {
-)soul_code"
-R"soul_code(
-
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float qualityIn   [[ name: "Q",         min: 0.001,       max: 100.0,     init: defaultQuality ]];
                     float gainIn      [[ name: "Gain",      min: -36.0,       max: 36.0,      init: 0.0,           unit: "dB"]];
+)soul_code"
+R"soul_code(
+
                     float modeIn      [[ name: "Mode",      min: 0,           max: 8,         init: 0,             text: "Lowpass|Highpass|Bandpass|LowShelf|HighShelf|Peaking|Notch|Allpass|Bell"]];
                 }
 
@@ -2815,9 +2802,6 @@ R"soul_code(
                 }
             }
         }
-
-)soul_code"
-R"soul_code(
 
     } // (namespace tpt)
 }
