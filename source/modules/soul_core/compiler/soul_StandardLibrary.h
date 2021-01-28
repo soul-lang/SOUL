@@ -3502,7 +3502,7 @@ R"soul_code(
     Simple voice allocation helpers, which take a single stream of input events,
     and redirect them to an array of target voice processors.
 */
-namespace soul::voice_allocators
+namespace soul::voice_allocators (int mpeMasterChannel = 0)
 {
     /** A simple voice-allocator which will find either an inactive voice, or the
         least-recently used active voice if it needs to steal one.
@@ -3540,28 +3540,29 @@ namespace soul::voice_allocators
                 }
             }
 
-            // Send the note on to the voice
-            voiceEventOut[allocatedVoice] << e;
-
             // If the voice was previously active, we're stealing it, so send a note off too
             if (voiceInfo[allocatedVoice].active)
             {
                 soul::note_events::NoteOff noteOff;
 
                 noteOff.channel = voiceInfo[allocatedVoice].channel;
+                noteOff.note    = voiceInfo[allocatedVoice].note;
+
 )soul_code"
 R"soul_code(
-
-                noteOff.note    = voiceInfo[allocatedVoice].note;
 
                 voiceEventOut[allocatedVoice] << noteOff;
             }
 
+            // Send the note on to the voice
+            voiceEventOut[allocatedVoice] << e;
+
             // Update the VoiceInfo for our chosen voice
-            voiceInfo[allocatedVoice].active   = true;
-            voiceInfo[allocatedVoice].channel  = e.channel;
-            voiceInfo[allocatedVoice].note     = e.note;
-            voiceInfo[allocatedVoice].voiceAge = nextAllocatedVoiceAge++;
+            voiceInfo[allocatedVoice].active       = true;
+            voiceInfo[allocatedVoice].noteReleased = false;
+            voiceInfo[allocatedVoice].channel      = e.channel;
+            voiceInfo[allocatedVoice].note         = e.note;
+            voiceInfo[allocatedVoice].voiceAge     = nextAllocatedVoiceAge++;
         }
 
         event eventIn (soul::note_events::NoteOff e)
@@ -3569,16 +3570,26 @@ R"soul_code(
             // Release all voices associated with this note/channel
             wrap<voiceCount> voice = 0;
 
+            bool pedalDown = masterSustainActive ? true : channelSustainActive.at (e.channel);
+
             loop (voiceCount)
             {
                 if (voiceInfo[voice].channel == e.channel
                      && voiceInfo[voice].note == e.note)
                 {
-                    // Mark the voice as being unused
-                    voiceInfo[voice].active   = false;
-                    voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+                    if (pedalDown)
+                    {
+                        // Mark the note as released
+                        voiceInfo[voice].noteReleased = true;
+                    }
+                    else
+                    {
+                        // Mark the voice as being unused
+                        voiceInfo[voice].active   = false;
+                        voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
 
-                    voiceEventOut[voice] << e;
+                        voiceEventOut[voice] << e;
+                    }
                 }
 
                 ++voice;
@@ -3601,6 +3612,9 @@ R"soul_code(
 
         event eventIn (soul::note_events::Pressure p)
         {
+)soul_code"
+R"soul_code(
+
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;
 
@@ -3618,9 +3632,6 @@ R"soul_code(
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;
 
-)soul_code"
-R"soul_code(
-
             loop (voiceCount)
             {
                 if (voiceInfo[voice].channel == s.channel)
@@ -3632,6 +3643,48 @@ R"soul_code(
 
         event eventIn (soul::note_events::Control c)
         {
+            if (c.control == sustainCC)
+            {
+                bool pedalDown = c.value >= 0.5f;
+                bool isMasterChannel = c.channel == mpeMasterChannel;
+
+                channelSustainActive.at (c.channel) = pedalDown;
+
+                if (isMasterChannel)
+                    masterSustainActive = pedalDown;
+                    
+                if (! pedalDown)
+                {
+                    // Release any released notes for this channel
+                    wrap<voiceCount> voice = 0;
+
+                    loop (voiceCount)
+                    {
+                        if ((isMasterChannel || voiceInfo[voice].channel == c.channel) &&
+                            voiceInfo[voice].active == true &&
+                            voiceInfo[voice].noteReleased == true)
+                        {
+                            soul::note_events::NoteOff noteOff;
+
+                            noteOff.channel = voiceInfo[voice].channel;
+                            noteOff.note    = voiceInfo[voice].note;
+
+                            voiceEventOut[voice] << noteOff;
+
+                            voiceInfo[voice].active   = false;
+                            voiceInfo[voice].voiceAge = nextUnallocatedVoiceAge++;
+                        }
+
+                        ++voice;
+)soul_code"
+R"soul_code(
+
+                    }
+                }
+
+                return;
+            }
+
             // Forward the event to all notes on this channel
             wrap<voiceCount> voice = 0;
 
@@ -3650,12 +3703,17 @@ R"soul_code(
             int channel;
             float note;
             int voiceAge;
+            bool noteReleased;
         }
 
         int nextAllocatedVoiceAge   = 1000000000;
         int nextUnallocatedVoiceAge = 1;
 
+        let sustainCC = 64;
+
         VoiceInfo[voiceCount] voiceInfo;
+        bool[16] channelSustainActive;
+        bool masterSustainActive;
     }
 }
 )soul_code";
