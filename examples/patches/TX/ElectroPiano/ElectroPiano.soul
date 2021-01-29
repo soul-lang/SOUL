@@ -12,14 +12,14 @@
 */
 
 //==============================================================================
-graph ElectoPiano  [[ main ]]
+graph ElectroPiano  [[ main ]]
 {
     input midiParser.parseMIDI midiIn;
     output stream float audioOut;
 
     let
     {
-        voices         = ElectroPiano[8];
+        voices         = ElectroPianoVoice[8];
         midiParser     = soul::midi::MPEParser;
         filter         = TX81Z::OutputFilter;
         voiceAllocator = TX81Z::PolyVoiceAllocator (-12, 8);
@@ -32,7 +32,7 @@ graph ElectoPiano  [[ main ]]
 }
 
 //==============================================================================
-graph ElectroPiano
+graph ElectroPianoVoice
 {
     input event (soul::note_events::NoteOn,
                  soul::note_events::NoteOff,
