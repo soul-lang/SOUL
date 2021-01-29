@@ -312,7 +312,6 @@ private:
         }
 
     private:
-
         AST::Expression& addCastIfRequired (AST::Expression& e, const Type& targetType)
         {
             SOUL_ASSERT (targetType.isComplex());

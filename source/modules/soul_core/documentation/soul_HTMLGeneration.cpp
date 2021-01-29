@@ -94,10 +94,9 @@ private:
         return true;
     }
 
-    void printLibrary (choc::html::HTMLElement& parent, const SourceCodeModel::FileDesc& library)
+    void printLibrary (choc::html::HTMLElement& parent, const SourceCodeModel::File& library)
     {
-        auto& libraryDiv = parent.addDiv ("library")
-                                 .setID (library.UID);
+        auto& libraryDiv = parent.addDiv ("library").setID (library.UID);
 
         libraryDiv.addChild ("h1").addContent (library.title);
 
@@ -109,10 +108,9 @@ private:
             printModule (libraryDiv, m);
     }
 
-    void printModule (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
+    void printModule (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
     {
-        auto& moduleDiv = parent.addDiv ("module")
-                              .setID (m.UID);
+        auto& moduleDiv = parent.addDiv ("module").setID (m.UID);
 
         auto& title = moduleDiv.addChild ("h2");
         title.addSpan ("module_type").addContent (m.moduleTypeDescription).addContent (" ");
@@ -127,6 +125,8 @@ private:
         printStructs (sections, m);
         printFunctions (sections, m);
         printVariables (sections, m);
+        printProcessorInstances (sections, m);
+        printConnections (sections, m);
     }
 
     choc::html::HTMLElement createNav()
@@ -228,7 +228,7 @@ private:
         }
     }
 
-    void printSpecialisationParams (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
+    void printSpecialisationParams (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
     {
         if (! m.specialisationParams.empty())
         {
@@ -270,7 +270,7 @@ private:
         }
     }
 
-    void printEndpoints (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
+    void printEndpoints (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
     {
         if (! m.inputs.empty())
         {
@@ -291,7 +291,7 @@ private:
 
     void printEndpoint (choc::html::HTMLElement& ul, const SourceCodeModel::Endpoint& e)
     {
-        auto& li = ul.addChild ("li").setClass ("endpoint_desc");
+        auto& li = ul.addChild ("li").setClass ("endpoint_desc").setID (e.UID);
 
         addComment (li, e.comment, "summary");
 
@@ -316,7 +316,7 @@ private:
         li.addContent (")");
     }
 
-    void printStructs (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& module)
+    void printStructs (choc::html::HTMLElement& parent, const SourceCodeModel::Module& module)
     {
         if (! module.structs.empty())
         {
@@ -353,7 +353,7 @@ private:
         }
     }
 
-    void printFunctions (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
+    void printFunctions (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
     {
         if (! m.functions.empty())
         {
@@ -407,7 +407,7 @@ private:
         }
     }
 
-    void printVariables (choc::html::HTMLElement& parent, const SourceCodeModel::ModuleDesc& m)
+    void printVariables (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
     {
         if (! m.variables.empty())
         {
@@ -429,6 +429,76 @@ private:
                     name.addContent (" = " + v.initialiser);
 
                 addComment (div, v.comment, "summary");
+            }
+        }
+    }
+
+    void printProcessorInstances (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
+    {
+        if (! m.processorInstances.empty())
+        {
+            auto& section = createModuleSection (parent, "Processor Instances");
+
+            for (auto& p : m.processorInstances)
+            {
+                auto& div = section.addDiv ("processor_instances");
+
+                auto& instance = div.addParagraph().setClass ("processor_instance").setID (p.UID);
+                instance.addSpan ("name").addContent (p.name);
+                instance.addContent (" = ");
+                printExpression (instance, p.targetProcessor);
+                instance.addContent (" ");
+                printExpression (instance, p.specialisationArgs);
+
+                if (! p.clockMultiplierRatio.sections.empty())
+                {
+                    instance.addContent (" * ");
+                    printExpression (instance, p.clockMultiplierRatio);
+                }
+                else if (! p.clockDividerRatio.sections.empty())
+                {
+                    instance.addContent (" / ");
+                    printExpression (instance, p.clockDividerRatio);
+                }
+
+                if (! p.arraySize.sections.empty())
+                {
+                    instance.addContent (" [");
+                    printExpression (instance, p.arraySize);
+                    instance.addContent ("]");
+                }
+            }
+        }
+    }
+
+    void printConnections (choc::html::HTMLElement& parent, const SourceCodeModel::Module& m)
+    {
+        if (! m.connections.empty())
+        {
+            auto& section = createModuleSection (parent, "Connections");
+
+            for (auto& c : m.connections)
+            {
+                auto& div = section.addDiv ("connections");
+
+                auto& connection = div.addParagraph().setClass ("connection");
+
+                if (! (c.interpolationType.empty() || c.interpolationType == "none"))
+                    connection.addContent ("[" + c.interpolationType + "] ");
+
+                printExpression (connection, c.sourceEndpoint);
+
+                auto& arrow = connection.addSpan ("connection_arrow");
+                arrow.addContent (" -> ");
+
+                if (! c.delayLength.sections.empty())
+                {
+                    arrow.addContent ("[");
+                    printExpression (arrow, c.delayLength);
+                    arrow.addContent ("] -> ");
+                }
+
+                printExpression (connection, c.destEndpoint);
             }
         }
     }
@@ -765,7 +835,7 @@ private:
                             const SourceCodeUtilities::Comment& comment,
                             std::string_view classType)
     {
-        if (comment.valid && ! comment.getText().empty())
+        if (comment.valid && ! comment.range.isEmpty())
             addMarkdownAsHTML (parent.addDiv (classType), comment.lines);
     }
 };

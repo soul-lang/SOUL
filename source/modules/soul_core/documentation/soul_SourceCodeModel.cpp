@@ -46,7 +46,7 @@ static SourceCodeUtilities::Comment getComment (const AST::Context& context)
 
 static bool shouldIncludeComment (const SourceCodeUtilities::Comment& comment)
 {
-    return comment.isDoxygenStyle || ! comment.getText().empty();
+    return comment.isDoxygenStyle || ! comment.range.isEmpty();
 }
 
 static SourceCodeModel::Expression operator+ (SourceCodeModel::Expression a, SourceCodeModel::Expression&& b)
@@ -81,6 +81,7 @@ static std::string makeUID (AST::TypeDeclarationBase& t)    { return makeUID ("t
 static std::string makeUID (AST::VariableDeclaration& v)    { return makeUID ("var_" + getFullPathForASTObject (v)); }
 static std::string makeUID (AST::EndpointDeclaration& e)    { return makeUID ("endpoint_" + getFullPathForASTObject (e)); }
 static std::string makeUID (AST::Function& f)               { return makeUID ("fn_" + getFullPathForASTObject (f)); }
+static std::string makeUID (AST::ProcessorInstance& p)      { return makeUID ("procinst_" + IdentifierPath (p.getParentScope()->getFullyQualifiedPath(), p.instanceName->identifier).toString()); }
 
 //==============================================================================
 static bool shouldShow (const AST::Function& f)
@@ -98,9 +99,9 @@ static bool shouldShow (const AST::StructDeclaration&)
     return true; // TODO
 }
 
-static bool shouldShow (AST::ModuleBase& module, const SourceCodeModel::ModuleDesc& m)
+static bool shouldShow (AST::ModuleBase& module, const SourceCodeModel::Module& m)
 {
-    if (m.isProcessor)
+    if (m.isProcessor || m.isGraph)
         return true;
 
     if (shouldIncludeComment (m.comment))
@@ -150,7 +151,7 @@ struct ExpressionHelpers
         if (! result.sections.empty())
             return result;
 
-        return createText (getExpressionText (findStartOfExpression (e)));
+        return createText (choc::text::trim (SourceCodeUtilities::findRangeOfASTObject (e).toString()));
     }
 
     static SourceCodeModel::Expression create (const Type& t)
@@ -262,43 +263,17 @@ struct ExpressionHelpers
 
         return {};
     }
-
-    static CodeLocation findStartOfExpression (AST::Expression& ex)
-    {
-        struct FindLexicalStartVisitor  : public ASTVisitor
-        {
-            void visitObject (AST::Expression& e) override
-            {
-                ASTVisitor::visitObject (e);
-
-                if (e.context.location.location < earliest.location)
-                    earliest = e.context.location;
-            }
-
-            CodeLocation earliest;
-        };
-
-        FindLexicalStartVisitor v;
-        v.earliest = ex.context.location;
-        v.visitObject (ex);
-        return v.earliest;
-    }
-
-    static std::string getExpressionText (CodeLocation start)
-    {
-        auto end = SourceCodeUtilities::findEndOfExpression (start);
-        SOUL_ASSERT (! end.isEmpty());
-        return choc::text::trim (SourceCodeUtilities::getStringBetween (start, end));
-    }
 };
 
 //==============================================================================
 static std::string getInitialiserValue (CodeLocation name)
 {
-    auto equalsOp = SourceCodeUtilities::findNextOccurrence (name, '=');
-    SOUL_ASSERT (! equalsOp.isEmpty());
-    ++(equalsOp.location);
-    return ExpressionHelpers::getExpressionText (equalsOp);
+    CodeLocationRange range;
+    range.start = SourceCodeUtilities::findNextOccurrence (name, '=');
+    SOUL_ASSERT (! range.start.isEmpty());
+    ++(range.start.location);
+    range.end = SourceCodeUtilities::findEndOfExpression (range.start);
+    return choc::text::trim (range.toString());
 }
 
 static std::string getInitialiserValue (AST::VariableDeclaration& v)
@@ -319,7 +294,7 @@ static SourceCodeModel::Annotation createAnnotation (const AST::Annotation& a, c
     return result;
 }
 
-static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
+static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
     for (auto& p : module.getSpecialisationParameters())
     {
@@ -367,20 +342,25 @@ static void buildSpecialisationParams (AST::ModuleBase& module, SourceCodeModel:
     }
 }
 
-static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
+static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
     for (auto& e : module.getEndpoints())
     {
         SourceCodeModel::Endpoint desc;
         desc.comment = getComment (e->context);
-        desc.endpointType = endpointTypeToString (e->details->endpointType);
+
         desc.name = e->name.toString();
         desc.UID = makeUID (e);
         desc.annotation = createAnnotation (e->annotation, dictionary);
 
-        for (auto& type : e->details->dataTypes)
-            desc.dataTypes.push_back (ExpressionHelpers::create (type, dictionary));
+        if (e->details != nullptr)
+        {
+            desc.endpointType = endpointTypeToString (e->details->endpointType);
 
+            for (auto& type : e->details->dataTypes)
+                desc.dataTypes.push_back (ExpressionHelpers::create (type, dictionary));
+        }
+        
         if (e->isInput)
             m.inputs.push_back (std::move (desc));
         else
@@ -388,7 +368,7 @@ static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
     }
 }
 
-static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
+static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
     if (auto functions = module.getFunctionList())
     {
@@ -405,7 +385,8 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
                 auto openParen = SourceCodeUtilities::findNextOccurrence (f->nameLocation.location, '(');
                 SOUL_ASSERT (! openParen.isEmpty());
 
-                desc.nameWithGenerics = simplifyWhitespace (SourceCodeUtilities::getStringBetween (f->nameLocation.location, openParen));
+                CodeLocationRange nameWithGenerics { f->nameLocation.location, openParen };
+                desc.nameWithGenerics = simplifyWhitespace (nameWithGenerics.toString());
 
                 if (auto ret = f->returnType.get())
                     desc.returnType = ExpressionHelpers::create (*ret, dictionary);
@@ -430,7 +411,7 @@ static void buildFunctions (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
     }
 }
 
-static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
+static void buildStructs (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
     for (auto& s : module.getStructDeclarations())
     {
@@ -457,7 +438,7 @@ static void buildStructs (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& 
     }
 }
 
-static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc& m, const StringDictionary& dictionary)
+static void buildVariables (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
     for (auto& v : module.getStateVariableList())
     {
@@ -476,10 +457,50 @@ static void buildVariables (AST::ModuleBase& module, SourceCodeModel::ModuleDesc
     }
 }
 
-//==============================================================================
-static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m, const StringDictionary& dictionary)
+static void buildProcessorInstances (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
 {
-    SourceCodeModel::ModuleDesc d;
+    for (auto& i : module.getProcessorInstances())
+    {
+        if (! i->isImplicitlyCreated())
+        {
+            SourceCodeModel::ProcessorInstance desc;
+
+            if (i->instanceName != nullptr)
+                desc.UID = makeUID (i);
+
+            desc.name = i->instanceName->toString();
+            desc.targetProcessor      = ExpressionHelpers::createIfNotNull (i->targetProcessor, dictionary);
+            desc.specialisationArgs   = ExpressionHelpers::createIfNotNull (i->specialisationArgs, dictionary);
+            desc.clockMultiplierRatio = ExpressionHelpers::createIfNotNull (i->clockMultiplierRatio, dictionary);
+            desc.clockDividerRatio    = ExpressionHelpers::createIfNotNull (i->clockDividerRatio, dictionary);
+            desc.arraySize            = ExpressionHelpers::createIfNotNull (i->arraySize, dictionary);
+
+            m.processorInstances.push_back (std::move (desc));
+        }
+    }
+}
+
+static void buildConnections (AST::ModuleBase& module, SourceCodeModel::Module& m, const StringDictionary& dictionary)
+{
+    if (auto graph = cast<AST::Graph> (module))
+    {
+        for (auto& c : graph->connections)
+        {
+            SourceCodeModel::Connection desc;
+            desc.sourceEndpoint    = ExpressionHelpers::createIfNotNull (c->source.endpoint, dictionary);
+            desc.destEndpoint      = ExpressionHelpers::createIfNotNull (c->dest.endpoint, dictionary);
+            desc.interpolationType = getInterpolationDescription (c->interpolationType);
+            desc.delayLength       = ExpressionHelpers::createIfNotNull (c->delayLength, dictionary);
+
+            m.connections.push_back (std::move (desc));
+        }
+    }
+}
+
+//==============================================================================
+static SourceCodeModel::Module createModule (AST::ModuleBase& m, const StringDictionary& dictionary)
+{
+    SourceCodeModel::Module d;
 
     d.UID = makeUID (m);
     d.isNamespace = m.isNamespace();
@@ -495,7 +516,7 @@ static SourceCodeModel::ModuleDesc createModule (AST::ModuleBase& m, const Strin
     return d;
 }
 
-static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc& desc, const StringDictionary& dictionary)
+static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::File& desc, const StringDictionary& dictionary)
 {
     if (m.originalModule != nullptr)
         return;
@@ -508,12 +529,15 @@ static void recurseFindingModules (AST::ModuleBase& m, SourceCodeModel::FileDesc
         if (shouldShow (m, module))
         {
             desc.modules.push_back (std::move (module));
+            auto& newModule = desc.modules.back();
 
-            buildSpecialisationParams (m, desc.modules.back(), dictionary);
-            buildEndpoints (m, desc.modules.back(), dictionary);
-            buildFunctions (m, desc.modules.back(), dictionary);
-            buildVariables (m, desc.modules.back(), dictionary);
-            buildStructs (m, desc.modules.back(), dictionary);
+            buildSpecialisationParams (m, newModule, dictionary);
+            buildEndpoints (m, newModule, dictionary);
+            buildFunctions (m, newModule, dictionary);
+            buildVariables (m, newModule, dictionary);
+            buildStructs (m, newModule, dictionary);
+            buildProcessorInstances (m, newModule, dictionary);
+            buildConnections (m, newModule, dictionary);
         }
     }
 
@@ -555,6 +579,9 @@ bool SourceCodeModel::rebuild (CompileMessageList& errors, ArrayView<SourceCodeT
         desc.fileComment = SourceCodeUtilities::getFileSummaryComment (f);
         desc.title = SourceCodeUtilities::getFileSummaryTitle (desc.fileComment);
         desc.summary = SourceCodeUtilities::getFileSummaryBody (desc.fileComment);
+
+        if (desc.title.empty())
+            desc.title = desc.filename;
     }
 
     return true;

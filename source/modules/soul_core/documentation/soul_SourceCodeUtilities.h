@@ -25,22 +25,23 @@ namespace soul
 struct SourceCodeUtilities
 {
     //==============================================================================
-    static std::string getStringBetween (CodeLocation start, CodeLocation end);
-
     static CodeLocation findNextOccurrence (CodeLocation start, char character);
     static CodeLocation findEndOfExpression (CodeLocation start);
 
     static CodeLocation findEndOfMatchingBrace (CodeLocation openBrace);
     static CodeLocation findEndOfMatchingParen (CodeLocation openParen);
 
+    static struct CodeLocationRange findRangeOfASTObject (AST::ASTObject&);
+
+    static pool_ptr<AST::ASTObject> findASTObjectAt (AST::ASTObject& root,
+                                                     CodeLocation targetLocation);
+
     //==============================================================================
     struct Comment
     {
         bool valid = false, isStarSlash = false, isDoxygenStyle = false, isReferringBackwards = false;
         std::vector<std::string> lines;
-        CodeLocation start, end;
-
-        std::string getText() const;
+        CodeLocationRange range;
     };
 
     static CodeLocation findStartOfPrecedingComment (CodeLocation location);

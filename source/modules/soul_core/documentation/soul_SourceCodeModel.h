@@ -55,14 +55,6 @@ struct SourceCodeModel
         std::unordered_map<std::string, Expression> properties;
     };
 
-    struct Endpoint
-    {
-        SourceCodeUtilities::Comment comment;
-        std::string UID, endpointType, name;
-        std::vector<Expression> dataTypes;
-        Annotation annotation;
-    };
-
     struct Variable
     {
         SourceCodeUtilities::Comment comment;
@@ -102,7 +94,29 @@ struct SourceCodeModel
         Annotation annotation;
     };
 
-    struct ModuleDesc
+    struct Endpoint
+    {
+        SourceCodeUtilities::Comment comment;
+        std::string UID, endpointType, name;
+        std::vector<Expression> dataTypes;
+        Annotation annotation;
+    };
+
+    struct Connection
+    {
+        Expression sourceEndpoint, destEndpoint;
+        std::string interpolationType;
+        Expression delayLength;
+    };
+
+    struct ProcessorInstance
+    {
+        std::string UID, name;
+        Expression targetProcessor, specialisationArgs,
+                   clockMultiplierRatio, clockDividerRatio, arraySize;
+    };
+
+    struct Module
     {
         bool isNamespace = false, isProcessor = false, isGraph = false;
         std::string UID, moduleTypeDescription, fullyQualifiedName;
@@ -114,26 +128,28 @@ struct SourceCodeModel
         std::vector<Function> functions;
         std::vector<Variable> variables;
         std::vector<Struct> structs;
+        std::vector<ProcessorInstance> processorInstances;
+        std::vector<Connection> connections;
     };
 
-    struct FileDesc
+    struct File
     {
         SourceCodeText::Ptr source;
         SourceCodeUtilities::Comment fileComment;
         std::string UID, filename, title, summary;
-        std::vector<ModuleDesc> modules;
+        std::vector<Module> modules;
     };
 
     //==============================================================================
-    std::vector<FileDesc> files;
+    std::vector<File> files;
 
     //==============================================================================
     struct TableOfContentsNode
     {
         std::string name;
         std::vector<TableOfContentsNode> children;
-        const ModuleDesc* module = nullptr;
-        const FileDesc* file = nullptr;
+        const Module* module = nullptr;
+        const File* file = nullptr;
     };
 
     TableOfContentsNode createTableOfContentsRoot() const;

@@ -22,7 +22,7 @@ namespace soul
 {
 
 //==============================================================================
-/** A ref-counted holder for a source code string. */
+/// A ref-counted holder for a source code string.
 struct SourceCodeText  final : public RefCountedObject
 {
     using Ptr = RefCountedPtr<SourceCodeText>;
@@ -42,7 +42,7 @@ private:
 
 
 //==============================================================================
-/** Represents a source code location as a pointer into a SourceCodeText object. */
+/// Represents a source code location as a pointer into a SourceCodeText object.
 struct CodeLocation   final
 {
     CodeLocation() noexcept = default;
@@ -53,9 +53,8 @@ struct CodeLocation   final
     CodeLocation& operator= (CodeLocation&&) = default;
     CodeLocation& operator= (const CodeLocation&) = default;
 
-    /** This is the best way to convert a string to a CodeLocation as it'll also validate the UTF8 and throw
-        an error if it's dodgy.
-    */
+    /// This is the best way to convert a string to a CodeLocation as it'll also
+    /// validate the UTF8 and throw an error if it's dodgy.
     static CodeLocation createFromString (std::string filename, std::string text);
     static CodeLocation createFromSourceFile (const SourceFile&);
     void validateUTF8() const;
@@ -70,29 +69,45 @@ struct CodeLocation   final
 
     struct LineAndColumn
     {
-        uint32_t line, column;
+        /// The line and column indexes begin at 1. If they are 0, it
+        /// indicates that the object isn't initialised.
+        uint32_t line = 0, column = 0;
     };
 
     LineAndColumn getLineAndColumn() const;
 
-    /** Returns the start of the current line. */
+    /// Returns a new location which has the given number of lines and columns
+    /// added to this position.
+    CodeLocation getOffset (uint32_t linesToAdd, uint32_t columnsToAdd) const;
+
+    /// Returns the start of the current line.
     CodeLocation getStartOfLine() const;
-    /** Returns the end of the current line (not including any end-of-line characters). */
+    /// Returns the end of the current line (not including any end-of-line characters).
     CodeLocation getEndOfLine() const;
 
-    /** Returns the start of the next line, or a null location if this is the last one. */
+    /// Returns the start of the next line, or a null location if this is the last one.
     CodeLocation getStartOfNextLine() const;
-    /** Returns the start of the previous line, or a null location if this is the first one. */
+    /// Returns the start of the previous line, or a null location if this is the first one.
     CodeLocation getStartOfPreviousLine() const;
 
-    /** Returns the content of the current line (not including any end-of-line characters). */
+    /// Returns the content of the current line (not including any end-of-line characters).
     std::string getSourceLine() const;
 
-    /** The original text into which this is a pointer. */
+    /// The original text into which this is a pointer.
     SourceCodeText::Ptr sourceCode;
 
-    /** The raw pointer to the text. */
+    /// The raw pointer to the text.
     UTF8Reader location;
+};
+
+//==============================================================================
+/// Holds a start/end CodeLocation for a lexical range
+struct CodeLocationRange
+{
+    CodeLocation start, end;
+
+    bool isEmpty() const;
+    std::string toString() const;
 };
 
 

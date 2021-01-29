@@ -112,6 +112,56 @@ CodeLocation SourceCodeUtilities::findNextOccurrence (CodeLocation start, char c
     }
 }
 
+pool_ptr<AST::ASTObject> SourceCodeUtilities::findASTObjectAt (AST::ASTObject& root, CodeLocation targetLocation)
+{
+    struct FindLocationVisitor  : public ASTVisitor
+    {
+        void visitObject (AST::ASTObject& o) override
+        {
+            ASTVisitor::visitObject (o);
+
+            auto distance = target - o.context.location.location.getAddress();
+
+            if (distance == 0
+                 || (distance > 0
+                      && result != nullptr
+                      && distance < target - result->context.location.location.getAddress()))
+                result = o;
+        }
+
+        const char* target = nullptr;
+        pool_ptr<AST::ASTObject> result;
+    };
+
+    FindLocationVisitor v;
+    v.target = targetLocation.location.getAddress();
+    v.visitObject (root);
+    return v.result;
+}
+
+CodeLocationRange SourceCodeUtilities::findRangeOfASTObject (AST::ASTObject& object)
+{
+    struct FindLexicalRangeVisitor  : public ASTVisitor
+    {
+        void visitObject (AST::ASTObject& o) override
+        {
+            ASTVisitor::visitObject (o);
+
+            auto loc = o.context.location;
+
+            if (loc.location < range.start.location)  range.start = loc;
+            if (loc.location > range.end.location)    range.end = loc;
+        }
+
+        CodeLocationRange range;
+    };
+
+    FindLexicalRangeVisitor v;
+    v.range.start = v.range.end = object.context.location;
+    v.visitObject (object);
+    return v.range;
+}
+
 CodeLocation SourceCodeUtilities::findEndOfExpression (CodeLocation start)
 {
     try
@@ -144,12 +194,6 @@ CodeLocation SourceCodeUtilities::findEndOfExpression (CodeLocation start)
     return {};
 }
 
-std::string SourceCodeUtilities::getStringBetween (CodeLocation start, CodeLocation end)
-{
-    SOUL_ASSERT (end.location.getAddress() >= start.location.getAddress());
-    return std::string (start.location.getAddress(), end.location.getAddress());
-}
-
 CodeLocation SourceCodeUtilities::findEndOfMatchingBrace (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openBrace, Operator::closeBrace); }
 CodeLocation SourceCodeUtilities::findEndOfMatchingParen (CodeLocation start) { return SimpleTokeniser::findEndOfMatchingDelimiter (start, Operator::openParen, Operator::closeParen); }
 
@@ -157,14 +201,14 @@ SourceCodeUtilities::Comment SourceCodeUtilities::getFileSummaryComment (CodeLoc
 {
     auto firstComment = parseComment (file);
 
-    if (firstComment.isDoxygenStyle && isFollowedByBlankLine (firstComment.end))
+    if (firstComment.isDoxygenStyle && isFollowedByBlankLine (firstComment.range.end))
         return firstComment;
 
     if (firstComment.valid)
     {
-        auto secondComment = parseComment (firstComment.end);
+        auto secondComment = parseComment (firstComment.range.end);
 
-        if (secondComment.isDoxygenStyle && isFollowedByBlankLine (secondComment.end))
+        if (secondComment.isDoxygenStyle && isFollowedByBlankLine (secondComment.range.end))
             return secondComment;
     }
 
@@ -199,17 +243,17 @@ std::string SourceCodeUtilities::getFileSummaryBody (const Comment& summary)
 
         if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
         {
-            auto copy = summary;
-            copy.lines.erase (copy.lines.begin());
+            auto lines = summary.lines;
+            lines.erase (lines.begin());
 
-            while (! copy.lines.empty() && copy.lines.front().empty())
-                copy.lines.erase (copy.lines.begin());
+            while (! lines.empty() && lines.front().empty())
+                lines.erase (lines.begin());
 
-            return  copy.getText();
+            return joinStrings (lines, "\n");
         }
     }
 
-    return summary.getText();
+    return summary.range.toString();
 }
 
 CodeLocation SourceCodeUtilities::findStartOfPrecedingComment (CodeLocation location)
@@ -268,7 +312,7 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
 
     Comment result;
     pos.location = pos.location.findEndOfWhitespace();
-    result.start = pos;
+    result.range.start = pos;
 
     if (pos.location.advanceIfStartsWith ("/*"))
     {
@@ -325,9 +369,9 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
                 l = l.substr ((size_t) firstLineIndent);
         }
 
-        result.end = pos;
-        result.end.location = closeComment;
-        result.end.location += 2;
+        result.range.end = pos;
+        result.range.end.location = closeComment;
+        result.range.end.location += 2;
     }
     else
     {
@@ -347,7 +391,7 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
             pos = pos.getStartOfNextLine();
         }
 
-        result.end = pos;
+        result.range.end = pos;
 
         if (! result.lines.empty())
         {
@@ -386,11 +430,6 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
 SourceCodeUtilities::Comment SourceCodeUtilities::findPrecedingComment (CodeLocation location)
 {
     return parseComment (findStartOfPrecedingComment (location.getStartOfLine()));
-}
-
-std::string SourceCodeUtilities::Comment::getText() const
-{
-    return joinStrings (lines, "\n");
 }
 
 //==============================================================================

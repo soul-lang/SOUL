@@ -107,6 +107,25 @@ CodeLocation::LineAndColumn CodeLocation::getLineAndColumn() const
     return lc;
 }
 
+CodeLocation CodeLocation::getOffset (uint32_t linesToAdd, uint32_t columnsToAdd) const
+{
+    auto l = *this;
+    LineAndColumn lc;
+
+    for (;;)
+    {
+        if (lc.line == linesToAdd && lc.column == columnsToAdd)
+            return l;
+
+        if (l.location.isEmpty())
+            return {};
+
+        ++lc.column;
+        if (*(l.location) == '\n')  { lc.column = 0; lc.line++; }
+        ++(l.location);
+    }
+}
+
 CodeLocation CodeLocation::getStartOfLine() const
 {
     if (location.getAddress() == nullptr)
@@ -195,5 +214,21 @@ void CodeLocation::emitMessage (CompileMessage message) const
     soul::throwError (message.withLocation (*this));
 }
 
+bool CodeLocationRange::isEmpty() const
+{
+    return start.sourceCode == nullptr || start.location.getAddress() == end.location.getAddress();
+}
+
+std::string CodeLocationRange::toString() const
+{
+    if (start.sourceCode == nullptr)
+    {
+        SOUL_ASSERT (end.sourceCode == nullptr);
+        return {};
+    }
+
+    SOUL_ASSERT (end.sourceCode != nullptr && end.location.getAddress() >= start.location.getAddress());
+    return std::string (start.location.getAddress(), end.location.getAddress());
+}
 
 } // namespace soul
