@@ -135,7 +135,7 @@ namespace soul::gain
     /// raw gain levels.
     processor SmoothedGainParameter (float slewRateSeconds)
     {
-        input event float volume   [[ label: "Volume", unit: "dB", min: -85, max: 6 ]];
+        input event float volume   [[ name: "Volume", unit: "dB", min: -85, max: 6 ]];
         output stream float gain;
 
         event volume (float targetDB)
