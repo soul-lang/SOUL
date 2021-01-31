@@ -1,0 +1,48 @@
+/*
+    == SOUL example code ==
+
+   Demonstrates using the complex_resonator filter for synthesis of resonant modes.
+   
+*/
+
+processor Values (const float32[] vals)
+{
+    output event float32 out[vals.size];
+
+    void run()
+    {
+        for (wrap<vals.size> i)
+            out[i] << vals[i];
+
+        advance();
+    }
+}
+
+graph Resonator [[main]]
+{
+    input stream float32 in;
+    output stream float32 out;
+
+    input smoothedGain.volume;
+
+    namespace complex_resonator = soul::filters::complex_resonator;
+
+    let
+    {
+        modes  = complex_resonator::Processor[3];
+        freqs  = Values (float32[](600, 1200., 2400.));
+        gains  = Values (float32[](1.     0.5, 0.3  ));
+        decays = Values (float32[](1,     0.5, 0.1  ));
+        smoothedGain = soul::gain::SmoothedGain;
+    }
+    
+    connection
+    {
+        gains.out -> modes.gainIn;
+        freqs.out -> modes.frequencyIn;
+        decays.out -> modes.decayIn;
+        in -> modes.in;
+        modes.realOut -> smoothedGain.in;
+        smoothedGain.out -> out;
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "com.yourcompany.Resonator",
+        "version":          "0.1",
+        "name":             "Resonator",
+        "description":      "This is a SOUL Patch called Resonator!",
+        "category":         "effect",
+        "manufacturer":     "Your Company Name",
+        "isInstrument":     false,
+
+        "source":           [ "Resonator.soul" ]
+    }
+}
