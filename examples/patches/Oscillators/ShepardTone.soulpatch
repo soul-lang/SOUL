@@ -1,0 +1,14 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "com.yourcompany.ShepardTone",
+        "version":          "0.1",
+        "name":             "ShepardTone",
+        "description":      "This is a SOUL Patch called ShepardTone!",
+        "category":         "effect",
+        "manufacturer":     "Your Company Name",
+        "isInstrument":     false,
+
+        "source":           [ "ShepardTone.soul" ]
+    }
+}
