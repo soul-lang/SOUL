@@ -1,0 +1,14 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "com.yourcompany.LFOTester",
+        "version":          "0.1",
+        "name":             "PolyBLEP",
+        "description":      "This is a SOUL Patch called LFOTester!",
+        "category":         "effect",
+        "manufacturer":     "Your Company Name",
+        "isInstrument":     false,
+
+        "source":           [ "LFOTester.soul" ]
+    }
+}
