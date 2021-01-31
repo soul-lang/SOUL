@@ -166,6 +166,28 @@ namespace soul::gain
             }
         }
     }
+
+    //==============================================================================
+    /// A graph that combines DynamicGain and SmoothedGainParameter
+    graph SmoothedGain (/*using SampleType = float32,*/float slewRateSeconds = 0.1f)
+    {
+        input stream float32 in;
+        output stream float32 out;
+        input gainParameter.volume volume;
+
+        let
+        {
+            gainProcessor = soul::gain::DynamicGain (float32);
+            gainParameter = soul::gain::SmoothedGainParameter (slewRateSeconds);
+        }
+
+        connection
+        {
+            gainParameter.gain -> gainProcessor.gain;
+            in -> gainProcessor.in;
+            gainProcessor.out -> out;
+        }
+    }
 }
 
 //==============================================================================
