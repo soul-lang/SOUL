@@ -2255,7 +2255,7 @@ R"soul_code(
                             c.update (processor.frequency, clippedFrequency);
                         }
 
-                        loop (16)
+                        loop (updateInterval)
                         {
                             if (mode == Mode::lowpass)        out << s.processLPF (in, c);
                             else if (mode == Mode::highpass)  out << s.processHPF (in, c);
@@ -2279,10 +2279,10 @@ R"soul_code(
             /** Constants for use in specifying the filter mode. */
             namespace Mode
             {
-                let lowpass  = 0;
 )soul_code"
 R"soul_code(
 
+                let lowpass  = 0;
                 let highpass = 1;
                 let bandpass = 2;
             }
@@ -2343,10 +2343,10 @@ R"soul_code(
                 output stream SampleType lowpassOut, bandpassOut, highpassOut;
 
                 input event
-                {
 )soul_code"
 R"soul_code(
 
+                {
                     float frequencyIn [[ name: "Frequency", min: minFreqHz,   max: maxFreqHz, init: defaultFreqHz, unit: "Hz"]];
                     float qualityIn   [[ name: "Q",         min: 0.01,        max: 100.0,     init: defaultQuality]];
                 }
@@ -2593,7 +2593,7 @@ R"soul_code(
                             update (c, processor.frequency, clippedFrequency);
                         }
 
-                        loop (16)
+                        loop (updateInterval)
                         {
                             let y = s.process (in, c);
                             lowOut  << y[0];

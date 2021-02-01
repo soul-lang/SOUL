@@ -1103,7 +1103,7 @@ namespace soul::filters (using SampleType = float32,
                             c.update (processor.frequency, clippedFrequency);
                         }
 
-                        loop (16)
+                        loop (updateInterval)
                         {
                             if (mode == Mode::lowpass)        out << s.processLPF (in, c);
                             else if (mode == Mode::highpass)  out << s.processHPF (in, c);
@@ -1423,7 +1423,7 @@ namespace soul::filters (using SampleType = float32,
                             update (c, processor.frequency, clippedFrequency);
                         }
 
-                        loop (16)
+                        loop (updateInterval)
                         {
                             let y = s.process (in, c);
                             lowOut  << y[0];
