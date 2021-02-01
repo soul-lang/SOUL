@@ -431,9 +431,9 @@ private:
         {
             b->statements.removeMatches ([] (heart::Statement& s)
             {
-                if (auto a = cast<heart::Assignment> (s))
+                if (auto a = cast<heart::AssignFromValue> (s))
                     if (auto target = cast<heart::Variable> (a->target))
-                        return target->readWriteCount.numReads == 0 && target->isFunctionLocal();
+                        return target->readWriteCount.numReads == 0 && target->isFunctionLocal() && ! a->source->mayHaveSideEffects();
 
                 return false;
             });

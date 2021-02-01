@@ -372,6 +372,7 @@ struct heart
         virtual Value getAsConstant() const = 0;
         virtual bool isMutable() const = 0;
         virtual bool isAssignable() const = 0;
+        virtual bool mayHaveSideEffects() const                 { return false; }
     };
 
     //==============================================================================
@@ -482,6 +483,15 @@ struct heart
             }
 
             return result;
+        }
+
+        bool mayHaveSideEffects() const override
+        {
+            for (auto i : items)
+                if (i->mayHaveSideEffects())
+                    return true;
+
+            return false;
         }
 
         Type type;
@@ -603,6 +613,15 @@ struct heart
             }
         }
 
+        bool mayHaveSideEffects() const override
+        {
+            if (isDynamic())
+                return dynamicIndex->mayHaveSideEffects();
+
+            return false;
+        }
+
+
         pool_ref<Expression> parent;
         pool_ptr<Expression> dynamicIndex;
         size_t fixedStartIndex = 0, fixedEndIndex = 1;
@@ -686,6 +705,11 @@ struct heart
             fn (source, AccessType::read);
         }
 
+        bool mayHaveSideEffects() const override
+        {
+            return source->mayHaveSideEffects();
+        }
+
         pool_ref<Expression> source;
         Type destType;
     };
@@ -719,6 +743,11 @@ struct heart
         {
             source->visitExpressions (fn, AccessType::read);
             fn (source, AccessType::read);
+        }
+
+        bool mayHaveSideEffects() const override
+        {
+            return source->mayHaveSideEffects();
         }
 
         pool_ref<Expression> source;
@@ -769,6 +798,11 @@ struct heart
             }
 
             return {};
+        }
+
+        bool mayHaveSideEffects() const override
+        {
+            return lhs->mayHaveSideEffects() || rhs->mayHaveSideEffects();
         }
 
         pool_ref<Expression> lhs, rhs;
@@ -1242,6 +1276,18 @@ struct heart
                 arguments[i]->visitExpressions (fn, AccessType::read);
                 fn (arguments[i], AccessType::read);
             }
+        }
+
+        bool mayHaveSideEffects() const override
+        {
+            if (function.mayHaveSideEffects())
+                return true;
+
+            for (auto a : arguments)
+                if (a->mayHaveSideEffects())
+                    return true;
+
+            return false;
         }
 
         Function& function;
