@@ -263,9 +263,10 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
 
         if (settings.optimisationLevel != 0)
         {
-            Optimisations::removeUnusedFunctions (program, program.getMainProcessor());
-            Optimisations::removeUnusedProcessors (program);
-            Optimisations::removeUnusedStructs (program);
+            Optimisations::removeUnusedFunctions (program, program.getMainProcessor(), false);
+//            Optimisations::removeUnusedProcessors (program);
+//            Optimisations::removeUnusedStructs (program);
+//            Optimisations::removeUnusedNamespaces (program);
         }
 
         reset();

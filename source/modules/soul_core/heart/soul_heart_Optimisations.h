@@ -48,7 +48,7 @@ struct Optimisations
         }
     }
 
-    static void removeUnusedFunctions (Program& program, Module& mainModule)
+    static void removeUnusedFunctions (Program& program, Module& mainModule, bool isFlattened)
     {
         removeCallsToVoidFunctionsWithoutSideEffects (program);
 
@@ -56,7 +56,16 @@ struct Optimisations
             for (auto& f : m->functions.get())
                 f->functionUseTestFlag = false;
 
-        recursivelyFlagModuleFunctions (program, mainModule);
+        if (isFlattened)
+        {
+            for (auto f : mainModule.functions.get())
+                if (f->isExported)
+                    recursivelyFlagFunctionUse (f);
+        }
+        else
+        {
+            recursivelyFlagModuleFunctions (program, mainModule);
+        }
 
         for (auto& m : program.getModules())
             for (auto& f : m->functions.get())
@@ -327,7 +336,8 @@ private:
     static void recursivelyFlagModuleFunctions (Program& program, const Module& m)
     {
         for (auto f : m.functions.get())
-            recursivelyFlagFunctionUse (f);
+            if (! f->functionType.isNormal())
+                recursivelyFlagFunctionUse (f);
 
         for (auto processorInstance : m.processorInstances)
             if (auto module = program.findModuleWithName (processorInstance->sourceName))
