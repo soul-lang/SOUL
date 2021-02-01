@@ -1497,26 +1497,28 @@ private:
     {
         auto& list = allocate<AST::CommaSeparatedList> (getContext());
 
-        for (;;)
+        if (! matchIf (Operator::closeParen))
         {
-            if (matchIf (Operator::closeParen))
-                break;
+            for (;;)
+            {
+                auto& e = parseExpression();
 
-            auto& e = parseExpression();
+                if (list.items.size() >= AST::maxInitialiserListLength)
+                    e.context.throwError (Errors::tooManyInitialisers());
 
-            if (list.items.size() >= AST::maxInitialiserListLength)
-                e.context.throwError (Errors::tooManyInitialisers());
+                if (! canContainTypes && e.kind == AST::ExpressionKind::type)
+                    e.context.throwError (Errors::typeReferenceNotAllowed());
 
-            if (! canContainTypes && e.kind == AST::ExpressionKind::type)
-                e.context.throwError (Errors::typeReferenceNotAllowed());
+                if (! canContainProcessors && e.kind == AST::ExpressionKind::processor)
+                    e.context.throwError (Errors::processorReferenceNotAllowed());
 
-            if (! canContainProcessors && e.kind == AST::ExpressionKind::processor)
-                e.context.throwError (Errors::processorReferenceNotAllowed());
+                list.items.push_back (e);
 
-            list.items.push_back (e);
+                if (matchIf (Operator::closeParen))
+                    break;
 
-            if (matchIf (Operator::comma))
-                continue;
+                expect (Operator::comma);
+            }
         }
 
         return list;
