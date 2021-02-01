@@ -1,15 +1,16 @@
 /*
     == SOUL example code ==
-
-    A handy little classic drum machine.
-
-    This uses a single sample containing the whole kit, and then plays
-    subsections of it for each drum hit. We could equally have chopped it
-    up into separate wave files and loaded each one separately.
-
-    In memory of Philip Meehan, who created these drum samples for use in
-    the early Tracktion demo songs, back in around 2001.
+    == Author: Jules ==
 */
+
+/// Title: A tribute to the classic 909 drum machine
+///
+/// This uses a single sample containing the whole kit, and then plays
+/// subsections of it for each drum hit. We could equally have chopped it
+/// up into separate wave files and loaded each one separately.
+///
+/// In memory of Philip Meehan, who created these drum samples for use in
+/// the early Tracktion demo songs, back in around 2001.
 
 graph SOUL909  [[ main ]]
 {

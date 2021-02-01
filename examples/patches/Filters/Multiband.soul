@@ -1,0 +1,33 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: 4th order Linkwitz-Riley crossover example
+
+graph Multiband [[ main ]]
+{
+    input stream float32 in;
+    output stream float32 out;
+    input highGain.volume highVolume [[ name: "High Band Volume", unit: "dB", min: -70, max: 0, init: 0 ]];
+    input lowGain.volume lowVolume [[ name: "Low Band Volume", unit: "dB", min: -70, max: 0, init: 0 ]];
+
+    input filter.frequencyIn;
+    namespace crossover = soul::filters::tpt::crossover;
+
+    let
+    {
+        highGain = soul::gain::SmoothedGain;
+        lowGain = soul::gain::SmoothedGain;
+        filter = crossover::Processor;
+    }
+
+    connection
+    {
+        in              -> filter.in;
+        filter.lowOut   -> highGain.in;
+        filter.highOut  -> lowGain.in;
+
+        highGain.out, lowGain.out -> out;
+    }
+}

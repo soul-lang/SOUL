@@ -1,0 +1,86 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: Shepard-tone example
+///
+/// A shepard tone, demonstrating different ways to use the component parts of the
+/// soul::oscillators::phasor namespace.
+///
+/// The phasor::Processor is used to drive the overall phase of the ascending/descending
+/// partials. Each Partial uses a phasor::State and calls the phasor::update function to
+/// generate the phase for each sine wave partial.
+
+processor Partial
+{
+    input stream float ramp;
+    input event float phaseOffsetIn;
+    output stream float out;
+
+    namespace phasor = soul::oscillators::phasor;
+
+    event phaseOffsetIn (float v) { phaseOffset = v; }
+
+    float phaseOffset = 0.f;
+
+    float getWindow (float phase)
+    {
+        return 1.0f - abs ((phase * 2.0f) - 1.0f);
+    }
+
+    void run()
+    {
+        phasor::State s;
+
+        loop
+        {
+            let rampPhase = wrap (ramp + phaseOffset, 1.0f);
+            s.update (processor.period, soul::noteNumberToFrequency (8.0f + (rampPhase * 120.0f)));
+            out << float (sin (s.process() * twoPi)) * getWindow (rampPhase);
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+processor PhaseOffsets
+{
+    output event float value[10];
+
+    void run()
+    {
+        for (wrap<10> i)
+            value[i] << float(i) / 10.0f;
+
+        advance();
+    }
+}
+
+//==============================================================================
+graph ShepardTone [[main]]
+{
+    output stream float32 out;
+    input event float frequencyIn [[ name: "Rate (Hz)", min: -0.1, max: 0.1, init: 0.005, unit: "hz", step: 0.001 ]];
+    input smoothedGain.volume;
+
+    namespace phasor = soul::oscillators::phasor;
+
+    let
+    {
+        partials      = Partial[10];
+        masterPhasor  = phasor::Processor (0.01f);
+        phaseOffsets  = PhaseOffsets;
+        smoothedGain  = soul::gain::SmoothedGain;
+    }
+
+    connection
+    {
+        frequencyIn         -> masterPhasor.frequencyIn;
+        phaseOffsets.value  -> partials.phaseOffsetIn;
+
+        masterPhasor.out    -> partials.ramp;
+        partials.out        -> smoothedGain.in;
+        smoothedGain.out    -> out;
+    }
+}

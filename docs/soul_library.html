@@ -76,6 +76,9 @@
      <li class="toc_item">
       <a href="#mod_soul_gain_SmoothedGainParameter">SmoothedGainParameter</a>
      </li>
+     <li class="toc_item">
+      <a href="#mod_soul_gain_SmoothedGain">SmoothedGain</a>
+     </li>
     </ul>
    </li>
    <li class="toc_item">
@@ -987,6 +990,48 @@
     <div class="variable"><p class="code_block"><span class="primitive_type">float32</span> <span class="variable_name">increment</span></p>
     </div>
     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">remainingRampSamples</span></p>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="module" id="mod_soul_gain_SmoothedGain">
+  <h2><span class="module_type">graph </span><span class="module_name">soul::gain::SmoothedGain</span>
+  </h2>
+  <div class="summary"><p>A graph that combines DynamicGain and SmoothedGainParameter</p>
+  </div>
+  <div class="module_sections">
+   <div class="module_section">
+    <h3>Specialisation Parameters</h3><p class="code_block"><span class="module_type">graph</span> <span class="module_name">soul::gain::SmoothedGain</span> (<span class="primitive_type">float32</span> <span class="variable_name">slewRateSeconds</span> = 0.1f)</p>
+   </div>
+   <div class="module_section">
+    <h3>Inputs</h3>
+    <ul>
+     <li class="endpoint_desc" id="endpoint_soul_gain_SmoothedGain_in"><span class="endpoint_type">stream</span>&nbsp;<span class="endpoint_name">in</span>&nbsp;(<span class="primitive_type">float32</span>)</li>
+     <li class="endpoint_desc" id="endpoint_soul_gain_SmoothedGain_volume"><span class="endpoint_type"></span>&nbsp;<span class="endpoint_name">volume</span>&nbsp;()</li>
+    </ul>
+   </div>
+   <div class="module_section">
+    <h3>Outputs</h3>
+    <ul>
+     <li class="endpoint_desc" id="endpoint_soul_gain_SmoothedGain_out"><span class="endpoint_type">stream</span>&nbsp;<span class="endpoint_name">out</span>&nbsp;(<span class="primitive_type">float32</span>)</li>
+    </ul>
+   </div>
+   <div class="module_section">
+    <h3>Processor Instances</h3>
+    <div class="processor_instances"><p class="processor_instance" id="procinst__root_soul_gain_SmoothedGain_gainProcessor"><span class="name">gainProcessor</span> = <a href="#mod_soul_gain_DynamicGain" class="struct_name">soul::gain::DynamicGain</a> <span class="primitive_type">float32</span></p>
+    </div>
+    <div class="processor_instances"><p class="processor_instance" id="procinst__root_soul_gain_SmoothedGain_gainParameter"><span class="name">gainParameter</span> = <a href="#mod_soul_gain_SmoothedGainParameter" class="struct_name">soul::gain::SmoothedGainParameter</a> <a href="#var_soul_gain_SmoothedGain_slewRateSeconds" class="struct_name">slewRateSeconds</a></p>
+    </div>
+   </div>
+   <div class="module_section">
+    <h3>Connections</h3>
+    <div class="connections"><p class="connection"><span class="typename_text">gainParameter</span><span class="typename_text">.</span><span class="typename_text">gain</span><span class="connection_arrow"> -&gt; </span><span class="typename_text">gainProcessor</span><span class="typename_text">.</span><span class="typename_text">gain</span></p>
+    </div>
+    <div class="connections"><p class="connection">
+      <a href="#endpoint_soul_gain_SmoothedGain_in" class="struct_name">in</a><span class="connection_arrow"> -&gt; </span><span class="typename_text">gainProcessor</span><span class="typename_text">.</span><span class="typename_text">in</span></p>
+    </div>
+    <div class="connections"><p class="connection"><span class="typename_text">gainProcessor</span><span class="typename_text">.</span><span class="typename_text">out</span><span class="connection_arrow"> -&gt; </span>
+      <a href="#endpoint_soul_gain_SmoothedGain_out" class="struct_name">out</a></p>
     </div>
    </div>
   </div>

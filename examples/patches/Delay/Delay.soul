@@ -1,9 +1,12 @@
 /*
     == SOUL example code ==
-
-    A simple implementation of a delay, where the length and feedback level can
-    be dynamically set using event parameters.
+    == Author: Jules ==
 */
+
+/// Title: A very simple delay example
+///
+/// This example is a very simple implementation of a delay, where the length
+/// and feedback level can be changed dynamically with event parameters.
 
 processor Delay  [[ main ]]
 {

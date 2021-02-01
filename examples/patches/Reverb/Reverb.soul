@@ -1,9 +1,9 @@
 /*
     == SOUL example code ==
-
-    A more complex implementation of freeverb, where events are used for sending
-    parameter changes.
+    == Author: Jules via the class Freeverb algorithm ==
 */
+
+/// Title: An implementation of the classic Freeverb reverb algorithm.
 
 graph Reverb  [[ main ]]
 {

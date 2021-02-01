@@ -1,16 +1,19 @@
 /*
     == SOUL example code ==
-
-    "Minimum-Viable-Piano"
-
-    You probably won't want to use this patch to replace your Bosendorfer,
-    but it shows how to play some re-pitched external sample data, and
-    it'll do a pretty good job of recreating some early 1990s rave piano.
-
-    In memory of Philip Meehan, who recorded these piano samples for use in
-    the early Tracktion demo songs, back in around 2001.
+    == Author: Jules ==
 */
 
+/// Title: Minimum-Viable-Piano
+///
+/// You probably won't want to use this patch to replace your Bosendorfer,
+/// but it shows how to play some re-pitched external sample data, and
+/// it'll do a pretty good job of recreating some early 1990s rave piano.
+///
+/// In memory of Philip Meehan, who recorded these piano samples for use in
+/// the early Tracktion demo songs, back in around 2001.
+
+
+//==============================================================================
 graph Piano  [[ main ]]
 {
     input event float volume [[ min: -40, max: 0,  init: -6, unit: "dB", step: 1, name: "Volume" ]];

@@ -1,9 +1,12 @@
 /*
     == SOUL example code ==
-
-    A simple sine-wave synthesiser featuring pitch-bend support, using a basic
-    envelope and voice-allocator.
+    == Author: Jules ==
 */
+
+/// Title: A simple MPE sine-wave synthesiser example
+///
+/// A simple sine-wave synthesiser featuring pitch-bend support, using a basic
+/// envelope and voice-allocator.
 
 graph SineSynth  [[ main ]]
 {

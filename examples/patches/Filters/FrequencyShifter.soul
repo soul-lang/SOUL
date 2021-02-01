@@ -1,0 +1,69 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: IIR Hilbert transform example
+///
+/// Demonstrates the IIR hilbert transformer/analytic filter and quadrature oscillator which,
+/// when ring-modulated, can produce single-sideband modulation or frequency shifting.
+
+processor ComplexRingMod (using SampleType = float32)
+{
+    input stream SampleType realIn1;
+    input stream SampleType imagIn1;
+    input stream SampleType realIn2;
+    input stream SampleType imagIn2;
+    output stream SampleType upperSideband;
+    output stream SampleType lowerSideband;
+
+    void run()
+    {
+        loop
+        {
+            let reals = realIn1 * realIn2;
+            let imags = imagIn1 * imagIn2;
+            lowerSideband << reals - imags;
+            upperSideband << reals + imags;
+            advance();
+        }
+    }
+}
+
+//==============================================================================
+graph FrequencyShifter  [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+
+    input event float frequencyIn               [[ name: "Shift", min: -100.f, max: 100.f, init: 0.f, unit: "Hz" ]];
+    input upperSidebandGain.volume upperVolume  [[ name: "Upper Sideband Volume", unit: "dB", min: -70, max: 0, init: 0 ]];
+    // input lowerSidebandGain.volume lowerVolume [[ name: "Lower Sideband Volume", unit: "dB", min: -70, max: 0, init: 0 ]];
+
+    namespace analytic = soul::filters::analytic (8);
+    namespace quadrature = soul::oscillators::quadrature;
+
+    let
+    {
+        quadOsc = quadrature::Processor (100.f);
+        hilbert = analytic::Processor;
+        complexRingMod = ComplexRingMod;
+        upperSidebandGain = soul::gain::SmoothedGain;
+        lowerSidebandGain = soul::gain::SmoothedGain;
+    }
+
+    connection
+    {
+        frequencyIn -> quadOsc.frequencyIn;
+
+        in -> hilbert.in;
+        hilbert.realOut -> complexRingMod.realIn1;
+        hilbert.imagOut -> complexRingMod.imagIn1;
+        quadOsc.sineOut -> complexRingMod.realIn2;
+        quadOsc.cosineOut -> complexRingMod.imagIn2;
+        complexRingMod.upperSideband -> upperSidebandGain.in;
+        // complexRingMod.lowerSideband -> lowerSidebandGain.in;
+        upperSidebandGain.out -> out;
+        // lowerSidebandGain.out -> out;
+    }
+}

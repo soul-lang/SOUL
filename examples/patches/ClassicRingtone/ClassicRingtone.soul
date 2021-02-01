@@ -1,9 +1,12 @@
 /*
     == SOUL example code ==
-
-    Plays the first few notes of Gran Vals by Francisco Tarrega, using a
-    sequence of sine-wave tones.
+    == Author: Jules ==
 */
+
+/// Title: The "Hello World" of audio demo code
+///
+/// This example plays the first few notes of Gran Vals by Francisco Tarrega,
+/// using the simplest possible sine-wave oscillator.
 
 processor ClassicRingtone
 {

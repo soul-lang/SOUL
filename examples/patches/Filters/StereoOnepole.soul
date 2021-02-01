@@ -1,0 +1,34 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: Onepole filter exmaple
+///
+/// Demonstrates the onepole filters in the filter library, and how to make a stereo
+/// filter using a float32<2> specialisation of the soul::filters namespace.
+
+graph StereoOnepole [[ main ]]
+{
+    input stream float32<2> in;
+    output stream float32<2> out;
+
+    input filter.frequencyIn;
+    input filter.modeIn;
+
+    // namespace onepole = soul::filters (float32<2>)::onepole;
+    namespace onepole = soul::filters (float32<2>)::tpt::onepole;
+
+    let
+    {
+        // sourceSignal = soul::noise::Pink;
+        filter = onepole::Processor;
+    }
+
+    connection
+    {
+        in -> filter.in;
+        // sourceSignal.out -> filter.in;
+        filter.out -> out;
+    }
+}

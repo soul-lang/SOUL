@@ -1,0 +1,79 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: simper_eq and rbj_eq example
+///
+/// Demonstrates the simper_eq and rbj_eq filters, both of which offer a variety of
+/// filter responses, including shelving filters for EQs.
+///
+/// Uncomment/comment line 56/57 to try the different algorithms.
+/// An LFO is included to test the difference when modulating the filter frequency.
+
+//==============================================================================
+/// This processor adds the base frequency event and LFO stream output with
+/// depth in semitones
+processor FrequencyMapping
+{
+    input stream float32 lfoIn;
+    input event float32 frequencyIn    [[ name: "Filter Base Frequency", min: 10.0, max: 10000.0, init: 1000.0, unit: "Hz" ]];
+    input event float32 modDepthIn     [[ name: "LFO Depth",             min: 0.0,  max: 36.0,    init: 0.0,    unit: "Semi" ]];
+    output event float32 frequencyOut;
+
+    event frequencyIn (float v) { baseFreq = v; }
+    event modDepthIn (float v)  { modDepth = v; }
+
+    float baseFreq = 1000.0f;
+    float modDepth = 0.0f;
+
+    void run()
+    {
+        loop
+        {
+            // (This calls pow() at sample-rate, but could be changed to happen less often)
+            frequencyOut << baseFreq * pow (2.0f, (lfoIn * modDepth) / 12.0f);
+            advance();
+        }
+
+        return;
+    }
+}
+
+//==============================================================================
+graph EQFilterTester [[ main ]]
+{
+    input  stream float32 in;
+    output stream float32 out;
+
+    input frequencyMapping.frequencyIn;
+    input filter.qualityIn [[ name: "Filter Q" ]];
+    input filter.modeIn    [[ name: "Filter Mode" ]];
+    input filter.gainIn    [[ name: "Filter Gain" ]];
+
+    input lfo.rateHzIn   [[ name: "LFO Rate" ]];
+    input frequencyMapping.modDepthIn;
+    input lfo.shapeIn    [[ name: "LFO Shape" ]];
+
+    namespace simper_eq = soul::filters::tpt::simper_eq;
+    namespace rbj_eq = soul::filters::rbj_eq;
+
+    let
+    {
+        noise = soul::noise::Pink;
+        // you can lower the sample rate of the LFO here with e.g. "/ 4"
+        lfo = soul::oscillators::lfo::Processor (0, 1, 100.0f);
+        frequencyMapping = FrequencyMapping;
+        filter = simper_eq::Processor;
+        // filter = rbj_eq::Processor;
+    }
+
+    connection
+    {
+        lfo.out -> frequencyMapping.lfoIn;
+        frequencyMapping.frequencyOut -> filter.frequencyIn;
+
+        noise -> filter.in;
+        filter.out -> out;
+    }
+}

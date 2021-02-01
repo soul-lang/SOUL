@@ -1,0 +1,14 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "com.yourcompany.ButterworthTester",
+        "version":          "0.1",
+        "name":             "ButterworthTester",
+        "description":      "This is a SOUL Patch called ButterworthTester!",
+        "category":         "effect",
+        "manufacturer":     "Your Company Name",
+        "isInstrument":     false,
+
+        "source":           [ "ButterworthTester.soul" ]
+    }
+}

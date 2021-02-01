@@ -537,7 +537,7 @@ namespace soul::gain
     /// raw gain levels.
     processor SmoothedGainParameter (float slewRateSeconds)
     {
-        input event float volume   [[ label: "Volume", unit: "dB", min: -85, max: 6 ]];
+        input event float volume   [[ name: "Volume", unit: "dB", min: -85, max: 6 ]];
         output stream float gain;
 
         event volume (float targetDB)
@@ -571,6 +571,28 @@ R"soul_code(
             }
         }
     }
+
+    //==============================================================================
+    /// A graph that combines DynamicGain and SmoothedGainParameter
+    graph SmoothedGain (/*using SampleType = float32,*/float slewRateSeconds = 0.1f)
+    {
+        input stream float32 in;
+        output stream float32 out;
+        input gainParameter.volume volume;
+
+        let
+        {
+            gainProcessor = soul::gain::DynamicGain (float32);
+            gainParameter = soul::gain::SmoothedGainParameter (slewRateSeconds);
+        }
+
+        connection
+        {
+            gainParameter.gain -> gainProcessor.gain;
+            in -> gainProcessor.in;
+            gainProcessor.out -> out;
+        }
+    }
 }
 
 //==============================================================================
@@ -585,6 +607,9 @@ namespace soul::envelope
         by the holdLevelMultiplier parameter.
     */
     processor FixedAttackReleaseEnvelope (float holdLevelMultiplier,
+)soul_code"
+R"soul_code(
+
                                           float attackTimeSeconds,
                                           float releaseTimeSeconds)
     {
@@ -607,9 +632,6 @@ namespace soul::envelope
             {
                 // Waiting for note-on
                 while (! active)
-)soul_code"
-R"soul_code(
-
                     advance();
 
                 float level;
@@ -648,6 +670,9 @@ R"soul_code(
                     {
                         levelOut << level;
                         level *= releaseMultiplier;
+)soul_code"
+R"soul_code(
+
                         advance();
                     }
                 }

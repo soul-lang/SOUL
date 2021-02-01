@@ -1,0 +1,14 @@
+{
+    "soulPatchV1":
+    {
+        "ID":               "com.yourcompany.MultiBand",
+        "version":          "0.1",
+        "name":             "MultiBand",
+        "description":      "This is a SOUL Patch called MultiBand!",
+        "category":         "effect",
+        "manufacturer":     "Your Company Name",
+        "isInstrument":     false,
+
+        "source":           [ "MultiBand.soul" ]
+    }
+}

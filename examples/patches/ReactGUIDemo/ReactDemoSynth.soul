@@ -1,9 +1,12 @@
 /*
     == SOUL example code ==
-
-    A fairly complex expressive synthesiser with some effects and
-    dynamic parameters.
+    == Author: Cesare Ferrari ==
 */
+
+/// Title: A fairly complex synthesiser example with a React GUI
+///
+/// A fairly complex expressive synthesiser with some effects and
+/// dynamic parameters.
 
 graph PadSynth  [[main]]
 {

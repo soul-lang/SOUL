@@ -1,0 +1,29 @@
+/*
+    == SOUL example code ==
+    == Author: Oli Larkin ==
+*/
+
+/// Title: N-th order Butterworth filter example
+
+graph ButterworthTester [[ main ]]
+{
+    output stream float32 out;
+
+    input filter.frequencyIn;
+    input filter.modeIn;
+
+    // namespace butterworth = soul::filters::butterworth;
+    namespace butterworth = soul::filters::tpt::butterworth;
+
+    let
+    {
+        sourceSignal = soul::noise::Pink;
+        filter = butterworth::Processor (7, butterworth::Mode::lowpass, 1000);
+    }
+
+    connection
+    {
+        sourceSignal.out -> filter.in;
+        filter.out -> out;
+    }
+}
