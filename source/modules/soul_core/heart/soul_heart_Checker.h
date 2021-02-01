@@ -137,7 +137,7 @@ struct heart::Checker
                             conn->location.throwError (Errors::cannotFindProcessor (sourceProcessor->sourceName));
 
                         sourceOutput = sourceModule->findOutput (conn->source.endpointName);
-                        sourceInstanceArraySize = conn->source.endpointIndex.has_value() ? 1: sourceProcessor->arraySize;
+                        sourceInstanceArraySize = conn->source.endpointIndex.has_value() ? 1 : sourceProcessor->arraySize;
                         sourceDescription = sourceProcessor->instanceName + "." + sourceDescription;
 
                         if (sourceOutput == nullptr)
@@ -204,10 +204,6 @@ struct heart::Checker
         // Different rules for different connection types
         if (isEvent)
         {
-            if (sourceOutput.name == "eventOut")
-                sourceOutput.isEventEndpoint();
-
-
             auto sourceSize = sourceInstanceArraySize * sourceOutput.arraySize.value_or (1);
             auto destSize = destInstanceArraySize * destInput.arraySize.value_or (1);
 
