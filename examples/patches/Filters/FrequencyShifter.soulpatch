@@ -9,6 +9,6 @@
         "manufacturer":     "Your Company Name",
         "isInstrument":     false,
 
-        "source":           [ "FreqShifter.soul" ]
+        "source":           [ "FrequencyShifter.soul" ]
     }
 }
