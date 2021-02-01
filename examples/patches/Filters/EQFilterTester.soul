@@ -8,7 +8,6 @@
 /// Demonstrates the simper_eq and rbj_eq filters, both of which offer a variety of
 /// filter responses, including shelving filters for EQs.
 ///
-/// Uncomment/comment line 56/57 to try the different algorithms.
 /// An LFO is included to test the difference when modulating the filter frequency.
 
 //==============================================================================
