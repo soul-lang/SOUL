@@ -56,9 +56,7 @@ struct Optimisations
             for (auto& f : m->functions.get())
                 f->functionUseTestFlag = false;
 
-        for (auto f : mainModule.functions.get())
-            if (f->isExported)
-                recursivelyFlagFunctionUse (f);
+        recursivelyFlagModuleFunctions (program, mainModule);
 
         for (auto& m : program.getModules())
             for (auto& f : m->functions.get())
@@ -324,6 +322,16 @@ private:
             pred->terminator = b.terminator;
             return true;
         });
+    }
+
+    static void recursivelyFlagModuleFunctions (Program& program, const Module& m)
+    {
+        for (auto f : m.functions.get())
+            recursivelyFlagFunctionUse (f);
+
+        for (auto processorInstance : m.processorInstances)
+            if (auto module = program.findModuleWithName (processorInstance->sourceName))
+                recursivelyFlagModuleFunctions (program, *module);
     }
 
     //==============================================================================

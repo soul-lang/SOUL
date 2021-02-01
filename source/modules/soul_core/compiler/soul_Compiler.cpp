@@ -260,6 +260,14 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
         compileAllModules (*topLevelNamespace, program, processorToRun);
         heart::Utilities::inlineFunctionsThatUseAdvanceOrStreams<Optimisations> (program);
         heart::Checker::sanityCheck (program, settings);
+
+        if (settings.optimisationLevel != 0)
+        {
+            Optimisations::removeUnusedFunctions (program, program.getMainProcessor());
+            Optimisations::removeUnusedProcessors (program);
+            Optimisations::removeUnusedStructs (program);
+        }
+
         reset();
 
         SOUL_LOG (program.getMainProcessor().originalFullName + ": linked HEART",
@@ -268,6 +276,7 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
         heart::Checker::testHEARTRoundTrip (program);
         Optimisations::optimiseFunctionBlocks (program);
         Optimisations::removeUnusedVariables (program);
+
         return program;
     }
     catch (AbortCompilationException) {}
