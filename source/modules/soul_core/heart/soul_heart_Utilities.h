@@ -62,6 +62,10 @@ struct heart::Utilities
             for (auto& o : m->outputs)
                 for (auto& t : o->dataTypes)
                     visit (t);
+
+            for (auto& v : m->stateVariables.get())
+                visit (v->type);
+
         }
     }
 

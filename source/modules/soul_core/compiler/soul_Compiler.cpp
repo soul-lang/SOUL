@@ -265,7 +265,7 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
         {
             Optimisations::removeUnusedFunctions (program, program.getMainProcessor(), false);
 //            Optimisations::removeUnusedProcessors (program);
-//            Optimisations::removeUnusedStructs (program);
+            Optimisations::removeUnusedStructs (program);
 //            Optimisations::removeUnusedNamespaces (program);
         }
 
