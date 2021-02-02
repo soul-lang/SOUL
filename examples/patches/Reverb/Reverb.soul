@@ -12,11 +12,11 @@ graph Reverb  [[ main ]]
 
     input
     {
-        ReverbParameterProcessorParam.roomSize  [[ name: "Room Size", max: 100, init: 80, text: "tiny|small|medium|large|hall" ]];
-        ReverbParameterProcessorParam.damping   [[ min: 0,  max: 100, init:  50,  name: "Damping Factor",  unit: "%",  step: 1 ]];
-        ReverbParameterProcessorParam.wetLevel  [[ min: 0,  max: 100, init:  33,  name: "Wet Level",       unit: "%",  step: 1 ]];
-        ReverbParameterProcessorParam.dryLevel  [[ min: 0,  max: 100, init:  40,  name: "Dry Level",       unit: "%",  step: 1 ]];
-        ReverbParameterProcessorParam.width     [[ min: 0,  max: 100, init: 100,  name: "Width",           unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.roomSize  [[ name: "Room Size",       min: 0, max: 100, init:  80, text: "tiny|small|medium|large|hall" ]];
+        ReverbParameterProcessorParam.damping   [[ name: "Damping Factor",  min: 0, max: 100, init:  50, unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.wetLevel  [[ name: "Wet Level",       min: 0, max: 100, init:  33, unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.dryLevel  [[ name: "Dry Level",       min: 0, max: 100, init:  40, unit: "%",  step: 1 ]];
+        ReverbParameterProcessorParam.width     [[ name: "Width",           min: 0, max: 100, init: 100, unit: "%",  step: 1 ]];
     }
 
     let

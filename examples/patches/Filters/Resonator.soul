@@ -32,9 +32,9 @@ graph Resonator [[main]]
     let
     {
         modes  = complex_resonator::Processor[3];
-        freqs  = Values (float32[] (600, 1200.0, 2400.));
-        gains  = Values (float32[] (1,      0.5, 0.3  ));
-        decays = Values (float32[] (1,      0.5, 0.1  ));
+        freqs  = Values (float32[] (600.0f, 1200.0f, 2400.0f ));
+        gains  = Values (float32[] (1.0f,   0.5f,    0.3f    ));
+        decays = Values (float32[] (1.0f,   0.5f,    0.1f    ));
         smoothedGain = soul::gain::SmoothedGain;
     }
 
