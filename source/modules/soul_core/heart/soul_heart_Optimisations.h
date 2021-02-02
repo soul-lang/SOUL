@@ -27,6 +27,21 @@ namespace soul
 */
 struct Optimisations
 {
+    static void removeUnusedObjects (Program& program)
+    {
+        auto& mainModule = program.getMainProcessor();
+
+        bool objectsRemoved = false;
+
+        do
+        {
+            objectsRemoved = removeUnusedFunctions (program, program.getMainProcessor(), false);
+            objectsRemoved |= removeUnusedStructs (program);
+            objectsRemoved |= removeUnusedModules (program, mainModule);
+        }
+        while (objectsRemoved);
+    }
+    
     static void removeUnusedVariables (Program& program)
     {
         for (auto& m : program.getModules())
@@ -48,7 +63,7 @@ struct Optimisations
         }
     }
 
-    static void removeUnusedFunctions (Program& program, Module& mainModule, bool isFlattened)
+    static bool removeUnusedFunctions (Program& program, Module& mainModule, bool isFlattened)
     {
         removeCallsToVoidFunctionsWithoutSideEffects (program);
 
@@ -72,8 +87,35 @@ struct Optimisations
                 if (! f->functionUseTestFlag && f->annotation.getBool ("do_not_optimise"))
                     recursivelyFlagFunctionUse (f);
 
+        bool functionsRemoved = false;
+
         for (auto& m : program.getModules())
-            m->functions.removeIf ([] (heart::Function& f) { return ! f.functionUseTestFlag; });
+            functionsRemoved |= m->functions.removeIf ([] (heart::Function& f) { return ! f.functionUseTestFlag; });
+
+        return functionsRemoved;
+    }
+
+    static bool removeUnusedModules (Program& program, Module& mainModule)
+    {
+        auto modules = program.getModules();
+
+        for (auto& m : modules)
+            m->moduleUseTestFlag = false;
+
+        recursivelyFlagModuleUse (program, mainModule);
+
+        bool modulesRemoved = false;
+
+        for (auto& m : modules)
+        {
+            if (! m->moduleUseTestFlag && m->functions.get().empty() && m->stateVariables.get().empty() && m->structs.get().empty())
+            {
+                modulesRemoved = true;
+                program.removeModule (m);
+            }
+        }
+
+        return modulesRemoved;
     }
 
     static void removeUnusedProcessors (Program& program)
@@ -81,7 +123,7 @@ struct Optimisations
         auto modules = program.getModules();
 
         for (auto& m : modules)
-            if (m->isProcessor() && m->functions.get().empty() && m->structs.get().empty())
+            if (m->isProcessor() && m->functions.get().empty() && m->stateVariables.get().empty() && m->structs.get().empty())
                 program.removeModule (m);
     }
 
@@ -90,12 +132,12 @@ struct Optimisations
         auto modules = program.getModules();
 
         for (auto& m : modules)
-            if (m->isNamespace() && m->functions.get().empty() && m->structs.get().empty()
+            if (m->isNamespace() && m->functions.get().empty() && m->stateVariables.get().empty() &&m->structs.get().empty()
                  && m->stateVariables.get().empty())
                 program.removeModule (m);
     }
 
-    static void removeUnusedStructs (Program& program)
+    static bool removeUnusedStructs (Program& program)
     {
         for (auto& m : program.getModules())
             for (auto& s : m->structs.get())
@@ -103,8 +145,12 @@ struct Optimisations
 
         heart::Utilities::visitAllTypes (program, [] (const Type& t) { recursivelyFlagStructUse (t); });
 
+        bool structsRemoved = false;
+
         for (auto& m : program.getModules())
-            m->structs.removeIf ([] (const StructurePtr& s) { return ! s->activeUseFlag; });
+            structsRemoved |= m->structs.removeIf ([] (const StructurePtr& s) { return ! s->activeUseFlag; });
+
+        return structsRemoved;
     }
 
     struct UnusedStructMembers
@@ -342,6 +388,15 @@ private:
         for (auto processorInstance : m.processorInstances)
             if (auto module = program.findModuleWithName (processorInstance->sourceName))
                 recursivelyFlagModuleFunctions (program, *module);
+    }
+
+    static void recursivelyFlagModuleUse (Program& program, Module& m)
+    {
+        m.moduleUseTestFlag = true;
+
+        for (auto processorInstance : m.processorInstances)
+            if (auto module = program.findModuleWithName (processorInstance->sourceName))
+                recursivelyFlagModuleUse (program, *module);
     }
 
     //==============================================================================

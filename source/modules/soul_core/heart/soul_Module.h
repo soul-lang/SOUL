@@ -120,6 +120,7 @@ public:
     double sampleRate = 0;
     uint32_t latency = 0;
     CodeLocation location;
+    bool moduleUseTestFlag = false;
 
     //==============================================================================
     heart::Allocator& allocator;
