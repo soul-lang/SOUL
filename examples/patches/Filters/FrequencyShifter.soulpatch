@@ -1,12 +1,12 @@
 {
     "soulPatchV1":
     {
-        "ID":               "com.yourcompany.FrequencyShifter",
+        "ID":               "dev.soul.examples.FrequencyShifter",
         "version":          "0.1",
         "name":             "FrequencyShifter",
         "description":      "This is a SOUL Patch called FrequencyShifter!",
         "category":         "effect",
-        "manufacturer":     "Your Company Name",
+        "manufacturer":     "SOUL.dev",
         "isInstrument":     false,
 
         "source":           [ "FrequencyShifter.soul" ]

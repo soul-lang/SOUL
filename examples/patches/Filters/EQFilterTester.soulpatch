@@ -1,12 +1,12 @@
 {
     "soulPatchV1":
     {
-        "ID":               "com.yourcompany.EQFilterTester",
+        "ID":               "dev.soul.examples.EQFilterTester",
         "version":          "0.1",
         "name":             "EQFilterTester",
         "description":      "This is a SOUL Patch called EQFilterTester!",
         "category":         "effect",
-        "manufacturer":     "Your Company Name",
+        "manufacturer":     "SOUL.dev",
         "isInstrument":     false,
 
         "source":           [ "EQFilterTester.soul" ]
