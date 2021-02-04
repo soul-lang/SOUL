@@ -548,6 +548,13 @@ private:
             {
                 if (AST::isResolvedAsValue (arg))
                 {
+                    if (auto variableRef = cast<AST::VariableRef> (arg))
+                        if (variableRef->variable->isExternal)
+                            return true;
+
+                    if (arg.getAsConstant() == nullptr)
+                        return false;
+
                     SOUL_ASSERT (v->isConstant);
                     return true;
                 }

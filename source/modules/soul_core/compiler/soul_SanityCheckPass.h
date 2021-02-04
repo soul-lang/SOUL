@@ -549,6 +549,7 @@ private:
 
         void visit (AST::Graph& g) override
         {
+            super::visit (g);
             soul::DuplicateNameChecker duplicateNameChecker;
 
             for (auto& e : g.getEndpoints())
@@ -557,6 +558,8 @@ private:
 
         void visit (AST::Namespace& n) override
         {
+            super::visit (n);
+
             soul::DuplicateNameChecker duplicateNameChecker;
 
             for (auto& s : n.structures)       duplicateNameChecker.check (s->name, s->context);
