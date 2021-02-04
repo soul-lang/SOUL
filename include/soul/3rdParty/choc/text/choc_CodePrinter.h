@@ -195,7 +195,14 @@ inline void CodePrinter::addIndent (int spacesToAdd)                   { indent 
 
 struct CodePrinter::Indent
 {
-    Indent (Indent&&) = default;
+    Indent (Indent&& other)
+      : owner (other.owner), amount (other.amount),
+        openBrace (other.openBrace), closeBrace (other.closeBrace)
+    {
+        other.amount = 0;
+        other.closeBrace = 0;
+    }
+
     Indent (const Indent&) = delete;
 
     ~Indent()
