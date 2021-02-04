@@ -546,7 +546,7 @@ namespace soul::gain
 )soul_code"
 R"soul_code(
 
-            let maxDelta = float (processor.period / slewRateSeconds);
+            let maxDelta = float (processor.period) / slewRateSeconds;
             remainingRampSamples = max (1, int (abs (targetGain - currentGain) / maxDelta));
             increment = (targetGain - currentGain) / remainingRampSamples;
         }
@@ -643,8 +643,8 @@ R"soul_code(
                 }
                 else
                 {
-                    let attackSamples = int (processor.frequency * attackTimeSeconds);
-                    let attackMultiplier = float (pow (2.0, -1.0 / attackSamples) * pow (targetLevel + 2.0, 1.0 / attackSamples));
+                    let attackSamples = int (float (processor.frequency) * attackTimeSeconds);
+                    let attackMultiplier = float (pow (2.0f, -1.0f / attackSamples) * pow (targetLevel + 2.0f, 1.0f / attackSamples));
 
                     for (var attackLevel = 2.0f; active && level < targetLevel; attackLevel *= attackMultiplier)
                     {
@@ -664,15 +664,15 @@ R"soul_code(
                 // Releasing
                 if const (releaseTimeSeconds > 0)
                 {
-                    let releaseMultiplier = float (pow (0.0001, processor.period / releaseTimeSeconds));
+                    let releaseMultiplier = pow (0.0001f, float (processor.period) / releaseTimeSeconds);
 
                     while (! active && level > silenceThreshold)
                     {
                         levelOut << level;
-                        level *= releaseMultiplier;
 )soul_code"
 R"soul_code(
 
+                        level *= releaseMultiplier;
                         advance();
                     }
                 }
@@ -3283,7 +3283,7 @@ R"soul_code(
             int polarity = initialPolarity;
             smoother::State depth;
 
-            let smoothingSamples = int (processor.frequency * 0.02);
+            let smoothingSamples = int (float (processor.frequency) * 0.02f);
             bool transportRunning = false;
             bool qnMode = false;
             bool timelineSync = false;

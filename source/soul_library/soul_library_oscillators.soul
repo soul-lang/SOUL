@@ -444,7 +444,7 @@ namespace soul::oscillators (using SampleType = float32,
             int polarity = initialPolarity;
             smoother::State depth;
 
-            let smoothingSamples = int (processor.frequency * 0.02);
+            let smoothingSamples = int (float (processor.frequency) * 0.02f);
             bool transportRunning = false;
             bool qnMode = false;
             bool timelineSync = false;

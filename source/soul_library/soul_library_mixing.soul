@@ -141,7 +141,7 @@ namespace soul::gain
         event volume (float targetDB)
         {
             targetGain = soul::dBtoGain (targetDB);
-            let maxDelta = float (processor.period / slewRateSeconds);
+            let maxDelta = float (processor.period) / slewRateSeconds;
             remainingRampSamples = max (1, int (abs (targetGain - currentGain) / maxDelta));
             increment = (targetGain - currentGain) / remainingRampSamples;
         }
@@ -235,8 +235,8 @@ namespace soul::envelope
                 }
                 else
                 {
-                    let attackSamples = int (processor.frequency * attackTimeSeconds);
-                    let attackMultiplier = float (pow (2.0, -1.0 / attackSamples) * pow (targetLevel + 2.0, 1.0 / attackSamples));
+                    let attackSamples = int (float (processor.frequency) * attackTimeSeconds);
+                    let attackMultiplier = float (pow (2.0f, -1.0f / attackSamples) * pow (targetLevel + 2.0f, 1.0f / attackSamples));
 
                     for (var attackLevel = 2.0f; active && level < targetLevel; attackLevel *= attackMultiplier)
                     {
@@ -256,7 +256,7 @@ namespace soul::envelope
                 // Releasing
                 if const (releaseTimeSeconds > 0)
                 {
-                    let releaseMultiplier = float (pow (0.0001, processor.period / releaseTimeSeconds));
+                    let releaseMultiplier = pow (0.0001f, float (processor.period) / releaseTimeSeconds);
 
                     while (! active && level > silenceThreshold)
                     {
