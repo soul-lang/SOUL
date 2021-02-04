@@ -893,7 +893,7 @@ private:
                     }
 
                     if (auto e = cast<AST::EndpointDeclaration> (item))
-                        if (e->isResolved())
+                        if (! e->isUnresolvedChildReference())
                             return ASTUtilities::createEndpointRef (allocator, qi.context, *e);
                 }
                 else
