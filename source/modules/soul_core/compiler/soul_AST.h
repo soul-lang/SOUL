@@ -2105,10 +2105,15 @@ struct AST
 
         bool isAssignable() const
         {
-            if (isConstant || declaredType == nullptr)
+            if (isConstant)
+                return false;
+
+            if (! isResolved())
                 return ! isConstant;
 
-            return ! (isResolved() && declaredType->resolveAsType().isConst());
+            auto t = getType();
+
+            return ! (t.isConst() || t.isUnsizedArray());
         }
 
         Type getType() const
