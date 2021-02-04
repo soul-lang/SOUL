@@ -793,9 +793,6 @@ private:
 
             auto path = qi.getPath().toString();
 
-            if (path == "soul::oscillators")
-                path = qi.getPath().toString();
-
             AST::Scope::NameSearch search;
             search.partiallyQualifiedPath = qi.getPath();
             search.stopAtFirstScopeWithResults = true;
@@ -896,7 +893,8 @@ private:
                     }
 
                     if (auto e = cast<AST::EndpointDeclaration> (item))
-                        return ASTUtilities::createEndpointRef (allocator, qi.context, *e);
+                        if (e->isResolved())
+                            return ASTUtilities::createEndpointRef (allocator, qi.context, *e);
                 }
                 else
                 {
