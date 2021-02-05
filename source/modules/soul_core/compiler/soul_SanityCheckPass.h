@@ -589,6 +589,14 @@ private:
 
             for (auto& param : f.parameters)
                 duplicateNameChecker.check (param->name, param->context);
+
+            if (f.block != nullptr)
+            {
+                // Ensure top level block variables do not duplicate parameter names
+                for (auto& s : f.block->statements)
+                    if (auto v = cast<AST::VariableDeclaration> (s))
+                        duplicateNameChecker.check (v->name, v->context);
+            }
         }
 
         void visit (AST::StructDeclaration& s) override
