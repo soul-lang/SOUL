@@ -2111,9 +2111,7 @@ struct AST
             if (! isResolved())
                 return ! isConstant;
 
-            auto t = getType();
-
-            return ! (t.isConst() || t.isUnsizedArray());
+            return ! getType().isConst();
         }
 
         Type getType() const
@@ -2420,7 +2418,14 @@ struct AST
         {
         }
 
-        bool isAssignable() const override          { return object->isAssignable(); }
+        bool isAssignable() const override
+        {
+            if (object->getResultType().isUnsizedArray())
+                return false;
+            
+            return object->isAssignable();
+        }
+
         bool isOutputEndpoint() const override      { return object->isOutputEndpoint(); }
 
         bool isResolved() const override
