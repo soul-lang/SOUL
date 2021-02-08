@@ -41,11 +41,11 @@ namespace choc::math
 {
 
 //==============================================================================
-/** */
+/// Returns true if the given value is 2^something
 template <typename Integer>
-constexpr bool isPowerOf2 (Integer n)       { return (n & (n - 1)) == 0; }
+constexpr bool isPowerOf2 (Integer n)       { return n > 0 && (n & (n - 1)) == 0; }
 
-/** */
+/// Returns the number of contiguously-clear upper bits in a 64-bit value
 inline uint32_t countUpperClearBits (uint64_t value)
 {
    #ifdef _MSC_VER
@@ -63,7 +63,7 @@ inline uint32_t countUpperClearBits (uint64_t value)
 }
 
 
-/** */
+/// Returns the number of decimal digits required to print a given unsigned number
 inline int getNumDecimalDigits (uint32_t n)
 {
     return n < 1000 ? (n < 10 ? 1 : (n < 100 ? 2 : 3))
@@ -74,13 +74,13 @@ inline int getNumDecimalDigits (uint32_t n)
 
 
 //==============================================================================
-/** Used by multiply128() */
+/// Used as a return type for multiply128()
 struct Int128
 {
     uint64_t high, low;
 };
 
-/** */
+/// A cross-platform function to multiply two 64-bit numbers and return a 128-bit result
 inline Int128 multiply128 (uint64_t a, uint64_t b)
 {
    #ifdef _MSC_VER
