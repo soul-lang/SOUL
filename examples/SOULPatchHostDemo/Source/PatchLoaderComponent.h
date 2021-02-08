@@ -191,7 +191,8 @@ struct PatchLoaderComponent   : public juce::Component,
         {
             juce::File::getSpecialLocation (juce::File::currentApplicationFile).getParentDirectory(),
             juce::File::getSpecialLocation (juce::File::userHomeDirectory),
-            juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
+            juce::File::getSpecialLocation (juce::File::userDesktopDirectory),
+            juce::File::getSpecialLocation (juce::File::SpecialLocationType::userApplicationDataDirectory).getChildFile ("SOUL")
         };
 
         for (auto& location : possibleLocations)
