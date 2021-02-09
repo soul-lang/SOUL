@@ -200,7 +200,7 @@ public:
     };
 
     //==============================================================================
-    using SessionReadyCallback = std::function<void(std::unique_ptr<Session>)>;
+    using SessionReadyCallback = std::function<void(std::unique_ptr<Session>, const std::string&)>;
 
     /** Asks for a new session to be created. This happens asynchronously, and the callback
         will be invoked when one is ready.

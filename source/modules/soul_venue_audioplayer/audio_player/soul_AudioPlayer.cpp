@@ -448,10 +448,10 @@ AudioPlayerVenue::~AudioPlayerVenue() = default;
 
 bool AudioPlayerVenue::createSession (SessionReadyCallback callback)
 {
-    return pimpl->renderingVenue.createSession ([this, cb = std::move (callback)] (std::unique_ptr<Session> newSession)
+    return pimpl->renderingVenue.createSession ([this, cb = std::move (callback)] (std::unique_ptr<Session> newSession, const std::string& errorMessage)
                                                 {
                                                     SOUL_ASSERT (newSession != nullptr);
-                                                    cb (std::make_unique<Pimpl::AudioVenueSession> (std::move (newSession), *this));
+                                                    cb (std::make_unique<Pimpl::AudioVenueSession> (std::move (newSession), *this), errorMessage);
                                                 });
 }
 

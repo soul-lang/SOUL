@@ -471,7 +471,7 @@ struct RenderingVenue::Pimpl
     {
         createSessionQueue.addTask ([this, callback = std::move (cb)] (TaskThread::ShouldStopFlag&)
         {
-            callback (std::make_unique<Pimpl::SessionImpl> (*this, performerFactory->createPerformer()));
+            callback (std::make_unique<Pimpl::SessionImpl> (*this, performerFactory->createPerformer()), "");
         });
 
         return true;
