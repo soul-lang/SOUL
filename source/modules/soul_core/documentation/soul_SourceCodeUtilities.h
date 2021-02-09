@@ -33,7 +33,7 @@ struct SourceCodeUtilities
 
     static struct CodeLocationRange findRangeOfASTObject (AST::ASTObject&);
 
-    static pool_ptr<AST::ASTObject> findASTObjectAt (AST::ASTObject& root,
+    static pool_ptr<AST::ASTObject> findASTObjectAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
                                                      CodeLocation targetLocation);
 
     //==============================================================================

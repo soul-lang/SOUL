@@ -112,7 +112,8 @@ CodeLocation SourceCodeUtilities::findNextOccurrence (CodeLocation start, char c
     }
 }
 
-pool_ptr<AST::ASTObject> SourceCodeUtilities::findASTObjectAt (AST::ASTObject& root, CodeLocation targetLocation)
+pool_ptr<AST::ASTObject> SourceCodeUtilities::findASTObjectAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
+                                                               CodeLocation targetLocation)
 {
     struct FindLocationVisitor  : public ASTVisitor
     {
@@ -135,7 +136,15 @@ pool_ptr<AST::ASTObject> SourceCodeUtilities::findASTObjectAt (AST::ASTObject& r
 
     FindLocationVisitor v;
     v.target = targetLocation.location.getAddress();
-    v.visitObject (root);
+
+    for (auto& m : modulesToSearch)
+    {
+        v.ASTVisitor::visitObject (m.get());
+
+        if (v.result != nullptr)
+            break;
+    }
+
     return v.result;
 }
 
