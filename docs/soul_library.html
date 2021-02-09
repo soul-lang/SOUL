@@ -29,6 +29,9 @@
    <li class="toc_item">
     <a href="#mod_soul_pan_law">soul::pan_law</a>
    </li>
+   <li class="toc_item">
+    <a href="#mod_soul_smoother">soul::smoother</a>
+   </li>
   </ul>
  </li>
  <li class="toc_module">
@@ -171,9 +174,6 @@
        </li>
        <li class="toc_item">
         <a href="#mod_soul_oscillators_lfo_Polarity">Polarity</a>
-       </li>
-       <li class="toc_item">
-        <a href="#mod_soul_oscillators_lfo_smoother">smoother</a>
        </li>
        <li class="toc_item">
         <a href="#mod_soul_oscillators_lfo_Processor">Processor</a>
@@ -646,6 +646,51 @@
      <h3 class="function_name" id="fn_soul_pan_law_centre3dB">centre3dB</h3>
      <div class="summary"><p>Applies a 3dB-centre pan law to convert a pan position (-1.0 to 1.0) to a (left, right) pair of stereo gains.</p>
      </div><p class="code_block"><span class="primitive_type">float32</span><span class="typename_text">&lt;</span><span class="typename_text">2</span><span class="typename_text">&gt;</span> <span class="function_name">centre3dB</span> (<span class="primitive_type">float32</span> <span class="parameter_name">pan</span>)</p>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="module" id="mod_soul_smoother">
+  <h2><span class="module_type">namespace </span><span class="module_name">soul::smoother</span>
+  </h2>
+  <div class="summary"><p>Functions for applying a smoothing filter on a changing value. A smoother is useful for avoiding discontinuities in control values such as parameter changes, etc.</p>
+  </div>
+  <div class="module_sections">
+   <div class="module_section">
+    <h3>Structures</h3>
+    <div class="struct" id="type_soul_smoother_State">
+     <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br></p>
+      <div class="struct_member">
+       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">currentValue</span>;<br></div>
+      </div>
+      <div class="struct_member">
+       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">targetValue</span>;<br></div>
+      </div>
+      <div class="struct_member">
+       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">increment</span>;<br></div>
+      </div>
+      <div class="struct_member">
+       <div class="listing"><span class="primitive_type">int32</span> <span class="member_name">steps</span>;<br></div>
+      </div><p class="code_block">}</p>
+     </div>
+    </div>
+   </div>
+   <div class="module_section">
+    <h3>Functions</h3>
+    <div class="function">
+     <h3 class="function_name" id="fn_soul_smoother_reset">reset</h3>
+     <div class="summary"><p>Resets a smoother::State object</p>
+     </div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">initialValue</span>)</p>
+    </div>
+    <div class="function">
+     <h3 class="function_name" id="fn_soul_smoother_setTarget">setTarget</h3>
+     <div class="summary"><p>Updates a smoother::State object with a new target value and the number of steps to reach the target</p>
+     </div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">setTarget</span> (<a href="#type_soul_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">targetValue</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">steps</span>)</p>
+    </div>
+    <div class="function">
+     <h3 class="function_name" id="fn_soul_smoother_tick">tick</h3>
+     <div class="summary"><p>Advances the state of a smoother and returns the new smoothed value</p>
+     </div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">tick</span> (<a href="#type_soul_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p>
     </div>
    </div>
   </div>
@@ -1659,51 +1704,6 @@
    </div>
   </div>
  </div>
- <div class="module" id="mod_soul_oscillators_lfo_smoother">
-  <h2><span class="module_type">namespace </span><span class="module_name">soul::oscillators::lfo::smoother</span>
-  </h2>
-  <div class="summary"><p>Functions for applying a smoothing filter on a changing value.</p>
-  </div>
-  <div class="module_sections">
-   <div class="module_section">
-    <h3>Structures</h3>
-    <div class="struct" id="type_soul_oscillators_lfo_smoother_State">
-     <div class="listing"><p><span class="keyword">struct </span><span class="struct_name">State</span><br>{<br></p>
-      <div class="struct_member">
-       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">currentValue</span>;<br></div>
-      </div>
-      <div class="struct_member">
-       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">targetValue</span>;<br></div>
-      </div>
-      <div class="struct_member">
-       <div class="listing"><span class="primitive_type">float32</span> <span class="member_name">increment</span>;<br></div>
-      </div>
-      <div class="struct_member">
-       <div class="listing"><span class="primitive_type">int32</span> <span class="member_name">steps</span>;<br></div>
-      </div><p class="code_block">}</p>
-     </div>
-    </div>
-   </div>
-   <div class="module_section">
-    <h3>Functions</h3>
-    <div class="function">
-     <h3 class="function_name" id="fn_soul_oscillators_lfo_smoother_reset">reset</h3>
-     <div class="summary"><p>Resets a smoother::State object</p>
-     </div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">reset</span> (<a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">initialValue</span>)</p>
-    </div>
-    <div class="function">
-     <h3 class="function_name" id="fn_soul_oscillators_lfo_smoother_setTarget">setTarget</h3>
-     <div class="summary"><p>Updates a smoother::State object with a new target value and the number of steps to reach the target</p>
-     </div><p class="code_block"><span class="primitive_type">void</span> <span class="function_name">setTarget</span> (<a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">float32</span> <span class="parameter_name">targetValue</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="primitive_type">int32</span> <span class="parameter_name">steps</span>)</p>
-    </div>
-    <div class="function">
-     <h3 class="function_name" id="fn_soul_oscillators_lfo_smoother_tick">tick</h3>
-     <div class="summary"><p>Advances the state of a smoother and returns the new smoothed value</p>
-     </div><p class="code_block"><span class="primitive_type">float32</span> <span class="function_name">tick</span> (<a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">State</a><span class="typename_text">&amp;</span> <span class="parameter_name">state</span>)</p>
-    </div>
-   </div>
-  </div>
- </div>
  <div class="module" id="mod_soul_oscillators_lfo_Processor">
   <h2><span class="module_type">processor </span><span class="module_name">soul::oscillators::lfo::Processor</span>
   </h2>
@@ -1746,7 +1746,7 @@
     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">polarity</span> = initialPolarity</p>
     </div>
     <div class="variable"><p class="code_block">
-      <a href="#type_soul_oscillators_lfo_smoother_State" class="struct_name">smoother::State</a> <span class="variable_name">depth</span></p>
+      <a href="#type_soul_smoother_State" class="struct_name">smoother::State</a> <span class="variable_name">depth</span></p>
     </div>
     <div class="variable"><p class="code_block"><span class="primitive_type">int32</span> <span class="variable_name">smoothingSamples</span> = int (float (processor.frequency) * 0.02f)</p>
     </div>

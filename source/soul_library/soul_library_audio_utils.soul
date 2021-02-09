@@ -106,3 +106,50 @@ namespace soul::pan_law
                 sin ((1.0f + pan) * quarterPi));
     }
 }
+
+/// Functions for applying a smoothing filter on a changing value.
+/// A smoother is useful for avoiding discontinuities in control values
+/// such as parameter changes, etc.
+namespace soul::smoother
+{
+    struct State
+    {
+        float currentValue;
+        float targetValue;
+        float increment;
+        int steps;
+    }
+
+    /// Resets a smoother::State object
+    void reset (State& state, float initialValue)
+    {
+        state.currentValue = initialValue;
+        state.targetValue = initialValue;
+        state.increment = 0.0f;
+        state.steps = 0;
+    }
+
+    /// Updates a smoother::State object with a new target value and the
+    /// number of steps to reach the target
+    void setTarget (State& state, float targetValue, int steps)
+    {
+        state.targetValue = targetValue;
+        state.increment = (state.targetValue - state.currentValue) / steps;
+        state.steps = steps;
+    }
+
+    /// Advances the state of a smoother and returns the new smoothed value
+    float tick (State& state)
+    {
+        if (state.steps == 0)
+            return state.currentValue;
+
+        state.currentValue += state.increment;
+        state.steps--;
+
+        if (state.steps == 0)
+            state.currentValue = state.targetValue;
+
+        return state.currentValue;
+    }
+}
