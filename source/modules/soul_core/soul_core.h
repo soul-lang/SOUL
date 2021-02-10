@@ -86,7 +86,7 @@
 //==============================================================================
 namespace soul
 {
-    static inline constexpr Version getLibraryVersion()                   { return { 0, 9, 0 }; }
+    static inline constexpr Version getLibraryVersion()                   { return { 1, 0, 0 }; }
     static inline constexpr int64_t getHEARTFormatVersion()               { return 1; }
     static inline constexpr const char* getHEARTFormatVersionPrefix()     { return "SOUL"; }
 
