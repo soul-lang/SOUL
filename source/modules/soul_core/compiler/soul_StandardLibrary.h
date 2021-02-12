@@ -414,6 +414,53 @@ R"soul_code(
                 sin ((1.0f + pan) * quarterPi));
     }
 }
+
+/// Functions for applying a smoothing filter on a changing value.
+/// A smoother is useful for avoiding discontinuities in control values
+/// such as parameter changes, etc.
+namespace soul::smoother
+{
+    struct State
+    {
+        float currentValue;
+        float targetValue;
+        float increment;
+        int steps;
+    }
+
+    /// Resets a smoother::State object
+    void reset (State& state, float initialValue)
+    {
+        state.currentValue = initialValue;
+        state.targetValue = initialValue;
+        state.increment = 0.0f;
+        state.steps = 0;
+    }
+
+    /// Updates a smoother::State object with a new target value and the
+    /// number of steps to reach the target
+    void setTarget (State& state, float targetValue, int steps)
+    {
+        state.targetValue = targetValue;
+        state.increment = (state.targetValue - state.currentValue) / steps;
+        state.steps = steps;
+    }
+
+    /// Advances the state of a smoother and returns the new smoothed value
+    float tick (State& state)
+    {
+        if (state.steps == 0)
+            return state.currentValue;
+
+        state.currentValue += state.increment;
+        state.steps--;
+
+        if (state.steps == 0)
+            state.currentValue = state.targetValue;
+
+        return state.currentValue;
+    }
+}
 )soul_code";
 
     if (moduleName == "soul.mixing")  return R"soul_code(
@@ -2871,19 +2918,19 @@ namespace soul::oscillators (using SampleType = float32,
             PhaseType phaseIncrement;
         }
 
-        /// Resets a phaser::State object
+        /// Resets a phasor::State object
         void reset (State& s)
         {
             s.phase = PhaseType();
         }
 
-        /// Updates a phaser::State object for a new rate
+        /// Updates a phasor::State object for a new rate
         void update (State& s, float64 samplePeriod, float64 freqHz)
         {
             s.phaseIncrement = PhaseType (samplePeriod * freqHz);
         }
 
-        /// Increments a phaser::State object and returns the new phase
+        /// Increments a phasor::State object and returns the new phase
         PhaseType process (State& s)
         {
             s.phase += s.phaseIncrement;
@@ -3181,55 +3228,10 @@ R"soul_code(
             let bipolar  = 1;
         }
 
-        /// Functions for applying a smoothing filter on a changing value.
-        namespace smoother
-        {
-            struct State
+        /// A processor which implements an LFO with events to control its parameters.
 )soul_code"
 R"soul_code(
 
-            {
-                float currentValue;
-                float targetValue;
-                float increment;
-                int steps;
-            }
-
-            /// Resets a smoother::State object
-            void reset (State& state, float initialValue)
-            {
-                state.currentValue = initialValue;
-                state.targetValue = initialValue;
-                state.increment = 0.0f;
-                state.steps = 0;
-            }
-
-            /// Updates a smoother::State object with a new target value and the
-            /// number of steps to reach the target
-            void setTarget (State& state, float targetValue, int steps)
-            {
-                state.targetValue = targetValue;
-                state.increment = (state.targetValue - state.currentValue) / steps;
-                state.steps = steps;
-            }
-
-            /// Advances the state of a smoother and returns the new smoothed value
-            float tick (State& state)
-            {
-                if (state.steps == 0)
-                    return state.currentValue;
-
-                state.currentValue += state.increment;
-                state.steps--;
-
-                if (state.steps == 0)
-                    state.currentValue = state.targetValue;
-
-                return state.currentValue;
-            }
-        }
-
-        /// A processor which implements an LFO with events to control its parameters.
         /// Changes to the frequency and depth are smoothed, but expect discontinuities if the shape or polarity
         /// are updated.
         processor Processor (int initialShape = 0,
@@ -3243,9 +3245,6 @@ R"soul_code(
             {
                 soul::timeline::Position positionIn;
                 soul::timeline::TransportState transportStateIn;
-)soul_code"
-R"soul_code(
-
                 soul::timeline::Tempo tempoIn;
 
                 float rateHzIn     [[ name: "Rate (Hz)",     min: 0.01,  max: 40.0,   init: 1.,   unit: "hz", step: 0.01 ]];
@@ -3265,6 +3264,9 @@ R"soul_code(
             {
                 if (! qnMode)
                     phaseIncrement = PhaseType (v * processor.period);
+)soul_code"
+R"soul_code(
+
             }
 
             event rateTempoIn (float v)   { qnScalar = v; }
@@ -3275,9 +3277,6 @@ R"soul_code(
             event syncIn (float v)        { timelineSync = v > 0.5f; }
 
             PhaseType phase;
-)soul_code"
-R"soul_code(
-
             var phaseIncrement = float32 (initialFrequency * processor.period);
             int shape = initialShape;
             int polarity = initialPolarity;
@@ -3312,6 +3311,9 @@ R"soul_code(
                     if (shape == Shape::triangle)      return shapers::triangle (phase);
                     if (shape == Shape::square)        return shapers::square (phase);
                     if (shape == Shape::rampUp)        return shapers::rampUp (phase);
+)soul_code"
+R"soul_code(
+
                     if (shape == Shape::rampDown)      return shapers::rampDown (phase);
                     if (shape == Shape::sine)          return shapers::sine (phase);
                     if (shape == Shape::sampleAndHold) return getNoiseSample();
@@ -3320,9 +3322,6 @@ R"soul_code(
                 {
                     if (shape == Shape::triangle)      return shapers::triangleUnipolar (phase);
                     if (shape == Shape::square)        return shapers::squareUnipolar (phase);
-)soul_code"
-R"soul_code(
-
                     if (shape == Shape::rampUp)        return shapers::rampUpUnipolar (phase);
                     if (shape == Shape::rampDown)      return shapers::rampDownUnipolar (phase);
                     if (shape == Shape::sine)          return shapers::sineUnipolar (phase);
@@ -3364,6 +3363,9 @@ R"soul_code(
                     else
                     {
                         phase += phaseIncrement;
+
+)soul_code"
+R"soul_code(
 
                         while (phase >= 1.0f)
                             phase -= 1.0f;

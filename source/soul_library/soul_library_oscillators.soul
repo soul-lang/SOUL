@@ -56,19 +56,19 @@ namespace soul::oscillators (using SampleType = float32,
             PhaseType phaseIncrement;
         }
 
-        /// Resets a phaser::State object
+        /// Resets a phasor::State object
         void reset (State& s)
         {
             s.phase = PhaseType();
         }
 
-        /// Updates a phaser::State object for a new rate
+        /// Updates a phasor::State object for a new rate
         void update (State& s, float64 samplePeriod, float64 freqHz)
         {
             s.phaseIncrement = PhaseType (samplePeriod * freqHz);
         }
 
-        /// Increments a phaser::State object and returns the new phase
+        /// Increments a phasor::State object and returns the new phase
         PhaseType process (State& s)
         {
             s.phase += s.phaseIncrement;
