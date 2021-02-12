@@ -154,7 +154,7 @@ private:
             out << ' ' << p;
 
         out << '>';
-        
+
         status.isFollowingContent = false;
 
         for (auto& c : children)

@@ -2422,7 +2422,7 @@ struct AST
         {
             if (object->getResultType().isUnsizedArray())
                 return false;
-            
+
             return object->isAssignable();
         }
 

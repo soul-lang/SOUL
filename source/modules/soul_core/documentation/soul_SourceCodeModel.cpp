@@ -360,7 +360,7 @@ static void buildEndpoints (AST::ModuleBase& module, SourceCodeModel::Module& m,
             for (auto& type : e->details->dataTypes)
                 desc.dataTypes.push_back (ExpressionHelpers::create (type, dictionary));
         }
-        
+
         if (e->isInput)
             m.inputs.push_back (std::move (desc));
         else

@@ -237,7 +237,7 @@ namespace soul::voice_allocators (int mpeMasterChannel = 0)
 
                 if (isMasterChannel)
                     masterSustainActive = pedalDown;
-                    
+
                 if (! pedalDown)
                 {
                     // Release any released notes for this channel

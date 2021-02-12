@@ -3670,7 +3670,7 @@ R"soul_code(
 
                 if (isMasterChannel)
                     masterSustainActive = pedalDown;
-                    
+
                 if (! pedalDown)
                 {
                     // Release any released notes for this channel
@@ -3694,10 +3694,10 @@ R"soul_code(
                         }
 
                         ++voice;
+                    }
 )soul_code"
 R"soul_code(
 
-                    }
                 }
 
                 return;

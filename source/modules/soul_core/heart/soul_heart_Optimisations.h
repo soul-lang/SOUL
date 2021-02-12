@@ -41,7 +41,7 @@ struct Optimisations
         }
         while (objectsRemoved);
     }
-    
+
     static void removeUnusedVariables (Program& program)
     {
         for (auto& m : program.getModules())

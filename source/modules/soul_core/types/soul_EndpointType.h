@@ -196,4 +196,3 @@ namespace std
         size_t operator() (const soul::EndpointHandle& p) const noexcept { return static_cast<size_t> (p.getRawHandle()); }
     };
 }
-

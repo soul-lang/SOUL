@@ -66,4 +66,3 @@ graph LFOTester
         tempoRateMapper.out  -> osc.rateTempoIn;
     }
 }
-
