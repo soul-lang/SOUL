@@ -1,0 +1,497 @@
+## error 17:21: error: Language feature not yet implemented: Slices of dynamic arrays!
+
+processor test
+{
+    output event int results;
+
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+
+    void run()
+    {
+        results << (test() ? 1 : 0);
+        advance();
+        loop { results << -1; advance(); }
+    }
+
+    bool test()
+    {
+        return data[1:3] == float[3] (1.0f, 1.0f, 1.0f);
+    }
+}
+
+## function
+
+int getUnsizedArrayElement (int[] x, int index)   { return x.read (index); }
+int getUnsizedArrayElement0 (int[] x)   { return x.at (0); }
+
+let x = int[] (1, 2, 3, 4);
+
+bool test1()
+{
+    return getUnsizedArrayElement (x, 0) == 1
+        && getUnsizedArrayElement0 (x) == 1
+        && getUnsizedArrayElement (x, 3) == 4
+        && getUnsizedArrayElement (x, 4) == 1;
+}
+
+bool test2()
+{
+    var x = float[]();
+    return x.size == 0;
+}
+
+bool test3()
+{
+    let x = float[]();
+    return x.size == 0;
+}
+
+## function
+
+int getUnsizedArrayElement (int[] x, int index)   { return x.at(index); }
+int getUnsizedArrayElement0 (int[] x)   { return x.at(0); }
+
+bool test1()
+{
+    let x = int[] (1, 2, 3, 4);
+    return getUnsizedArrayElement (x, 0) == 1
+        && getUnsizedArrayElement0 (x) == 1
+        && getUnsizedArrayElement (x, 3) == 4
+        && getUnsizedArrayElement (x, 4) == 1;
+}
+
+## error 7:9: error: Cannot create a dynamic array slice from this value
+
+int getUnsizedArrayElement (int[] x, int index)   { return x.at(index); }
+int getUnsizedArrayElement0 (int[] x)   { return x.at(0); }
+
+bool test1() [[do_not_optimise]]
+{
+    var x = int[] (1, 2, 3, 4);
+    x[1]++;
+
+    return getUnsizedArrayElement (x, 0) == 1
+        && getUnsizedArrayElement0 (x) == 1
+        && getUnsizedArrayElement (x, 3) == 4
+        && getUnsizedArrayElement (x, 4) == 1;
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+    external int ten [[ default: 10 ]];
+    external float32 two [[ default: 2.0 ]];
+    external float64 four [[ default: 4.0 ]];
+
+    void run()
+    {
+        results << (test (data) ? 1 : 0);
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+
+    struct X { float[] data; }
+
+    float getIndirect1 (float[] x, int i) { return x.at (i) ;}
+    float getIndirect3 (const float[] x, int i) { return x.at (i) ;}
+    float getIndirect4 (const float[]& x, int i) { return x.at (i) ;}
+    float getIndirect5 (float[] x, int i) { X[2] xx; xx[0].data = x; return xx[0].data.at (i); }
+
+    bool test (float[] paramData)
+    {
+        let localData = data;
+
+        return data.at(25) > 0
+            && data.at(75) < 0
+            && data.read(25) > 0
+            && data.read(75) < 0
+            && getIndirect1 (data, 25) > 0
+            && getIndirect1 (data, 75) < 0
+            && getIndirect3 (data, 25) > 0
+            && getIndirect3 (data, 75) < 0
+            && getIndirect4 (data, 25) > 0
+            && getIndirect4 (data, 75) < 0
+            && getIndirect5 (data, 25) > 0
+            && getIndirect5 (data, 75) < 0
+            && data.readLinearInterpolated(25.2) > 0
+            && data.readLinearInterpolated(75.3) < 0
+            && localData.at(25) > 0
+            && localData.at(75) < 0
+            && paramData.at(25) > 0
+            && paramData.at(75) < 0
+            && ten == 10
+            && two == 2.0f
+            && four == 4.0;
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    external float[] data [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+    float[] emptyState;
+
+    void run()
+    {
+        results << (test (data) ? 1 : 0);
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+
+    bool test (float[] paramData)
+    {
+        let localData = data;
+        float[] empty;
+
+        return data.size == 1000
+            && localData.size == 1000
+            && empty.size == 0
+            && emptyState.size == 0;
+    }
+}
+
+## error 2:25: error: External variables cannot be given an initialiser value
+
+external float sample = 5.0f;
+bool test1() { return true; }
+
+## error 2:17: error: The 'external' flag can only be applied to state variables
+
+processor test (external float f)
+{
+    output stream float out;
+    void run() { advance(); }
+}
+
+## error 4:5: error: External constants cannot be declared inside a function
+
+bool test1()
+{
+    external float[] sample [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+
+    return sample[25] > 0
+        && sample[75] < 0;
+}
+
+## function
+
+let b1 = true;
+namespace ns { let b1 = true; }
+namespace ns2 { let b1 = true; }
+
+bool test() { return b1 && ns::b1; }
+
+## function
+
+external float[] sample1 [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+namespace ns { external float[] sample [[ sinewave, rate: 1000, frequency: 10, numFrames: 1000 ]]; }
+
+bool test1()
+{
+    return sample1[25] > 0
+        && sample1[75] < 0
+        && ns::sample[25] > 0
+        && ns::sample[75] < 0;
+}
+
+## error 6:22: error: Failed to resolve external variable 'sample'
+
+processor X
+{
+    output stream float out;
+
+    external float[] sample;
+    int index;
+
+    void run()  { loop { out << getSample (sample); advance(); } }
+
+    float getSample (float[] s)     { return s.read(index) + s.at (index); ++index; }
+}
+
+## compile
+
+processor test
+{
+    output stream float out;
+
+    void foo (int[] x)      { var y = x; }
+    void foo2 (int[] x)     { int[] y; y = x; }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 2:34: error: The '++' operator must be given an assignable variable
+
+void foo (int[] x)       { x[1]++; }
+
+## error 2:35: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { x[1] = 2; }
+
+## error 2:38: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { x.at(1) = 2; }
+
+## error 2:46: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { var y = x; y[1] = 2; }
+
+## error 2:49: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { var y = x; y.at(1) = 2; }
+
+## error 2:46: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { let y = x; y[1] = 2; }
+
+## error 2:43: error: The '=' operator must be given an assignable variable
+
+void foo (int[] x)       { x.read (1.5) = 2; }
+
+## error 2:48: error: The index for read() must be a floating point or integer value
+
+int foo (int[] x)       { float<2> n; return x.read (n); }
+
+## function
+
+bool test()
+{
+    int[3] x = (2, 3, 4);
+    int[] x2 = x;
+    x2[1] = 5;
+    int[] x3 = (2, 3, 4);
+    x3[1] = 5;
+    return x2[1] == 5 && x3[1] == 5;
+}
+
+## compile
+
+namespace test
+{
+    int foo (const int[] x)       { return x.read (1); }
+
+    processor DummyProcessor { output stream int x; void run() { loop advance(); }}
+}
+
+## compile
+
+processor X
+{
+    output stream float out;
+    float[] foo;
+
+    void run()  { loop advance(); }
+}
+
+## compile
+
+processor X
+{
+    output stream float out;
+
+    void run()
+    {
+        float[] x;
+        loop advance();
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    struct Sample
+    {
+        float[] channelData;
+        float64 sampleRate;
+    }
+
+    external Sample sample [[ sinewave, rate: 44100, frequency: 440, numFrames: 1000 ]];
+    int index;
+
+    void run()
+    {
+        results << (getSample (sample.channelData) != 0 ? 1 : 0); advance();
+        loop { results << -1; advance(); }
+    }
+
+    float getSample (float[] s)     { index += 10; return s.read(index) + s.at (index); }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    int getUnsizedArrayElement (int[] x, int index)   { return x.at(index); }
+    int getUnsizedArrayElement0 (int[] x)   { return x.at(0); }
+
+    var x = int[] (1, 2, 3, 4);
+
+    void run() [[do_not_optimise]]
+    {
+        x[0]++; x[0]--;
+        bool b = getUnsizedArrayElement (x, 0) == 1
+                    && getUnsizedArrayElement0 (x) == 1
+                    && getUnsizedArrayElement (x, 3) == 4
+                    && getUnsizedArrayElement (x, 4) == 1;
+
+        results << (b ? 1 : 0); advance();
+        loop { results << -1; advance(); }
+    }
+}
+
+## error 11:13: error: Cannot create a dynamic array slice from this value
+
+processor test
+{
+    output event int results;
+
+    int getUnsizedArrayElement (int[] x, int index)   { return x.at(index); }
+    int getUnsizedArrayElement0 (int[] x)   { return x.at(0); }
+
+    void run() [[do_not_optimise]]
+    {
+        var x = int[] (1, 2, 3, 4);
+        x[0]++; x[0]--;
+        bool b = getUnsizedArrayElement (x, 0) == 1
+                    && getUnsizedArrayElement0 (x) == 1
+                    && getUnsizedArrayElement (x, 3) == 4
+                    && getUnsizedArrayElement (x, 4) == 1;
+
+        results << (b ? 1 : 0); advance();
+        loop { results << -1; advance(); }
+    }
+}
+
+## error 5:18: error: Cannot convert value for external from 'string' to 'int32'
+
+processor X
+{
+    output stream float out;
+    external int foo [[ default: "xx" ]];
+
+    void run()  { loop advance(); }
+}
+
+## error 5:19: error: Cannot convert value for external from 'float64' to 'bool'
+
+processor X
+{
+    output stream float out;
+    external bool foo [[ default: 123.0 ]];
+
+    void run()  { loop advance(); }
+}
+
+## error 5:41: error: Unsupported property value data type
+
+processor X
+{
+    output stream float out;
+    external int[4] foo [[ default: int[](1, 2, 3, 4) ]];
+
+    void run()  { loop advance(); }
+}
+
+## error 5:21: error: Failed to resolve external variable 'foo'
+
+processor X
+{
+    output stream float out;
+    external int[4] foo;
+
+    void run()  { loop advance(); }
+}
+
+## error 5:21: error: Failed to resolve external variable 'foo1'
+
+processor X
+{
+    output stream float out;
+    external int[4] foo1, foo2, foo3;
+
+    void run()  { loop advance(); }
+}
+
+## error 5:21: error: Failed to resolve external variable 'foo1'
+
+processor X
+{
+    output stream float out;
+    external int[4] foo1, foo2, foo3, foo4, foo5;
+
+    void run()  { loop advance(); }
+}
+
+## compile
+
+processor X
+{
+    output stream float out;
+    external int foo1 [[ default: 123 ]];
+    external float32 foo2 [[ default: 123 ]];
+    external float64 foo3 [[ default: 123 ]];
+    external bool foo4 [[ default: true ]];
+
+    void run()  { loop advance(); }
+}
+
+## error 4:48: error: readLinearInterpolated() only works with arrays of float values
+
+int test1 (int[] a, int i)          { return a.at (i); }
+int test2 (int[] a, float64 i)      { return a.read (i); }
+int test3 (int[] a, float64 i)      { return a.readLinearInterpolated (i); }
+
+## function
+
+bool test1()
+{
+    int[] a1;
+    float[] a2;
+    let a3 = a1;
+    var a4 = a2;
+
+    return a1.at(1) == 0 && a2.at(2) == 0 && a3.at(3) == 0 && a4.at(3) == 0;
+}
+
+## error 2:37: error: Language feature not yet implemented: cast to unsized arrays!
+
+void test (int[] x) { let y = float[] (x); }
+
+## error 3:32: error: Cannot implicitly convert 'int32[]' to 'float64[]'
+
+void test1 (float64[] x) {}
+void test2 (int[] x)  { test1 (x); }
+
+## error 3:40: error: Language feature not yet implemented: cast to unsized arrays!
+
+void test1 (float64[] x) {}
+void test2 (int[] x)  { test1 (float64[] (x)); }
+
+## disabled error
+
+const float[6] getFixedArray() { return (0, 1, 2, 3, 4, 5); }
+const float[] getDynamicArray() { return getFixedArray(); }
+bool test() { return getDynamicArray()[2] == 3; }
+
+## disabled function
+
+const float[6] testArray = (0, 1, 2, 3, 4, 5);
+const float[] getDynamicArray() { return testArray; }
+bool test() { return getDynamicArray()[2] == 3; }

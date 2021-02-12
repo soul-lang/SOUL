@@ -1,0 +1,1211 @@
+## error 8:16: error: Expected an expression of type void
+#SOUL 1
+
+namespace tests
+{
+    function test() -> void
+    {
+    @block_0:
+        return 1;
+    }
+}
+
+## error 8:16: error: The advance() function cannot be called inside this function
+#SOUL 1
+
+namespace tests
+{
+    function test() -> void
+    {
+    @block_0:
+        advance;
+        return;
+    }
+}
+
+## error 8:24: error: Cannot find output 'audioOut'
+#SOUL 1
+
+namespace tests
+{
+    function test() -> void
+    {
+    @block_0:
+        write audioOut 1.0f;
+        return;
+    }
+}
+
+## error error: The function 'test' contains at least one infinite loop
+#SOUL 1
+
+namespace tests
+{
+    function test() -> void
+    {
+    @block_0:
+        branch @block_0;
+    @block_1:
+        return;
+    }
+}
+
+## error 9:16: error: Expected an expression of type int32
+#SOUL 1
+
+namespace tests
+{
+    function test() -> int32
+    {
+    @block_0:
+        let $0 = float32<2> { 1.0f, 2.0f };
+        return $0;
+    }
+}
+
+## error 9:5: error: Expected an expression of type int32
+#SOUL 1
+
+namespace tests
+{
+    function test() -> int32
+    {
+    @block_0:
+        return;
+    }
+}
+
+## error 11:19: error: The name 'test' is already in use
+#SOUL 1
+
+namespace tests
+{
+    function test (int32 $x) -> void
+    {
+    @block_0:
+        return;
+    }
+
+    function test (float32 $x) -> int32
+    {
+    @block_0:
+        return 1;
+    }
+}
+
+## error 6:9: error: The name 'audioIn' is already in use
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn stream int32;
+  input audioIn stream float32;
+  output  audioOut stream  int32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 5:32: error: Only primitives or vectors supported by this endpoint type
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn stream int32[2];
+  output  audioOut stream  int32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 5:9: error: Top level input endpoints can only declare one type
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn event (int32, float32);
+  output  audioOut stream  int32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 8:26: error: Processor properties are only valid inside a processor declaration
+#SOUL 1
+
+namespace tests
+{
+    function test() -> float32
+    {
+    @block_0:
+        return processor.id;
+    }
+}
+
+## error 8:26: error: Unknown processor property name
+#SOUL 1
+
+namespace tests
+{
+    function test() -> float32
+    {
+    @block_0:
+        return processor.whatever;
+    }
+}
+
+
+## error 8:27: error: The name '$stateVariable' is already in use
+#SOUL 1
+
+processor gain
+{
+  output  audioOut stream  int32;
+
+  var float32 $stateVariable;
+  var int32 $stateVariable;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+
+## error 7:3: error: Expected a graph, processor or namespace declaration
+#SOUL 1
+
+graph test
+{
+  output  audioOut stream  int32;
+
+  function func() -> void
+  {
+    @block_0:
+      return;
+  }
+}
+
+
+## compile
+#SOUL 1
+
+processor gain
+{
+  output  audioOut stream float32 [[ "a" : -6, "b" : - 6 ]];
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 5:44: error: Property values must be compile-time constants
+#SOUL 1
+
+processor gain
+{
+  output  audioOut stream float32 [[ "a" : $unknown ]];
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 5:44: error: Property values must be compile-time constants
+#SOUL 1
+
+processor gain
+{
+  output  audioOut stream float32 [[ "a" : $cantBeUsedHere ]];
+
+  var float32 $cantBeUsedHere;
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 16:13: error: Index is out of range
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  output audioOut stream  float32;
+}
+
+processor gain
+{
+  input audioIn stream  float32;
+  output audioOut[2] stream  float32;
+
+  function run() -> void
+  {
+    @block_0:
+      write audioOut[3] 1.0f;
+      advance;
+      return;
+  }
+}
+
+
+## error 16:13: error: Endpoint index is not valid
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  output audioOut stream  float32;
+}
+
+processor gain
+{
+  input audioIn stream  float32;
+  output audioOut stream  float32<2>;
+
+  function run() -> void
+  {
+    @block_0:
+      write audioOut[1] 1.0f;
+      advance;
+      return;
+  }
+}
+
+## disabled error
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  output audioOut stream  float32;
+}
+
+processor gain
+{
+  input audioIn[2] stream  float32;
+  output audioOut[2] stream  float32;
+
+  function run() -> void
+  {
+    @block_0:
+      let $0 = read audioIn[1];
+      write audioOut[0] $0;
+      advance;
+      return;
+  }
+}
+
+
+## error 10:14: error: Cannot connect eventIn (float32) to x.eventIn (int32)
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  input   eventIn             event   float32;
+  output  eventOut            event   float32;
+
+  node x = test2;
+
+  connection none eventIn -> x.eventIn;
+}
+
+graph test2
+{
+  input   eventIn             event   int32;
+  output  eventOut            event   float32;
+
+  connection none eventIn -> eventOut;
+}
+
+
+## error 10:14: error: Cannot connect eventIn (event) to x.eventIn (stream)
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  input   eventIn             event   float32;
+  output  eventOut            event   float32;
+
+  node x = test2;
+
+  connection none eventIn -> x.eventIn;
+}
+
+graph test2
+{
+  input   eventIn             stream  float32;
+  output  eventOut            event   float32;
+
+  connection none eventIn -> eventOut;
+}
+
+## error 10:14: error: Cannot find source 'eventIn2'
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  input   eventIn             event   float32;
+  output  eventOut            event   float32;
+
+  node x = test2;
+
+  connection none eventIn2 -> x.eventIn;
+}
+
+graph test2
+{
+  input   eventIn             stream  float32;
+  output  eventOut            event   float32;
+
+  connection none eventIn -> eventOut;
+}
+
+## error 13:13: error: The name '@block_0' is already in use
+#SOUL 1
+
+processor gain
+{
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 13:14: error: Feedback cycle in graph: n1 -> n2 -> n3 -> n1
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  input  in  stream float32;
+  output out stream float32;
+
+  node n1 = thru;
+  node n2 = thru;
+  node n3 = thru;
+
+  connection none in -> [10] -> n1.in;
+  connection none n1.out -> n2.in;
+  connection none n2.out -> n3.in;
+  connection none n3.out -> out;
+  connection none n3.out -> n1.in;
+}
+
+graph thru
+{
+  input   in  stream  float32;
+  output  out stream  float32;
+
+  connection none in -> out;
+}
+
+## compile
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+  input  in  stream float32;
+  output out stream float32;
+
+  node n1 = thru;
+  node n2 = thru;
+  node n3 = thru;
+
+  connection none in -> n1.in;
+  connection none n1.out -> n2.in;
+  connection none n2.out -> [10] -> n3.in;
+  connection none n3.out -> out;
+  connection none n3.out -> n1.in;
+}
+
+graph thru
+{
+  input   in  stream  float32;
+  output  out stream  float32;
+
+  connection none in -> out;
+}
+
+
+## error 10:14: error: Destination index out of range
+#SOUL 1
+
+graph test [[ main ]]
+{
+  input in stream float32;
+  output out stream float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn[2];
+}
+
+processor Gain
+{
+  input audioIn[2] stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 11:14: error: Source index out of range
+#SOUL 1
+
+graph test [[ main ]]
+{
+  input in stream float32;
+  output out stream float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn;
+  connection none gain.audioOut[2] -> out;
+}
+
+processor Gain
+{
+  input audioIn stream float32;
+  output  audioOut[2] stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 10:14: error: Cannot connect in (float32) to gain.audioIn (float32)
+#SOUL 1
+
+graph t
+{
+  input in[2] stream float32;
+  output out[2] stream float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn;
+  connection none gain.audioOut -> out;
+}
+
+processor Gain
+{
+  input audioIn[3] stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 11:14: error: Cannot connect gain.audioOut (float32) to out (float32)
+#SOUL 1
+
+graph t
+{
+  input in[2] stream float32;
+  output out[2] stream float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn;
+  connection none gain.audioOut -> out;
+}
+
+processor Gain
+{
+  input audioIn stream float32;
+  output  audioOut[3] stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## disabled error
+#SOUL 1
+
+graph t
+{
+  input in[2] stream float32;
+  output out[2] stream float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn;
+  connection none gain.audioOut -> out;
+}
+
+processor Gain
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 10:14: error: Cannot connect in (float32) to gain.audioIn (float32)
+#SOUL 1
+
+graph t
+{
+  input in[2] event float32;
+  output out[2] event float32;
+
+  node gain = Gain;
+
+  connection none in -> gain.audioIn;
+  connection none gain.audioOut -> out;
+}
+
+processor Gain
+{
+  input audioIn[3] event float32;
+  output  audioOut event float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+
+## error error: The init() function cannot be called from user code
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      call init();
+      advance;
+      return;
+  }
+
+  function init() -> void
+  {
+    @block_0:
+      return;
+  }
+}
+
+## error 18:28: error: Streams are not available during init()
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+
+  function init() -> void
+  {
+    @block_0:
+      let $0 = read audioIn;
+      return;
+  }
+}
+
+## error 18:13: error: Streams are not available during init()
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+
+  function init() -> void
+  {
+    @block_0:
+      write audioOut 1.0f;
+      return;
+  }
+}
+
+## error 14:20: error: Block @block_1 parameters invalid
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+
+    @block_1 (void $i):
+      return;
+  }
+}
+
+## error 14:22: error: Block @block_1 parameters invalid
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output  audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+
+    @block_1 (int32& $i):
+      return;
+  }
+}
+
+## error 5:9: error: Invalid identifier name '$invalidInputName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input $invalidInputName stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 6:10: error: Invalid identifier name '$invalidOutputName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output $invalidOutputName stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 8:12: error: Invalid identifier name '$invalidFunctionName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function $invalidFunctionName() -> void
+  {
+    @block_0:
+      return;
+  }
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+
+## error 8:10: error: Invalid identifier name '$invalidStructName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  struct $invalidStructName
+  {
+  }
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 8:13: error: Invalid variable name 'invalidMemberName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  var int32 invalidMemberName = 4;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+
+## error 11:11: error: Invalid variable name 'invalidLocalName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      let invalidLocalName = 0;
+      advance;
+      return;
+  }
+}
+
+## error 11:7: error: Invalid variable name 'invalidMutableLocalName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      invalidMutableLocalName = 0;
+      advance;
+      return;
+  }
+}
+
+## error 14:21: error: Invalid variable name 'invalidBlockArgumentName'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+
+    @block_1 (int32 invalidBlockArgumentName):
+      return;
+  }
+}
+
+## error 3:11: error: Invalid identifier name '$Gain'
+#SOUL 1
+
+processor $Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 11:11: error: Invalid variable name '$'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      let $ = 0;
+      advance;
+      return;
+  }
+}
+
+## error 10:6: error: Invalid block name '@'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @$invalidBlockName:
+      advance;
+      return;
+  }
+}
+
+## error 10:6: error: Invalid block name '@'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  input audioIn stream float32;
+  output audioOut stream float32;
+
+  function run() -> void
+  {
+    @:
+      advance;
+      return;
+  }
+}
+
+
+## error 8:7: error: Cannot find type 'i'
+#SOUL 1
+
+processor Gain [[ main]]
+{
+  output out event int32;
+
+  // Missing type here
+  var i = 1;
+
+  function run() -> void
+  {
+    @block_0:
+      write out $i;
+      branch @loop_0;
+    @loop_0:
+      write out -1;
+      advance;
+      branch @loop_0;
+  }
+}
+
+## error 13:18: error: The name '$i' is already in use
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+    var int32 $i = 0;
+
+    function run() -> void
+    {
+        @block_0:
+          // Constant with the same name as a state variable
+          let $i = 1;
+          write out $i;
+          branch @loop_0;
+        @loop_0:
+          $i = 0;
+          write out -1;
+          advance;
+          branch @loop_0;
+    }
+}
+
+## error 15:16: error: The '=' operator must be given an assignable variable
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+    function run() -> void
+    {
+        @block_0:
+            let $i = 1;
+            write out $i;
+            branch @loop_0;
+        @loop_0:
+            // $i is constant, this should be an error
+            $i = 0;
+            write out -1;
+            advance;
+            branch @loop_0;
+    }
+}
+
+
+## error 14:20: error: The name '$i' is already in use
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+    function run() -> void
+    {
+        @block_0:
+            let $i = 1;
+            write out $i;
+            branch @loop_0;
+        @loop_0:
+            let $i = 2;
+            write out -1;
+            advance;
+            branch @loop_0;
+    }
+}
+
+## error 13:15: error: The name 't' is already in use
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+    function t() -> void
+    {
+      @block_0:
+        return;
+    }
+
+    function t() -> void
+    {
+      @block_0:
+        return;
+    }
+
+    function run() -> void
+    {
+      @block_0:
+        write out -1;
+        advance;
+        return;
+    }
+}
+
+## error 12:1: error: A module with the name 't' has already been declared
+#SOUL 1
+
+namespace t
+{
+  function f1() -> void
+  {
+    @block_0:
+      return;
+  }
+}
+
+namespace t
+{
+  function f2() -> void
+  {
+    @block_0:
+      return;
+  }
+}
+
+## error 11:21: error: The name 'duplicate' is already in use
+#SOUL 1
+
+namespace t
+{
+  function duplicate() -> void
+  {
+    @block_0:
+      return;
+  }
+
+  function duplicate() -> void
+  {
+    @block_0:
+      return;
+  }
+}
+
+processor test
+{
+    output out event int32;
+
+    function run() -> void
+    {
+      @block_0:
+        call t::duplicate();
+        write out -1;
+        advance;
+        return;
+    }
+}
+
+## error 17:1: error: A module with the name 'test' has already been declared
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+
+    function run() -> void
+    {
+      @block_0:
+        write out -1;
+        advance;
+        return;
+    }
+}
+
+processor test
+{
+    output out event int32;
+
+
+    function run() -> void
+    {
+      @block_0:
+        write out -1;
+        advance;
+        return;
+    }
+}
+
+## error 8:1: error: A module with the name 'test' has already been declared
+#SOUL 1
+
+graph test
+{
+  output eventOut event float32;
+}
+
+processor test
+{
+    output out event int32;
+
+    function run() -> void
+    {
+      @block_0:
+        write out -1;
+        advance;
+        return;
+    }
+}
+
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    struct TestStruct
+    {
+      int32 i;
+      float32 f;
+    }
+
+    struct TestStruct2
+    {
+      TestStruct[2] s;
+      int32 i;
+    }
+
+    function test1() -> bool
+    {
+      @block_0:
+        let $0 = TestStruct[2] { { 1, 2.0f }, { 3, 4.0f } };
+        return equals ($0[1].i, 3);
+    }
+
+    function test2() -> bool
+    {
+      @block_0:
+        let $0 = TestStruct2[2] {
+                                  { { { 1, 2.0f }, {3, 4.0f } }, 5},
+                                  { { { 6, 7.0f }, {8, 9.0f } }, 10}
+                                };
+
+        return equals ($0[1].s[1].i, 8);
+    }
+
+    function test3() -> bool
+    {
+      @block_0:
+        let $0 = int32[4] { 1, 2, 3, 4 };
+        return equals ($0[2], 3);
+    }
+
+    function test4() -> bool
+    {
+      @block_0:
+        let $0 = int32[4] 5;
+        return equals ($0[2], 5);
+    }
+}

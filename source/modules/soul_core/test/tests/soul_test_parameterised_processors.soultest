@@ -1,0 +1,286 @@
+## error 15:9: error: Wrong number of arguments to instantiate namespace 'tests::testProcessor'
+
+processor testProcessor (int i)
+{
+    output event int results;
+
+    void run()
+    {
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor;
+    connection myProcessor.results -> results;
+}
+
+## processor
+
+processor testProcessor()
+{
+    output event int results;
+
+    void run()
+    {
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor();
+    connection myProcessor.results -> results;
+}
+
+## processor
+
+processor testProcessor (float f)
+{
+    output event int results;
+
+    void run()
+    {
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor (float(0.0100000000000000002081668171172));
+    connection myProcessor.results -> results;
+}
+
+## error 8:9: error: foo
+
+processor testProcessor (float f)
+{
+    output event int results;
+
+    void run()
+    {
+        static_assert (f > 0, "foo");
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor (-1.0f);
+    connection myProcessor.results -> results;
+}
+
+## error 15:38: error: Expected a type
+
+processor testProcessor (using FloatType)
+{
+    output event int results;
+
+    void run()
+    {
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor (1.0);
+    connection myProcessor.results -> results;
+}
+
+## error 10:26: error: Expected a processor name
+
+graph T (processor p)
+{
+    output event int results;
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = T (1.0);
+    connection myProcessor.results -> results;
+}
+
+
+## processor
+
+processor testProcessor (using T)
+{
+    output event int results;
+
+    void run()
+    {
+        loop { results << -1; advance(); }
+    }
+}
+
+struct MyStruct
+{
+    int i;
+}
+
+graph test
+{
+    output event int results;
+    let myProcessor = testProcessor (MyStruct);
+
+    connection myProcessor.results -> results;
+}
+
+## processor
+
+graph test
+{
+    output event int32 out;
+    let w = wrapper (p);
+    connection w.out -> out;
+}
+
+processor p
+{
+    output event int32 out;
+
+    void run()
+    {
+        out << 1;
+
+        loop
+        {
+            advance();
+            out << -1;
+        }
+    }
+}
+
+graph wrapper (processor wrappedProcessor)
+{
+    output event int32 out;
+    let w = wrappedProcessor;
+    connection w.out -> out;
+}
+
+## processor
+
+graph test
+{
+    output event int32 out;
+    let w = wrapper (p);
+    connection w.out -> out;
+}
+
+processor p
+{
+    output event int32 out;
+
+    void run()
+    {
+        out << 1;
+
+        loop
+        {
+            advance();
+            out << -1;
+        }
+    }
+}
+
+graph wrapper (processor wrappedProcessor)
+{
+    output event int32 out;
+    connection wrappedProcessor.out -> out;
+}
+
+## processor
+
+processor p
+{
+    output event int32 out;
+
+    void run()
+    {
+        out << 1;
+
+        loop
+        {
+            advance();
+            out << -1;
+        }
+    }
+}
+
+graph wrapper (processor wrappedProcessor)
+{
+    output event int32 out;
+    connection wrappedProcessor.out -> out;
+}
+
+graph test
+{
+    output event int32 out;
+    let w = wrapper (p);
+    connection w.out -> out;
+}
+
+## compile
+
+graph Bug [[main]]
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    let p = Processor(2, test::array);
+
+    connection { audioIn -> p -> audioOut; }
+}
+
+namespace test
+{
+    struct S
+    {
+        wrap<2> a;
+        int b;
+    }
+
+    const S[2] array = (S(0, 1), S(1, 2));
+}
+
+processor Processor(int numTests, test::S[numTests] arr)
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    void run() { advance(); }
+}
+
+## compile
+
+namespace t
+{
+    struct S { wrap<2> a; }
+    const S s = S (1);
+}
+
+processor test
+{
+    output event int32 out;
+
+    void run()
+    {
+        var x = t::s;
+        x.a++;
+        out << 1;
+
+        loop
+        {
+            advance();
+            out << -1;
+        }
+    }
+}

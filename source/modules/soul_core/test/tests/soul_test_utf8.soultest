@@ -1,0 +1,94 @@
+## processor
+
+processor HelloWorld
+{
+    output event string text;
+
+    void run()
+    {
+        text << "Hello" << "World";
+        loop advance();
+    }
+}
+
+processor Checker
+{
+    output event int results;
+    input event string text;
+
+    int index, correctEvents;
+
+    event text (string s)
+    {
+        if (index == 0 && s == "Hello")  ++correctEvents;
+        if (index == 1 && s == "World")  ++correctEvents;
+
+        ++index;
+    }
+
+    void run()
+    {
+        loop
+        {
+            if (correctEvents == 2)
+                break;
+
+            if (correctEvents != index)
+            {
+                results << 0;
+                break;
+            }
+
+            results << 1;
+            advance();
+        }
+
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+
+    connection HelloWorld.text -> Checker.text;
+    connection Checker.results -> results;
+}
+
+## compile
+
+processor testExtendedChars()
+{
+    // 😀😀😀 extended chars allowed in comments
+    output stream float32 output0;
+
+    const float32[2] someData = (0.1f, 0.2f);
+
+    let stringLiteral = "And allowed in strings 😀😀😀";
+
+    void run()
+    {
+        int32 index;
+        output0 << someData.at (index);
+        advance();
+    }
+}
+
+## error 9:16: error: Unexpected character '😀' in source
+
+processor testExtendedChars()
+{
+    output stream float32 output0;
+
+    const float32[2] someData = (0.1f, 0.2f);
+
+    // But not allowed in variables
+    float myVar😀 = 1.0f;
+
+    void run()
+    {
+        int32 index;
+        output0 << someData.at (index);
+        advance();
+    }
+}

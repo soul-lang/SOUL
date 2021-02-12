@@ -1,0 +1,799 @@
+## error 7:27: error: Event parameters cannot be non-const references
+
+processor test
+{
+    input stream float eventIn;
+    output stream float<1> audioOut;
+
+    event eventIn (float& f) {}
+
+    void run()
+    {
+        loop
+        {
+            audioOut << 1.0f;
+            advance();
+        }
+    }
+}
+
+## error 2:11: error: The name 'NameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLong' exceeded the maximum length
+
+processor NameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLongNameTooLong
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        loop advance();
+    }
+}
+
+## error 2:1: error: A namespace cannot contain endpoint declarations
+
+output test {}
+
+## error 6:15: error: A namespace can only be defined inside a namespace
+
+processor test
+{
+    output stream float out1;
+
+    namespace stuff
+    {
+        void test() {}
+    }
+
+    void run() { loop advance(); }
+}
+
+## error 8:5: error: The run() function must call advance()
+
+processor test
+{
+    output stream float out1;
+
+    void test() {}
+
+    void run()
+    {
+        loop { test(); }
+    }
+}
+
+## function
+
+bool testScope()
+{
+    int i = 2;
+
+    {
+        int i;
+        i = 3;
+    }
+
+    return (i == 2);
+}
+
+bool extraSemicolon()
+{
+    let i = 1.0f;
+    return i < 2.0f;;
+}
+
+float echo (const float& f) { return f; }
+
+bool testEcho()
+{
+    let f = 1.0f;
+    return (f == echo (f));
+}
+
+## error 5:18: error: The advance() function cannot be called inside this function
+
+processor test
+{
+    output stream float audioOut;
+    void foo() { advance(); }
+    void run() { loop advance(); }
+}
+
+## error 4:27: error: The advance() function cannot be called inside this function
+
+namespace foo
+{
+    void callAdvance()  { advance(); }
+}
+
+processor test
+{
+    output event int results;
+    void run() { results << 1; loop { advance(); foo::callAdvance(); results << -1;  } }
+}
+
+## error 6:42: error: The advance() function cannot be called inside this function
+
+processor test
+{
+    output event int results;
+    void foo1()  { advance(); results << 1 << -1 << -1 << -1 << -1 << -1; }
+    void foo2()  { loop { results << -1; advance(); } }
+    void foo3()  { foo2(); }
+    void run()   { foo1(); foo2(); }
+}
+
+## error 5:18: error: The advance() function cannot be called inside this function
+
+processor test1
+{
+    output stream float out;
+    void foo() { advance(); }
+    void run() { loop { foo(); } }
+}
+
+namespace test2
+{
+    void foo2() { test1::foo(); }
+}
+
+## error 5:18: error: The advance() function does not take any arguments
+
+processor test
+{
+    output stream float audioOut;
+    void foo() { advance(123); }
+    void run() { loop advance(); }
+}
+
+## error 5:5: error: Cannot find symbol 'i'
+
+void foo()
+{
+    { int i = 1; }
+    i = 2;
+}
+
+## error 2:21: error: The variable 'i' cannot recursively refer to itself in its initial value
+
+namespace Foo { let i = i * 2; }
+
+## error 2:21: error: The variable 'i' cannot recursively refer to itself in its initial value
+
+namespace Foo { let i = j * 2, j = 1 + i; }
+
+## error 2:22: error: Cannot find symbol 'i'
+
+void foo() { let i = i * 2; }
+
+## error 8:21: error: Cannot read from an output
+
+processor test
+{
+    output stream float audioOut;
+
+    void run()
+    {
+        audioOut << audioOut;
+        advance();
+    }
+}
+
+## error 8:17: error: Cannot read from an output
+
+processor test
+{
+    output stream float audioOut;
+
+    void run()
+    {
+        let x = audioOut;
+        advance();
+    }
+}
+
+## compile
+
+processor test
+{
+    output stream float audioOut;
+
+    void run()
+    {
+        foo::blah();
+        loop advance();
+    }
+}
+
+namespace foo
+{
+    void blah() {}
+}
+
+## compile
+
+processor testConstIndexSyntax()
+{
+    output stream float32 output0;
+
+    const float32[2] someData = (0.1f, 0.2f);
+
+    void run()
+    {
+        int32 index;
+        output0 << someData.at (index);
+        advance();
+    }
+}
+
+## error 10:5: error: Cannot use a processor name as a type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void processorNameUsedIncorrectly()
+{
+    A a;
+}
+
+## error 10:5: error: Cannot use a processor name as a function call
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void processorNameUsedIncorrectly()
+{
+    A();
+}
+
+## error 10:17: error: Cannot use a processor name as a value
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void processorNameUsedIncorrectly()
+{
+    int x = 1 + A;
+}
+
+## error 8:1: error: Cannot use a processor name as a type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+A processorNameUsedIncorrectly() {}
+
+## error 8:45: error: Cannot use a processor name as a value
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+int processorNameUsedIncorrectly() { return A; }
+
+## error 2:11: error: The name 'A' is already in use
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+struct A { int x; }
+
+## error 9:12: error: Cannot use a processor name as a type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+struct Y { int A; }
+struct X { A x; }
+
+## error 8:11: error: Cannot use a processor name as a type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void foo (A x) {}
+
+## error 2:11: error: The name 'A' is already in use
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+using A = A;
+
+## error 8:20: error: Cannot use a processor name as a type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void foo (int x) { A x2 = 123; }
+
+## error 8:35: error: Cannot use a processor name as a value
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void foo (int x) { let x2 = 123 + A; }
+
+## error 8:36: error: Cannot resolve source type
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void processorNameUsedIncorrectly (A& a) {}
+
+## error 8:48: error: No such operation is supported on a processor
+
+processor A
+{
+    output stream float out;
+    void run() { loop advance(); }
+}
+
+void processorNameUsedIncorrectly() { int x = A.foo; }
+
+## error 8:29: error: Illegal types for binary operator '*' ('float32' and 'void')
+
+processor SyntaxError
+{
+    output stream float out;
+
+    void run()
+    {
+        loop { out << 0.25f * advance(); }
+    }
+}
+
+## error 6:17: error: Expected an array or vector type
+
+bool useOfIncorrectSubscriptInsideFunctionCall()
+{
+    float s = 3.0f;
+    s += 0.0f;
+    return abs (s[0]) > 0.0f;
+}
+
+## error 5:9: error: An array size must be a constant
+
+bool foo()
+{
+    var i = 1; ++i;
+    int[i] y;
+    return false;
+}
+
+## error 2:18: error: Illegal array size
+
+void foo() { int[-1] x; }
+
+## error 2:18: error: Array or vector size must be an integer
+
+void foo() { int[1.1] x; }
+
+## error 2:18: error: Array or vector size must be an integer
+
+void foo() { int<1.1> x; }
+
+## error 7:9: error: Array or vector size must be an integer
+
+void foo()
+{
+    wrap<4> n = 3;
+    int[n] z;
+    let x = 1.1;
+    int[x] y;
+}
+
+## error 2:35: error: An array index must be an integer type
+
+void foo()  { int[4] x; let y = x[1.1]; }
+
+## error 2:35: error: Cannot implicitly convert 1.1 ('float64') to 'int32'
+
+void foo()  { int[4] x; let y = x.at(1.1); }
+
+## error 2:32: error: Index is out of range
+
+int foo() { int[4] x; return x[5]; }
+
+## error 5:12: error: Cannot find symbol 'y'
+
+bool test()
+{
+    if (false) let y = 1;
+    return y == 1;
+}
+
+## error 5:12: error: Cannot find symbol 'y'
+
+bool test()
+{
+    loop (1) let y = 1;
+    return y == 1;
+}
+
+## error 7:28: error: Ambiguous function call: myFunction(int32, float64)
+
+int myFunction (int i, int j)           { return 1; }
+int myFunction (float64 i, float64 j)   { return 2; }
+
+bool testFunc1()  { return myFunction (1, 2) == 1; }
+bool testFunc2()  { return myFunction (1.0, 2.0) == 2; }
+bool testFunc3()  { return myFunction (1, 2.0) == 2; }
+bool testFunc4()  { return myFunction (1.0, 2) == 2; }
+
+## error 6:30: error: Ambiguous function call: myFunction(float32, float32)
+
+int myFunction (int i, int j)           { return 1; }
+int myFunction (float64 i, float64 j)   { return 2; }
+
+// Overloaded function, can't silently cast any args
+bool testFunc1()    { return myFunction (1.0f, 2.0f) == 2; }
+
+## error 6:27: error: Ambiguous function call: myFunction(float64, float32)
+
+int myFunction (int i, int j)           { return 1; }
+int myFunction (float64 i, float64 j)   { return 2; }
+
+// Overloaded function, can't silently cast any args
+bool testFunc1() { return myFunction (float64 (1.0f), 2.0f) == 2; }
+
+void modifyValue1 (float<1>& f)
+{
+    f = 1.0f;
+}
+
+bool testValue1()
+{
+    float f = 0.0f;
+    modifyValue1 (f);
+    return (f == 1.0f);
+}
+
+void modifyValue2 (float& f)
+{
+    f = 1.0f;
+}
+
+bool testValue2()
+{
+    float f = 0.0f;
+    modifyValue2 (f);
+    return (f == 1.0f);
+}
+
+void modifyValue3 (float<1>[5]& f)
+{
+    f[0] = 1.0f;
+}
+
+bool testValue3()
+{
+    float<1>[5] f;
+    modifyValue3 (f);
+    return (f[0] == 1.0f);
+}
+
+## error 8:27: error: Unknown processor property name
+
+processor SyntaxError
+{
+    output stream float out;
+
+    void run()
+    {
+        let x = processor.sillyname;
+        loop { advance(); }
+    }
+}
+
+## error 34:35: error: Cannot connect EventSourceInt.eventOut (int32) to EventLatch.eventIn (float32)
+
+processor EventSourceInt
+{
+    output event int eventOut;
+
+    void run()
+    {
+        eventOut << 1;
+        advance();
+    }
+}
+
+processor EventLatch
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn (float f)
+    {
+        outputValue = f;
+    }
+
+    float outputValue;
+
+    void run() { advance(); }
+}
+
+graph Event
+{
+    output stream float audioOut;
+
+    connection
+    {
+        EventSourceInt.eventOut   -> EventLatch.eventIn;
+        EventLatch.audioOut       -> audioOut;
+    }
+}
+
+## error 19:35: error: Cannot connect EventSourceInt.eventOut (int32) to eventOut (float32)
+
+processor EventSourceInt
+{
+    output event int eventOut;
+
+    void run()
+    {
+        eventOut << 1;
+        advance();
+    }
+}
+
+graph Event
+{
+    output event float eventOut;
+
+    connection
+    {
+        EventSourceInt.eventOut   -> eventOut;
+    }
+}
+
+## error 7:10: error: The name 'eventIn' is already in use
+
+processor EventLatch
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    void eventIn (float f)
+    {
+        outputValue = f;
+    }
+
+    float outputValue;
+
+    void run() { advance(); }
+}
+
+## error 11:30: error: Expected an array or vector type
+
+processor Mixer
+{
+    input stream float in;
+    output stream float out;
+
+    void run()
+    {
+        loop
+        {
+            let inputValue = in[1][2];
+
+            out << inputValue * 0.5f;
+            advance();
+        }
+    }
+}
+
+## error 10:18: error: Index is out of range
+
+processor Mixer
+{
+    input stream float in;
+    output stream float out;
+
+    void run()
+    {
+        float<5>[10] f;
+        out << f[10][1];
+        advance();
+    }
+}
+
+## error 7:15: error: Could not resolve function or cast
+
+struct C  { int[3] a, b; }
+
+bool test()
+{
+    C[2] c;
+    let i = c.size() - 1;
+    c.at(i).a[1] = 1;
+    return c.at(i).a[1] == 1;
+}
+
+## error 12:19: error: Cannot connect an source of type float64[2] to a destination of type float64
+
+graph Engine [[main]]
+{
+    input stream float64 audioIn;
+    output stream float64 audioOut;
+
+    let mixer = Mixer;
+
+    connection
+    {
+        audioIn -> mixer.in;
+        mixer.out -> audioOut;
+    }
+}
+
+processor Mixer
+{
+    input stream float64 in;
+    output stream float64 out[2];
+
+    void run()
+    {
+        loop
+        {
+            let inputValue = in;
+            out[1] << inputValue * 0.5;
+            advance();
+       }
+    }
+}
+
+## error 2:5: error: Only constant variables can be declared inside a namespace
+
+int n = 1;
+
+## function
+
+namespace myNamespace1
+{
+    struct MyStruct { int i; }
+
+    bool check()    { return true; }
+    bool check2()   { return myNamespace1::check(); }
+}
+
+bool testFunc3()
+{
+    return myNamespace1::check2();
+}
+
+namespace myNamespace2
+{
+    struct MyStruct { int i; }
+}
+
+bool testFunc4()
+{
+    myNamespace2::MyStruct m;
+    m.i = 1;
+    return (m.i == 1);
+}
+
+namespace myNamespace3
+{
+    struct MyStruct { int i; }
+}
+
+bool testFunc5()
+{
+    myNamespace3::MyStruct notResolved;
+    int i = notResolved.i;
+    return (i == 0);
+}
+
+namespace myNamespace4
+{
+    bool MyFunc()   { return true; }
+}
+
+bool testFunc6()
+{
+    return myNamespace4::MyFunc();
+}
+
+namespace myNamespace5
+{
+    struct MyStruct { int i; }
+
+    bool MyFunc()
+    {
+        MyStruct m;
+        m.i = 1;
+        return (m.i == 1);
+    }
+}
+
+bool testFunc7()
+{
+    return myNamespace5::MyFunc();
+}
+
+namespace myNamespace6
+{
+    struct MyStruct { int i; }
+
+    bool MyFunc()
+    {
+        myNamespace6::MyStruct notResolved;
+        notResolved.i = 1;
+        return (notResolved.i == 1);
+    }
+}
+
+bool testFunc8()
+{
+    return myNamespace6::MyFunc();
+}
+
+let n = 1;
+
+struct Foo { int x; }
+
+bool test1()
+{
+    Foo a, b, c;
+    b.x = 1;
+
+    Foo[] foos1 = (a, b, c);
+    Foo[3] foos2 = (a, b, c);
+    let foos3 = Foo[3] (a, b, c);
+    let foos4 = Foo[] (a, b, c);
+
+    return foos1[1].x == 1 && foos2[1].x == 1 && foos3[1].x == 1 && foos4[1].x == 1;
+}
+
+namespace X
+{
+    graph g { output stream int x; const int c = 1234; }
+}
+
+bool test2() { return X::g::c == 1234; }
+
+## compile
+
+processor checkDataTypes
+{
+    input stream float in [[ stringValue: "s", intValue: 5, floatValue: 1.0f, doubleValue: 1.0 ]];
+    output stream float out;
+
+    void run() { advance(); }
+}

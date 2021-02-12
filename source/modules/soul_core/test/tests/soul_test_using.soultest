@@ -1,0 +1,69 @@
+## compile
+
+namespace test
+{
+    using C = A;
+    using D = B;
+
+    struct A { int x; }
+    struct B { float x; }
+
+    using E = void;
+
+    void foo (F& a) { a = 1; }
+    using F = int;
+}
+
+processor DummyProcessor { output stream int x; void run() { loop advance(); }}
+
+## error 6:7: error: The name 'B' is already in use
+
+struct A { int x; }
+struct B { float x; }
+
+using C = A;
+using B = C;
+
+## error 3:6: error: The name 'B' is already in use
+
+struct A { int x; }
+void B() {}
+
+using C = A;
+using B = C;
+
+## error 2:7: error: The types 'A' and 'C' refer to each other recursively
+
+using A = B;
+using B = C;
+using C = A;
+
+## error 2:8: error: The types 'A' and 'D' refer to each other recursively
+
+struct A { B x; }
+struct B { C x; }
+
+using C = D;
+using D = A;
+
+## error 2:14: error: Using declarations cannot be references
+
+using A = int&;
+
+## error 2:20: error: Function parameters cannot be void
+
+void foo (const A& a) {}
+using A = void;
+
+## error 2:29: error: The '=' operator must be given an assignable variable
+
+void foo (const F& a) { a = 1; }
+using F = int;
+
+## error 5:22: error: Cannot create a vector with elements that are not primitive types
+
+namespace N
+{
+    using A = float<2>;
+    struct State { A<2> x; }
+}

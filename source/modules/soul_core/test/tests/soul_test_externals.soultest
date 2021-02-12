@@ -1,0 +1,38 @@
+## function
+
+namespace n
+{
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+}
+
+processor p
+{
+    output stream float x;
+    void run()  { loop advance(); }
+
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+}
+
+graph g
+{
+    output stream float x;
+    external float[] data [[ squarewave, rate: 1000, frequency: 10, numFrames: 1000 ]];
+}
+
+bool test1()    { return n::data[10] < 0; }
+bool test2()    { return p::data[10] < 0; }
+bool test3()    { return g::data[10] < 0; }
+
+## error 7:17: error: The size of a 'wrap' or 'clamp' type must be a constant
+
+struct X { int x, y; }
+external X[] x;
+
+bool test4()
+{
+    for (wrap<x.size> i)
+    {
+        let a = x[i];
+        return a.x == 0;
+    }
+}

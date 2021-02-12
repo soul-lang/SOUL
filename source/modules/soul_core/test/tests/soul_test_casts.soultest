@@ -1,0 +1,328 @@
+## function
+
+float convert1 (float64 f)
+{
+    return float (f);
+}
+
+float convert2 (float64<1> f)
+{
+    return float (f);
+}
+
+float<1> convert3 (float64 f)
+{
+    return float (f);
+}
+
+float<1> convert4 (float64<1> f)
+{
+    return float (f);
+}
+
+bool test0()
+{
+    return convert1 (1.0) == convert2 (1.0) &&
+           convert3 (2.0) == convert4 (2.0);
+}
+
+float<2> convert (int i) { return float<2> (i); }
+int32 convert (float32 x) { let i = int32 (x); return i; }
+
+bool test1()
+{
+    let x = convert (10);
+    return x[0] == x[1];
+}
+
+struct Buffer
+{
+    float<2>[64] buffer;
+    wrap<64> writePos;
+}
+
+void sparseToBuffer(Buffer& dest,
+                    float<2> currentValue,
+                    float<2> targetValue,
+                    int rampFramesParam)
+{
+    float<2> rampFrames = float<2> (rampFramesParam);
+    float<2> frameIncrement = currentValue / rampFrames;
+    currentValue += frameIncrement;
+    dest.writePos++;
+}
+
+bool test2()
+{
+    Buffer buffer;
+    float<2> currentValue, targetValue;
+    buffer.sparseToBuffer (currentValue, targetValue, 1);
+    return true;
+}
+
+bool test3()
+{
+    float f = 4.0f;
+    f += 0.0f;
+    return convert (f) == 4;
+}
+
+struct S { float32 v; }
+void update (S& s, float32 n)   { s.v = n; }
+
+bool test4()
+{
+    S s1, s2;
+    s1.v = 1;
+    let n = 1.23456f;
+    update (s1, n);
+    s2.update (n);
+    return s1.v == s2.v;
+}
+
+namespace ns
+{
+    struct A { int[1] x; }
+    const A[1] structs1 = A[1](A(int[1](1)));
+}
+
+bool test5()
+{
+    return ns::structs1[0].x[0] == 1;
+}
+
+bool testBoolToInt()
+{
+    let falseValue = int (false);
+    let trueValue = int (true);
+
+    return falseValue == 0 && trueValue == 1;
+}
+
+bool testBoolToFloat32()
+{
+    let falseValue = float32 (false);
+    let trueValue = float32 (true);
+
+    return falseValue == 0.0f && trueValue == 1.0f;
+}
+
+int myFunction (float64 i, float64 j)   { return 2; }
+
+// Non-overloaded function with two arguments needing silent casts is ok
+bool testFunc1()    { return myFunction (1.0f, 2.0f) == 2; }
+
+## error 4:44: error: Cannot implicitly convert 'float32' to 'int32'
+
+namespace test
+{
+    int32 missingCast (float32 f) { return f; }
+}
+
+## error 3:23: error: Cannot implicitly convert 'float64' to 'int32'
+
+float64 foo() { return 1.5; }
+bool test() { int b = foo(); return true; }
+
+## error 3:38: error: Cannot implicitly convert 'const float64' to 'float32'
+
+const float64 f64 = 1234;
+bool test() { float a = 1234.0f, b = f64; return true; }
+
+## error 5:9: error: Cannot implicitly convert 'float32' to 'int32'
+
+int32 convert (float32 x)
+{
+    int32 i;
+    i = x;
+    return i;
+}
+
+bool testTest()
+{
+    float f = 4.0f;
+    f += 0.0f;
+    return convert (f) == 4;
+}
+
+## error 2:39: error: Cannot implicitly convert 'float32' to 'int32'
+
+int32 convert (float32 x) { int32 i = x; return i; }
+
+bool testTest()
+{
+    float f = 4.0f;
+    f += 0.0f;
+    return convert (f) == 4;
+}
+
+## error 9:16: error: Cannot implicitly convert 1.23456 ('float64') to 'float32'
+
+struct S { float32 v; }
+void update (S& s, float32 n)   { s.v = n; }
+
+void foo()
+{
+    S s;
+    let n = 1.23456;
+    update (s, n);
+}
+
+## error 9:15: error: Cannot implicitly convert 1.23456 ('float64') to 'float32'
+
+struct S { float32 v; }
+void update (S& s, float32 n)   { s.v = n; }
+
+void foo()
+{
+    S s;
+    let n = 1.23456;
+    s.update (n);
+}
+
+## error 9:16: error: Cannot implicitly convert 'int32[2]' to 'int32[1]'
+
+processor P
+{
+    output stream int out;
+
+    struct A { int[1] x; }
+
+    let c1 = int[2](1, 2);
+    let c2 = A(c1);
+
+    void run() { loop advance(); }
+}
+
+## processor
+
+processor test
+{
+    output stream int out;
+
+    int f (const int[1]& i) { return i[0]; }
+    void run() { out << f(ns::ints); advance(); loop { out << -1; advance(); } }
+}
+
+namespace ns
+{
+    const int[1] ints = int[1](1);
+}
+
+## processor
+
+namespace ns
+{
+    struct A { int[1] x; }
+    const A[1] structs = A[1](A(int[1](1)));
+}
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        const A[1] structs = A[1](A(int[1](1)));
+        let x = ns::structs[0].x;
+        out << x[0];
+        advance();
+        out << ns::structs[0].x[0];
+        advance();
+        out << structs[0].x[0];
+        advance();
+        loop { out << -1; advance(); }
+    }
+
+    struct A { int[1] x; }
+}
+
+## processor
+
+processor test
+{
+    output stream int out;
+
+    struct A { int[1] x; }
+
+    let c1 = int[1](1);
+    let c2 = A(c1);
+    const A[1] structs1 = A[1](c2);
+    let structs2 = A[1](c2);
+    const A[1] structs3 = A[1](A(int[1](1)));
+    let structs4 = A[1](A(int[1](1)));
+
+    void run()
+    {
+         out << structs1[0].x[0]; advance();
+         out << structs2[0].x[0]; advance();
+         out << structs3[0].x[0]; advance();
+         out << structs4[0].x[0]; advance();
+         loop { out << -1; advance(); }
+    }
+}
+
+
+## function
+
+float64 convert1 (float32 f)
+{
+    return float64 (f);
+}
+
+float64 convert2 (float32<1> f)
+{
+    return float64 (f);
+}
+
+float64<1> convert3 (float32 f)
+{
+    return float64 (f);
+}
+
+float64<1> convert4 (float32<1> f)
+{
+    return float64 (f);
+}
+
+bool test()
+{
+    return convert1 (1.0f) == convert2 (1.0f) &&
+           convert3 (2.0f) == convert4 (2.0f);
+}
+
+## error 4:12: error: Cannot implicitly convert 'float64' to 'float32<1>'
+
+float32<1> convert (float64 f)
+{
+    return f;
+}
+
+## error 4:12: error: Cannot implicitly convert 'float64' to 'float32'
+
+float32 convert (float64 f)
+{
+    return f;
+}
+
+## error 4:12: error: Cannot implicitly convert 'float64<1>' to 'float32'
+
+float32 convert (float64<1> f)
+{
+    return f;
+}
+
+## error 4:12: error: Cannot implicitly convert 'float64<1>' to 'float32<1>'
+
+float32<1> convert (float64<1> f)
+{
+    return f;
+}
+
+## error 4:26: error: Found integer32 when expecting ","
+
+bool foo()
+{
+    let x = float32[] (1 2);
+    return x[1] == 2;
+}

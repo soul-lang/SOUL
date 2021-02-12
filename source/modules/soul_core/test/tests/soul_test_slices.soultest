@@ -1,0 +1,408 @@
+## function
+
+bool compare (const int[7]& x, const int[7]& y)
+{
+    wrap<7> i;
+
+    loop (7)
+    {
+        if (x[i] != y[i])
+            return false;
+
+        i++;
+    }
+
+    return true;
+}
+
+bool sliceAll1()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x;
+
+    return compare (x, y);
+}
+
+bool sliceAll2()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x[:];
+
+    return compare (x, y);
+}
+
+bool sliceAll3()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x[0:];
+
+    return compare (x, y);
+}
+
+
+bool sliceAll4()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x[:7];
+
+    return compare (x, y);
+}
+
+bool sliceAll5()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x[0:7];
+
+    return compare (x, y);
+}
+
+let ints = int[7] (1, 2, 3, 4, 5, 6, 7);
+
+bool slice0()
+{
+    int[3] y = ints[1:4];
+    return y[0] == 2 && y[1] == 3 && y[2] == 4;
+}
+
+bool slice1()
+{
+    int[5] y;
+    y[1:4] = ints[1:4];
+    return y[1] == 2 && y[2] == 3 && y[3] == 4;
+}
+
+bool slice2()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    int[] y = x[1:4];
+    return y[0] == 2 && y[1] == 3 && y[2] == 4;
+}
+
+bool slice3()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = x[1:4];
+    return y[0] == 2 && y[1] == 3 && y[2] == 4;
+}
+
+bool slice4()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    int[3] y = x[4:];
+    return y[0] == 5 && y[1] == 6 && y[2] == 7;
+}
+
+bool slice5()
+{
+    var x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    x[3:6] = int[3] (10, 11, 12);
+    return x[3] == 10 && x[4] == 11 && x[5] == 12;
+}
+
+int[3] createSlice1()   { return int[3] (3, 4, 5); }
+
+bool slice6()
+{
+    let x = createSlice1();
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+int[3] createSlice2()   { return ints[2:5]; }
+
+bool slice7()
+{
+    let x = createSlice2();
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+int[3] createSlice3 (int[5] x)   { return x[2:5]; }
+
+bool slice8()
+{
+    let x = createSlice3 (int[] (1, 2, 3, 4, 5));
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+int[3] createSlice4 (int[7] x)   { return x[2:5]; }
+
+bool slice9()
+{
+    let x = createSlice4 (ints);
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+bool slice10()
+{
+    let x = ints[2:-2];
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+bool slice11()
+{
+    let x = ints[-5:-2];
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+bool slice12()
+{
+    var x = ints;
+    x[:] = 9;
+    return x[0] == 9 && x[1] == 9 && x[-1] == 9 && x[-2] == 9;
+}
+
+bool slice13()
+{
+    var x = ints;
+    x = x.type();
+    return x[0] == 0 && x[1] == 0 && x[-1] == 0 && x[-2] == 0;
+}
+
+bool arrayCast1()
+{
+    let x = int[] (1, 2, 3, 4, 5, 6, 7);
+    let y = float[7] (x);
+    return y[0] == 1.0f && y[1] == 2.0f && y[3] == 4.0f;
+}
+
+bool vectorOfSize1()
+{
+    float<1> s;
+    s[0] = 0.1f;
+    return s[0] > 0.0f;
+}
+
+void swapData (const int[200]& inputData, int[200]& outputData)
+{
+    outputData[0:100]   = inputData[100:200];
+    outputData[100:200] = inputData[0:100];
+}
+
+bool spliceSections()
+{
+    int[200] myInput, myOutput;
+    myInput[10] = 5;
+    swapData (myInput, myOutput);
+    return myOutput[110] == 5;
+}
+
+bool testVectorSlice()
+{
+    let x = int<7> (1, 2, 3, 4, 5, 6, 7);
+    let slice1 = x[1:4];
+    return slice1[0] == 2;
+}
+
+bool testArraySlice()
+{
+    var x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let slice1 = x[1:4];
+    return slice1[0] == 2;
+}
+
+bool testVectorVarSlice()
+{
+    var x = int<7> (1, 2, 3, 4, 5, 6, 7);
+    x += 0;
+    let slice1 = x[1:4];
+    return slice1[0] == 2;
+}
+
+bool testUnusedArrayAssignment()
+{
+    int[10] x;
+    x[0:2] = 1;
+    return true;
+}
+
+## error 5:5: error: Expected an array or vector type
+
+bool arraySize1()
+{
+    int a;
+    a[0] = 123;
+    return a[0] == 123;
+}
+
+## error 5:20: error: Invalid array slice range
+
+bool slice10()
+{
+    let ints = int[] (1, 2, 3, 4, 5, 6, 7);
+    let x = ints[2:0];
+    return x[0] == 3 && x[1] == 4 && x[2] == 5;
+}
+
+## error 5:21: error: Invalid array slice range
+
+bool slice10()
+{
+    let ints = int[] (1, 2, 3, 4, 5, 6, 7);
+    let x = ints[-2:2];
+    return false;
+}
+
+## error 5:20: error: Invalid array slice range
+
+bool slice10()
+{
+    let ints = int[] (1, 2, 3, 4, 5, 6, 7);
+    let x = ints[2:-5];
+    return true;
+}
+
+## error 6:23: error: Cannot convert type 'int32[7]' to 'float32[6]'
+
+bool arrayCast3()
+{
+    var x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    x[5]++;
+    let y = float[6] (x);
+
+    return y[0] == 1.0f && y[1] == 2.0f && y[3] == 4.0f;
+}
+
+## error 5:23: error: Cannot convert type 'int32[7]' to 'float32[6]'
+
+bool arrayCast()
+{
+    let x = int[7] (1, 2, 3, 4, 5, 6, 7);
+    let y = float[6] (x);
+
+    return y[0] == 1.0f && y[1] == 2.0f && y[3] == 4.0f;
+}
+
+## error 5:31: error: Cannot convert type 'int32[7]' to 'float32[6]'
+
+bool arrayCast()
+{
+    let x = int[] (1, 2, 3, 4, 5, 6, 7);
+    let y = float[6] (int[7] (x));
+
+    return y[0] == 1.0f && y[1] == 2.0f && y[3] == 4.0f;
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    float[2] values = (0.1f, 0.2f);
+
+    void run()
+    {
+        results << (values[0] > 0 ? 1 : 0);
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int out;
+
+    void run()
+    {
+        var f = int<8> (1, 2, 3, 4, 5, 6, 7, 8);
+
+        f += 0;
+
+        let f1 = f[0:4];
+        let f2 = f[4:8];
+
+        let f3 = f1 + f2;
+
+        // Indicates a failure
+        if (f3[0] != 6)
+            out << 0;
+
+        advance();
+
+        loop
+        {
+            out << -1;
+            advance();
+        }
+    }
+}
+
+## error 13:21: error: The '+' operator can be applied to vector types, but not arrays
+
+processor test
+{
+    output stream float out;
+
+    void run()
+    {
+        float[8] f;
+
+        let f1 = f[0:4];
+        let f2 = f[4:8];
+
+        let f3 = f1 + f2;
+
+        out << f3[0];
+
+        advance();
+    }
+}
+
+## error 7:21: error: Language feature not yet implemented: Dynamic slice indexes!
+
+bool test()
+{
+    int[] x = (1, 2, 3, 4, 5);
+
+    for (int i = 0; i < 10; ++i)
+        let y = x[2:i];
+}
+
+## error 7:19: error: Language feature not yet implemented: Dynamic slice indexes!
+
+bool test()
+{
+    int[] x = (1, 2, 3, 4, 5);
+
+    for (int i = 0; i < 10; ++i)
+        let y = x[i:3];
+}
+
+## error 2:15: error: Expected a value or endpoint
+
+void test() { int[2:1] x = 123; }
+
+## error 2:1: error: Expected a value or endpoint
+
+int[2:1] x = 123;
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    int[10] source;
+    int[20] target;
+
+    bool test()
+    {
+        source[5] = 1;
+        target[0:10] = source;
+        return target[5] == 1;
+    }
+
+    void run()
+    {
+        results << (test() ? 1 : 0);
+        advance();
+
+        loop
+        {
+            results << -1;
+            advance();
+        }
+    }
+}

@@ -1,0 +1,377 @@
+## error 7:27: error: Event parameters cannot be non-const references
+
+processor EventArgCantBeModified
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn (float& f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 6:11: error: The event 'eventIn' does not match an event input
+
+processor EventHandlerForMissingInputEvent
+{
+    output stream float audioOut;
+
+    event eventIn (float f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 7:11: error: Event 'eventIn' does not support type 'int32'
+
+processor WrongEventArguments
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn (const int& i)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 7:11: error: Event function arguments invalid
+
+processor WrongNumOfEventArguments
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn (int i, float f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 7:11: error: Event 'eventIn' does not support type 'float64'
+
+processor WrongNumOfEventArguments
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn (float64 f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 7:11: error: Event Handlers for event arrays need a first argument index integer type
+
+processor InputEventArrayWrongIndexType
+{
+    input event float eventIn[5];
+    output stream float audioOut;
+
+    event eventIn (float i, float f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 7:11: error: Event 'eventIn' does not support type 'int32'
+
+processor InputEventArrayUnsupportedEventType
+{
+    input event float eventIn[5];
+    output stream float audioOut;
+
+    event eventIn (int i, int f)
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 8:11: error: The event 'eventsIn2' does not match an event input
+
+processor test
+{
+    input event float eventsIn;
+    output stream float audioOut;
+
+    // name doesn't exist
+    event eventsIn2(float f)    { currentValue = f; }
+    float currentValue = 0.0f;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << currentValue;
+            advance();
+        }
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+    connection P2.out -> P.in;
+    connection P2.out -> out;
+}
+
+processor P2
+{
+    output event int out;
+    void run() { out << 1; loop { out << -1; advance(); } }
+}
+
+processor P
+{
+    input event int in;
+    output event int out;
+    event in (int m) {}
+}
+
+
+## processor
+
+processor EventSource
+{
+    output event int eventsOut;
+
+    void run()
+    {
+        eventsOut << 1;
+        advance();
+
+        loop
+        {
+            eventsOut << -1;
+            advance();
+        }
+    }
+}
+
+processor EventForwarder
+{
+    input event int eventsIn;
+    output event int eventsOut;
+
+
+    event eventsIn (int i)
+    {
+        eventsOut << i;
+    }
+}
+
+graph test
+{
+    output event int eventsOut;
+
+    let
+    {
+        eventSource = EventSource;
+        eventForwarder = EventForwarder;
+    }
+
+    connection
+    {
+        eventSource.eventsOut -> eventForwarder.eventsIn;
+        eventForwarder.eventsOut -> eventsOut;
+    }
+}
+
+
+## processor
+
+processor EventSource
+{
+    output event int eventsSourceOut[2];
+
+    void run()
+    {
+        eventsSourceOut << 1;
+        advance();
+
+        loop
+        {
+            eventsSourceOut << -1;
+            advance();
+        }
+    }
+}
+
+processor EventForwarder
+{
+    input event int eventsIn;
+    output event int eventsForwarderOut;
+
+
+    event eventsIn (int i)
+    {
+        eventsForwarderOut << i;
+    }
+}
+
+graph test
+{
+    output event int eventsOut;
+
+    let
+    {
+        eventSource = EventSource;
+        eventForwarder = EventForwarder;
+    }
+
+    connection
+    {
+        eventSource.eventsSourceOut -> eventForwarder.eventsIn;
+        eventForwarder.eventsForwarderOut -> eventsOut;
+    }
+}
+
+
+## processor
+
+processor EventSource
+{
+    output event int eventsOut[2];
+
+    void run()
+    {
+        eventsOut << 1;
+        advance();
+
+        loop
+        {
+            eventsOut << -1;
+            advance();
+        }
+    }
+}
+
+processor EventForwarder
+{
+    input event int eventsIn[2];
+    output event int eventsOut;
+
+    event eventsIn (int n, int i)
+    {
+        eventsOut << i;
+    }
+}
+
+graph test
+{
+    output event int eventsOut;
+
+    let
+    {
+        eventSource = EventSource;
+        eventForwarder = EventForwarder;
+    }
+
+    connection
+    {
+        eventSource.eventsOut -> eventForwarder.eventsIn;
+        eventForwarder.eventsOut -> eventsOut;
+    }
+}
+
+## processor
+
+processor EventSource
+{
+    output event int eventsOut[1];
+
+    void run()
+    {
+        eventsOut[0] << 1;
+        advance();
+
+        loop
+        {
+            eventsOut[0] << -1;
+            advance();
+        }
+    }
+}
+
+processor EventForwarder
+{
+    input event int eventsIn[1];
+    output event int eventsOut;
+
+    event eventsIn (int n, int i)
+    {
+        eventsOut << i;
+    }
+}
+
+graph test
+{
+    output event int eventsOut;
+
+    let
+    {
+        eventSource = EventSource;
+        eventForwarder = EventForwarder;
+    }
+
+    connection
+    {
+        eventSource.eventsOut -> eventForwarder.eventsIn;
+        eventForwarder.eventsOut -> eventsOut;
+    }
+}
+
+## error 6:11: error: The _eventIn_i32() function cannot be called from user code
+processor test
+{
+    input event int eventIn;
+    output event int eventOut;
+
+    event eventIn (int i)
+    {
+        eventOut << i;
+    }
+
+    void run()
+    {
+        eventIn (1);
+        advance();
+
+        loop
+        {
+            eventOut << -1;
+            advance();
+        }
+    }
+}

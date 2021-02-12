@@ -1,0 +1,136 @@
+## compile
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input   audioIn             stream  float32<1>;
+  output  audioOut            stream  float32<1>;
+
+  function run() -> void
+  {
+    @block_0:
+      branch @loop_0;
+    @loop_0:
+      branch @body_0;
+    @body_0:
+      let $0 = read audioIn;
+      write audioOut multiply ($0, float32<1> { 0.5f });
+      advance;
+      branch @cont_0;
+    @cont_0:
+      branch @loop_0;
+    @break_0:
+      return;
+  }
+}
+
+## error 8:16: error: Cannot find type 'fg'
+#SOUL 1
+
+namespace tests
+{
+    function test1() -> int32
+    {
+    @block_0:
+        return fg;
+    }
+
+    function test2() -> bool
+    {
+    @block_0:
+        $0 = greaterThan (2, 1);
+        return $0;
+    }
+}
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    function test1() -> int32
+    {
+    @block_0:
+        return 42;
+    }
+
+    function test2() -> bool
+    {
+    @block_0:
+        $0 = greaterThan (2, 1);
+        return $0;
+    }
+
+    function test3() -> bool
+    {
+    @block_0:
+        $0 = greaterThan (2, 1);
+        return $0;
+    }
+}
+
+## console hello
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+    output _console event string;
+
+    function run() -> void
+    {
+        @block_0:
+            write _console "hello";
+            branch @loop_0;
+        @loop_0:
+            write out -1;
+            advance;
+            branch @loop_0;
+    }
+}
+
+## processor
+#SOUL 1
+
+processor test
+{
+    output out event int32;
+
+    var int32 $i = 1;
+
+    function run() -> void
+    {
+        @block_0:
+            write out $i;
+            branch @loop_0;
+        @loop_0:
+            $i = 0;
+            write out -1;
+            advance;
+            branch @loop_0;
+    }
+}
+
+## disabled function
+#SOUL 1
+
+namespace tests
+{
+    function test() -> bool
+    {
+    @block_0:
+        branch @block_2;
+    @block_1:
+        $i = int32[4] { 1, 2, 3, 4 };
+        return equals ($i[2], 0);
+
+    @block_2:
+        // $i hasn't been declared at this point since @block_1 hasn't been visited
+        $j = $i;
+
+        branch_if equals ($i[2], 0) ? @block_1 : @block_3;
+
+    @block_3:
+        return equals ($i[2], 0);
+    }
+}

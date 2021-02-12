@@ -1,0 +1,589 @@
+## error 6:18: error: Cannot find symbol 'Unknown'
+
+processor MyProcessor
+{
+    output stream float audioOutput;
+
+    let global = Unknown;
+
+    void run()
+    {
+        global.doSomething();
+
+        loop
+        {
+            audioOutput << 0.0f;
+            advance();
+        }
+    }
+}
+
+## error 10:16: error: Unknown function: 'doSomething'
+
+processor MyProcessor
+{
+    output stream float audioOutput;
+
+    let global = 34;
+
+    void run()
+    {
+        global.doSomething();
+
+        loop
+        {
+            audioOutput << 0.0f;
+            advance();
+        }
+    }
+}
+
+## error 6:18: error: Unknown function: 'Unknown'
+
+processor MyProcessor
+{
+    output stream float audioOutput;
+
+    let global = Unknown (1.0f);
+
+    void run()
+    {
+        global.doSomething();
+
+        loop
+        {
+            audioOutput << 0.0f;
+            advance();
+        }
+    }
+}
+
+## error 8:5: error: Endpoint declarations must all appear at the start of the processor
+
+processor MyProcessor
+{
+    output stream float audioOutput;
+
+    let global = Unknown (1.0f);
+
+    output stream2 float audioOutput;
+
+    void run()
+    {
+        loop advance();
+    }
+}
+
+## error 2:11: error: A processor must declare at least one output
+
+processor test
+{
+    input stream float audioIn;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 8:9: error: Cannot find symbol 't::source'
+
+graph test
+{
+    output stream float audioOut;
+
+    connection
+    {
+        t::source -> audioOut;
+    }
+}
+
+## error 4:42: error: Property values must be compile-time constants
+
+processor test
+{
+    input stream float32 audioIn [[ min: f]];
+    output stream float32 audioOut;
+
+    float f;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 2:11: error: A processor must contain a run() function
+
+processor test
+{
+    input stream float32 audioIn;
+    output stream float32 audioOut;
+}
+
+## compile
+
+processor test
+{
+    input event float32 eventIn;
+    output event float32 eventOut;
+    event eventIn (float32 f) { eventOut << f; }
+}
+
+## processor
+
+processor Source
+{
+    output event int eventOut;
+    void run() { loop { eventOut << -1; advance(); } }
+}
+
+processor Through
+{
+    input event int eventIn;
+    output event int eventOut;
+
+    event eventIn (int i)    { eventOut << i; }
+}
+
+graph test
+{
+    output event int eventOut;
+
+    connection
+    {
+        Source.eventOut -> Through.eventIn;
+        Through.eventOut -> eventOut;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let x = Source;
+    connection x.out -> out;
+}
+
+processor Source
+{
+    output event int out;
+    void run() { out << 1; loop { advance(); out << -1; } }
+}
+
+## processor
+
+processor AA (int xx)
+{
+    output stream int out;
+    void run() { let g = y; out << (y.size == 3 ? 1 : 0); loop { advance(); out << -1; } }
+    float[xx] y;
+}
+
+graph test
+{
+    output stream int out;
+    let y = AA(1 + n);
+    const int n = 2;
+    connection y.out -> out;
+}
+
+## compile
+
+processor A (int xx)
+{
+    output stream int out;
+    void run() { loop advance(); }
+    float[xx] y;
+}
+
+graph B (int yy)
+{
+    output stream int out;
+    let y = A(1 + yy);
+}
+
+graph C
+{
+    output stream int out;
+    let { y = B(1 + 2); }
+}
+
+## error 4:13: error: This identifier cannot have a namespace qualifier
+
+graph test
+{
+    output x::foo.out;
+    let x = Source;
+}
+
+## error 5:10: error: This identifier cannot have a namespace qualifier
+
+graph test
+{
+    output stream int out;
+    let a::b = Source;
+}
+
+## processor
+
+processor test
+{
+    output event int out;
+
+    int n;
+
+    bool setTo1() { n = 1; return true; }
+    bool setTo2() { n = 2; return true; }
+
+    bool orderOfSideEffects()
+    {
+        if (setTo1() && setTo2())
+            return n == 2;
+
+        return false;
+    }
+
+    void run()
+    {
+        out << (orderOfSideEffects() ? 1 : 0); advance();
+        loop { out << -1; advance(); }
+    }
+}
+
+## processor
+
+graph test
+{
+    output x.out;
+    let x = Source;
+}
+
+processor Source
+{
+    output event int out;
+    void run() { out << 1; loop { out << -1; advance(); } }
+}
+
+## processor
+
+graph test
+{
+    output x.y.out1;
+    let x = InnerGraph;
+}
+
+graph InnerGraph
+{
+    output y.out1;
+    let y = Source;
+}
+
+processor Source
+{
+    output event int out1;
+    void run() { out1 << 1; loop { out1 << -1; advance(); } }
+}
+
+## processor
+
+graph test
+{
+    output x.outx out;
+    let x = InnerGraph1;
+}
+
+graph InnerGraph1
+{
+    output y.out1 outx;
+    let y = InnerGraph2;
+}
+
+graph InnerGraph2
+{
+    output y.out1;
+    let y = Source;
+}
+
+processor Source
+{
+    output event int out1;
+    output stream int out2;
+
+    void run() { out1 << 1; loop { out1 << -1; advance(); } }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+    let p1 = Passthrough, p2 = Passthrough;
+    connection Source -> p1 -> Passthrough2 -> p2 -> out;
+}
+
+processor Source
+{
+    output event int out1;
+    void run() { out1 << 1; loop { out1 << -1; advance(); } }
+}
+
+graph Passthrough
+{
+    input event int in;
+    output event int out;
+    connection in -> out;
+}
+
+graph Passthrough2
+{
+    input event int in;
+    output event int out;
+    connection in -> out;
+}
+
+## error 6:26: error: A processor can only be placed inside a chain if it has exactly one input and one output
+
+graph test
+{
+    output event int out;
+    let p1 = Passthrough, p2 = Passthrough;
+    connection Source -> p1 -> p2 -> out;
+}
+
+processor Source
+{
+    output event int out1;
+    void run() { out1 << 1; loop { out1 << -1; advance(); } }
+}
+
+graph Passthrough
+{
+    input event int in;
+    output event int out, out2;
+    connection in -> out;
+}
+
+## error 6:22: error: A processor can only be placed inside a chain if it has exactly one input and one output
+
+graph test
+{
+    input event int in;
+    output event int out;
+    connection in -> Passthrough -> out;
+}
+
+graph Passthrough
+{
+    input event int in;
+    output event int out, out2;
+    connection in -> out;
+}
+
+## error 6:34: error: A processor that is chained between two others cannot specify an endpoint name
+
+graph test
+{
+    input event int in;
+    output event int out;
+    connection in -> Passthrough.out2 -> out;
+}
+
+graph Passthrough
+{
+    input event int in;
+    output event int out, out2;
+    connection in -> out;
+}
+
+## error 7:30: error: Cannot create a chained sequence of connections when multiple endpoints are specified
+
+graph test
+{
+    input event int in;
+    output event int out;
+    let p1 = Passthrough, p2 = Passthrough;
+    connection Source -> p1, p2 -> out;
+}
+
+graph Passthrough
+{
+    input event int in;
+    output event int out, out2;
+    connection in -> out;
+}
+
+## processor
+
+processor B (int value)
+{
+    output event int out;
+    void run() { out << value; loop { advance(); out << -1; } }
+}
+
+graph A (processor P)
+{
+    output event int out;
+    let q = P;
+    connection q -> out;
+}
+
+graph test
+{
+    output event int out;
+    let p = A(B(1));
+    connection p -> out;
+}
+
+
+## error 12:45: error: Expected a type
+
+processor t
+{
+    output stream float32 out;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+namespace parameterised (using FloatType1 = t)
+{
+    namespace sub (using FloatType2 = float32)
+    {
+        bool isEqual (FloatType1 f1, FloatType2 f2)
+        {
+            return f1 == FloatType1 (f2);
+        }
+    }
+}
+
+namespace p = parameterised;
+
+## function
+
+processor t
+{
+    output stream float32 out;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+namespace parameterised (using FloatType1 = float64)
+{
+    namespace sub (using FloatType2 = float32)
+    {
+        bool isEqual (FloatType1 f1, FloatType2 f2)
+        {
+            return f1 == FloatType1 (f2);
+        }
+    }
+}
+
+namespace p = parameterised;
+namespace s = p::sub;
+
+bool test()
+{
+    return s::isEqual (1.0, 1.0);
+}
+
+## function
+
+namespace success
+{
+    bool test()
+    {
+        return true;
+    }
+}
+
+namespace fail
+{
+    bool test()
+    {
+        return false;
+    }
+}
+
+namespace parameterised (namespace n = fail)
+{
+}
+
+namespace shouldFailDefault = parameterised;
+namespace shouldSucceed = parameterised (success);
+namespace shouldFail = parameterised (fail);
+
+bool test()
+{
+    return shouldSucceed::n::test() &&
+           ! shouldFail::n::test() &&
+           ! shouldFailDefault::n::test();
+}
+
+## processor
+
+namespace Parameterised (using OutputType)
+{
+    processor B (OutputType value)
+    {
+        output event OutputType out;
+        void run() { out << value; loop { advance(); out << -1; } }
+    }
+}
+
+graph A (processor P)
+{
+    output event int out;
+    let q = P;
+    connection q -> out;
+}
+
+graph test
+{
+    output event int out;
+    let p = A (Parameterised (int)::B(1));
+    connection p -> out;
+}
+
+## processor
+
+namespace Parameterised (using OutputType = int32)
+{
+    processor B (OutputType value)
+    {
+        output event OutputType out;
+        void run() { out << value; loop { advance(); out << -1; } }
+    }
+}
+
+graph A (processor P)
+{
+    output event int out;
+    let q = P;
+    connection q -> out;
+}
+
+graph test
+{
+    output event int out;
+    let p = A (Parameterised::B(1));
+    connection p -> out;
+}
+
+## error 8:15: error: Expected a processor name
+
+graph Test
+{
+    input lfo.rateHzIn;
+
+    output stream float out;
+
+    let lfo = soul::oscillators::lfo;
+}

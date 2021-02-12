@@ -1,0 +1,185 @@
+## error 4:5: error: assertion failure
+
+bool test()
+{
+    static_assert (5 == 3, "assertion failure");
+    return true;
+}
+
+## error 4:5: error: static_assert failed
+
+bool test()
+{
+    static_assert (5 == 3);
+    return true;
+}
+
+## error 4:20: error: Cannot find symbol 'blah'
+
+bool test()
+{
+    static_assert (blah, "assertion failure");
+    return true;
+}
+
+## disabled error 8:44: error: Result of this expression is unused
+
+processor Test
+{
+    output stream float32 out;
+
+    void run()
+    {
+        static_assert (processor.frequency == 48000.0, "assertion failure");
+        advance();
+    }
+}
+
+## disabled error 15:29: error: Result of this expression is unused
+
+processor Test
+{
+    output stream float32 out;
+
+    struct MyStruct { int i; }
+
+    void run()
+    {
+        MyStruct m1;
+        static_assert (m1.i == 1, "assertion failure");
+        advance();
+    }
+}
+
+## error 8:9: error: X must be >4
+
+processor Test (int X)
+{
+    output stream float32 out;
+
+    void run()
+    {
+        static_assert (X > 4, "X must be >4");
+        advance();
+    }
+}
+
+graph Graph
+{
+    output stream float32 out;
+    let MyTest = Test (2);
+    connection MyTest.out -> out;
+}
+
+## error 8:9: error: X must be an array
+
+processor Test (using X)
+{
+    output stream float32 out;
+
+    void run()
+    {
+        static_assert (X.isArray, "X must be an array");
+        advance();
+    }
+}
+
+graph Graph
+{
+    output stream float32 out;
+    let MyTest = Test (float32);
+    connection MyTest.out -> out;
+}
+
+## error 3:1: error: test2
+
+static_assert (3 == 3, "test1");
+static_assert (5 == 3, "test2");
+
+bool test() { return true; }
+
+## error 7:5: error: test1
+
+namespace ns { let x = 100; }
+
+processor P (using X)
+{
+    output stream int out;
+    static_assert (X.isBool, "test1");
+    void run() { advance(); }
+}
+
+graph test
+{
+    output stream int out;
+    let p1 = P(bool);
+    let p2 = P(int);
+    connection p1, p2 -> out;
+
+    const int n = 123;
+    static_assert (n + ns::x == 223, "sdfgsdf");
+}
+
+## error 7:5: error: static_assert failed
+
+namespace ns { let x = 100; }
+
+processor P (using X)
+{
+    output stream int out;
+    static_assert (X.isBool);
+    void run() { advance(); }
+}
+
+graph test
+{
+    output stream int out;
+    let p1 = P(bool);
+    let p2 = P(int);
+    connection p1, p2 -> out;
+
+    const int n = 123;
+    static_assert (n + ns::x == 223);
+}
+
+## compile
+
+namespace ns { let x = 100; }
+
+processor P (using X)
+{
+    output stream int out;
+    static_assert (X.isBool, "test1");
+    void run() { advance(); }
+}
+
+graph test
+{
+    output stream int out;
+    let p1 = P(bool);
+    let p2 = P(bool);
+    connection p1, p2 -> out;
+
+    const int n = 123;
+    static_assert (n + ns::x == 223, "sdfgsdf");
+}
+
+## error 17:20: error: Cannot find symbol 'blah'
+
+processor P (using X)
+{
+    output stream int out;
+    static_assert (X.isBool, "test1");
+    void run() { advance(); }
+}
+
+graph test
+{
+    output stream int out;
+    let p1 = P(bool);
+    let p2 = P(bool);
+    connection p1, p2 -> out;
+
+    const int n = 123;
+    static_assert (blah == 223, "sdfgsdf");
+}

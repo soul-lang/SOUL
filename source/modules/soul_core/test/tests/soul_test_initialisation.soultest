@@ -1,0 +1,106 @@
+## processor
+
+processor test
+{
+    output stream int eventOut;
+
+    int i = 1;
+
+    // init should be called before run()
+    void init() { i = -1; }
+
+    void run()
+    {
+        eventOut << i;
+
+        loop
+        {
+            advance();
+            eventOut << -1;
+        }
+    }
+}
+
+## error 15:9: error: The init() function cannot be called from user code
+
+processor test
+{
+    output stream int eventOut;
+
+    int i;
+
+    void init()
+    {
+        i = -1;
+    }
+
+    void run()
+    {
+        init();
+
+        loop
+        {
+            eventOut << -1;
+            advance();
+        }
+    }
+}
+
+## error 8:5: error: The init() function must not have any parameters
+
+processor test
+{
+    output stream int eventOut;
+
+    int i;
+
+    void init(int n)
+    {
+        i = -1;
+    }
+
+    void run()
+    {
+        loop
+        {
+            eventOut << -1;
+            advance();
+        }
+    }
+}
+
+## error 10:9: error: Streams are not available during init()
+
+processor test
+{
+    output stream int eventOut;
+
+    int i;
+
+    void init()
+    {
+        eventOut << -1;
+    }
+
+    void run()
+    {
+        loop
+        {
+            eventOut << -1;
+            advance();
+        }
+    }
+}
+
+## processor
+
+processor test
+{
+    output stream int out;
+    var x1 = soul::random::RandomNumberState (processor.id);
+    var x2 = soul::random::RandomNumberState (processor.session);
+    var x3 = soul::random::RandomNumberState (int (processor.frequency));
+    var x4 = soul::random::RandomNumberState (int (1000 * processor.period));
+
+    void run() { out << int (x1.getNextInt32() != 0 || x2.getNextInt32() != 0 || x3.getNextInt32() != 0 || x4.getNextInt32() != 0); loop { advance(); out << -1; } }
+}

@@ -1,0 +1,758 @@
+## function
+
+static_assert (complex64.isComplex);
+static_assert (complex32.isComplex);
+static_assert (complex32.elementType.isFloat32);
+static_assert (complex64.elementType.isFloat64);
+
+bool test1()
+{
+    complex c1;
+    return c1 == 0.0f;
+}
+
+complex calc (complex c)
+{
+    return c + c + c;
+}
+
+bool test2()
+{
+    complex c1 = 1;
+    let c2 = calc (c1);
+    return c2.real == 3;
+}
+
+bool testInitialisers()
+{
+    let a = 1.0f + 2.0fi;
+    let b = complex32 (1, 2);
+
+    return a == b;
+}
+
+bool testVectorInitialisation()
+{
+    let a = complex32<3> ((1, 2), (3, 4), (5, 6));
+
+    let a0 = complex32 (1, 2);
+    let a1 = complex32 (3, 4);
+    let a2 = complex32 (5, 6);
+
+    return a[0] == a0 && a[1] == a1 && a[2] == a2;
+}
+
+bool testVector64Initialisation()
+{
+    let a = complex64<3> ((1, 2), (3, 4), (5, 6));
+
+    let a0 = complex64 (1, 2);
+    let a1 = complex64 (3, 4);
+    let a2 = complex64 (5, 6);
+
+    return a[0] == a0 && a[1] == a1 && a[2] == a2;
+}
+
+bool testArray32Initialisation()
+{
+    let a = complex32[3] ((1, 2), (3, 4), (5, 6));
+
+    let a0 = complex32 (1, 2);
+    let a1 = complex32 (3, 4);
+    let a2 = complex32 (5, 6);
+
+    return a[0] == a0 && a[1] == a1 && a[2] == a2;
+}
+
+bool testArray64Initialisation()
+{
+    let a = complex64[3] ((1, 2), (3, 4), (5, 6));
+
+    let a0 = complex64 (1, 2);
+    let a1 = complex64 (3, 4);
+    let a2 = complex64 (5, 6);
+
+    return a[0] == a0 && a[1] == a1 && a[2] == a2;
+}
+
+bool test32()
+{
+    complex32 c1 = 2.0f;
+    c1 = c1 * 5;
+    return c1 == 10.0f;
+}
+
+bool test64()
+{
+    complex64 c1 = 2;
+    c1 = c1 * 5;
+    return c1 == 10.0f;
+}
+
+bool complexFromInt()
+{
+    let x = complex32 (1);
+    return x.real == 1 && x.imag == 0;
+}
+
+## error 4:27: error: Cannot implicitly convert 1.23456789 ('float64') to 'float32'
+
+bool wrongTypes()
+{
+    let x = complex32 (1, 1.23456789);
+
+    return a == b;
+}
+
+## error 4:13: error: Too many initialisers for complex number
+
+bool wrongNumberOfInitialisers()
+{
+    let x = complex32 (1, 2, 3);
+
+    return a == b;
+}
+
+## error 6:9: error: Cannot implicitly convert 'complex32' to 'int32'
+
+bool test()
+{
+    complex c1;
+    int n;
+    n = 6 + c1;
+    return true;
+}
+
+## error 5:17: error: Illegal types for binary operator '==' ('complex32' and 'float64')
+
+bool test()
+{
+    complex c1;
+    let b = (c1 == 0.0);
+    return true;
+}
+
+## error 5:15: error: Illegal types for binary operator '==' ('complex32' and 'float64')
+
+bool test()
+{
+    complex c1;
+    return c1 == 0.0;
+}
+
+## function
+
+bool test1()
+{
+    complex32<4> c;
+    return true;
+}
+
+bool test2()
+{
+    complex32 c1, c2;
+
+    c1.real = 5;
+    c1.imag = 6;
+
+    c2.real = 2;
+    c2.imag = 7;
+
+    c1 = c1 + c2;
+
+    return c1.real == 7;
+}
+
+bool and<T> (T t)
+{
+    for (wrap<T.size> i)
+        if (! t[i])
+            return false;
+
+    return true;
+}
+
+bool test3()
+{
+    complex32<2> c1;
+    complex32<2> c2;
+
+    c1.real = 5;
+    c1.imag = 6;
+
+    c2.real = 2;
+    c2.imag = 7;
+
+    c1 = c1 + c2;
+
+    return and (c1.real == float<2> (7, 7));
+}
+
+bool test4()
+{
+    complex32<2> c1, c2;
+
+    c1[0].real = 5;
+    c1[0].imag = 6;
+
+    c2[0].real = 2;
+    c2[0].imag = 7;
+
+    c1 = c1 + c2;
+
+   return c1[0].real == 7;
+}
+
+bool test5()
+{
+    complex64<3> c1, c2;
+    c1 = c1 + c2;
+    return true;
+}
+
+bool test6()
+{
+    complex c1;
+    float f = c1.real;
+    float g = c1.imag;
+    return f == 0.0f;
+}
+
+## error 6:13: error: Illegal types for binary operator '+' ('complex32<3>' and 'complex32<2>')
+
+bool test()
+{
+    complex32<3> c1;
+    complex32<2> c2;
+    c1 = c1 + c2;
+    return true;
+}
+
+## error 6:15: error: Illegal types for binary operator '<' ('complex32<2>' and 'complex32<2>')
+
+bool test()
+{
+    complex32<2> c1;
+    complex32<2> c2;
+    return c1 < c2;
+}
+
+## error 5:18: error: complex32 has no member called 'dodgy'
+
+bool test()
+{
+    complex c1;
+    float f = c1.dodgy;
+    return f == 0.0f;
+}
+
+## error 5:15: error: Cannot implicitly convert 'float32' to 'int32'
+
+bool test()
+{
+    complex c1;
+    int i = 4 + c1.real;
+    return true;
+}
+
+## function
+
+bool test1()
+{
+    complex64<3> c1;
+    let i = 4 + c1[2].real;
+    return true;
+}
+
+bool test2()
+{
+    complex c1;
+    complex<2> c2;
+
+    c1.real = 1;
+    c2.real = 2;
+
+    let a = c1 + c2;
+
+    return a[0].real == 3 && a[1].real == 3;
+}
+
+bool test3()
+{
+    complex c1;
+    let a = c1 + 5.0f;
+    return true;
+}
+
+bool testBinaryOperators()
+{
+    complex<2> c1;
+    complex<2> c2;
+
+    let c3 = c1 + c2;
+    let c4 = c1 - c2;
+    let c5 = c1 * c2;
+    let c6 = c1 / c2;
+
+    return true;
+}
+
+bool negate()
+{
+    complex64 c1;
+
+    c1.real = 1;
+    c1.imag = 2;
+
+    let c2 = -c1;
+
+    return c2.real == -1 && c2.imag == -2;
+}
+
+bool testEquals()
+{
+    complex<3> s1, s2;
+
+    s1[2].real = 1;
+    s1[2].imag = 2;
+    s2[2].real = 1;
+    s2[2].imag = 2;
+
+    return (s1[0].real == s2[0].real);
+}
+
+bool testNotEquals()
+{
+    complex s1, s2;
+
+    s1.real = 1;
+    s1.imag = 2;
+    s2.real = 1;
+    s2.imag = 3;
+
+    return s1 != s2;
+}
+
+bool compare (complex32 c, float32 real, float32 imag)
+{
+    return (c.real == real && c.imag == imag);
+}
+
+bool testPrimitive()
+{
+    complex32 c;
+
+    c.real = 1;
+    c.imag = 2;
+
+    return compare (c, 1, 2);
+}
+
+bool testVector1()
+{
+    complex32<2> c;
+
+    c[0].real = 1;
+    c[0].imag = 2;
+    c[1].real = 3;
+    c[1].imag = 4;
+
+    return compare (c[0], 1, 2) && compare (c[1], 3, 4);
+}
+
+bool testVector2()
+{
+    complex32<2> c;
+
+    c.real = 1;
+    c.imag = 2;
+
+    return compare (c[0], 1, 2) && compare (c[1], 1, 2);
+}
+
+bool testVectorAssignment()
+{
+    complex32<10> a;
+
+    a[1].real = 1;
+    a[1].imag = 2;
+
+    a[0] = a[1];
+
+    return a[0].real == 1 && a[0].imag == 2;
+}
+
+bool testArrayAssignment()
+{
+    complex32[10] a;
+
+    a[1].real = 1;
+    a[1].imag = 2;
+
+    a[0] = a[1];
+
+    return a[0].real == 1 && a[0].imag == 2;
+}
+
+bool testAccessingComponents()
+{
+    complex32 a;
+    complex32<3> b;
+    complex32[4] c;
+
+    a.real = 1;
+    b.real = 2;
+    b[1].real = 3;
+    c[1].real = 4;
+
+    let v = a.real;
+    let w = b.real;
+    let x = b[1].real;
+    let y = c[1].real;
+
+    return v == 1.0f &&
+           w[0] == 2.0f && w[1] == 3.0f && w[2] == 2.0f &&
+           x == 3.0f &&
+           y == 4.0f;
+}
+
+bool testAssignment()
+{
+    complex32 a, b;
+    complex32[2] c;
+    complex32<3> d, e;
+
+    a = b;
+    a = c[0];
+    c[0] = a;
+
+    d = e;
+    d[0] = e[0];
+
+    return true;
+}
+
+bool test4()
+{
+    let c = complex32<2> (1 + 2.0fi, 3 + 4.0fi);
+
+    return c[0].real == 1 && c[0].imag == 2 &&
+           c[1].real == 3 && c[1].imag == 4;
+}
+
+bool test5()
+{
+    complex a;
+    complex64 b;
+    let c = a * b;
+    return true;
+}
+
+bool test6()
+{
+    complex32 a;
+    complex64 b;
+    b = a;
+    return true;
+}
+
+bool test7()
+{
+    complex64 a;
+    complex32 b;
+    b = complex32 (a);
+    return true;
+}
+
+bool test8()
+{
+    complex a;
+    complex<4> b;
+    let c = a * b;
+    return true;
+}
+
+bool testComplexConstants()
+{
+    let e = 1 + 2.0fi;
+    complex32 c;
+
+    c = 1 + 1.0fi;
+    c += 1.0fi;
+
+    complex32 d;
+
+    d.real = 1;
+    d.imag = 2;
+
+    return c == d && d == e;
+}
+
+struct MyStruct
+{
+    float<1> f1;
+    float<1> f2;
+}
+
+bool compare (MyStruct s1, MyStruct s2)
+{
+    return s1.f1 == s2.f1 && s2.f2 == s2.f2;
+}
+
+bool testStructs()
+{
+    let a = MyStruct (1, 2);
+    let b = MyStruct (1, 2);
+
+    return compare (a, b);
+}
+
+bool test9()
+{
+    complex<2> c2;
+    let a = c2 + c2;
+    return a[0].real == 0;
+}
+
+bool test10()
+{
+    complex<2> c = 1 + 2.0fi;
+    let d = c / c;
+    let e = d.real;
+    return e[0] == 1;
+}
+
+bool test11()
+{
+    complex<2> c = 1 + 2.0fi;
+    let d = -c;
+    let e = d.real;
+    return e[0] == -1;
+}
+
+void set (complex& c)
+{
+    c = 1.0f;
+}
+
+bool test12()
+{
+    complex c;
+    complex[10] d;
+
+    set (c);
+    set (d[4]);
+
+    return c.real == 1.0f && d[4].real == 1.0f;
+}
+
+## error 5:15: error: Illegal type for unary operator
+
+bool test()
+{
+    complex c1;
+    let c2 = !c1;
+    return true;
+}
+
+## error 7:13: error: The '+' operator can be applied to vector types, but not arrays
+
+bool test()
+{
+    complex[5] s1;
+    complex[5] s2;
+
+    s1 = s1 + s2;
+
+    return true;
+}
+
+## error 5:15: error: The '*' operator can be applied to vector types, but not arrays
+
+bool testVector()
+{
+    complex32[2] c;
+    let d = c * c;
+    return true;
+}
+
+## error 7:12: error: Cannot pass a const value as a non-const reference
+
+void set (complex& c) { c = 1.0f; }
+
+bool test()
+{
+    complex<10> e;
+    set (e[4]);
+    return true;
+}
+
+## error 5:13: error: Unknown function: 'conj' (did you mean 'cos'?)
+
+bool test()
+{
+    complex c;
+    let a = conj (c);
+    return a.real == 0.0f;
+}
+
+## function
+
+complex doThing (complex& c)
+{
+    complex result;
+    result = c;
+    return result;
+}
+
+bool test1()
+{
+    complex e = 2.0;
+    let y = doThing (e);
+    return true;
+}
+
+struct PoleZeroPair
+{
+    complex64[2] poles;
+    complex64[2] zeros;
+}
+
+void makeConjugatePair (PoleZeroPair& pair, complex64 pole, complex64 zero)
+{
+    pair.poles[0] = pole;
+}
+
+bool test2()
+{
+    PoleZeroPair p;
+    complex64 z;
+    makeConjugatePair (p, z, z);
+    return true;
+}
+
+complex get() { return 1; }
+
+bool test3()
+{
+    let f = get();
+    return f.real == 1.0f;
+}
+
+struct MyStruct
+{
+    complex64[2] f;
+}
+
+bool test4()
+{
+    MyStruct m;
+    m.f = 0;
+    return true;
+}
+
+complex64 cexp (const complex64& c) { return c; }
+
+bool test5()
+{
+    const complex64 x = 0.5;
+    let oscCoef = cexp (x);
+
+    return true;
+}
+
+bool test32()
+{
+    float f = 1;
+    f += 1;
+
+    complex32 c1 = (f, 2.0f * f);
+    let c2 = complex32 (f, 2.0f * f);
+
+    return c1 == c2 && c1.real == 2 && c1.imag == 4;
+}
+
+complex64 transform (int mode, float64 normalizedFreq, complex64 c)
+{
+    complex64 r = (1.0 + c);
+    complex64 r2 = (1.0 - c);
+    complex64 r3 = r + r2;
+    return 0;
+}
+
+bool test()
+{
+    return true;
+}
+
+## function
+
+complex64 transform (int mode, float64 normalizedFreq, complex64 c)
+{
+    if (c == (inf + 0.0i))
+        return (-1.0 + 0.0i);
+
+    let pwf = tan (pi * normalizedFreq); // prewarp
+    let v = c * pwf;
+    var r = ((1.0 + v) / (1.0 - v));
+    return r;
+}
+
+bool test()
+{
+    return true;
+}
+
+## error 4:12: error: Cannot convert comma-separated list to type 'complex64'
+
+complex64 cconj (complex64 c)
+{
+    return (c.real, -c.imag, 2);
+}
+
+bool test()
+{
+    return true;
+}
+
+## error 4:12: error: Cannot convert comma-separated list to type 'complex64'
+
+complex64 cconj (complex64 c)
+{
+    return (c.real, -c.imag, 2);
+}
+
+processor Parameterised (using FloatType)
+{
+    output stream FloatType out;
+    void run() { advance(); }
+}
+
+bool test()
+{
+    return true;
+}
+
+## error 8:8: error: The name 'RepeatedStructDef' is already in use
+
+struct RepeatedStructDef
+{
+    complex64[2] poles;
+    complex64[2] zeros;
+}
+
+struct RepeatedStructDef
+{
+    complex64[2] poles;
+    complex64[2] zeros;
+}
+
+## error 5:13: error: sin() only works with floating point types
+
+bool test()
+{
+    complex c;
+    let d = sin (c);
+
+    return true;
+}

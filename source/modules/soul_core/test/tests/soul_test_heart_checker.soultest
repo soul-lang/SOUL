@@ -1,0 +1,76 @@
+## error 3:1: error: A processor must declare at least one output
+#SOUL 1
+
+processor Test
+{
+  input audioIn stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 3:1: error: A processor must declare at least one output
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn stream  float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 3:1: error: A processor must declare at least one output
+#SOUL 1
+
+graph Test
+{
+  input audioIn stream float32;
+}
+
+## error 6:9: error: The name 'audioIn' is already in use
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn event float32;
+  input audioIn stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}
+
+## error 3:1: error: A processor must declare at least one output
+#SOUL 1
+
+graph test [[ main: true ]]
+{
+}
+
+## error 6:10: error: The name 'audioIn' is already in use
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  input audioIn event float32;
+  output audioIn stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      advance;
+      return;
+  }
+}

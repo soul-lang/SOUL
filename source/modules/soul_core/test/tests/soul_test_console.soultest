@@ -1,0 +1,101 @@
+## console hello
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        console << "hello";
+
+        loop { out << -1; advance(); }
+    }
+}
+
+## console 321xxx1234xyz12345.0
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        console << 321 << "xxx" << 1234 << "xyz" << 12345.0;
+
+        loop { out << -1; advance(); }
+    }
+}
+
+## console int: 1float64: 1.0
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        console << "int: " << 1;
+        console << "float64: " << 1.0;
+
+        loop { out << -1; advance(); }
+    }
+}
+
+## console float64: 1.0int: 1
+
+processor test
+{
+    output stream int out;
+
+    void run()
+    {
+        console << "float64: " << 1.0;
+        console << "int: " << 1;
+
+        loop { out << -1; advance(); }
+    }
+}
+
+
+## console test
+
+processor X
+{
+    output stream int out;
+
+    void run()
+    {
+        console << "test";
+
+        loop { out << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output stream int out;
+
+    connection X.out -> out;
+}
+
+
+## console test
+
+processor X
+{
+    output stream int out;
+
+    void run()
+    {
+        console << "test";
+
+        loop { out << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output stream int out;
+
+    connection X -> out;
+}

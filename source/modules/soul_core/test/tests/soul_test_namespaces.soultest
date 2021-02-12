@@ -1,0 +1,886 @@
+## function
+
+namespace ns
+{
+    bool greaterThan<SampleType> (SampleType v1, SampleType v2)
+    {
+        return v1 > v2;
+    }
+
+}
+
+bool test()
+{
+    return ns::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns
+{
+    using SampleType = float;
+
+    bool greaterThan (SampleType v1, SampleType v2)
+    {
+        return v1 > v2;
+    }
+
+}
+
+bool test()
+{
+   return ns::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns
+{
+    using SampleType = float32;
+
+    bool greaterThan (SampleType v1, SampleType v2)
+    {
+        return v1 > v2;
+    }
+
+}
+
+namespace nsf = ns;
+
+bool test()
+{
+    return nsf::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns (using SampleType)
+{
+    bool greaterThan (SampleType v1, SampleType v2)
+    {
+        return v1 > v2;
+    }
+}
+
+namespace ns1 = ns (float32);
+namespace ns2 = ns (float32);
+
+bool test1()
+{
+    return ns1::greaterThan (2.0f, 1.0f);
+}
+
+bool test2()
+{
+    return ns2::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns (using SampleType)
+{
+    struct Average
+    {
+        SampleType sum;
+        int samples;
+    }
+
+    void add (Average& a, SampleType i)
+    {
+        a.sum += i;
+        a.samples += 1;
+    }
+
+    SampleType average (Average& a)
+    {
+        return a.sum / a.samples;
+    }
+}
+
+namespace n = ns (float32);
+
+bool test()
+{
+    n::Average a;
+
+    a.add (1.0f);
+    a.add (2.0f);
+
+    return (a.average() == 1.5f);
+}
+
+## error 2:15: error: Cannot find symbol 'DoesNotExist'
+
+namespace X = DoesNotExist;
+
+bool test()
+{
+    return true;
+}
+
+## error 12:15: error: Expected a namespace name
+
+processor TestProcessor
+{
+    output stream float32 out;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+namespace X = TestProcessor;  // TestProcessor is not a namespace
+
+bool test()
+{
+    return true;
+}
+
+## error 12:11: error: The name 'nsf' is already in use
+
+namespace ns (using SampleType)
+{
+    bool greaterThan (SampleType v1, SampleType v2)
+    {
+        return v1 > v2;
+    }
+
+}
+
+namespace nsf = ns (float32);
+namespace nsf = ns (float32);     // Duplicate named namespace alias
+
+bool test()
+{
+    return nsf::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns
+{
+    using SampleType = float32;
+
+    namespace T
+    {
+        bool greaterThan (SampleType v1, SampleType v2)
+        {
+            return v1 > v2;
+        }
+    }
+}
+
+bool test()
+{
+    return ns::T::greaterThan (2.0f, 1.0f);
+}
+
+## function
+
+namespace ns (int i)
+{
+    bool greaterThan (int n)
+    {
+        return n > i;
+    }
+}
+
+namespace ns10 = ns (10);
+namespace ns20 = ns (20);
+
+bool test()
+{
+    return ns10::greaterThan (3) == false &&
+           ns10::greaterThan (20) == true &&
+           ns20::greaterThan (20) == false &&
+           ns20::greaterThan (21) == true;
+}
+
+## error 2:25: error: Processor specialisations may only be used in graphs
+
+namespace ns (processor p)
+{
+}
+
+## error 6:21: error: Expected a type
+
+namespace ns (using t)
+{
+}
+
+namespace nsf = ns (1.0f);
+
+bool test()
+{
+    return true;
+}
+
+## error 6:21: error: Expected a value
+
+namespace ns (int v)
+{
+}
+
+namespace nsf = ns (float32);
+
+bool test()
+{
+    return true;
+}
+
+## error 6:11: error: Wrong number of arguments to instantiate namespace 'tests::ns'
+
+namespace ns (int v)
+{
+}
+
+namespace nsf = ns (2, float32);
+
+bool test()
+{
+    return true;
+}
+
+## compile
+
+namespace ns (float v)
+{
+    float diff (float i)
+    {
+        return i - v;
+    }
+}
+
+processor test
+{
+    input stream float32 in;
+    output stream float32 out;
+
+    namespace nsf = ns (23.0f);
+
+    void run()
+    {
+        out << nsf::diff (in);
+        advance();
+    }
+}
+
+## compile
+
+namespace ns (float v1)
+{
+    namespace ns2 (float v2)
+    {
+        float min (float f)
+        {
+            return min (min (f, v1), v2);
+        }
+    }
+}
+
+processor test
+{
+    input stream float32 in;
+    output stream float32 out;
+
+    namespace nsf = ns (0.1f);
+    namespace nsf2 = nsf::ns2 (0.5f);
+
+    void run()
+    {
+        out << nsf2::min (in);
+        advance();
+    }
+}
+
+##  function
+
+namespace ns1 (int i)
+{
+    bool greaterThan (int n)
+    {
+        return n > i;
+    }
+}
+
+namespace ns3 = ns1 (10);
+
+namespace ns2
+{
+    namespace n = ns3;
+
+    bool func (int i)
+    {
+       return ns3::greaterThan (i);
+    }
+}
+
+bool test()
+{
+    return ns2::func (11);
+}
+
+## function
+
+namespace ns1
+{
+    bool func()
+    {
+        return true;
+    }
+}
+
+namespace ns2 (namespace n)
+{
+    bool callFunc()
+    {
+        return n::func();
+    }
+}
+
+namespace ns3 = ns2 (ns1);
+
+bool test()
+{
+    return ns3::callFunc();
+}
+
+## error 1:29: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion
+namespace RecursiveNamespace (using T)
+{
+    struct MyStruct
+    {
+        int i;
+        T t;
+    }
+
+    namespace nested = RecursiveNamespace (MyStruct);
+
+    bool test()
+    {
+        return true;
+    }
+}
+
+namespace ns = RecursiveNamespace (int);
+
+bool test()
+{
+    return ns::test();
+}
+
+## error 1:29: error: Exceeded the maximum number of specialised namespace instances (100) - possible namespace recursion
+namespace RecursiveNamespace1 (using T)
+{
+    struct MyStruct
+    {
+        int i;
+        T t;
+    }
+
+    namespace nested = RecursiveNamespace2 (MyStruct);
+
+    bool test()
+    {
+        return true;
+    }
+}
+
+namespace RecursiveNamespace2 (using T)
+{
+    struct MyStruct
+    {
+        int i;
+        T t;
+    }
+
+    namespace nested = RecursiveNamespace1 (MyStruct);
+
+    bool test()
+    {
+        return true;
+    }
+}
+
+
+namespace ns = RecursiveNamespace1 (int);
+
+bool test()
+{
+    return ns::test();
+}
+
+
+## function
+
+namespace ns (using T)
+{
+    bool test()
+    {
+        return true;
+    }
+}
+
+struct MyStruct
+{
+    int i;
+}
+
+namespace ns2 = ns (MyStruct);
+
+bool test()
+{
+    return ns2::test();
+}
+
+
+## function
+
+namespace ns1 (using T)
+{
+    bool test(T t)
+    {
+        return t.i == 1;
+    }
+}
+
+namespace ns2
+{
+    struct MyStruct
+    {
+        int i;
+    }
+}
+
+namespace ns3
+{
+    struct MyStruct
+    {
+        int i;
+    }
+}
+
+namespace ns4 = ns1 (ns2::MyStruct);
+namespace ns5 = ns1 (ns3::MyStruct);
+
+bool test()
+{
+    ns2::MyStruct m2;
+    ns3::MyStruct m3;
+
+    m2.i = 1;
+    m3.i = 1;
+
+    return ns4::test (m2) && ns5::test (m3);
+}
+
+## error 12:12: error: Wrong number of arguments to instantiate namespace 'tests::ns1'
+
+namespace ns1 (using Type)
+{
+    bool test()
+    {
+        return true;
+    }
+}
+
+bool test()
+{
+    return ns1::test();
+}
+
+## function
+
+namespace ns1 (using Type = float32)
+{
+    bool test()
+    {
+        return true;
+    }
+}
+
+bool test()
+{
+    return ns1::test();
+}
+
+## processor
+
+namespace ns (using EventType)
+{
+    processor Test
+    {
+        output event EventType results;
+
+        void run()
+        {
+            loop { results << -1; advance(); }
+        }
+    }
+}
+
+graph test
+{
+    output event int results;
+
+    namespace nsInt32 = ns (int32);
+    let t = nsInt32::Test;
+
+    connection t.results -> results;
+}
+
+## error 9:27: error: Circular reference in namespace alias definition 'Biquad'
+namespace filters
+{
+    namespace Biquad
+    {
+    }
+
+    namespace RBJ
+    {
+       namespace Biquad = Biquad;
+    }
+}
+
+graph test
+{
+    output stream float32 out;
+}
+
+## error 9:27: error: Circular reference in namespace alias definition 'filters::RBJ::Biquad'
+namespace filters
+{
+    namespace Biquad
+    {
+    }
+
+    namespace RBJ
+    {
+       namespace Biquad = filters::RBJ::Biquad;
+    }
+}
+
+graph test
+{
+    output stream float32 out;
+}
+
+## compile
+namespace tester::filters
+{
+    namespace Biquad (using SampleType)
+    {
+        struct State
+        {
+            SampleType[2] x;
+            SampleType[2] y;
+        }
+    }
+
+    namespace RBJ (using SampleType)
+    {
+        processor Processor
+        {
+            output stream SampleType out;
+            namespace bq = Biquad (SampleType);
+            void run()
+            {
+                bq::State s;
+                //  error: Cannot find symbol 'Biquad::State'
+                loop
+                {
+                    advance();
+                }
+            }
+        }
+    }
+}
+
+graph testergraph
+{
+    output stream float32 out;
+    namespace RBJFilter = tester::filters::RBJ (float32);
+    let
+    {
+        noise = soul::noise::White;
+        filter = RBJFilter::Processor;
+    }
+    connection noise -> out;
+}
+
+## function
+
+namespace parameterised (using FloatType = float32)
+{
+    namespace nested
+    {
+        bool returnTrue()
+        {
+            return true;
+        }
+    }
+}
+
+namespace n1 = parameterised (float64);
+
+bool test1()
+{
+    return n1::nested::returnTrue();
+}
+
+
+namespace n2 = parameterised;
+
+bool test2()
+{
+    return n2::nested::returnTrue();
+}
+
+
+namespace n3 = parameterised (float64)::nested;
+
+bool test3()
+{
+    return n3::returnTrue();
+}
+
+namespace n4 = parameterised::nested;
+
+bool test4()
+{
+    return n4::returnTrue();
+}
+
+
+bool test5()
+{
+    return parameterised::nested::returnTrue();
+}
+
+
+bool test6()
+{
+    return parameterised (float32)::nested::returnTrue();
+}
+
+##  error 2:60: error: The name 'FloatType' is already in use
+
+namespace duplicateNames (using FloatType = float32, using FloatType = float32)
+{
+}
+
+##  error 4:11: error: The name 'FloatType' is already in use
+
+namespace duplicateNames (using FloatType = float32)
+{
+    using FloatType = float32;
+}
+
+##  error 10:11: error: The name 'duplcateNamespace' is already in use
+
+namespace duplcateNamespace
+{
+    bool returnTrue()
+    {
+        return true;
+    }
+}
+
+namespace duplcateNamespace (using FloatType = float32)
+{
+    bool returnTrue()
+    {
+        return true;
+    }
+}
+
+bool test()
+{
+    return duplcateNamespace::returnTrue();
+}
+
+
+## function
+
+namespace p (using FloatType)
+{
+    namespace nested
+    {
+        bool returnTrue()
+        {
+            return true;
+        }
+    }
+}
+
+namespace t = p (float32)::nested;
+
+bool test()
+{
+    return t::returnTrue();
+}
+
+## error 6:6: error: The name 'test' is already in use
+
+namespace test (using FloatType = float32)
+{
+}
+
+bool test()
+{
+    return true;
+}
+
+## error 6:11: error: Wrong number of arguments to instantiate namespace 'tests::T'
+
+namespace T (using FloatType1, using FloatType2)
+{
+}
+
+namespace t = T (float32);
+
+bool test()
+{
+    return true;
+}
+
+## error 12:15: error: Wrong number of arguments to instantiate namespace 'tests::X::Y'
+
+namespace X (using FloatType1)
+{
+    namespace Y (using FloatType2)
+    {
+        namespace Z
+        {
+        }
+    }
+}
+
+namespace t = X(float32)::Y::Z(float32);
+
+bool test()
+{
+    return true;
+}
+
+## error 12:11: error: Wrong number of arguments to instantiate namespace 'tests::X::Y::Z'
+
+namespace X (using FloatType1)
+{
+    namespace Y (using FloatType2)
+    {
+        namespace Z
+        {
+        }
+    }
+}
+
+namespace t = X(float32)::Y(float32)::Z(float32);
+
+bool test()
+{
+    return true;
+}
+
+## error 14:19: error: Wrong number of arguments to instantiate namespace 'tests::X::X'
+
+namespace X
+{
+    namespace X (using FloatType)
+    {
+        bool returnTrue()
+        {
+            return true;
+        }
+    }
+
+    namespace Y
+    {
+        namespace x = X;
+    }
+}
+
+bool test()
+{
+    return X::Y::x::returnTrue();
+}
+
+## function
+
+namespace Parameterised (bool b = true)
+{
+    bool returnValue()
+    {
+        return b;
+    }
+}
+
+bool test1()
+{
+    return Parameterised (true)::returnValue();
+}
+
+bool test2()
+{
+    return ! Parameterised (false)::returnValue();
+}
+
+bool test3()
+{
+    return Parameterised::returnValue();
+}
+
+
+## function
+
+namespace MyNamespaceInstantiation = S::MyNamespace (S::MyStruct (1));
+
+namespace S
+{
+    struct MyStruct
+    {
+        int i;
+    }
+
+    namespace  MyNamespace (MyStruct s)
+    {
+        int get()
+        {
+            return s.i;
+        }
+    }
+}
+
+bool test()
+{
+    return MyNamespaceInstantiation::get() == 1;
+}
+
+## function
+
+namespace calc (using DataType = int32)
+{
+    // Returns the sum of two values
+    DataType sum (DataType v1, DataType v2)
+    {
+        return v1 + v2;
+    }
+}
+
+bool testInt()
+{
+    return calc::sum (2, 3) == 5;
+}
+
+bool testFloat32()
+{
+    return calc (float32)::sum (2.0f, 3.0f) == 5.0f;
+}
+
+namespace float64Calc = calc (float64);
+
+bool testFloat64()
+{
+    return float64Calc::sum (2.0, 3.0) == 5.0;
+}

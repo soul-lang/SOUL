@@ -1,0 +1,364 @@
+## error 8:24: error: Cannot find '@block_2'
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        branch @block_2;
+    @block_1:
+        return $a;
+    }
+}
+
+## error 8:60: error: Cannot find '@block_3'
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        branch_if greaterThan ($a, 2) ? @block_1 : @block_3;
+    @block_1:
+        return $a;
+    @block_2:
+        return $a;
+    }
+}
+
+## error error: Function block @block_0 cannot be parameterised
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0 (int32 $x):
+        let $0 = add ($a, $a);
+        return $0;
+    }
+}
+
+## error error: Block @block_0 terminator has invalid block paramteters
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        let $0 = add ($a, $a);
+        branch @block_1;
+    @block_1 (int32 $p):
+        return $0;
+    }
+}
+
+## error error: Block @block_0 terminator has invalid block paramteters
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        let $0 = add ($a, $a);
+        branch @block_1 ($0, $0);
+    @block_1 (int32 $p):
+        return $0;
+    }
+}
+
+## error error: Block @block_0 terminator has invalid block paramteters
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        let $0 = add ($a, $a);
+        branch @block_1 ($0);
+    @block_1 (float32 $p):
+        return $0;
+    }
+}
+
+
+## error error: Language feature not yet implemented: BranchIf parameterised blocks!
+#SOUL 1
+
+namespace tests
+{
+    function test1 (int32 $a) -> int32
+    {
+    @block_0:
+        let $0 = add ($a, $a);
+        let $1 = greaterThan ($a, 5);
+        branch_if $1 ? @block_1 ($a) : @block_2 ($a);
+    @block_1 (int32 $p):
+        return $0;
+    @block_2 (int32 $p):
+        return $0;
+    }
+}
+
+## error error: Use of uninitialised variable '$0' in function variableDeclaredInDifferentBlock
+#SOUL 1
+
+namespace tests
+{
+    function variableDeclaredInDifferentBlock (bool $initialiseVariable) -> bool
+    {
+    @block_0:
+      branch_if $initialiseVariable ? @block_1 : @block_2;
+
+    @block_1:
+      let $0 = 5;
+      branch @block_2;
+
+    @block_2:
+      return equals ($0, 5);
+    }
+}
+
+## error error: Use of uninitialised variable '$0' in function variableDeclaredInDifferentBlock
+#SOUL 1
+
+namespace tests
+{
+    function variableDeclaredInDifferentBlock() -> bool
+    {
+    @block_0:
+      branch @block_2;
+
+    @block_1:
+      let $0 = 5;
+      branch @block_2;
+
+    @block_2:
+      return equals ($0, 5);
+    }
+}
+
+## disabled function
+#SOUL 1
+
+namespace tests
+{
+    function blockOrderSwitched() -> bool
+    {
+    @block_0:
+      branch @block_2;
+
+    @block_1:
+      return equals ($0, 5);
+
+    @block_2:
+      let $0 = 5;
+      branch @block_1;
+    }
+}
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    function multipleParameters() -> bool
+    {
+    @0:
+      branch @1 (1, 2, 3);
+
+    @1 (int32 $a, int32 $b, int32 $c):
+      return equals ($b, 2);
+    }
+}
+
+## error error: Block @block_0 terminator has invalid block paramteters
+#SOUL 1
+
+namespace tests
+{
+    function multipleParameters() -> bool
+    {
+    @block_0:
+      branch @block_1 (1, 2.0f, 3);
+
+    @block_1 (int32 $a, int32 $b, int32 $c):
+      return equals ($b, 2);
+    }
+}
+
+## function
+
+let i = 5;
+
+bool test()
+{
+    return (i == 5);
+}
+
+## disabled function
+#SOUL 1
+
+namespace tests
+{
+    let int32 $i = 5;
+
+    function test() -> bool
+    {
+    @block_0:
+      return equals ($i, 5);
+    }
+}
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    // There are no reserved words, so we can use them as function names
+    function int32() -> bool
+    {
+    @block_0:
+      return bool true;
+    }
+
+    function namespace() -> bool
+    {
+    @block_0:
+      let $0 = call int32();
+      return $0;
+    }
+
+    function function() -> bool
+    {
+    @block_0:
+      let $return = call namespace();
+      return $return;
+    }
+
+}
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+        branch @block_1 (bool true);
+
+    @block_1 (bool $x):
+        return $x;
+    }
+}
+
+
+## disabled function
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+        branch @block_1 (bool true);
+
+    @block_1 (bool $x):
+        $x = $x;
+        return $x;
+    }
+}
+
+## error 14:14: error: Cannot find symbol '$x'
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+        branch @block_1 (bool true);
+
+    @block_1 (bool $x):
+        branch @block_2;
+
+    @block_2:
+      return $x;
+    }
+}
+
+## function
+#SOUL 1
+
+namespace tests
+{
+    function factorial (int32 $n) -> int32
+    {
+    @block_0:
+      $0 = 1;
+      branch @loop;
+
+    @loop:
+      $0 = multiply ($0, $n);
+      $n = subtract ($n, 1);
+      branch_if equals ($n, 1) ? @exit : @loop;
+
+    @exit:
+      return $0;
+    }
+
+    function test() -> bool
+    {
+    @block_0:
+        let $0 = call factorial (5);
+        let $1 = equals ($0, 120);
+        return $1;
+    }
+}
+
+
+## function
+#SOUL 1
+
+namespace tests
+{
+  function test() -> bool
+  {
+    @block_0:
+      return bool true;
+  }
+
+  function test2() -> bool
+  {
+    @block_0:
+      let $0 = bool true;
+      let $1 = int32 5;
+      let $2 = float32 2.0f;
+      let $3 = $0;
+
+      return $3;
+  }
+}
+
+## disabled error
+#SOUL 1
+
+namespace tests
+{
+  function test() -> bool
+  {
+    @block_0:
+      let $i = 0;
+      // branch_if target blocks must be different
+      branch_if equals ($i, 0) ? @block_1 : @block_1;
+
+    @block_1:
+      return bool true;
+  }
+}

@@ -1,0 +1,281 @@
+## function
+
+bool vectorInit1()
+{
+    let f = float<2>(0.1f, 0.2f);
+
+    return (f[0] == 0.1f) && (f[1] == 0.2f);
+}
+
+bool vectorInit2()
+{
+    let f = float<2>(0.0f, 0.2f);
+
+    return (f[0] == 0.0f) && (f[1] == 0.2f);
+}
+
+bool vectorInit3()
+{
+    var v = 1;
+    v += 0;
+
+    let i = int<2>(1, v);
+
+    return (i[0] == 1) && (i[1] == 1);
+}
+
+bool vectorInit4()
+{
+    var v = 1;
+    v += 0;
+
+    let i = int<4>(0, v, 0, 5);
+
+    return (i[0] == 0) && (i[1] == 1) && (i[2] == 0) && (i[3] == 5);
+}
+
+bool vectorInit5()
+{
+    var v = 1;
+    v += 0;
+
+    var i = int<2>(0, v);
+
+    i = int<2>(0, v);
+
+    return (i[0] == 0) && (i[1] == 1);
+}
+
+bool vectorFloatConstantComparison()
+{
+    float<1> f1 = 3.0f;
+    float f2 = 3.0f;
+
+    return (f1 == f2);
+}
+
+bool vectorFloatComparison()
+{
+    float<1> f1 = 3.0f;
+    float f2 = 3.0f;
+
+    f2 += 0.0f;
+
+    return (f1 == f2);
+}
+
+bool vectorElementComparison()
+{
+    float<1> f1 = 3.0f;
+    float f2 = 3.0f;
+
+    return (f1[0] == f2);
+}
+
+float toScalar (float<1> f)
+{
+    return f;
+}
+
+bool vector1ToScalar()
+{
+    float<1> f1 = 3.0f;
+    float f2 = 3.0f;
+
+    return (toScalar (f1) == f2);
+}
+
+bool floatToDoubleComparisonElement()
+{
+    float32<1> f1 = 3.0f;
+    float64<1> d1 = 3.0;
+
+    return (f1[0] == d1[0]);
+}
+
+bool floatToDoubleComparison()
+{
+    float32<1> f1 = 3.0f;
+    float64<1> d1 = 3.0;
+
+    return (f1 == d1);
+}
+
+bool smallVectorComparison()
+{
+    float32<1> f1 = 3.0f;
+    float32<1> f2 = 3.0f;
+
+    return (f1 == f2);
+}
+
+bool smallVectorAssignment()
+{
+    float f1 = 3.0f;
+    float<1> f2 = f1;
+    float f3 = f2;
+
+    return (f1 == f3);
+}
+
+bool smallVectorLet()
+{
+    float<1> f1 = 3.0f;
+    let f2 = f1;
+    let f3 = f2[0];
+    let f4 = f3;
+
+    return (f4 == f1[0]);
+}
+
+float<1> scalarToVector(float f)
+{
+    return f;
+}
+
+bool smallVectorConstruction()
+{
+    let f1 = 3.0f;
+    let f2 = scalarToVector (f1);
+
+    return (f1 == f2[0]);
+}
+
+bool sumSmallVector()
+{
+    let v = int<4> (1, 2, 3, 4);
+
+    return v.sum() == 10;
+}
+
+bool sumLargeVector()
+{
+    int<32> v;
+
+    v[2] = 1;
+    v[5] = 2;
+    v[17] = 3;
+    v[30] = 4;
+
+    return v.sum() == 10;
+}
+
+bool productSmallVector()
+{
+    let v = int<4> (1, 2, 3, 4);
+
+    return v.product() == 24;
+}
+
+bool productLargeVector()
+{
+    int<32> v = 1;
+
+    v[2] = 1;
+    v[5] = 2;
+    v[17] = 3;
+    v[30] = 4;
+
+    return v.product() == 24;
+}
+
+int sum (int a, int b)
+{
+    return a + b;
+}
+
+bool checkSum1()
+{
+    return sum (2, 3) == 5;
+}
+
+bool checkSum2()
+{
+    int a = 2;
+
+    return a.sum (3) == 5;
+}
+
+bool vectorAssignment1()
+{
+    bool<3> b;
+
+    b[0] = true;
+    b[1] = false;
+    b[2] = true;
+
+    return b[1] == false;
+}
+
+bool vectorAssignment2()
+{
+    bool<3> b;
+
+    b[0] = true;
+    b[1] = true;
+    b[2] = true;
+
+    return b[1] == true;
+}
+
+int[2] foo1() { return (1, 2); }
+int<2>[2] foo2() { return ((1, 2), (3, 4)); }
+
+void foo3()
+{
+    float[]   v1 = (0.1f, 0.2f);
+    let       v2 = float[] (0.1f, 0.2f);
+    float[2]  v3 = float[] (0.1f, 0.2f);
+    float[2]  v4 = float[2] (0.1f, 0.2f);
+    int<2>[]  v5 = ((1, 2), (3, 4));
+    int<2>[2] v6 = ((1, 2), (3, 4));
+
+    let out = v1[0] + v2[1] + v3[0] + v4[1];
+}
+
+bool testWidening()
+{
+    int<4> x = (1, 2, 3, 4);
+    x = x * 2;
+    return x[1] == 4 && x[2] == 6;
+}
+
+bool testConstantFoldedWidening()
+{
+    int<4> v = (1, 2, 3, 4);
+    let x = v * 2;
+    return x[1] == 4 && x[2] == 6;
+}
+
+bool testVectorCast()
+{
+    float64<2> x = (1, 2);
+    loop (3) x += float64<2> (1);
+    let f = float32<2> (x);
+    return f[0] == 4.0f && f[1] == 5.0f;
+}
+
+struct X { float64<2> m; }
+
+bool testVectorCastMember()
+{
+    let x = X (float64<2>(1, 2));
+    let f = float32<2> (x.m);
+    return f[0] == 1.0f && f[1] == 2.0f;
+}
+
+bool testArrayCast1()
+{
+    float64[2] x = (1, 2);
+    loop (3) { x[0]++; x[1]++; }
+    var f = float32[2] (x);
+    return f[0] == 4.0f && f[1] == 5.0f;
+}
+
+bool testArrayCast2()
+{
+    float64[2] x = (1, 2);
+    loop (3) { x[0]++; x[1]++; }
+    let f = float32[2] (x);
+    return f[0] == 4.0f && f[1] == 5.0f;
+}

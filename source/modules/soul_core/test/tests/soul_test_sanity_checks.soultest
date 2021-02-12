@@ -1,0 +1,183 @@
+## error 6:5: error: The run() function must return 'void'
+
+processor A
+{
+    output stream float out;
+
+    int run()
+    {
+        out << 1.0f;
+    }
+}
+
+## error 6:5: error: The run() function must not have any parameters
+
+processor A
+{
+    output stream float out;
+
+    void run(int a)
+    {
+        out << 1.0f;
+    }
+}
+
+## error 2:11: error: A processor must contain a run() function
+
+processor A
+{
+    output stream float out;
+}
+
+## error 2:11: error: A processor cannot contain more than one run() function
+
+processor A
+{
+    output stream float out;
+
+    void run()
+    {
+        advance();
+    }
+
+    void run()
+    {
+        out << 1.0f;
+    }
+}
+
+## error 6:5: error: A variable type cannot be 'void'
+
+processor A
+{
+    output stream float out;
+
+    void x;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 8:15: error: Struct members cannot be declared const
+
+processor A
+{
+    output stream float out;
+
+    struct MyStruct
+    {
+        const int i;
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 8:18: error: Illegal type for unary operator
+
+processor A
+{
+    output stream float out;
+
+    void run()
+    {
+        let x = -"test";
+        advance();
+    }
+}
+
+
+## error 8:13: error: An array size must be a constant
+
+processor A
+{
+    output stream float out;
+
+    void myFunc (int i)
+    {
+        int[i] buffer;
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+
+## error 8:18: error: You can only create a multi-value initialiser list for an array, vector or struct
+
+processor A
+{
+    output stream float out;
+
+    void run()
+    {
+        int i = (1, 2);
+
+        advance();
+    }
+}
+
+## error 8:13: error: Illegal vector size
+
+processor A
+{
+    output stream float out;
+
+    void run()
+    {
+        int<1024> bigVector;
+
+        advance();
+    }
+}
+
+## error 8:9: error: The run() function cannot be called from user code
+
+processor A
+{
+    output stream float out;
+
+    void myFunc()
+    {
+        run();
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 4:46: error: Cannot resolve constant value in annotation
+
+processor checkDataTypes
+{
+    input stream float in [[ freq: processor.frequency ]];
+    output stream float out;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 4:36: error: Processor properties are only valid inside a processor declaration
+
+namespace test
+{
+    float64 f() { return processor.frequency; }
+}
+
+## error 5:5: error: Language feature not yet implemented: Fixed point type support!
+
+bool fixedPoint()
+{
+    let y = 0.5;
+    fixed x = y;
+}

@@ -1,0 +1,1643 @@
+## error 2:7: error: A processor must declare at least one output
+
+graph G {}
+
+## error 2:11: error: A processor must declare at least one output
+
+processor P
+{
+    void run() { loop advance(); }
+}
+
+## error 2:7: error: Recursively nested types within 'tests::A'
+
+graph A { input stream float i; output stream float o; let p = C; connection { i -> p.i; p.o -> o; }}
+graph B { input stream float i; output stream float o; let p = A; connection { i -> p.i; p.o -> o; }}
+graph C { input stream float i; output stream float o; let p = B; connection { i -> p.i; p.o -> o; }}
+
+## error 12:22: error: Clock ratio must be an integer constant
+
+processor P
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = P / 32.1;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 12:22: error: Clock ratio must be a power of 2
+
+processor t
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = t / 33;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 12:22: error: Clock ratio must be an integer constant
+
+processor t
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = t * 8.3;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 12:22: error: Clock ratio must be a power of 2
+
+processor t
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = t * 9;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 12:22: error: Clock ratio out of range
+
+processor t
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = t * 1024;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 12:22: error: Clock ratio out of range
+
+processor t
+{
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+graph test
+{
+    output stream float<1> audioOut;
+
+    let myProc = t * -1;
+    connection myProc.audioOut -> audioOut;
+}
+
+## error 25:10: error: Expected an interpolation type
+
+processor lfo
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    input stream float audioIn;
+    output stream float audioOut;
+    let source = lfo / 4;
+
+    connection
+    {
+        [blah] audioIn -> source.audioIn;
+        source.audioOut -> audioOut;
+    }
+}
+
+## error 27:30: error: Illegal array size
+
+processor GainProcessor
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    float gain = 0.1f;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    let
+    {
+        // Notice an array of processors
+        gain = GainProcessor[-5];
+    }
+
+    connection
+    {
+        audioIn -> gain.audioIn;
+        gain.audioOut -> audioOut;
+    }
+}
+
+## error 27:30: error: Array or vector size must be an integer
+
+processor GainProcessor
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    float gain = 0.1f;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    let
+    {
+        // Notice an array of processors
+        gain = GainProcessor[1.7];
+    }
+
+    connection
+    {
+        audioIn -> gain.audioIn;
+        gain.audioOut -> audioOut;
+    }
+}
+
+## error 27:9: error: The name 'gain' is already in use
+
+processor gainProcessor
+{
+    input stream float gainAudioIn;
+    output stream float gainAudioOut;
+
+    float gain = 0.5f;
+
+    void run()
+    {
+        loop
+        {
+            gainAudioOut << gainAudioIn * gain;
+            advance();
+        }
+    }
+}
+
+graph oversample
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    let
+    {
+        gain = gainProcessor * 2;
+        gain = gainProcessor * 4;
+    }
+
+    connection
+    {
+        audioIn -> gain.gainAudioIn;
+        gain.gainAudioOut -> audioOut;
+    }
+}
+
+## error 28:17: error: Cannot connect audioIn (float32) to gain.gainAudioIn (float32<2>)
+
+processor gainProcessor
+{
+    input stream float<2> gainAudioIn;
+    output stream float<2> gainAudioOut;
+
+    float gain = 0.5f;
+
+    void run()
+    {
+        loop
+        {
+            gainAudioOut << gainAudioIn * gain;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    let gain = gainProcessor;
+
+    connection
+    {
+        audioIn -> gain.gainAudioIn;
+        gain.gainAudioOut -> audioOut;
+    }
+}
+
+## error 28:26: error: Incompatible interpolation types for module inputs 'tests::lfo'
+
+processor lfo
+{
+    input stream float audioIn1;
+    input stream float audioIn2;
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << (audioIn1 + audioIn2);
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    input stream float audioIn1, audioIn2;
+    output stream float audioOut;
+
+    let source = lfo / 4;
+
+    connection
+    {
+        [linear] audioIn1 -> source.audioIn1;
+        [latch] audioIn2 -> source.audioIn2;
+
+        source.audioOut -> audioOut;
+    }
+}
+
+## error 25:35: error: Incompatible interpolation types for module outputs 'tests::lfo'
+
+processor lfo
+{
+    output stream float audioOut1, audioOut2;
+
+    void run()
+    {
+        loop
+        {
+            audioOut1 << 0.0f;
+            audioOut2 << 0.0f;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    output stream float audioOut1, audioOut2;
+    let source = lfo / 4;
+
+    connection
+    {
+        [sinc] source.audioOut1 -> audioOut1;
+        [linear] source.audioOut2 -> audioOut2;
+    }
+}
+
+## error 20:16: error: Feedback cycle in graph: p1 -> p2 -> p3 -> p1
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let { p1 = A; p2 = A; p3 = A; }
+
+    connection
+    {
+        in -> p1.in;
+        p1.out -> p2.in;
+        p2.out -> p3.in;
+        p3.out -> p1.in;
+        p3.out -> out;
+    }
+}
+
+## error 19:15: error: Cannot find symbol 'missingName'
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let a = A;
+
+    connection
+    {
+        in -> missingName.in;
+        a.out -> out;
+    }
+}
+
+## error 19:12: error: Cannot find destination 'a.missingName'
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let a = A;
+
+    connection
+    {
+        in -> a.missingName;
+        a.out -> out;
+    }
+}
+
+## compile
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G [[main]]
+{
+    input stream float in;
+    output stream float out;
+
+    connection
+    {
+        in -> A.in;
+        A.out -> out;
+    }
+}
+
+## error 18:9: error: The name 'a' is already in use
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let
+    {
+        a = A;
+        a = A;
+    }
+}
+
+## error 15:9: error: There is already a processor called 'A' visible in this scope
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let A = A;
+
+    connection
+    {
+        in -> A.in;
+        A.out -> out;
+    }
+}
+
+## error 20:9: error: The processor 'A' cannot be used in a 'let' statement if it is also used directly in a connection
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop { out << in; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let a = A;
+
+    connection
+    {
+        in -> a.in;
+        A.out -> out;
+    }
+}
+
+## processor
+
+processor A
+{
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph B
+{
+    output event int out;
+    connection A.out -> out;
+}
+
+graph test
+{
+    output event int results;
+    connection B.out -> results;
+}
+
+## processor
+
+processor A
+{
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph B (processor X)
+{
+    output event int out;
+    let x = X;
+    connection x.out -> out;
+}
+
+graph test
+{
+    output event int results;
+    let b = B(A);
+    connection b.out -> results;
+}
+
+## compile
+
+processor A
+{
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph B (processor XParam)
+{
+    output event int out;
+    let x = XParam;
+    connection x.out -> out;
+}
+
+graph test
+{
+    output event int results;
+    let b = B(A);
+    connection b.out -> results;
+}
+
+## error 12:32: error: Cannot find source 'x.missingOutput'
+
+processor A
+{
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph B (processor X)
+{
+    output event int out;
+    let x = X;
+    connection x.missingOutput -> out;
+}
+
+graph test
+{
+    output event int results;
+    let b = B(A);
+    connection b.out -> results;
+}
+
+## error 30:22: error: Expected a value
+
+processor Beep(float freq)
+{
+    output stream float out;
+
+    let beepFrequency      = freq;
+    let beepVolume         = 0.1f;
+
+    void run()
+    {
+        let phaseIncrement = float (beepFrequency * twoPi * processor.period);
+        float phase = 0;
+
+        loop
+        {
+            out << sin (phase) * beepVolume;
+            phase = addModulo2Pi (phase, phaseIncrement);
+            advance();
+       }
+    }
+}
+
+graph Main
+{
+    output stream float audioOut;
+    input event float freq [[ min:220,   max:880,    init:440 ]];
+
+    let {
+        beep1 = Beep(440);
+        beep2 = Beep(freq);
+    }
+
+    connection {
+        beep1.out -> audioOut;
+        beep2.out -> audioOut;
+    }
+
+}
+
+## error 20:16: error: Cannot connect p1.out (int32) to p2.in (float32)
+
+processor A
+{
+    input stream float in;
+    output stream int out;
+
+    void run()  { loop { out << 0; advance(); } }
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let { p1 = A; p2 = A; }
+
+    connection
+    {
+        in -> p1.in;
+        p1.out -> p2.in;
+        p2.out -> out;
+    }
+}
+
+## error 15:19: error: Cannot connect in (stream) to a.in (event)
+
+processor A
+{
+    input event float in;
+    output event float out;
+    event in (float x) {}
+}
+
+graph G
+{
+    input stream float in;
+    output stream float out;
+
+    let a = A;
+    connection in -> a.in;
+}
+
+## error 17:19: error: Cannot connect in (event) to a.in (stream)
+
+processor A
+{
+    input stream float in;
+    output event float out;
+    event in (float x) {}
+
+    void run() { loop advance(); }
+}
+
+graph G
+{
+    input event float in;
+    output stream float out;
+
+    let a = A;
+    connection in -> a.in;
+}
+
+## error 10:24: error: Language feature not yet implemented: Processor Indexes!
+
+graph Engine [[main]]
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    let mix = Mixer[5];
+
+    connection {
+        audioIn -> mix[0].audioIn;
+        mix[0].audioOut -> audioOut;
+    }
+}
+
+processor Mixer
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * 0.5f;
+            advance();
+        }
+    }
+}
+
+## error 11:13: error: Language feature not yet implemented: Processor Indexes!
+
+graph Engine [[main]]
+{
+    output stream float<2> audioOut;
+    input stream float audioIn;
+
+    let mix = Mixer;
+
+    connection {
+        audioIn -> mix.audioIn[1];
+        mix[0].audioOut -> audioOut;
+    }
+}
+
+processor Mixer
+{
+    output stream float<2> audioOut;
+    input stream float<2> audioIn;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * 0.5f;
+            advance();
+        }
+    }
+}
+
+## error 6:27: error: Cannot connect m.eventOut (NoteOn, NoteOff, PitchBend, Pressure, Slide, Control) to midiOut (Message)
+
+graph test
+{
+    output event soul::midi::Message midiOut;
+    let m = soul::midi::MPEParser;
+    connection m.eventOut -> midiOut;
+}
+
+## error 3:50: error: Found "]" when expecting identifier
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [] -> A.i; }
+
+## error 3:56: error: Expected a processor name or endpoint
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [3] -> [3] -> A.i; }
+
+## error 3:52: error: Found ";" when expecting "->"
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [3]; }
+
+## error 3:52: error: A delay line length must be greater than zero
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [3 - 5] -> A.i; }
+
+## error 3:50: error: A delay line length must be an integer
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [3.6] -> A.i; }
+
+## error 3:50: error: A delay line length must be an integer
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> ["text"] -> A.i; }
+
+## error 3:62: error: Illegal delay line length
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+graph B { output event int o; connection A.o -> [1000 * 1000 * 10] -> A.i; }
+
+## error 3:56: error: Illegal delay line length
+
+processor A { output event int o; input event int i; void run() { loop advance(); } let sz = 100000; }
+graph B { output event int o; connection A.o -> [A::sz * 1000] -> A.i; }
+
+## error 13:22: error: Feedback cycle in graph: A -> A
+
+processor A
+{
+    input event int in;
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph test2
+{
+    output event int results;
+    connection A.out -> results;
+    connection A.out -> A.in;
+}
+
+graph test
+{
+    output event int results;
+    let t = test2;
+    connection t.results -> results;
+}
+
+## error 13:22: error: Feedback cycle in graph: A -> A
+
+processor A
+{
+    input event int in;
+    output event int out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph test2 (int x)
+{
+    output event int results;
+    connection A.out -> results;
+    connection A.out -> A.in;
+}
+
+graph test
+{
+    output event int results;
+    let t = test2(1);
+    connection t.results -> results;
+}
+
+## processor
+
+processor A
+{
+    output stream int out;
+
+    void run()
+    {
+        int i = 0;
+        loop { out << i++; advance(); }
+    }
+}
+
+processor B (int delayLength)
+{
+    input stream int in1, in2;
+    output stream int out;
+
+    void run()
+    {
+        loop (delayLength)
+        {
+            out << 1;
+            advance();
+        }
+
+        loop
+        {
+            out << (in1 == in2 + delayLength ? 1 : 0);
+            advance();
+        }
+    }
+}
+
+graph TestDelay (int delayLength)
+{
+    output stream int out;
+
+    let b = B(delayLength);
+
+    connection
+    {
+        A.out -> b.in1;
+        A.out -> [delayLength] -> b.in2;
+        b.out -> out;
+    }
+}
+
+processor CheckAllOK (int numInputs)
+{
+    input stream int in;
+    output event int results;
+
+    void run()
+    {
+        loop (300)
+        {
+            results << (in == numInputs ? 1 : 0);
+            advance();
+        }
+
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+    output event int results;
+    let td1 = TestDelay(5);
+    let td2 = TestDelay(1);
+    let td3 = TestDelay(8);
+    let td4 = TestDelay(113);
+    let ok = CheckAllOK (4);
+
+    connection
+    {
+        td1.out, td2.out, td3.out, td4.out -> ok.in;
+        ok.results -> results;
+    }
+}
+
+## error 7:21: error: Feedback cycle in graph: A -> A
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+
+graph B
+{
+     output event int o;
+     connection A.o -> A.i;
+}
+
+## compile
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+
+graph B
+{
+     output event int o;
+     connection A.o -> [1] -> A.i;
+}
+
+## compile
+
+processor A { output event int o; input event int i; void run() { loop advance(); } }
+
+graph B
+{
+     output event int o;
+     connection A.o -> [1] -> o;
+}
+
+## processor
+
+processor A { output stream int o; void run() { loop { o << 1; advance(); } } }
+
+processor Check (int numInputs)
+{
+    input stream int in;
+    output event int results;
+
+    void run()
+    {
+        loop (10) { results << 1; advance(); }
+
+        loop (50)
+        {
+            results << (in == numInputs ? 1 : 0);
+            advance();
+        }
+
+        loop { results << -1; advance(); }
+    }
+}
+
+graph test
+{
+     output event int results;
+     let a = A[5];
+     let check = Check (5);
+     connection a.o -> [5] -> check.in;
+     connection check.results -> results;
+}
+
+## error 5:22: error: Language feature not yet implemented: top-level arrays of inputs!
+
+processor X
+{
+    output stream int out;
+    input stream int in[2];
+
+    void run() { loop advance(); }
+}
+
+## error 4:23: error: Language feature not yet implemented: top-level arrays of outputs!
+
+processor X
+{
+    output stream int out[2];
+    input stream int in;
+
+    void run() { loop advance(); }
+}
+
+## error 2:11: error: Multiple processors were marked as 'main' //// 8:11: error: Multiple processors were marked as 'main'
+
+processor A [[main]]
+{
+    output stream int out;
+    void run() { loop advance(); }
+}
+
+processor B [[main]]
+{
+    output stream int out;
+    void run() { loop advance(); }
+}
+
+## compile
+
+graph test [[ main ]]
+{
+    output stream int resultsTest;
+    connection G2.resultsG2 -> resultsTest;
+}
+
+graph G2
+{
+    output stream int resultsG2;
+    connection G1.resultsG1 -> resultsG2;
+}
+
+graph G1
+{
+    output stream int resultsG1;
+    connection Processor.resultsProcessor -> resultsG1;
+}
+
+processor Processor
+{
+    output stream int resultsProcessor;
+    void run() { loop advance(); }
+}
+
+## error 2:7: error: Recursively nested types within 'tests::test'
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    let subGraph = test;
+    connection subGraph.out -> out;
+}
+
+## error 2:7: error: Recursively nested types within 'tests::g'
+
+graph g (int i)
+{
+    output stream int out;
+
+    let subGraph = g (-1 + i);
+    connection subGraph.out -> out;
+}
+
+graph test [[ main ]]
+{
+    output stream int out;
+
+    let subGraph = g (100);
+    connection subGraph.out -> out;
+}
+
+
+## compile
+
+graph Engine [[main]]
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    connection {
+        audioIn -> Null.audioIn[1];
+        Null.audioOut[0] -> audioOut;
+    }
+}
+
+processor Null
+{
+    input stream float audioIn[2];
+    output stream float audioOut[2];
+
+    void run()   { loop advance(); }
+}
+
+## error 8:33: error: Index is out of range
+
+graph Engine [[main]]
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    connection {
+        audioIn -> Null.audioIn[2];
+        Null.audioOut[0] -> audioOut;
+    }
+}
+
+processor Null
+{
+    input stream float audioIn[2];
+    output stream float audioOut[2];
+
+    void run()   { loop advance(); }
+}
+
+## error 9:23: error: Index is out of range
+
+graph Engine [[main]]
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    connection {
+        audioIn -> Null.audioIn[0];
+        Null.audioOut[3] -> audioOut;
+    }
+}
+
+processor Null
+{
+    input stream float audioIn[2];
+    output stream float audioOut[2];
+
+    void run() { loop advance(); }
+}
+
+## compile
+
+processor Generator
+{
+    output stream float out[1];
+
+    void run()
+    {
+        out[0] << 1.0f;
+        advance();
+    }
+}
+
+graph Play [[ main ]]
+{
+    output stream float out;
+    connection Generator.out[0] -> out;
+}
+
+## processor
+
+processor A (int value)
+{
+    output event int out;
+    void run() { loop { out << value; advance(); } }
+}
+
+processor B
+{
+    input event int in[2];
+    output event int out[2];
+
+    event in (int a, int b)
+    {
+        out.at(a) << b;
+    }
+}
+
+graph test
+{
+    output event int results;
+
+    let
+    {
+        A1 = A (-1);
+        A2 = A (1);
+    }
+
+    connection
+    {
+        A1.out -> B.in[0];
+        A2.out -> B.in[1];
+
+        B.out[0] -> results;
+    }
+}
+
+## processor
+
+processor A
+{
+    output event int out[5];
+    void run() { loop { out[3] << -1; advance(); } }
+}
+
+graph test
+{
+    output event int results;
+    connection A.out[3] -> results;
+}
+
+## processor
+
+processor A
+{
+    output event int out[5];
+    void run() { loop { out[3] << -1; advance(); } }
+}
+
+graph B
+{
+    input event int in[5];
+    output event int results;
+
+    connection in[3] -> results;
+}
+
+graph test
+{
+    output event int results;
+
+    connection
+    {
+        A.out -> B.in;
+        B.results -> results;
+    }
+}
+
+## disabled processor
+
+processor A
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop (10) { out << in; advance(); } loop { out << -1; advance(); }}
+}
+
+graph test
+{
+    output stream float out;
+
+    connection
+    {
+        1.0f -> A.in;
+        A.out -> out;
+    }
+}
+
+## error 4:5: error: A graph can only be defined inside a namespace
+
+processor P
+{
+    graph test
+    {
+        output stream float<1> audioOut;
+
+        let myProc = P / 32.1;
+        connection myProc.audioOut -> audioOut;
+    }
+
+    output stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+## processor
+
+processor MyProcessor
+{
+    input stream float in;
+    output stream float out;
+
+    void run()  { loop (10) { out << in; advance(); } loop { out << -1; advance(); }}
+}
+
+graph Wrapper (processor Proc)
+{
+    output stream float out;
+
+    let proc = Proc;
+    connection proc.out -> out;
+}
+
+graph test
+{
+    output stream float out;
+
+    let wrapper = Wrapper (MyProcessor);
+    connection wrapper.out -> out;
+}
+
+## processor
+
+processor P (int x)
+{
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection P(1) -> out;
+}
+
+## processor
+
+processor X
+{
+    output stream int out;
+    void run() { out << 1; loop { advance(); out << -1; } }
+}
+
+graph P
+{
+    input stream int in;
+    output stream int out;
+    connection in -> out;
+}
+
+graph test
+{
+    output stream int out;
+    connection X -> P -> out;
+}
+
+## processor
+
+processor P (int x)
+{
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+graph Q (processor P)
+{
+    output stream int out;
+    connection P -> out;
+}
+
+graph test
+{
+    output stream int out;
+    connection Q(P(1)) -> out;
+}
+
+## processor
+
+processor P (int x)
+{
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection P(1), P(2) -> out;
+}
+
+## processor
+
+processor X
+{
+    output stream int out;
+    void run() { loop { out << 1; advance(); } }
+}
+
+processor P (int x)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << x * in; loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection X -> P(1) -> out;
+}
+
+## processor
+
+processor X
+{
+    output stream int out;
+    void run() { loop { out << 1; advance(); } }
+}
+
+processor P (int x)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << (in == 2 ? x : 0); loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    let x1 = X, x2 = X;
+    connection x1, x2 -> P(1) -> out;
+}
+
+## error 12:24: error: An implicitly-created processor cannot be used more than once: create a named instance instead
+
+processor P (int x)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection P(1) -> P(1) -> out;
+}
+
+## error 11:22: error: An implicitly-created processor cannot be used more than once: create a named instance instead
+
+processor P (int x)
+{
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection P(1), P(1) -> out;
+}
+
+## processor
+
+processor P
+{
+    output stream int out;
+    void run() { loop { out << 1; advance(); } }
+}
+
+processor Q (int x)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << (in == x ? 1 : 0); loop { advance(); out << -1; } }
+}
+
+graph test
+{
+    output stream int out;
+    connection P, P, P -> Q(3) -> out;
+}
+
+## processor
+
+processor P (int x)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << x; loop { advance(); out << -1; } }
+}
+
+processor Q1 (using T)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << in * (T.isFloat ? 1 : 0); loop { advance(); out << -1; }}
+}
+
+processor Q2 (using T)
+{
+    input stream int in;
+    output stream int out;
+    void run() { out << in * (T.isFloat ? 1 : 0); loop { advance(); out << -1; }}
+}
+
+graph test
+{
+    output stream int out;
+    let q1 = Q1(float);
+    connection P(2) -> P(1) -> q1-> Q2(float) -> out;
+}
+
+## error 12:17: error: Cannot implicitly convert -1.5 ('float64') to 'int32'
+
+processor A (int value)
+{
+    output event int out;
+    void run() { loop { out << value; advance(); } }
+}
+
+graph test
+{
+    output event int results;
+
+    let A1 = A (-1.5);
+    connection A1.out -> results;
+}
+
+## compile
+
+graph example  [[main]]
+{
+    input event soul::midi::Message midiIn;
+    input stream float audioIn;
+    output stream float audioOut;
+
+    connection audioIn -> Offset(0.1f) -> audioOut;
+}
+
+processor Offset(float offset)
+{
+    input stream float audioIn;
+    output stream float audioOut;
+    void run() { loop { audioOut << offset + audioIn; advance(); } }
+}
+
+## error 6:19: error: Invalid endpoint specifier
+
+graph test
+{
+    output stream float out;
+
+    connection t.a.out -> out;
+}
+
+processor t
+{
+    input stream float in;
+    output stream float out;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## processor
+
+processor P
+{
+    output stream int out;
+    void run() { loop { out << 1; advance(); } }
+}
+
+processor Q
+{
+    input stream int in;
+    output stream int out[2];
+    void run() { out << (in == 3 ? 1 : 0); loop { advance(); out[0] << -1; } }
+}
+
+graph sub
+{
+    output Q.out;
+    connection P, P, P -> Q;
+}
+
+graph test
+{
+    output stream int out;
+
+    connection sub.out[0] -> out;
+}
+
+## processor
+
+graph test
+{
+    output stream float audioOut;
+
+    let p1 = One();
+    let p2 = One();
+
+    connection
+    {
+        p1.out -> [1] -> p2.in;
+    }
+}
+
+processor One
+{
+    input event float in;
+    output event float out;
+}
+
+## compile
+
+graph TopLevel [[main]]
+{
+    input stream float audioIn;
+    output stream float audioOut;
+    // Expose child processor's endpoint.
+    input e.sliderIn [[name: "Slider", min: 0, max: 10, step: 0.1, init:4]];
+    let e = ErrorReplicator;
+    connection
+    {
+        audioIn -> e.audioIn;
+        e.audioOut -> audioOut;
+
+        // Unnecessary connection causes compiler error.
+        sliderIn -> e.sliderIn;
+    }
+}
+processor ErrorReplicator
+{
+    input stream float audioIn;
+    output stream float audioOut;
+    input stream float sliderIn [[name: "Slider", min: 0, max: 10, step: 0.1, init:3]];
+    void run()
+    {
+        loop
+        {
+            advance();
+        }
+    }
+}

@@ -155,6 +155,8 @@ namespace soul
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"
 
+#include "test/soul_TestFileParser.h"
+
 #include "documentation/soul_SourceCodeUtilities.h"
 #include "documentation/soul_SourceCodeOperations.h"
 #include "documentation/soul_SourceCodeModel.h"

@@ -1,0 +1,100 @@
+## function
+
+bool testNegateOnPrimitiveInt()
+{
+    int x;
+    x = 1.0f;
+    let y = -x;
+    return y == -1.0f;
+}
+
+bool testNegateOnFloatVector()
+{
+    float<2> x;
+    x = 1.0f;
+    let y = -x;
+    return y[0] == -1.0f;
+}
+
+bool testBitwiseNotOnPrimitive()
+{
+    int32 x;
+
+    x = 10;
+    x = ~x;
+
+    return x == -11;
+}
+
+bool testBitwiseNotOnVector()
+{
+    int32<2> x;
+
+    x[0] = 10;
+    x[1] = 20;
+
+    x = ~x;
+
+    return x[0] == -11 && x[1] == -21;
+}
+
+bool testLogicalNotOnPrimitive()
+{
+    bool x;
+    x = !x;
+    return x == true;
+}
+
+bool testLogicalNotOnVector()
+{
+    bool<2> x;
+    x = !x;
+    return x[0] == true && x[1] == true;
+}
+
+## error 5:14: error: Illegal type for unary operator
+
+bool testNegateOnPrimitiveInt()
+{
+    bool x = true;
+    let y = -x;
+
+    return y == true;
+}
+
+## error 5:14: error: Illegal type for unary operator
+
+bool testNegateOnIntArray()
+{
+    int[10] x;
+    let y = -x;
+    return true;
+}
+
+## error 5:14: error: Illegal type for unary operator
+
+bool testBitwiselNotOnIntArray()
+{
+    int[10] x;
+    let y = ~x;
+    return true;
+}
+
+## error 5:14: error: Illegal type for unary operator
+
+bool testLogicalNotOnInt()
+{
+    int x;
+    let y = !x;
+
+    return true;
+}
+
+## error 5:14: error: Illegal type for unary operator
+
+bool testLogicalNotOnIntArray()
+{
+    int[10] x;
+    let y = ~x;
+    return true;
+}

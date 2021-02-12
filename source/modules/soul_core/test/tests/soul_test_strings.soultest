@@ -1,0 +1,58 @@
+## function
+
+string getString1()
+{
+    return "test string";
+}
+
+string getString2()
+{
+    return "test string";
+}
+
+string getString3()
+{
+    return "test string 3";
+}
+
+string getString4()
+{
+    return "test string\n";
+}
+
+string getString5()
+{
+    return "test string\n";
+}
+
+bool stringComparison1()
+{
+    return getString1() == getString2();
+}
+
+bool stringComparison2()
+{
+    return getString1() != getString3();
+}
+
+bool stringComparison3()
+{
+    return getString4() == getString5();
+}
+
+## error 14:33: error: Syntax error in unicode escape sequence
+
+string getString1()
+{
+    return "Valid sequence \uF314";
+}
+
+string getString2()
+{
+    return "\a \b \c \d \e \f \g \h \i \j \k \l \m \n \o \p \q \r \s \t \v \w \x \y \z";
+}
+
+string getString3()
+{
+    return "Invalid sequence \uG314";
+}

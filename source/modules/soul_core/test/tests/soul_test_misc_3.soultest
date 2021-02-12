@@ -1,0 +1,2276 @@
+## function
+
+bool testFunc1()
+{
+    float<2> i = 1.0f;
+    return true;
+}
+
+bool testFunc2()
+{
+    float<2> i = 1;
+    return true;
+}
+
+bool testFunc3()
+{
+    float[2] i = 1.0f;
+    return true;
+}
+
+bool testFunc4()
+{
+    float[2] i = 1;
+    return true;
+}
+
+bool testFunc5()
+{
+    int static_assert = 1;
+    return static_assert != 0;
+}
+
+void testVoidReturn()
+{
+    return;
+}
+
+processor test1
+{
+    output stream float audioOut;
+    float<2> i;
+
+    bool testFunc2()
+    {
+        i = 1;
+        return true;
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+processor test2
+{
+    output stream float audioOut;
+    float[2] i;
+
+    bool testFunc2()
+    {
+        i = 1;
+        return true;
+    }
+
+    void run()  { advance(); }
+}
+
+struct S { int i; }
+using F32 = float32;
+using F64 = float64;
+using I32 = int32;
+using I64 = int64;
+
+bool testMetaFunctions1()
+{
+    return isArray (int[]) && int[].isArray
+        && isArray (int[2]) && int[2].isArray
+        && isFixedSizeArray (int[2]) && int[2].isFixedSizeArray
+        && ! isDynamicArray (int[2]) && ! int[2].isDynamicArray
+        && isArray (S[2]) && S[2].isArray
+        && isVector (int<2>) && int<2>.isVector
+        && isInt32 (int32) && int32.isInt32
+        && isInt64 (int64) && int64.isInt64
+        && isFloat32 (float32) && float32.isFloat32
+        && isFloat64 (float64) && float64.isFloat64
+        && isInt (int[2].elementType) && int[2].elementType.isInt
+        && isInt (I32) && I32.isInt
+        && isInt32 (I32) && I32.isInt32
+        && isInt64 (I64) && I64.isInt64
+        && isFloat (F32) && F32.isFloat
+        && isFloat32 (F32) && F32.isFloat32
+        && isFloat64 (F64) && F64.isFloat64
+        && ! isInt (F32) && ! F32.isInt
+        && ! isInt32 (F32) && ! F32.isInt32
+        && ! isInt64 (F64) && ! F64.isInt64
+        && ! isFloat (I32) && ! I32.isFloat
+        && ! isFloat32 (I32) && ! I32.isFloat32
+        && ! isFloat64 (I64) && ! I64.isFloat64
+        && isStruct (S) && S.isStruct;
+}
+
+bool testMetaFunctions2()
+{
+    int32 i32;
+    int64 i64;
+    float32 f32;
+    float64 f64;
+    int[4] array1;
+    int<3> vector1;
+    S s;
+
+    return isArray (array1) && array1.isArray
+        && isVector (vector1) && vector1.isVector
+        && isInt (s.i) && s.i.isInt
+        && isInt (i32) && i32.isInt
+        && isInt32 (i32) && i32.isInt32
+        && isInt64 (i64) && i64.isInt64
+        && isFloat32 (f32) && f32.isFloat32
+        && isFloat64 (f64) && f64.isFloat64
+        && isStruct (s) && s.isStruct;
+}
+
+using A4 = int[4];
+using V4 = int<4>;
+
+bool testMetaFunctions3()
+{
+    A4.elementType<2> v = ( 1, 2 );
+    V4.elementType[2] a = ( 3, 4 );
+    return v[1] == 2 && a[1] == 4;
+}
+
+bool testMetaFunctions4()
+{
+    elementType(V4)<2> v = ( 1, 2 );
+    elementType(A4)[2] a = ( 3, 4 );
+    return v[1] == 2 && a[1] == 4;
+}
+
+void foo (S& s, clamp<2> y) { s.i = y; }
+
+bool testImplicitCastToClamp()
+{
+    S s;
+    s.foo (1);
+    return s.i == 1;
+}
+
+struct A { int x, y; }
+int getMemberA1 (const A& a)         { return a.x; }
+int getMemberA2 (A a)                { return a.x; }
+bool testPassConstantStructToFn1()   { return getMemberA1 (A (2, 3)) == 2 && getMemberA2 (A (2, 3)) == 2; }
+bool testPassConstantStructToFn2()   { let a = A (2, 3); return getMemberA1 (a) == 2 && getMemberA2 (a) == 2; }
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    int[4] myArray;
+
+    bool test()
+    {
+        let x = myArray[0];     // error : Found an expression when expecting a constant
+        let y = myArray.at (0);
+
+        return x == 0 && y == 0;
+    }
+
+    float globalVariable = 0.011f;
+    float getGlobal()   { return globalVariable; }
+    bool testGlobal()   { globalVariable = 0.02f; return getGlobal() == 0.02f; }
+
+    void run()
+    {
+        results << (test() && testGlobal() ? 1 : 0);
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+}
+
+## error 7:21: error: Expected a constant value
+
+processor Test
+{
+    output stream float out;
+
+    int[4] myArray;
+    let x = myArray[0];
+
+    void run()  { advance(); }
+}
+
+## error 2:15: error: 'elementType' can only be applied to an array or vector type
+
+void test() { elementType(int) x = 123; }
+
+## error 2:15: error: 'elementType' can only be applied to an array or vector type
+
+void test() { elementType(soul::midi::Message) x = 123; }
+
+## error 2:15: error: 'primitiveType' can only be applied to a vector or primitive type
+
+void test() { primitiveType(soul::midi::Message) x = 123; }
+
+## error 2:1: error: 'elementType' can only be applied to an array or vector type
+
+elementType(int) xyz;
+
+## error 4:1: error: 'primitiveType' can only be applied to a vector or primitive type
+
+primitiveType(float) x;
+primitiveType(float<4>) y;
+primitiveType(float[]) z;
+
+## error 2:14: error: A variable type cannot be 'void'
+
+void foo() { primitiveType(void) x = 0; }
+
+## error 2:28: error: Cannot create an array with this element type
+
+void foo() { primitiveType(void[3]) x = 0; }
+
+## error 2:33: error: Cannot create a vector with elements that are not primitive types
+
+void foo() { primitiveType(void<3>) x = 0; }
+
+## error 2:14: error: A variable type cannot be 'void'
+
+void foo() { void x = 1; }
+
+## error 2:14: error: A variable type cannot be 'void'
+
+void foo() { void x; }
+
+## error 2:1: error: A variable type cannot be 'void'
+
+void x;
+
+## error 2:1: error: A variable type cannot be 'void'
+
+void x = 1;
+
+## function
+
+struct X { int z; }
+
+elementType (int[]) foo() { return 123; }
+
+bool test()
+{
+    elementType (int[]) x1 = 123;
+    elementType (int[5]) x2 = 123;
+    elementType (int<5>) x3 = 123;
+    elementType (float[]) y = 1.0f;
+    elementType (X[3]) z;
+    z.z = 123;
+
+    primitiveType (int<4>) p1 = 123;
+    primitiveType (int) p2 = 123;
+
+    return x1 == 123 && x2 == 123 && x3 == 123
+        && y == 1.0f && z.z == 123
+        && p1 == 123 && p2 == 123
+        && foo() == 123;
+}
+
+namespace outer1::inner1 { namespace inner2 { bool foo() { return true; } } }
+namespace outer2 { namespace inner1::inner2 { bool foo() { return true; } } }
+
+bool test1() { return outer1::inner1::inner2::foo(); }
+bool test2() { return outer2::inner1::inner2::foo(); }
+
+## error 8:14: error: The size of a 'wrap' or 'clamp' type must be a constant
+
+processor X
+{
+    output stream float audioOut;
+    int bufferSize = 1234;
+    void run()
+    {
+        wrap<bufferSize> bufferIndex = 0;
+        ++bufferSize;
+        loop advance();
+    }
+}
+
+## error 6:14: error: An array size must be a constant
+
+processor X
+{
+    output stream float audioOut;
+    int bufferSize = 1234;
+    float<1>[bufferSize] buffer;
+
+    void run()
+    {
+        ++bufferSize;
+        loop advance();
+    }
+}
+
+## error 3:35: error: Cannot convert type 'Foo' to 'bool'
+
+struct Foo { int x; }
+void test() { Foo f; let x = bool(f); }
+
+## error 2:1: error: This function has no implementation
+
+bool functionWithoutABody (int x);
+bool test() [[do_not_optimise]] { return functionWithoutABody (123); }
+
+## function
+
+int overloadedFunction (int i, int n)       { return 1; }
+int overloadedFunction (int i, float64 f)   { return 2; }
+bool checkBindings() { return overloadedFunction (1, 1) == 1; }
+
+struct Foo { int x; }
+
+bool test()
+{
+    var i = 0;
+    ++i; --i;
+    return int() == i && float() == i && float64() == i && bool() == bool (i) && Foo().x == int();
+}
+
+bool test1()     { float<3>[2] x; return x.elementType.size == 3; }
+bool test2()     { return float<3>[2].elementType.size == 3; }
+bool test3()     { return size (float<3>[2].elementType) == 3; }
+
+namespace A::B    { int foo3() { return 1234; } }
+namespace A::B    { int foo1() { return foo2(); } }
+namespace A::B    { int foo2() { return foo3(); } }
+namespace A::C::D { int foo3() { return A::B::foo1(); } }
+namespace A::C::D { int foo1() { return foo2(); } }
+namespace A::C::D { int foo2() { return foo3(); } }
+
+bool tes4() { return A::C::D::foo1() == 1234; }
+
+## error 4:21: error: A function with matching parameters has already been defined
+
+namespace A::B    { int foo3() { return 1234; } }
+namespace A::B    { int foo1() { return foo2(); } }
+namespace A::B    { int foo2() { return foo3(); } }
+namespace A::B::C { int foo3() { return A::B::foo1(); } }
+namespace A::B::C { int foo1() { return foo2(); } }
+namespace A::B::C { int foo2() { return foo3(); } }
+
+bool tsst() { return A::B::C::foo1() == 1234; }
+
+## error 16:32: error: Cannot reference a mutable variable belonging to another processor
+
+processor A
+{
+    output stream int out;
+    var x = 1234;
+
+    void run()
+    {
+        loop { ++x; advance(); }
+    }
+}
+
+processor B
+{
+    output stream int out;
+    void run() { loop { out << A::x; advance(); } }
+}
+
+## error 2:22: error: Expected a value or endpoint
+
+void foo() { let x = bool < 3; }
+
+## error 2:26: error: Expected a value or endpoint
+
+void foo() { let x = 3 & int; }
+
+## error 6:16: error: Illegal types for binary operator '*' ('float32<5>' and 'float32<7>')
+
+void test()
+{
+    float<5> f1;
+    float<7> f2;
+    let x = f1 * f2;
+}
+
+## error 6:21: error: Illegal types for binary operator '*' ('float32<5>' and 'float32<7>')
+
+bool test()
+{
+    float<5> f1;
+    float<7> f2;
+    let x = sum (f1 * f2);
+}
+
+## compile ignoreWarnings
+
+namespace test
+{
+    bool test()
+    {
+        int[5] x = (1, 2, 3, 4, 5);
+        int i = 3; ++i;
+        return x.at(i) == 5 && x[4L] == 5;
+    }
+
+    bool test1()
+    {
+        int[10] indexes, values;
+        return values[indexes[2]] == 0;
+    }
+
+    bool test2()
+    {
+        int[10] indexes, values;
+        return values[indexes[2] ] == 0;
+    }
+
+    processor DummyProcessor { output stream int x; void run() { loop advance(); }}
+}
+
+## compile
+
+processor EventThrough
+{
+    input event float eventIn1, eventIn2, eventIn3;
+    output event float eventOut;
+
+    // Output the event at the same time, *2
+    event eventIn1(float f)
+    {
+        eventOut << f * 2.0f;
+    }
+
+    event eventIn2(const float f)
+    {
+        eventOut << f * 2.0f;
+    }
+
+    event eventIn3(const float& f)
+    {
+        eventOut << f * 2.0f;
+    }
+
+    float p;
+
+    void run()
+    {
+        loop
+        {
+            advance();
+        }
+
+    }
+}
+
+## error 2:1: error: Unterminated '/*' comment
+
+/* *sdf
+
+## error 2:1: error: Expected a function or variable declaration
+
+*/
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    const int64[] data = ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 );
+    int64 sum;
+
+    void run()
+    {
+        wrap<10> i;
+
+        loop (40000)
+        {
+            sum += data[i];
+        }
+
+        loop
+        {
+            results << -1;
+            advance();
+        }
+    }
+}
+
+## error 2:23: error: Expected a value
+
+void test() { let x = float; }
+
+## error 2:23: error: Expected a value
+
+void test() { let x = float[2]; }
+
+## error 2:23: error: Expected a value
+
+void test() { let x = void; }
+
+## function
+
+namespace MyNamespace
+{
+    struct MyStruct    { int i; }
+    bool myFunction (MyStruct& s) { return true; }
+}
+
+bool namespaceLookup1()
+{
+    MyNamespace::MyStruct m;
+    return MyNamespace::myFunction (m);
+}
+
+bool namespaceLookup3()
+{
+    MyNamespace::MyStruct m;
+    return m.myFunction();
+}
+
+bool test1()
+{
+    float[2] x;
+    return x.size == 2;
+}
+
+bool test2()
+{
+    let x = float[2] (1, 2);
+    return x.size == 2;
+}
+
+bool test3()
+{
+    let x = float[] (1, 2);
+    return x.size == 2;
+}
+
+bool test4()
+{
+    let x = float[] (1);
+    return x.size == 1;
+}
+
+struct X { int a, b; }
+X[2] foo() { return ((1, 2), (3, 4)); }
+
+bool test5()
+{
+    int[2] x1;    x1 = (1, 2);
+    int<2> x2;    x2 = (1, 2);
+    X[2] x3;      x3 = ((1, 2), (3, 4));
+    return x3[1].b == 4 && foo()[1].b == 4;
+}
+
+## error 11:25: error: This identifier cannot have a namespace qualifier
+
+namespace MyNamespace
+{
+    struct MyStruct    { int i; }
+    bool myFunction (MyStruct& s) { return true; }
+}
+
+bool namespaceLookup2()
+{
+    MyNamespace::MyStruct m;
+    return m.MyNamespace::myFunction ();
+}
+
+## error 3:34: error: Wrong number of values to create a type 'int32[2]'
+
+struct X { int a, b; }
+void test() { int[2] x1;    x1 = (1, 2, 3); }
+
+## error 3:34: error: Wrong number of values to create a type 'int32<2>'
+
+struct X { int a, b; }
+void test() { int<2> x1;    x1 = (1, 2, 3); }
+
+## error 3:30: error: Wrong number of values to create a type 'X[2]'
+
+struct X { int a, b; }
+void test() { X[2] x3;  x3 = ((1, 2), (3, 4), (5, 6)); }
+
+## error 3:32: error: Cannot implicitly convert 1 ('int32') to 'X'
+
+struct X { int a, b; }
+void test() { X[2] x3;  x3 = ((1, 2)); }
+
+## processor
+
+processor test
+{
+    output stream int audioOut;
+
+    float readBuffer (wrap<100> writePos)
+    {
+        float x = float (writePos);
+        return x;
+    }
+
+    void run()
+    {
+        wrap<100> writePos;
+        audioOut << int (readBuffer (writePos));
+
+        loop
+        {
+            audioOut << -1;
+            advance();
+        }
+    }
+}
+
+## function
+
+int readBuffer (wrap<10000> writePos) { return 1; }
+
+bool test()
+{
+    wrap<100> writePos;
+    return readBuffer (writePos) == 1;
+}
+
+bool returnTrue (int& i)    { i++; return true; }
+bool returnFalse (int& i)   { i++; return false; }
+
+bool testTernaryShortCircuit()
+{
+    int i;
+    let b = returnTrue (i) ? returnTrue (i) : returnTrue (i);
+    return (i == 2);
+}
+
+bool testShortCircuitAnd()
+{
+    int i;
+    let b = returnFalse (i) && returnFalse (i);
+    return (i == 1);
+}
+
+bool testShortCircuitOr()
+{
+    int i;
+    let b = returnTrue (i) || returnTrue (i);
+    return (i == 1);
+}
+
+## error 2:8: error: Expected a module identifier
+
+import 123;
+
+## error 4:2: error: Expected a module identifier
+
+import
+
+## error 4:2: error: Found "}" when expecting ";"
+
+import abcd.efg
+
+## error 2:13: error: Found ";" when expecting identifier
+
+import abcd.;
+
+## error 4:15: error: Cannot implicitly convert 1 ('int32') to 'bool'
+
+bool test()
+{
+    int i = 1 && 2;
+    return (i == 2);
+}
+
+## processor
+
+processor TestProcessor (float f)
+{
+    output stream int eventOut;
+
+    void run()
+    {
+        loop
+        {
+            eventOut << -1;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    output stream int eventOut;
+    let testProcessor = TestProcessor (float (1.23534598734583));
+    connection testProcessor.eventOut -> eventOut;
+}
+
+## function
+
+float myAbs (const float &s)    { return abs (s); }
+bool testAbs()  { return (myAbs(-5.0f) == 5.0f); }
+
+bool testRNG1()
+{
+    soul::random::RandomNumberState rng;
+
+    while (rng.getNextBipolar() == 0)  {}
+    while (rng.getNextUnipolar() == 0) {}
+    while (rng.getNextInt32() == 0) {}
+
+    return true;
+}
+
+bool testRNG2()
+{
+    var rng = soul::random::RandomNumberState (1234);
+
+    while (rng.getNextBipolar() == 0)  {}
+    while (rng.getNextUnipolar() == 0) {}
+    while (rng.getNextInt32() == 0) {}
+
+    return true;
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    struct X { int x, y; }
+
+    X[2] x1 = ((1, 2), (3, 4));
+    var x2 = X[2] ((1, 2), (3, 4));
+
+    bool test() { return x1[1].x == 3 && x2[1].y == 4; }
+
+    struct MyStruct { float f; }
+    float v;
+    void test1 (MyStruct s)     { v = s.f; }
+    bool test2() { MyStruct s; s.f = 123.0f; test1 (s); return v == 123.0f; }
+    void test3 (const MyStruct s)     { v = s.f; }
+    bool test4() { MyStruct s; s.f = 123.0f; test3 (s); return v == 123.0f; }
+
+    void run()
+    {
+        results << (test() && test2() && test4() ? 1 : 0);
+
+        loop { advance(); results << -1;  }
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    void run()
+    {
+        results << (processor.id == 1 ? 1 : 0) << -1 << -1 << -1 << -1 << -1;
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+}
+
+## processor
+
+processor IDTest
+{
+    output event int id;
+    void run() { loop { id << processor.id; advance(); } }
+}
+
+processor ResultTester
+{
+    input event int in1;
+    input event int in2;
+    output event int results;
+
+    int id1, id2;
+
+    event in1 (int n) { id1 = n; }
+    event in2 (int n) { id2 = n; }
+
+    void run()
+    {
+        // The two instances should have different ids
+        results << (id1 != id2 ? 1 : 0);
+        loop { advance(); results << -1; }
+    }
+}
+
+graph test
+{
+    output event int results;
+
+    let t1 = IDTest;
+    let t2 = IDTest;
+    let r = ResultTester;
+
+    connection t1.id -> r.in1;
+    connection t2.id -> r.in2;
+    connection r.results -> results;
+}
+
+## processor
+
+processor IDTest
+{
+    output event int id;
+    void run() { loop { id << processor.id; advance(); } }
+}
+
+processor ResultTester(int ids)
+{
+    input event int in;
+    output event int results;
+
+    wrap<ids> i;
+    int[ids] id;
+
+    event in (int n)
+    {
+        id[i++] = n;
+    }
+
+    bool containsDuplicate()
+    {
+        for (int i = 0; i < ids; i++)
+            for (int j = 0; j < ids; j++)
+                if (i != j && id.at(i) == id.at(j))
+                    return true;
+
+        return false;
+    }
+
+    void run()
+    {
+        results << (containsDuplicate() ? 0 : 1);
+        loop { advance(); results << -1; }
+    }
+}
+
+graph test
+{
+    output event int results;
+
+    let ids = IDTest[2];
+    let r = ResultTester(2);
+
+    connection ids.id -> r.in;
+    connection r.results -> results;
+}
+
+
+## processor
+
+namespace MyNamespace
+{
+    struct AnotherStruct
+    {
+        int i;
+    }
+}
+
+processor test
+{
+    output event int results;
+
+    struct TestStruct
+    {
+        MyNamespace::AnotherStruct a;
+    }
+
+    void run()
+    {
+        loop
+        {
+            results << -1;
+            advance();
+        }
+    }
+}
+
+
+## function
+
+bool testBoolVector1()
+{
+    bool<2> b1;
+    b1[0] = true;
+    b1[1] = true;
+    let b2 = bool<2> (true, true);
+    return (b1[0] == b2[0]) && (b1[1] == b2[1]);
+}
+
+bool testBoolVector2()
+{
+    bool<2> b1, b2;
+    b1[0] = true;
+    b1[1] = true;
+    b2 = bool<2> (true, true);
+    return (b1[0] == b2[0]) && (b1[1] == b2[1]);
+}
+
+bool testBoolVector3()
+{
+    bool<11> b1, b2;
+    b1 = true;
+    b2 = true;
+    return (b1[0] == b2[0]) && (b1[1] == b2[1]);
+}
+
+bool testBoolVector4()
+{
+    bool<2> b;
+    b = true;
+    return b[0] == true && b[1] == true;
+}
+
+bool testBoolVector5()
+{
+    let b = bool<2> (true, true);
+    return b[1] == true;
+}
+
+void update (int& i) { i = 5; }
+
+bool testIntVectorRef()
+{
+    int<10> i;
+    update (i[4]);
+    return i[4] == 5;
+}
+
+void update (bool& b) { b = true; }
+
+bool testBoolVectorRef()
+{
+    bool<10> bv;
+    update (bv[4]);
+    return (bv[4] == true);
+}
+
+bool update2 (const bool& b) { return b; }
+
+bool testBoolVectorConstRef()
+{
+    bool<10> bv;
+    bv[4] = true;
+    return update2 (bv[4]);
+}
+
+## error 5:20: error: Function return type cannot be const
+
+processor test
+{
+    output stream float<1> audioOut;
+    const void run() { loop advance(); }
+}
+
+## error 4:12: error: Expected a stream type specifier
+
+processor test
+{
+    output const stream float<1> audioOut;
+    void run() { loop advance(); }
+}
+
+## error 11:15: error: The '=' operator must be given an assignable variable
+
+processor test
+{
+    output stream float<1> audioOut;
+
+    struct X { float f; }
+
+    void run()
+    {
+        const X x;
+        x.f = 0.0f;
+
+        loop advance();
+    }
+}
+
+## error 6:22: error: Struct members cannot be declared const
+
+processor test
+{
+    output stream float<1> audioOut;
+    void run() { X x; loop advance(); }
+    struct X { const float f; }
+}
+
+## error 6:22: error: Struct members cannot be declared const
+
+processor test
+{
+    output stream float<1> audioOut;
+    void run() { const float f = 0.0f; f = f + 0.1f; loop advance(); }
+    struct X { const float f; }
+}
+
+## compile
+
+processor test1
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    void run()
+    {
+        Struct1 s;
+        s.a = s.b;
+        advance();
+    }
+}
+
+processor test2
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    void run()
+    {
+        Struct1[10] s;
+        s[1].a = 0.0f;
+        advance();
+    }
+}
+
+processor test3
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    Struct1[10] s;
+
+    void set(int i, float f)
+    {
+        s.at(i).a = f;
+    }
+
+    void run() { advance(); }
+}
+
+processor test4
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    struct Struct2
+    {
+        Struct1[10] x;
+    }
+
+    void run()
+    {
+        Struct2 s;
+        s.x[1].a = 1.0f;
+        advance();
+    }
+}
+
+processor test5
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    struct Struct2
+    {
+        Struct1[10] x;
+    }
+
+    Struct2 s;
+
+    void set(int i, float f)
+    {
+        s.x.at(i).a = f;
+    }
+
+    void run()
+    {
+        set(1, 1.0f);
+        advance();
+    }
+}
+
+processor test6
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    struct Struct2
+    {
+        Struct1[10] x;
+    }
+
+    Struct2 s;
+
+    void test(Struct2 &r)
+    {
+        r.x[2].a = r.x[3].b;
+    }
+
+    void run()
+    {
+        test(s);
+        advance();
+    }
+}
+
+processor test7
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    struct Struct2
+    {
+        Struct1 x;
+    }
+
+    void run()
+    {
+        Struct2 s;
+        s.x.a = 1.0f;
+        advance();
+    }
+}
+
+processor test8
+{
+    output stream float<1> audioOut;
+
+    struct Struct1
+    {
+        float a;
+        float b;
+    }
+
+    struct Struct2
+    {
+        Struct1 x;
+    }
+
+    void run()
+    {
+        float f;
+        Struct2 s;
+        f = s.x.a;
+        advance();
+    }
+}
+
+processor test9
+{
+    output stream float audioOut;
+    bool voiceActive;
+
+    void run()
+    {
+        float gain = 0.8f;
+
+        for (;;)
+        {
+            voiceActive = (gain > 0.7f);
+
+            if (voiceActive)
+                audioOut << 1.0f;
+
+            advance();
+        }
+    }
+}
+
+processor test10
+{
+    output stream float<1> audioOut;
+
+    float multiplyBy2(float i)
+    {
+        return i * 2.0f;
+    }
+
+    void run()
+    {
+        float f = 0.0f;
+        f += 0.01f;
+        audioOut << multiplyBy2(f);
+        advance();
+    }
+}
+
+processor test11
+{
+    output stream float32 out;
+
+    const float32[5] values = (0, 1, 2, 3, 4);
+
+    void run()
+    {
+        float v;
+
+        for (int i=0; i<5; i++)
+            v += values.at (i);
+
+        advance();
+    }
+}
+
+processor test12
+{
+    output stream float<1> audioOut;
+
+    float<2> myFloats;
+
+    void run()
+    {
+        const int i = 1;
+        myFloats.at(i) = 1.0f;
+        advance();
+    }
+}
+
+processor Processor
+{
+    input event float32 eventIn;
+    output stream float32 audioOut;
+
+    event eventIn (float32 val) { v = val; }
+
+    float v;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << v;
+            advance();
+        }
+    }
+}
+
+graph myGraph
+{
+    input event float32 externalEventSource;
+    output stream float audioOut;
+
+    let processors = Processor[2];
+
+    connection
+    {
+        externalEventSource -> processors.eventIn;
+        processors.audioOut -> audioOut;
+    }
+}
+
+
+processor EventSource
+{
+    output
+    {
+        event float eventsOut;
+    }
+
+    void run()
+    {
+        // Interval between events
+        int interval = 1000;
+
+        loop
+        {
+            eventsOut << 0.0f;
+
+            for (int i=0; i<interval; i++)
+                advance();
+
+            eventsOut << 1.0f;
+
+            for (int i=0; i<interval; i++)
+                advance();
+        }
+    }
+}
+
+processor EventProcessor
+{
+    input event float eventsIn;
+    output stream float audioOut;
+
+    event eventsIn(float f) { currentValue = f; }
+
+    float currentValue = 0.0f;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << currentValue;
+            advance();
+        }
+    }
+}
+
+graph test12x
+{
+    output stream float audioOut;
+
+    connection
+    {
+        EventSource.eventsOut -> EventProcessor.eventsIn;
+        EventProcessor.audioOut -> audioOut;
+    }
+}
+
+processor Processor2
+{
+    input event float32 eventIn1, eventIn2;
+    output stream float32 audioOut;
+
+    event eventIn1 (float32 val) { v = val; }
+    event eventIn2 (float32 val) { v = -val; }
+
+    float v;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << v;
+            advance();
+        }
+    }
+}
+
+processor InternalEventSource
+{
+    output event float32 eventSource;
+
+    void run()
+    {
+        loop
+        {
+            eventSource << 1.0f;
+            advance();
+        }
+    }
+}
+
+graph myGraph2
+{
+    output stream float audioOut;
+
+    let processors = Processor2[2];
+    let internalEventSource1 = InternalEventSource;
+    let internalEventSource2 = InternalEventSource;
+
+    connection
+    {
+        internalEventSource1.eventSource -> processors.eventIn1;
+        internalEventSource2.eventSource -> processors.eventIn2;
+        processors.audioOut -> audioOut;
+    }
+}
+
+processor test13
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << 1.0f; advance();
+            audioOut << 0.0f; advance();
+        }
+    }
+}
+
+graph test14
+{
+    output stream float<1> audioOut;
+    let myProc = test13 / 8;
+    connection myProc.audioOut -> audioOut;
+}
+
+processor test15
+{
+    output stream float<1>audioOut;
+
+    float multiplyBy2(float i)
+    {
+        i = i * 2.0f;
+        return i;
+    }
+
+    void run()
+    {
+        float f = 0.0f;
+        f += 0.01f;
+        audioOut << multiplyBy2(f);
+        advance();
+    }
+}
+
+processor sawGenerator
+{
+    output stream float audioOut, audioOut2;
+    float frequency = 1000.0f;
+
+    void run()
+    {
+        float phase = 0.0f;
+        let phaseIncrement = frequency / float (processor.frequency);
+
+        loop
+        {
+            audioOut << (-0.5f + phase);
+            phase += phaseIncrement;
+
+            if (phase > 1.0f)
+                phase -= 1.0f;
+
+            advance();
+        }
+    }
+}
+
+graph oversample
+{
+    output stream float audioOut1;
+    let generator1 = sawGenerator;
+    connection generator1.audioOut2 -> audioOut1;
+}
+
+namespace Shared
+{
+    float divideBy2(float f) { return f / 2.0f; }
+
+    processor blank
+    {
+        output stream float audioOut;
+
+        void run()
+        {
+            for (;;)
+            {
+                audioOut << 0.0f;
+                advance();
+            }
+        }
+    }
+}
+
+processor test16
+{
+    output stream float<1> audioOut;
+    input stream float<1> audioIn;
+
+    void run()
+    {
+        for (;;)
+        {
+            audioOut << Shared::divideBy2(audioIn);
+            advance();
+        }
+    }
+}
+
+
+namespace n
+{
+    float test17(float f) { return pow(2.0f, f); }
+}
+
+processor test17
+{
+    output stream float audioOut;
+
+    void run()
+    {
+        let f = n::test17(1.0f);
+        loop advance();
+    }
+}
+
+processor test18
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        int count = 10;
+
+        loop
+        {
+            loop (5)
+            {
+                audioOut << 1.0f;
+                advance();
+            }
+
+            loop (count + 2)
+            {
+                audioOut << 1.0f;
+                advance();
+                count++;
+            }
+        }
+    }
+}
+
+processor test19
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << 1.0f; advance();
+            audioOut << 0.0f; advance();
+        }
+    }
+}
+
+graph test20
+{
+    output stream float<1> audioOut;
+    let myProc = test19 * 8;
+    connection myProc.audioOut -> audioOut;
+}
+
+processor DelayLine
+{
+    input stream float audioIn;
+    output stream float audioOut;
+
+    float[100] buffer;
+    wrap<100> writePos;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << buffer[writePos];
+            buffer[writePos] = audioIn;
+            ++writePos;
+            advance();
+        }
+    }
+}
+
+namespace Event
+{
+    struct NoteOn
+    {
+        int channel;
+        float note;
+        float velocity;
+    }
+
+    processor MidiDataTranslator(int n)
+    {
+        input event soul::midi::Message midiIn;
+        output event NoteOn noteOn;
+
+        event midiIn (soul::midi::Message message)
+        {
+            NoteOn e;
+            noteOn << e;
+        }
+    }
+}
+
+graph PadSynth
+{
+    input event soul::midi::Message midiIn;
+    output stream float audioOut;
+    let midiTranslator = Event::MidiDataTranslator(1);
+    connection midiIn -> midiTranslator.midiIn;
+}
+
+processor arrayThrough
+{
+    input stream float audioIn[2];
+    output stream float audioOut[2];
+
+    void run()
+    {
+        float[2] in;
+
+        loop
+        {
+            in = audioIn;
+            let in2 = audioIn;
+            audioOut << in;
+            advance();
+        }
+    }
+}
+
+processor arrayThrough2
+{
+    input stream float audioIn[2];
+    output stream float audioOut[2];
+
+    void run()
+    {
+        float[2] in;
+
+        loop
+        {
+            in = audioIn;
+            audioOut[0] << in[0];
+            audioOut[1] << in[1];
+            advance();
+        }
+    }
+}
+
+processor test21
+{
+    output stream float<1> audioOut;
+    float<2> myFloats;
+
+    void run()
+    {
+        myFloats[0] = 1.0f;
+        advance();
+    }
+}
+
+processor test22
+{
+    input stream float<2> audioIn;
+    output stream float<2> audioOut;
+
+    void run()
+    {
+        loop
+        {
+            float f0 = audioIn[0];
+            float f1 = audioIn[1];
+            audioOut << float<2> (f0, f1);
+            let out = float<2>(f0, f1);
+            audioOut << out;
+            advance();
+        }
+    }
+}
+
+processor A
+{
+    output event float out;
+    void run() { loop { out << -1; advance(); } }
+}
+
+graph B
+{
+    output event float out;
+    connection A.out -> out;
+}
+
+graph test23
+{
+    output event float results;
+    connection B.out -> results;
+}
+
+namespace foo
+{
+    const float globalVariable = 0.1f;
+}
+
+processor test24
+{
+    output stream float<1> audioOut;
+    float function() { return foo::globalVariable; }
+    void run() { loop { audioOut << function(); advance(); } }
+}
+
+processor lfo
+{
+    input stream float audioIn1;
+    input stream float audioIn2;
+
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << (audioIn1 + audioIn2);
+
+            advance();
+        }
+    }
+}
+
+graph test25
+{
+    input stream float audioIn1;
+    input stream float audioIn2;
+    output stream float audioOut;
+    let source = lfo / 4;
+
+    connection
+    {
+        [linear] audioIn1 -> source.audioIn1;
+        [linear] audioIn2 -> source.audioIn2;
+
+        [sinc] source.audioOut -> audioOut;
+    }
+}
+
+processor test26
+{
+    input event float in;
+    output event float out;
+
+    event in(float f) { out << calc (f); }
+    float calc (float f) { return f + 0.1f; }
+
+    void run() { loop advance(); }
+}
+
+processor test27
+{
+    output stream float audioOut;
+
+    void processBool(bool b) {}
+    void processInt(int i) {}
+    void processFloat(float f) {}
+    void processDouble(float64 d) {}
+
+    void run()
+    {
+        var myBool = false, myInt = 1, myFloat = 1.0f, myDouble = 1.0;
+
+        processBool(myBool);
+        processInt(myInt);
+        processFloat(myFloat);
+        processDouble(myDouble);
+
+        myBool = true;
+        myInt++;
+        myFloat++;
+        myDouble++;
+
+        loop advance();
+    }
+}
+
+processor test28
+{
+    output stream float audioOut;
+
+    int returnsInt() { return 1; }
+
+    void run()
+    {
+        var myInt = returnsInt();
+        myInt++;
+        loop advance();
+    }
+}
+
+processor test29
+{
+    output stream float audioOut;
+
+    struct MyStruct { int i; }
+
+    MyStruct getMyStruct()
+    {
+        MyStruct s;
+        s.i = 1.0;
+        return s;
+    }
+
+    void run()
+    {
+        var myStruct = getMyStruct();
+        myStruct.i++;
+        loop advance();
+    }
+}
+
+processor Oscillator
+{
+    input event float trigger;
+    output stream float audioOut;
+    event trigger(float n) {}
+
+    void run() { for (;;) advance(); }
+}
+
+graph wrapped
+{
+    input event float trigger;
+    output stream float audioOut;
+
+    connection
+    {
+        trigger -> Oscillator.trigger;
+        Oscillator.audioOut -> audioOut;
+    }
+}
+
+graph test30
+{
+    input event float trigger;
+    output stream float audioOut;
+
+    connection
+    {
+        trigger -> wrapped.trigger;
+        wrapped.audioOut -> audioOut;
+    }
+}
+
+processor test31
+{
+    output stream float audioOut;
+
+    void processBool(bool b) {}
+    void processInt(int i) {}
+    void processFloat(float f) {}
+    void processDouble(float64 d) {}
+
+    void run()
+    {
+        var myBool = false;
+        var myInt = 1;
+        var myFloat = 1.0f;
+        var myDouble = 1.0;
+
+        processBool(myBool);
+        processInt(myInt);
+        processFloat(myFloat);
+        processDouble(myDouble);
+
+        myBool = true;
+        myInt++;
+        myFloat++;
+        myDouble++;
+
+        loop advance();
+    }
+}
+
+processor GainProcessor
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    float gain = 0.1f;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * gain;
+            advance();
+        }
+    }
+}
+
+graph test32
+{
+    output stream float audioOut;
+    input stream float audioIn;
+
+    let gain = GainProcessor[8];
+
+    connection
+    {
+        audioIn -> gain.audioIn;
+        gain.audioOut -> audioOut;
+    }
+}
+
+processor test33
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        float64 phase = 0;
+        float64 frequency = 440.0;
+        float gain = 0.8f;
+        const float64 sampleRate = processor.frequency;
+
+        loop
+        {
+            audioOut << gain * float (sin (phase));
+            phase += (frequency * 2.0 * pi) / sampleRate;
+
+            if (phase > pi * 2.0)
+                phase -= pi * 2.0;
+
+            advance();
+        }
+    }
+}
+
+processor test34
+{
+    output stream float<1> audioOut;
+
+    const float64 sampleRate = processor.frequency;
+
+    void run()
+    {
+        float64 phase = 0;
+        float64 frequency = 440.0;
+        float gain = 0.8f;
+
+        loop
+        {
+            audioOut << gain * float (sin (phase));
+            phase += (frequency * 2.0 * pi) / sampleRate;
+
+            if (phase > pi * 2.0)
+                phase -= pi * 2.0;
+
+            advance();
+        }
+    }
+}
+
+processor test35
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        float64 phase = 0;
+        float64 frequency = 440.0;
+        float gain = 0.8f;
+
+        loop
+        {
+            audioOut << gain * float (sin (phase));
+            phase += (frequency * 2.0 * pi) / processor.frequency;
+
+            if (phase > pi * 2.0)
+                phase -= pi * 2.0;
+
+            advance();
+        }
+    }
+}
+
+## function
+
+bool test1()
+{
+    clamp<5> i = 2;
+    i++;
+
+    return (i > 2);
+}
+
+## error 4:13: error: Expected a value
+
+bool test1()
+{
+    int i = int;
+    return true;
+}
+
+## error 4:13: error: Expected a value
+
+bool test1()
+{
+    let i = int;
+    return true;
+}
+
+## error 4:13: error: Expected a value
+
+bool test1()
+{
+    var i = int;
+    return true;
+}
+
+##  error 4:14: error: Expected a value
+
+bool test1()
+{
+    int i = (int) 3.0f;
+    return true;
+}
+
+## function
+
+bool compare1 (float a)
+{
+    int b = 4;
+    b++;
+    return (b == 5);
+}
+
+bool test1() { return compare1 (1.0f); }
+bool test2() { return test2 (1); }
+
+bool test2 (int i)
+{
+    wrap<15> j = 0;
+    j++;
+    return (j == 1);
+}
+
+bool compare3 (int i)
+{
+    {
+        int i = 2;
+    }
+
+    return i == 1;
+}
+
+bool test3() { return compare3 (1); }
+
+bool compare4 (int i)
+{
+    {
+        int i = 2;
+
+        {
+            int i = 3;
+        }
+    }
+
+    return i == 1;
+}
+
+bool test4() { return compare4 (1); }
+
+## error 9:5: error: Expected a statement
+
+struct Thing
+{
+    float32 a;
+}
+
+bool test()
+{
+    Thing[5];
+    return true;
+}
+
+## error 10:11: error: Expected a value or endpoint
+
+struct Thing
+{
+    float32 a;
+}
+
+bool test()
+{
+    Thing[5];
+    Thing.at(0).a = 1.0f;
+    return true;
+}
+
+## error 6:5: error: Expected a statement
+
+struct T {}
+
+bool test()
+{
+    T;
+    return true;
+}
+
+## error 4:5: error: Expected a statement
+
+bool test()
+{
+    int;
+    return true;
+}
+
+## error 4:5: error: This constant expression will have no effect
+
+bool test()
+{
+    1;
+
+    return true;
+}
+
+## error 4:15: error: Illegal types for binary operator '+' ('int32' and 'string')
+
+bool test()
+{
+    int n = 6 + "test";
+    return true;
+}
+
+## function
+
+struct ComplexType
+{
+    float32 real;
+    float32 imag;
+}
+
+bool test()
+{
+    ComplexType c = ComplexType (1.0f, inf);
+    c.real = 2.0f;
+
+    return (c.real == 2.0f);
+}
+
+## compile
+
+processor test
+{
+    output stream float32 out;
+
+    var r = MyStruct (1.0);
+
+    struct MyStruct
+    {
+        float64 i;
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## processor
+
+processor test
+{
+    output stream int out;
+    int f (const int[1]& i) { return i[0]; }
+    void run() { out << f(ns::ints); advance(); loop { out << -1; advance(); } }
+}
+namespace ns
+{
+    const int[1] ints = int[1](1);
+}
+
+## error 4:17: error: Language feature not yet implemented: Endpoints using wrap or clamp types!
+
+processor WrapNotSupported
+{
+    input event wrap<3> eventIn;
+    output event int eventOut;
+
+    event eventIn(wrap<3> i) { eventOut << i; }
+}
+
+## error 4:17: error: Language feature not yet implemented: Endpoints using wrap or clamp types!
+
+processor WrapNotSupported
+{
+    input event CustomEvent eventIn;
+    output event int eventOut;
+
+    struct CustomEvent
+    {
+        float f;
+        wrap<3> i;
+    }
+
+    event eventIn (CustomEvent e) { eventOut << 0; }
+}
+
+
+## function
+
+namespace T
+{
+    using FloatType = float<2>;
+
+    float<2> convert (float f)
+    {
+        return FloatType (f);
+    }
+}
+
+bool test1()
+{
+    let v = T::convert (1.0f);
+    return true;
+}
+
+bool test2()
+{
+    var j = 1;
+    j++;
+
+    var i = int32[2] (1, 1);
+    i = int32[2] (j, j);
+    i = int32[2] (j);
+    i = j;
+
+    return i[0] == 2;
+}
+
+int increment (int& i)
+{
+    i++;
+    return i;
+}
+
+bool test3()
+{
+    int i = 0;
+    int j = increment (i);
+    int k = increment (i);
+    return k == 2;
+}
+
+## error 4:12: error: The name 'a' is already in use
+
+namespace t
+{
+    struct S
+    {
+        int a;
+        int a;
+    }
+}

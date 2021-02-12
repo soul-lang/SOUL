@@ -1,0 +1,191 @@
+## function
+
+bool simpleLoop()
+{
+    int n = 0;
+
+    for (int i=0; i<10; i++)
+        n++;
+
+    return (n == 10);
+}
+
+bool simpleLoopContinue()
+{
+    int n = 0;
+
+    for (int i=0; i<10; i++)
+    {
+        n++;
+        continue;
+        n++;
+    }
+
+    return (n == 10);
+}
+
+bool simpleLoopBreak()
+{
+    int n = 0;
+
+    for (int i=0; i<10; i++)
+    {
+        n++;
+        break;
+        n++;
+    }
+
+    return (n == 1);
+}
+
+bool loopRepeat()
+{
+    int n = 0;
+
+    loop (10)
+        n++;
+
+    return (n == 10);
+}
+
+bool loopCountImmutable()
+{
+    int n = 0;
+
+    int count = 10;
+
+    loop (count)
+    {
+        count = 5;
+        n++;
+    }
+
+    return (n == 10);
+}
+
+int loopsHelper (int count)
+{
+    int n = 0;
+
+    loop (count)
+        n++;
+
+    return n;
+}
+
+bool negativeLoopCount()
+{
+    int n = loopsHelper (-10);
+    return (n == 0);
+}
+
+bool loopBreak()
+{
+    int n = 0;
+    int count = 10;
+
+    loop (count)
+    {
+        n++;
+        break;
+    }
+
+    return (n == 1);
+}
+
+bool loopContinue()
+{
+    int n = 0;
+    int count = 10;
+
+    loop (count)
+    {
+        continue;
+        n++;
+    }
+
+    return (n == 0);
+}
+
+bool whileLoop()
+{
+    int n = 0;
+    int count = 10;
+
+    while (--count >= 0)
+        n++;
+
+    return n == 10;
+}
+
+bool rangeBasedLoop1()
+{
+    int n = 0;
+
+    for (wrap<6> i)
+        n += i;
+
+    return n == 1 + 2 + 3 + 4 + 5;
+}
+
+int rangeBasedLoopN<T> (T x)
+{
+    int n = 0;
+
+    for (wrap<T.size> i)
+        n += i;
+
+    return n;
+}
+
+bool rangeBasedLoop2()
+{
+    return rangeBasedLoopN (int[6]()) == 1 + 2 + 3 + 4 + 5;
+}
+
+bool rangeBasedLoop3()
+{
+    int n = 0;
+
+    for (wrap<6> i = 2)
+        n += i;
+
+    return n == 2 + 3 + 4 + 5;
+}
+
+bool rangeBasedLoop4()
+{
+    int[6] a;
+
+    for (wrap<a.size> i)
+        a[i] = i + 1;
+
+    return a[-1] == a.size;
+}
+
+## error 2:36: error: A range-based-for loop must declare a variable with a 'wrap' type
+
+void rangeBasedLoop()   { for (int i) {} }
+
+## error 2:39: error: A range-based-for loop must declare a variable with a 'wrap' type
+
+void rangeBasedLoop()   { for (int[2] i) {} }
+
+## error 2:44: error: Found ")" when expecting ";"
+
+void rangeBasedLoop()   { for (wrap<2> i, j) {} }
+
+## error 2:1: error: The function 'infiniteLoop' contains at least one infinite loop
+
+void infiniteLoop()
+{
+    int x = 0;
+
+    loop
+    {
+        if (x < 100)
+            ++x;
+        else
+            x /= 2;
+    }
+}

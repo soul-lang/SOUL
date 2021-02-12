@@ -1,0 +1,116 @@
+## error 6:5: error: A function declaration cannot be marked 'external'
+
+processor A
+{
+    output stream float out;
+
+    external void myFunc()
+    {
+    }
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 6:5: error: External declarations do not require the 'const' keyword
+
+processor A
+{
+    output stream float out;
+
+    external const int i;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 4:5: error: Import statements can only be declared at the start of a namespace
+
+processor gain
+{
+    import something;
+    input stream float32 audioIn;
+    output stream float32 audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * 0.5f;
+            advance();
+        }
+    }
+}
+
+## error 3:1: error: Import statements can only be declared at the start of a namespace
+
+void fn() {}
+import foo.bar;
+import "sdfgdfs";
+
+## error 18:1: error: Import statements can only be declared at the start of a namespace
+
+processor test
+{
+    output event int32 out;
+
+    void run()
+    {
+        out << 1;
+
+        loop
+        {
+            out << -1;
+            advance();
+        }
+    }
+}
+
+import something;
+
+## error 4:2: error: Language feature not yet implemented: import statements!
+
+import foo.bar;
+
+## error 4:2: error: Language feature not yet implemented: import statements!
+
+import "sdfgdfs";
+
+## compile
+
+graph Graph
+{
+    input stream FT audioIn;
+    output stream FT audioOut;
+
+    using FT = float32;
+
+    let gain = soul::gain::FixedGain (FT, 0.5f);
+
+    connection
+    {
+        audioIn -> gain -> audioOut;
+    }
+}
+
+## compile
+
+processor gain
+{
+    input stream FT audioIn;
+    output stream FT audioOut;
+
+    using FT = float32;
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * 0.5f;
+            advance();
+        }
+    }
+}

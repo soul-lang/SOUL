@@ -1,0 +1,177 @@
+## function
+
+let b = true;
+
+bool test1()
+{
+    if const (b)
+        return true;
+    else
+        dfgdfg();
+
+    return false;
+}
+
+bool test2()
+{
+    if const (! b)
+        return false;
+
+    return true;
+}
+
+## error 6:17: error: Expected a constant value
+
+bool test()
+{
+    int x; ++x;
+
+    if const (x == 1)
+        return true;
+    else
+        dfgdfg();
+
+    return false;
+}
+
+## function
+
+int getFirst<T> (T t)
+{
+    if const (T.isScalar)
+        return t;
+    else
+        return t[0];
+}
+
+bool test1()
+{
+    return getFirst (5) == 5;
+}
+
+bool test2()
+{
+    return getFirst (int[3] (4, 5, 6)) == 4;
+}
+
+## function
+
+T.elementType mySum<T> (T t)
+{
+    T.elementType sum;
+
+    if const (t.size <= 8)
+    {
+        wrap<t.size> i;
+
+        loop (t.size)
+            sum += t[i++];
+    }
+    else
+    {
+        let n = t.size / 8;
+        let v = t[0:n] + t[n:2*n] + t[2*n:3*n] + t[3*n:4*n] + t[4*n:5*n] + t[5*n:6*n] + t[6*n:7*n] + t[7*n:8*n];
+
+        if const (n > 1)
+            sum += mySum (v);
+        else
+            sum += v;
+
+        let remainder = t.size % 8;
+
+        if const (remainder == 1)
+            sum += t[8*n];
+
+        if const (remainder > 1)
+        {
+            let r = t[8*n:];
+            sum += mySum (r);
+        }
+    }
+
+    return sum;
+}
+
+bool test1()
+{
+    return mySum (float<3> (1.0f, 2.0f, 3.0f)) == 6.0f;
+}
+
+bool test2()
+{
+    int<17> i;
+
+    i[2] = 1;
+    i[8] = 2;
+    i[11] = 3;
+
+    return mySum (i) == 6;
+}
+
+bool test3()
+{
+    int<107> i;
+
+    i[56] = 1;
+    i[101] = 2;
+    i[23] = 3;
+
+    return mySum (i) == 6;
+}
+
+## function
+
+int checkBranch<T> (T t)
+{
+    if const (T.isVector)
+    {
+        if const (T.size <= 8)
+        {
+            return 1;
+        }
+        else
+            return 2;
+    }
+    else
+    {
+        return 3;
+    }
+}
+
+bool checkSmallVector()     { return checkBranch (int<4>(1)) == 1; }
+bool checkLargeVector()     { return checkBranch (int<12>(1)) == 2; }
+bool checkArray()           { return checkBranch (int[4](1)) == 3; }
+
+## function
+
+int checkConstIf<T> (T t)
+{
+    int result = 0;
+
+    if const (T.isVector)
+        result = 1;
+
+    return result;
+}
+
+int checkNonConstIf<T> (T t)
+{
+    int result = 0;
+
+    if (T.isVector)
+        result = 1;
+
+    return result;
+}
+
+bool testConstIf()
+{
+    int<4> v;
+    return v.checkConstIf() == 1;
+}
+
+bool testNonConstIf()
+{
+    int<4> v;
+    return v.checkNonConstIf() == 1;
+}

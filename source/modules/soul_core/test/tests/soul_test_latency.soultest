@@ -1,0 +1,313 @@
+## error 2:21: error: The processor.latency value can only be declared in a processor
+
+graph G { processor.latency = 5; }
+
+
+## error 5:25: error: The processor.latency value must be declared as an integer constant
+
+processor P
+{
+    output stream int x;
+    processor.latency = 1.0f;
+    void run() { loop advance(); }
+}
+
+## error 5:25: error: This latency value is out of range
+
+processor P
+{
+    output stream int x;
+    processor.latency = -1;
+    void run() { loop advance(); }
+}
+
+## error 5:25: error: This latency value is out of range
+
+processor P
+{
+    output stream int x;
+    processor.latency = 0x7fffffff;
+    void run() { loop advance(); }
+}
+
+## error 5:15: error: Expected a function or variable declaration
+
+processor P
+{
+    output stream int x;
+    processor.period = 1;
+    void run() { loop advance(); }
+}
+
+## error 5:22: error: Found ";" when expecting "="
+
+processor P
+{
+    output stream int x;
+    processor.latency;
+    void run() { loop advance(); }
+}
+
+## error 6:15: error: The processor.latency value must not be set more than once
+
+processor P
+{
+    output stream int x;
+    processor.latency = 1;
+    processor.latency = 1;
+    void run() { loop advance(); }
+}
+
+## error 5:18: error: Processor properties are constants, and cannot be modified
+
+processor P
+{
+    output stream int x;
+    void run() { processor.latency = 1; loop advance(); }
+}
+
+## processor
+
+processor P (int n)
+{
+    output stream int out;
+    processor.latency = n + 2;
+    void run() { out << (processor.latency == 12 ? 1 : 0); loop { advance(); out << -1; }}
+}
+
+graph test
+{
+    output stream int out;
+    let p = P(10);
+    connection p -> out;
+}
+
+## global
+
+processor Delay (int length)
+{
+    input stream int in;
+    output stream int out;
+
+    int[length] buffer;
+
+    processor.latency = length;
+
+    void run()
+    {
+        wrap<length> index;
+
+        loop
+        {
+            out << buffer[index];
+            buffer[index] = in;
+            ++index;
+            advance();
+        }
+    }
+}
+
+graph DelayGraph (int length)
+{
+    input stream int in;
+    output stream int out;
+
+    let d = Delay (length);
+    connection in -> d -> out;
+}
+
+processor Square (int length)
+{
+    output stream int out;
+
+    void run()
+    {
+        wrap<length> index;
+
+        loop
+        {
+            out << (index++ < length / 2 ? 1 : -1);
+            advance();
+        }
+    }
+}
+
+processor Zero
+{
+    input stream int in;
+    output stream int out;
+    void run() { loop advance(); }
+}
+
+processor CheckSumOfSquares (int numToSkip, int numToCheck, int expected)
+{
+    input stream int in;
+    output event int results;
+
+    void run()
+    {
+        loop (numToSkip)    { results << 1; advance(); }
+        loop (numToCheck)   { results << (in == expected || in == -expected ? 1 : 0); advance(); }
+        loop                { results << -1; advance(); }
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        check = CheckSumOfSquares (14, 40, 2);
+
+    connection
+    {
+        source           -> check;
+        source -> delay1 -> check -> out;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = Delay (11),
+        check = CheckSumOfSquares (14, 50, 3);
+
+    connection
+    {
+        source           -> check -> out;
+        source -> delay1 -> check;
+        source -> delay2 -> check;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = DelayGraph (7),
+        delay2 = Delay (11),
+        delay3 = Delay (13),
+        check = CheckSumOfSquares (20, 50, 3);
+
+    connection
+    {
+        source                     -> check -> out;
+        source -> delay1 -> delay2 -> check;
+        source -> delay3           -> check;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = DelayGraph (11),
+        delay3 = Delay (13),
+        check = CheckSumOfSquares (15, 50, 4);
+
+    connection
+    {
+        source           -> [2] -> check -> out;
+        source -> delay1 -> [2] -> check;
+        source -> delay2 -> [2] -> check;
+        source -> [2] -> delay3 -> check;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = DelayGraph (11),
+        check = CheckSumOfSquares (30, 50, 5);
+
+    connection
+    {
+        source                     -> check -> out;
+        source -> delay1 -> delay2 -> check;
+        source           -> delay2 -> check;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = DelayGraph (11),
+        check = CheckSumOfSquares (30, 50, 5);
+
+    connection
+    {
+        source                     -> check -> out;
+        source -> delay2 -> delay1 -> check;
+        source -> delay2           -> check;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = DelayGraph (11),
+        delay3 = Delay (13),
+        delay4 = Delay (2),
+        check = CheckSumOfSquares (30, 50, 5);
+
+    connection
+    {
+        source                      -> check -> out;
+        source  -> delay1           -> check;
+        source  -> delay1 -> delay2 -> check;
+        source -> Zero -> delay4 -> [1] -> delay2 -> Zero;
+    }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    let source = Square (13),
+        delay1 = Delay (7),
+        delay2 = DelayGraph (11),
+        delay3 = Delay (13),
+        delay4 = Delay (2),
+        check = CheckSumOfSquares (30, 50, 6);
+
+    connection
+    {
+        source                             -> check -> out;
+        source           -> delay1         -> check;
+        source -> delay2 -> delay1         -> check;
+        source                   -> delay3 -> check;
+        source -> delay4 -> Zero -> delay3;
+    }
+}

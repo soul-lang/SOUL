@@ -1,0 +1,893 @@
+## function
+
+struct B { float x; }
+struct A { B b; int x; }
+struct C { int<2> x; float[4] y; }
+
+bool test1()
+{
+    let b = B (1.0f);
+    let a1 = A (B(1.0f), 1234);
+    let a2 = A (b, 1234);
+
+    return a1.x == 1234 && a2.x == 1234
+             && A (b, 1234).x == 1234 && A (B(1.0f), 1234).x == 1234;
+}
+
+bool test2()
+{
+    var b = B (1.0f);
+    b.x++;
+    var z = 1233;
+    ++z;
+    var a1 = A (B(1.0f), z++);
+    var a2 = A (b, z);
+
+    return a1.x == 1234 && a2.x == 1235;
+}
+
+bool test3()
+{
+    return C(int<2> (3, 4), float[4](1.0f, 2.0f, 3.0f, 4.0f)).y[1] == 2.0f;
+}
+
+bool testWrapZero()
+{
+    var i = 3; i -= 3;
+    return wrap (5, 0) == 0 && wrap (i, 0) == 0 && wrap (4, i) == 0;
+}
+
+struct ABC { int a; float b; int<2> c; }
+
+bool test4() { let x = ABC (123, 2.0f, int<2> (3, 4)); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+bool test5() { let x = ABC (123, 2.0f, (3, 4)); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+bool test6() { let x = ABC (123, 2.0f, (4)); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+
+ABC getA1() { return (123, 2.0f, (3, 4) ); }
+ABC getA2() { return ABC (123, 2.0f, (3, 4) ); }
+
+bool test7() { let x = getA1(); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+bool test8() { let x = getA2(); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+bool test9() { return getA1().a == 123 && getA1().b == 2.0f && getA2().c[1] == 4; }
+
+## error 2:25: error: Divide-by zero is undefined behaviour
+
+bool test()  { return 4 / 0 == 0; }
+
+## error 2:25: error: Modulo zero is undefined behaviour
+
+bool test()  { return 4 % 0 == 0; }
+
+## error 2:41: error: Divide-by zero is undefined behaviour
+
+bool test()  { let i = 5; ++i; return i / 0 == 0; }
+
+## error 2:41: error: Modulo zero is undefined behaviour
+
+bool test()  { let i = 5; ++i; return i % 0 == 0; }
+
+## error 5:13: error: Cannot implicitly convert 'bool' to 'int32'
+
+bool test()
+{
+    bool b = true;
+    int i = b;
+
+    return true;
+}
+
+## error 7:13: error: Cannot implicitly convert 'void' to 'int32'
+
+void noReturn()
+{}
+
+bool test()
+{
+    int i = noReturn();
+
+    return true;
+}
+
+## error 3:32: error: Expected an expression of type float32
+
+struct A { int a; float b; int<2> c; }
+bool test1() { let x = A (123, true, int<2> (3, 4)); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+
+## error 3:32: error: Expected an expression of type float32
+
+struct A { int a; float b; int<2> c; }
+bool test1() { let x = A (123, 3.4567, int<2> (3, 4)); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+
+## error 3:24: error: Unknown function: 'nosuchfunction'
+
+struct A { int a; float b; int<2> c; }
+bool test4() { let x = nosuchfunction(); return x.a == 123 && x.b == 2.0f && x.c[1] == 4; }
+
+## error 4:21: error: Cannot implicitly convert 1.23 ('float64') to 'const float32'
+
+namespace test
+{
+    const float f = 1.23;
+}
+
+## error 6:14: error: Unknown function: 'bahFution2' (did you mean 'tests::blahFunction2'?)
+
+void blahFunction1() {}
+void blahFunction2() {}
+void blahFunction3() {}
+
+void foo() { bahFution2(); }
+
+## error 2:14: error: Unknown function: 'soul::sin' (did you mean 'sin'?)
+
+void foo() { soul::sin (2.0); }
+
+## error 2:14: error: Unknown function: 'soul::fdsin' (did you mean 'sin'?)
+
+void foo() { soul::fdsin (2.0); }
+
+## error 2:14: error: Unknown function: 'dBtoGain' (did you mean 'soul::dBtoGain'?)
+
+void foo() { dBtoGain (2.0); }
+
+## error 6:9: warning: The variable 'x' shadows another local variable with the same name //// 6:9: error: The name 'x' is already in use
+
+bool test()
+{
+    let x = 1;
+    let b = x;
+    let x = x + 1;
+    return x + b == 3;
+}
+
+## error 4:10: error: The name 'b' is already in use
+
+bool redefinitionOfFunctionArgument (bool b)
+{
+    bool b = true;
+
+    return b;
+}
+
+## function ignoreWarnings
+
+bool test()
+{
+    let x = 1;
+
+    {
+        let b = x;
+        let x = x + 1;
+        return x + b == 3;
+    }
+}
+
+## error 2:42: error: Unrecognised suffix on literal
+
+void testLiteralSuffix1()  { let x = 1.0f33; }
+
+## error 2:44: error: Unrecognised suffix on literal
+
+void testLiteralSuffix1()  { let x = 1.0f321; }
+
+## error 2:18: error: This constant expression will have no effect
+
+void test() { 23 + 5; }
+
+## error 2:15: error: A variable type cannot be 'void'
+
+void test() { void f; }
+
+## error 2:12: error: Expected a type
+
+void test (var x) {}
+
+## error 2:24: error: Function parameters cannot be void
+
+void doStuff (float f, void v) {}
+
+## error 2:1: error: Not all control paths in the function 'failToReturn' return a value
+
+float failToReturn (float in)
+{
+    if (in > 0.0f)
+        return in;
+}
+
+## error 2:1: error: Not all control paths in the function 'failToReturn' return a value
+
+float failToReturn() {}
+
+## error 2:22: error: Cannot implicitly convert 56 ('int32') to 'void'
+
+void test() { return 56; }
+
+## error 4:7: error: This constant expression will have no effect
+
+void testExpressionAsStatement()
+{
+    2 == 3;
+    1 + 2;
+}
+
+## error 2:11: error: Functions can only be declared inside a processor or namespace
+
+graph g { void foo (int x) {} }
+
+## error 2:17: error: Event handlers can only be declared inside a processor
+
+graph g { event foo (int x) {} }
+
+## error 2:36: error: Only constant variables can be declared inside a graph
+
+graph g { output stream int o; int x; }
+
+## error 2:40: error: Expected a processor name
+
+graph g { output stream int o; let x = 123; }
+
+## error 2:36: error: Only constant variables can be declared inside a graph
+
+graph g { output stream int o; var x = 123; }
+
+## error 2:19: error: Only constant variables can be declared inside a namespace
+
+namespace n { int x; }
+
+## error 2:1: error: The function 'foo1' calls itself recursively
+
+void foo1 (int x)   { foo1 (x); }
+
+## error 2:1: error: The functions 'foo1' and 'foo2' call each other recursively
+
+void foo1 (int x)   { foo2 (x); }
+void foo2 (int x)   { foo1 (x); }
+
+## error 2:1: error: Recursive call sequence via functions: 'foo1', 'foo2', 'foo3'
+
+void foo1 (int x)   { foo2 (x); }
+void foo2 (int x)   { foo3 (x); }
+void foo3 (int x)   { foo1 (x); }
+
+## error 2:23: error: A brace-enclosed declaration should not be followed by a semicolon
+
+struct type { int x; };
+
+## error 2:8: error: The type 'type' cannot contain itself recursively
+
+struct type { type x; }
+
+## error 2:8: error: The types 'type1' and 'type2' refer to each other recursively
+
+struct type1 { type3 x; }
+struct type2 { type1 x; }
+struct type3 { type2 x; }
+
+## error 5:9: error: Only constant variables can be declared inside a namespace
+
+namespace MyNamespace
+{
+    let globalConst = 1;  // this is OK
+    var globalVar = 1; // this is illegal
+}
+
+## error 3:24: error: Index is out of range
+
+float[2] myFloats;
+void test() { myFloats[2] = 1.0f; }
+
+## error 3:45: error: Index is out of range
+
+float[2] myFloats;
+void test() { myFloats[-1] = 1.0f; myFloats[-3] = 1.0f; }
+
+## error 3:24: error: Index is out of range
+
+float<2> myFloats;
+void test() { myFloats[2] = 1.0f; }
+
+## error 3:45: error: Index is out of range
+
+float<2> myFloats;
+void test() { myFloats[-1] = 1.0f; myFloats[-3] = 1.0f; }
+
+## error 2:21: error: Cannot create a vector with elements that are not primitive types
+
+void foo()  { int<4><2> x; }
+
+## error 2:22: error: Cannot create a vector with elements that are not primitive types
+
+void foo()  { wrap<4><2> x; }
+
+## error 5:13: error: Assignment is not allowed inside an expression
+
+void test()
+{
+    int i, j;
+    j = i = 2;
+}
+
+## error 5:13: error: Assignment is not allowed inside an expression
+
+void test()
+{
+    int i = 1;
+    if (i = 2) {}
+}
+
+## error 19:14: error: The '=' operator must be given an assignable variable
+
+void processBool(bool b) {}
+void processInt(int i) {}
+void processFloat(float f) {}
+void processDouble(float64 d) {}
+
+void test()
+{
+    let myBool = false;
+    let myInt = 1;
+    let myFloat = 1.0f;
+    let myDouble = 1.0;
+
+    processBool (myBool);
+    processInt (myInt);
+    processFloat (myFloat);
+    processDouble (myDouble);
+
+    myBool = true;
+    myInt++;
+    myFloat++;
+    myDouble++;
+}
+
+## error 14:17: error: The '++' operator must be given an assignable variable
+
+struct MyStruct { int i; }
+
+MyStruct getMyStruct()
+{
+    MyStruct s;
+    s.i = 1.0;
+    return s;
+}
+
+void test()
+{
+    let myStruct = getMyStruct();
+    myStruct.i++;
+}
+
+## error 7:12: error: The '++' operator must be given an assignable variable
+
+int returnsInt()    { return 1; }
+
+void test()
+{
+    let myInt = returnsInt();
+    myInt++;
+}
+
+## error 5:7: error: Illegal types for binary operator '<<' ('float32' and 'float32')
+
+void test()
+{
+    float f;
+    f << 0.1f;
+}
+
+## error 4:28: error: Identifiers beginning with an underscore are reserved for system use
+
+processor test
+{
+    output stream float<1> _audioOut;
+    void run() { loop advance(); }
+}
+
+## error 4:28: error: Unexpected character '$' in source
+
+processor test
+{
+    output stream float<1> $audioOut;
+    void run() { loop advance(); }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    void run()
+    {
+        results << 1 << -1 << -1 << -1 << -1 << -1;
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    void foo1()  { advance(); results << 1 << -1 << -1 << -1 << -1 << -1; }
+    void foo2()  { loop { results << -1; advance(); } }
+
+    void run()   { foo1(); foo2(); }
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    void foo1()  { advance(); results << 1; }
+    void foo2()  { advance(); results << -1 << -1 << -1 << -1 << -1; }
+    void foo3()  { loop { results << -1; advance(); } }
+    void foo4() { foo1(); foo1(); foo2(); foo3(); }
+
+    void run()  { foo4(); }
+}
+
+## error 5:44: error: Expected a value
+
+processor test
+{
+    output stream float<1> audioOut;
+    void run() { loop { let xx = (audioOut << 0.1f); advance(); } }
+}
+
+## error 5:16: error: Cannot implicitly convert 0.5f ('const float32') to 'float32&'
+
+void test()
+{
+    const float gain = 0.5f;
+    doNothing (gain);
+}
+
+void doNothing (float& f) {}
+
+## error 7:16: error: Cannot implicitly convert 0.5f ('const float32') to 'float32&'
+
+void doNothing (float& f) {}
+const float gain = 0.5f;
+
+void test()
+{
+    doNothing (gain);
+}
+
+## error 3:22: error: Cannot implicitly convert 'bool' to 'void'
+
+int foo (int x) { return x; }
+void test() { return foo (123) == 123; }
+
+## error 2:21: error: Identifiers beginning with an underscore are reserved for system use
+
+void test() { float _f = 0.0f; }
+
+## error 2:21: error: Unexpected character '$' in source
+
+void test() { float $f = 0.0f; }
+
+## error 2:1: error: Language feature not yet implemented: Multi-dimensional arrays!
+
+float[10][20] gain;
+void test()   { gain[7][3] = 0.5f; }
+
+## error 2:14: error: Language feature not yet implemented: Multi-dimensional arrays!
+
+struct Foo { float[10][20] gain; }
+void test()   { Foo f; f.gain[7][3] = 0.5f; }
+
+## error 2:1: error: The 'const' keyword cannot be applied to a type that is already const
+
+const const float gain = 0.5f;
+
+## error 4:25: error: Language feature not yet implemented: top-level arrays of outputs!
+
+processor Foo
+{
+    output stream float audioOut[2];
+
+    void run()
+    {
+        loop
+        {
+            audioOut[0] << 0.1f;
+            audioOut[1] << 0.2f;
+            advance();
+        }
+    }
+}
+
+## error 4:24: error: Language feature not yet implemented: top-level arrays of inputs!
+
+processor Foo
+{
+    input stream float in[2];
+    output stream float audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << 0.1f;
+            advance();
+        }
+    }
+}
+
+## error 12:22: error: Index is out of range
+
+processor Foo
+{
+    output stream float audioOut[2];
+
+    void run()
+    {
+        loop
+        {
+            audioOut[0] << 0.1f;
+            audioOut[1] << 0.2f;
+            audioOut[2] << 0.3f;
+            advance();
+        }
+    }
+}
+
+## error 3:1: error: A function with matching parameters has already been defined
+
+float function (float f)    { return f; }
+float function (float &f)   { return f; }
+
+## compile
+
+namespace test
+{
+    void function1()    { test::function2(); }
+    void function3()    {}
+}
+
+namespace test
+{
+    void function2()    { test::function3(); }
+}
+
+processor DummyProcessor { output stream int x; void run() { loop advance(); }}
+
+## error 3:17: error: A function with matching parameters has already been defined
+
+namespace Foo { void foo1() {} }
+namespace Foo { void foo1() {} }
+
+## error 3:1: error: A function with matching parameters has already been defined
+
+void foo (int x) {}
+void foo (int x) {}
+void test() { foo (1); }
+
+## error 5:15: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement
+
+void test()
+{
+    var x = 1, y = 1;
+    y = x + ++x;
+}
+
+## error 5:15: error: Variables which have the ++ or -- operator applied can not be used twice within the same statement
+
+void test()
+{
+    var x = 1, y = 1;
+    y = ++x + x;
+}
+
+## error 2:22: error: Processor parameter types cannot be references
+
+processor test (float& f)
+{
+    output stream float<1> audioOut;
+
+    float function() {}
+
+    void run()
+    {
+        loop
+        {
+            audioOut << function();
+            advance();
+        }
+    }
+}
+
+## error 8:12: error: The '++' operator must be given an assignable variable
+
+processor parameterised (float f)
+{
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        f++;
+
+        loop
+        {
+            audioOut << 1.0f;
+            advance();
+        }
+    }
+}
+
+graph test
+{
+    output stream float audioOut;
+
+    let p = parameterised (1.0f);
+}
+
+## error 6:8: error: This type cannot be a reference
+
+processor test
+{
+    output stream float<1> audioOut;
+
+    int& i;
+
+    void run()
+    {
+        audioOut << 1.0f;
+        advance();
+    }
+}
+
+## error 4:22: error: Event types cannot be references
+
+processor test
+{
+    input event float& inputEventReference;
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        audioOut << 1.0f;
+        advance();
+    }
+}
+
+## error 9:12: error: Struct members cannot be references
+
+processor test
+{
+    output stream float<1> audioOut;
+
+    struct MyStruct
+    {
+        int i;
+        int& j;
+    }
+
+    void run()
+    {
+        audioOut << 1.0f;
+        advance();
+    }
+}
+
+## error 5:15: error: A processor can only be defined inside a namespace
+
+processor test
+{
+    output stream float audioOut;
+    processor nestedProcessor {}
+
+    void run() { loop advance(); }
+}
+
+## error 7:24: error: Illegal types for binary operator '>' ('float32<2>' and 'float32')
+
+float getFloat() { return 1.0f; }
+
+void test()
+{
+    float<2> myFloats;
+    bool b = (myFloats > getFloat());  // Can't compare a vector with a scalar
+}
+
+## error 7:19: error: Found "{" when expecting "("
+
+processor test
+{
+    input event float eventIn;
+    output stream float audioOut;
+
+    event eventIn {}
+
+    void run()
+    {
+        loop
+        {
+            audioOut << 0.0f;
+            advance();
+        }
+    }
+}
+
+## error 4:28: error: The name 'init' is not a valid endpoint name
+
+processor test
+{
+    output stream float<1> init;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+## error 4:27: error: The name 'run' is not a valid endpoint name
+
+processor test
+{
+    input stream float<1> run;
+    output stream float<1> audioOut;
+
+    void run()
+    {
+        advance();
+    }
+}
+
+
+## error 6:12: error: The types 'MyStruct' and 'MyStruct2' refer to each other recursively
+
+processor test
+{
+    output stream float<1> audioOut;
+
+    struct MyStruct
+    {
+        int i;
+        MyStruct2 s;
+    }
+
+    struct MyStruct2
+    {
+        int i;
+        MyStruct s;
+    }
+
+    void run()
+    {
+        let s = MyStruct();
+        advance();
+    }
+}
+
+## compile
+
+processor gain
+{
+    input stream float32 audioIn;
+    output stream float32 audioOut;
+
+    void run()
+    {
+        loop
+        {
+            audioOut << audioIn * 0.5f;
+            advance();
+        }
+    }
+}
+
+## error 6:16: error: Cannot find symbol 'notDefined'
+
+namespace tests
+{
+    int32 test1()
+    {
+        return notDefined;
+    }
+}
+
+## function
+
+bool test1() { return true; }
+bool test2() { return (2 + 2) == 4; }
+
+## console hello
+
+processor test
+{
+    output event int32 out;
+
+    void run()
+    {
+        console << "hello";
+        out << -1;
+        loop advance();
+    }
+}
+
+## processor
+
+processor test
+{
+    output event int32 out;
+
+    void run()
+    {
+        out << 1;
+
+        loop
+        {
+            out << -1;
+            advance();
+        }
+    }
+}
+
+## error 2:19: error: Graphs cannot have type specialisations
+
+graph Test (using SampleType)
+{
+    output event SampleType out;
+}
+
+## error 2:23: error: Namespace specialisations may only be used in namespaces
+
+graph Test (namespace ns)
+{
+    output event int32 out;
+}
+
+## compile
+
+graph Test
+{
+    output event int32 out;
+    connection {}
+}
+
+## compile
+
+processor Generator
+{
+    output event int32 out;
+
+    void run()
+    {
+        loop
+        {
+            out << -1;
+            advance();
+        }
+    }
+}
+
+graph Test
+{
+    output event int32 out;
+
+    let
+    {
+        g = Generator,
+        g2 = Generator;
+    }
+
+    connection g -> out;
+}
+
+## error 7:25: error: Language feature not yet implemented: Many-to-many connections are not currently supported!
+
+graph Test
+{
+    input event int32 in1, in2;
+    output event int32 out1, out2;
+
+    connection in1, in2 -> out1, out2;
+}

@@ -1,0 +1,324 @@
+## function
+
+// In int32, 1000000 * 1000000 = -727379968
+
+bool intMultiply()
+{
+    int i = 1000000;
+    i = i + 0;
+    int j = 1000000;
+
+    return (i*j) < 0;
+}
+
+bool int32Multiply()
+{
+    int32 i = 1000000;
+    i = i + 0;
+    int32 j = 1000000;
+
+    return (i*j) < 0;
+}
+
+bool int64Multiply()
+{
+    int64 i = 1000000;
+    i = i + 0;
+    int64 j = 1000000;
+
+    return (i*j) > 0;
+}
+
+bool intMultiplyConstantFolder()
+{
+    int i = 1000000;
+    int j = 1000000;
+
+    return (i*j) == -727379968;
+}
+
+bool int32MultiplyConstantFolder()
+{
+    int32 i = 1000000;
+    int32 j = 1000000;
+
+    return (i * j) == -727379968;
+}
+
+bool int64MultiplyConstantFolder()
+{
+    int64 i = 1000000;
+    int64 j = 1000000;
+
+    return (i * j) == 1000000000000L;
+}
+
+bool testMin()
+{
+    int i = 5;
+    i = i + 0;
+    int j = 7;
+
+    return (min (i, j) == 5);
+}
+
+bool testMin64()
+{
+    int64 i = 5;
+    i = i + 0;
+    int64 j = 7;
+
+    return (min (i, j) == 5);
+}
+
+struct MyStruct
+{
+    wrap<16> i;
+}
+
+bool testZeroInitialiser1()
+{
+    wrap<16> i;
+    return (i == 0);
+}
+
+bool testZeroInitialiser2()
+{
+    MyStruct s;
+    return (s.i == 0);
+}
+
+bool testZeroInitialiser3()
+{
+    MyStruct[10] s;
+    return (s[5].i == 0);
+}
+
+bool testZeroInitialiser4()
+{
+    wrap<16>[10] i;
+    return (i[2] == 0);
+}
+
+bool test1()
+{
+    let x = int (1.1f);
+    return x == 1;
+}
+
+float64 test2 (float64 x)
+{
+    if (x < 1.0)
+        return 0.0;
+    else
+        return 1.0;
+}
+
+bool test3() { return true; }
+
+bool testLiteralSuffix1()  { return 0.6f32 > 0.5; }
+bool testLiteralSuffix2()  { return 0.6f64 > 0.5; }
+bool testLiteralSuffix3()  { return 100i32 > 99; }
+bool testLiteralSuffix4()  { return 100i64 > 99; }
+bool testLiteralSuffix5()  { return 0.6_f32 > 0.5; }
+bool testLiteralSuffix6()  { return 0.6_f64 > 0.5; }
+bool testLiteralSuffix7()  { return 100_i32 > 99; }
+bool testLiteralSuffix8()  { return 100_i64 > 99; }
+
+string getStringLit()      { return "xyz"; }
+void testStringLits()      { let x = getStringLit(); string y = "123"; string z = getStringLit(); }
+
+bool testLiteral1()
+{
+    let x = 0x200000000L;
+    let y = 0b10000000000000000;
+    return x > y && y < 0xffffffff_i64;
+}
+
+bool floatRepresentation()  { return 0.1f == .1f; }
+
+float32 getNan32()  { return nan; }
+float64 getNan64()  { return nan; }
+
+float32 getInf32()  { return inf; }
+float64 getInf64()  { return inf; }
+
+float32 getNorm32() { return 1234.0f; }
+float64 getNorm64() { return -1234.0; }
+
+// NB: although the code generated for isnan is correct, it doesn't seem possible
+// to get a NaN value to test in LLVM when fastmath flags are enabled
+// bool isNan1()  { return isnan (getNan32()); }
+// bool isNan2()  { return isnan (getNan64()); }
+bool isNan3()  { return isnan (float32 (nan)); }
+bool isNan4()  { return isnan (float64 (nan)); }
+bool isNan5()  { return ! isnan (getInf32()); }
+bool isNan6()  { return ! isnan (getInf64()); }
+bool isNan7()  { return ! (isnan (getNorm32()) || isnan (getNorm64())
+                            || isnan (123.0f) || isnan (-1.0f) || isnan (0.0f)
+                            || isnan (0.0) || isnan (123.0)); }
+
+bool isInf1()  { return isinf (getInf32()); }
+bool isInf2()  { return isinf (getInf64()); }
+bool isInf3()  { return isinf (-getInf32()); }
+bool isInf4()  { return isinf (-getInf64()); }
+bool isInf5()  { return ! isinf (getNan32()); }
+bool isInf6()  { return ! isinf (getNan64()); }
+bool isInf7()  { return ! (isinf (getNorm32()) || isinf (getNorm64())
+                            || isinf (123.0f) || isinf (-1.0f) || isinf (0.0f)
+                            || isinf (0.0) || isinf (123.0)); }
+
+bool testCompareLarge1()
+{
+    let large = 123456789123456L;
+    return (large > 1);
+}
+
+bool testCompareLarge2()
+{
+    let large = 1.0e80;
+    return (large > 1);
+}
+
+## processor
+
+processor test
+{
+    output event int results;
+
+    struct MyStruct
+    {
+        wrap<16> i;
+    }
+
+    MyStruct global;
+
+    void run()
+    {
+        results << (global.i == 0 ? 1 : 0);
+        advance();
+
+        loop { results << -1; advance(); }
+    }
+}
+
+## error 6:11: error: Comparison with bounded integer type is always false
+
+void alwaysConstantComparisonWithWrappedType()
+{
+    wrap<4> n = 1;
+
+    if (n > 4)
+        ++n;
+}
+
+## error 6:11: error: Comparison with bounded integer type is always true
+
+void alwaysConstantComparisonWithWrappedType()
+{
+    wrap<4> n = 1;
+
+    if (n >= 0)
+        ++n;
+}
+
+## error 6:11: error: Comparison with bounded integer type is always false
+
+void alwaysConstantComparisonWithWrappedType()
+{
+    wrap<4> n = 1;
+
+    if (n < 0)
+        ++n;
+}
+
+## error 6:11: error: Comparison with bounded integer type is always true
+
+void alwaysConstantComparisonWithWrappedType()
+{
+    wrap<4> n = 1;
+
+    if (n < 4)
+        ++n;
+}
+
+## error 4:19: error: Illegal types for binary operator '<<' ('float32' and 'float32')
+
+void foo()
+{
+    let x = (0.1f << 0.2f);
+}
+
+
+## error 4:34: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?
+
+int integerTooLarge()
+{
+    return 123456789123456_i64 + 123456789123456;
+}
+
+## error 4:12: error: Integer literal is too large to be represented
+
+int integerTooLarge()
+{
+    return 0b1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111;
+}
+
+## error 4:12: error: Octal literals are not supported
+
+int octalsNotSupported()
+{
+    return 0777;
+}
+
+## error 4:12: error: Integer literal is too large to be represented
+
+int integerTooLarge()
+{
+    return 0xfffffffffffffffffffffffffffffffffffffffffffff;
+}
+
+## error 5:14: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?
+
+void test()
+{
+    let i1 = 0b01111111111111111111111111111111;       // 2^31 - 1
+    let i2 = 0b10000000000000000000000000000000;       // 2^31       -- overflow
+}
+
+## error 5:14: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?
+
+void test()
+{
+    let i1 = 2147483647;       // 2 ^ 31 - 1
+    let i2 = 2147483648;       // 2 ^ 31               -- overflow
+}
+
+## error 6:14: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?
+
+void test()
+{
+    let i1 = -2147483647;       // - 2^31 + 1
+    let i2 = -2147483648;       // - 2^31
+    let i3 = -2147483649;       // - 2^31 - 1   -- overflow
+}
+
+## error 5:14: error: This value is too large to fit into an int32, did you mean to add an 'i64' suffix?
+
+void test()
+{
+    let i1 = 0x7fffffff;       // 2^31 - 1
+    let i2 = 0x80000000;       // 2^31       -- overflow
+}
+
+## error 4:13: error: Integer literal is too large to be represented
+
+bool testFunc()
+{
+    let f = 0xFFFFFFFFFFFFFFFFFFFF;
+    return (1 == 1);
+}
+
+## error 2:23: error: Octal literals are not supported
+
+void test() { let i = 010; }

@@ -1,0 +1,178 @@
+## function
+
+void update (int& i) { i = 0; }
+
+bool test1()
+{
+    var i = 5;
+    update (i);
+    return (i == 0);
+}
+
+struct S1
+{
+    float x;
+    int[4] y;
+    int<4> z;
+}
+
+struct S2
+{
+    int[3] padding;
+    S1 s1, s2;
+    float f;
+    int i;
+}
+
+void useValue (int x) {}
+void useValue (float x) {}
+
+void nonConstStruct (S1& s)
+{
+    S1 a = s;
+    var b = s;
+    let c = s;
+    int d = s.y[2];
+    var e = s.y[2];
+    let f = s.y[2];
+    useValue (s.x);
+    useValue (s.y[2]);
+    useValue (s.z[1]);
+    ++(s.y[1]);
+    s.z = int<4>(0);
+}
+
+void constStruct (const S1& s)
+{
+    S1 a = s;
+    var b = s;
+    let c = s;
+    int d = s.y[2];
+    var e = s.y[2];
+    let f = s.y[2];
+    useValue (s.x);
+    useValue (s.y[2]);
+    useValue (s.z[1]);
+}
+
+void primitiveRef (int& x)
+{
+    int a = x;
+    let b = x;
+    var c = x;
+    useValue (x);
+    x++;
+}
+
+void arrayRef (int[4]& n)
+{
+    int[4] a = n;
+    let b = n;
+    var c = n;
+    useValue (n[1]);
+    primitiveRef (n[2]);
+    n[3]++;
+}
+
+void constArrayRef (const int[4]& n)
+{
+    int[4] a = n;
+    let b = n;
+    var c = n;
+    useValue (n[1]);
+}
+
+void test2()
+{
+    S1 s1;
+    nonConstStruct (s1);
+    constStruct (s1);
+
+    S2 s2;
+    nonConstStruct (s2.s1);
+    constStruct (s2.s1);
+
+    int x;
+    primitiveRef (x);
+    primitiveRef (s1.y[2]);
+    primitiveRef (s2.s1.y[2]);
+    primitiveRef (s2.i);
+
+    int[4] a;
+    arrayRef (a);
+    arrayRef (s2.s1.y);
+    arrayRef (s1.y);
+    constArrayRef (a);
+    constArrayRef (s2.s1.y);
+    constArrayRef (s1.y);
+}
+
+bool foo1 (const soul::midi::Message& m) { return true; }
+bool foo2 (soul::midi::Message& m) { return true; }
+bool foo3 (soul::midi::Message m) { return true; }
+
+bool refTest1()    { soul::midi::Message m; return foo1 (m); }
+bool refTest2()    { let m = soul::midi::Message (123); return foo1 (m); }
+bool refTest3()    { return foo1 (soul::midi::Message (123)); }
+bool refTest4()    { soul::midi::Message m; return foo2 (m); }
+bool refTest7()    { soul::midi::Message m; return foo3 (m); }
+bool refTest8()    { let m = soul::midi::Message (123); return foo3 (m); }
+bool refTest9()    { return foo3 (soul::midi::Message (123)); }
+
+## error 7:12: error: Cannot pass a const value as a non-const reference
+
+void update (int& i) { i = 0; }
+
+bool test()
+{
+   let i = 5;
+   update (i);
+   return (i == 0);
+}
+
+## error 7:12: error: Cannot implicitly convert 5 ('const int32') to 'int32&'
+
+void update (int& i) { i = 0; }
+
+bool test()
+{
+   const int i = 5;
+   update (i);
+   return (i == 0);
+}
+
+## error 8:51: error: Cannot implicitly convert 'const MyStruct&' to 'MyStruct&'
+
+struct MyStruct
+{
+    float f;
+}
+
+void nonConstTest (MyStruct& s) {}
+void constTest (const MyStruct& s) { nonConstTest(s); }  // Should fail, can't pass a const arg as a non-const arg
+
+bool test()
+{
+    MyStruct s;
+    constTest(s);
+}
+
+## error 2:11: error: Cannot find symbol 'Message'
+
+bool foo (Message m) { return true; }
+
+bool test()
+{
+    soul::midi::Message m;
+    return foo (m);
+}
+
+## error 7:17: error: Cannot pass a const value as a non-const reference
+
+bool foo (soul::midi::Message& m) { return true; }
+
+bool test()
+{
+    let m = soul::midi::Message (123);
+    return foo (m);
+}

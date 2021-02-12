@@ -1,0 +1,53 @@
+## function
+
+int incrementHelper (int& i)
+{
+    i = i + 1;
+
+    return i;
+}
+
+int maxValueHelper (int i1, int i2, int i3)
+{
+    return max (max (i1, i2), i3);
+}
+
+bool checkHelper()
+{
+    int i = 0;
+
+    let first = incrementHelper (i);
+    let second = incrementHelper (i);
+
+    return (first == 1 && second == 2);
+}
+
+bool expressionEvaluationLeftToRight()
+{
+    int i = 0;
+
+    // 1 - 2
+    let e = incrementHelper(i) - incrementHelper(i);
+
+    return (e == -1);
+}
+
+bool subexpressionEvaluation()
+{
+    int i = 1;
+
+    // 2 * ( 3 - 4)
+    let e = incrementHelper (i) * (incrementHelper (i) - incrementHelper (i));
+
+    return (e == -2);
+}
+
+bool functionCallEvaluationOrder()
+{
+    var i = 2;
+
+    // maxIndex (3 + 4, 5, 6)
+    let maxValue = maxValueHelper (incrementHelper (i) + incrementHelper (i), incrementHelper (i), incrementHelper (i));
+
+    return (maxValue == 7);
+}

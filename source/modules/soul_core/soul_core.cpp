@@ -32,6 +32,7 @@
 #include <fstream>
 #include <cctype>
 #include <cwctype>
+#include <future>
 
 #include "soul_core.h"
 
@@ -93,6 +94,7 @@
 #include "diagnostics/soul_CompileMessageList.cpp"
 #include "diagnostics/soul_Timing.cpp"
 #include "venue/soul_Endpoints.cpp"
+#include "test/soul_TestFileParser.cpp"
 
 #include "documentation/soul_SourceCodeUtilities.cpp"
 #include "documentation/soul_SourceCodeOperations.cpp"

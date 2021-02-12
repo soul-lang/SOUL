@@ -1,0 +1,384 @@
+## error 11:18: error: Cannot implicitly convert 'float64' to 'float32'
+
+processor WrongDataType
+{
+    output stream float32 audioOut;
+
+    void run()
+    {
+        float64 f = 1.5;
+        f++;
+
+        audioOut << f;
+        advance();
+    }
+}
+
+## error 4:19: error: Multiple data types not supported by this endpoint type
+
+processor OnlyEventsSupportMultipleTypes
+{
+    output stream (float32, float64) audioOut;
+
+    void run()
+    {
+        float64 f = 1.5;
+        f++;
+
+        audioOut << f;
+        advance();
+    }
+}
+
+## error 8:18: error: Ambiguous cast from type 'int32' to '(float32, float64)'
+
+processor AmbiguousCast
+{
+    output event (float32, float64) audioOut;
+
+    void run()
+    {
+        audioOut << 4;
+        advance();
+    }
+}
+
+## compile
+
+processor MultipleTopLevelOutputEventTypes
+{
+    output event (string, float64) audioOut;
+
+    void run()
+    {
+        audioOut << 4.0;
+        advance();
+    }
+}
+
+## error 4:18: error: Duplicate types found in type list: int32 and int32
+
+processor DuplicateDataTypes
+{
+    input event (int, int) eventIn;
+    output event float audioOut;
+}
+
+## error 4:18: error: Duplicate types found in type list: float32 and float32
+
+processor DuplicateDataTypes
+{
+    input event (float, float32) eventIn;
+    output event float audioOut;
+}
+
+## error 4:18: error: Duplicate types found in type list: int32<1> and int32
+
+processor DuplicateDataTypes
+{
+    input event (int<1>, float, int) eventIn;
+    output event float audioOut;
+}
+
+## error 4:18: error: Duplicate types found in type list: float32<1> and float32
+
+processor DuplicateDataTypes
+{
+    input event (float<1>, int32, int64, float32) eventIn;
+    output event float audioOut;
+}
+
+## error 4:18: error: Duplicate types found in type list: int32 and int32
+
+processor DuplicateDataTypes
+{
+    input event (int, float, int32) eventIn;
+    output event float audioOut;
+}
+
+## error 10:18: error: Language feature not yet implemented: Wildcard child endpoint references!
+
+processor beep
+{
+    output stream float out;
+    void run() { advance(); }
+}
+
+graph BeepWrapper
+{
+    output beep.*;
+}
+
+## error 7:26: error: Event inputs must be handled in event callback functions, they cannot be read as expressions
+
+processor test
+{
+    output stream float out;
+    input event bool in;
+
+    void run() { let x = in; loop advance(); }
+}
+
+## error 5:18: error: Streams can only be read or written inside the run() function
+
+processor test1
+{
+    output stream float out;
+    void foo() { out << 1.0f; }
+    void run() { loop { foo(); advance(); } }
+}
+
+namespace test2
+{
+    void foo2() { test1::foo(); }
+}
+
+## error 7:26: error: Cannot read from an output
+
+processor test
+{
+    output stream float out;
+    input event bool in;
+
+    void run() { let x = out; loop advance(); }
+}
+
+## processor
+
+graph test
+{
+    output event int out;
+
+    connection test1 -> test2.in;
+    connection test2 -> out;
+}
+
+processor test1
+{
+    output stream float out;
+
+    void run()
+    {
+        out << 1.0f;
+        advance();
+
+        loop
+        {
+            out << -1.0f;
+            advance();
+        }
+    }
+}
+
+processor test2
+{
+    input stream float in;
+    output event int out;
+
+    int foo() { return int (in); }
+    void run() { loop { out << foo(); advance(); } }
+}
+
+## error 8:38: error: Streams cannot be used in event callback functions
+
+processor test1
+{
+    input stream float in;
+    input event float eventIn;
+    output stream float out;
+
+    event eventIn (float f) { out << in; }
+    void run() { advance(); }
+}
+
+## error 8:38: error: Streams cannot be used in event callback functions
+
+processor test1
+{
+    input stream float in;
+    input event float eventIn;
+    output event float out;
+
+    event eventIn (float f) { out << in; }
+    void run() { advance(); }
+}
+
+## error 9:25: error: Streams cannot be used in event callback functions
+
+processor test1
+{
+    input stream float in;
+    input event float eventIn;
+    output event float out;
+
+    event eventIn (float f) { foo(); }
+    void foo() { out << in; }
+    void run() { advance(); }
+}
+
+## compile
+
+processor test1
+{
+    input stream float in;
+    input event float eventIn;
+    output event float out;
+
+    event eventIn (float f) { writeOut(); }
+    void writeOut() { out << 1.0f; }
+    void run() { writeOut(); advance(); }
+}
+
+graph test2
+{
+    input stream float in;
+    output stream float out;
+
+    let g1 = soul::gain::FixedGain (in.type, 2.0f);
+    let g2 = soul::gain::FixedGain (out.type, 2.0f);
+    connection in -> g1 -> [10] -> g2 -> out;
+}
+
+## error 8:40: error: This endpoint has more than one type
+
+graph test
+{
+    input stream float in;
+    input event (int, float) in2;
+    output stream float out;
+
+    let g = soul::gain::FixedGain (in2.type, 2.0f);
+    connection in -> g -> out;
+}
+
+## error 25:12: error: Language feature not yet implemented: Exposing child endpoints involving processor arrays!
+
+processor beep
+{
+    output stream float out;
+
+    void run()
+    {
+        let amplitude      = 0.5f;
+        let beepFrequency  = 440.0;
+        let beepLength     = processor.frequency * 0.25;
+        let phaseIncrement = float (beepFrequency * twoPi * processor.period);
+        float phase;
+
+        for (int i = 0; i < beepLength; ++i)
+        {
+            out << amplitude * sin (phase);
+            phase = addModulo2Pi (phase, phaseIncrement);
+            advance();
+       }
+    }
+}
+
+graph BeepWrapper
+{
+    output Beep[0].out;
+
+    let
+    {
+        Beep = beep[2];
+    }
+}
+
+## error 14:21: error: The endpoint 'X.in' is an input, so cannot be connected to 'out'
+
+processor X
+{
+    output stream int out;
+    input stream int in;
+    void run() { advance(); }
+}
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+
+    connection X.in -> out;
+}
+
+## error 14:19: error: The endpoint 'X.out' is an output, so cannot take an input from 'in'
+
+processor X
+{
+    output stream int out;
+    input stream int in;
+    void run() { advance(); }
+}
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+
+    connection in -> X.out;
+}
+
+## error 15:24: error: A processor that is chained between two others cannot specify an endpoint name
+
+processor X
+{
+    output stream int out;
+    input stream int in1, in2;
+    void run() { advance(); }
+}
+
+graph G
+{
+    output stream int out;
+    input stream int in;
+    let x = X;
+
+    connection in -> x.in1 -> out;
+}
+
+## error 4:18: error: Endpoint arrays do not support array data types
+
+processor test
+{
+    output event float[3] eventOut[5];
+    void run() { advance(); }
+}
+
+## error 4:19: error: Expected a type
+
+processor test
+{
+    output stream out out;
+    void run() { advance(); }
+}
+
+## error 4:17: error: Expected a type
+
+processor test
+{
+    input event out in;
+    output stream int out;
+    void run() { advance(); }
+}
+
+
+## error 11:20: error: Cannot connect source.out (int32) to target.in (int32)
+
+graph test
+{
+    output stream int out;
+
+    let source = eventHandler;
+    let target = eventHandler[4];
+
+    connection
+    {
+        source.out -> target.in;
+    }
+}
+
+graph eventHandler
+{
+    input event int in;
+    output event int out[2];
+}

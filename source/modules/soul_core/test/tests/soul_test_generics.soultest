@@ -1,0 +1,659 @@
+## function
+
+Array.elementType testSum<Array> (Array n)
+{
+    static_assert (Array.isFixedSizeArray || Array.isVector, "sum() only works with fixed-size arrays or vectors");
+    static_assert (Array.elementType.isScalar, "sum() only works with arrays of scalar values");
+
+    Array.elementType<8> vectorTotal;
+    wrap<Array.size> i;
+
+    loop (Array.size / 8)
+    {
+        vectorTotal += Array.elementType<8> (n[i.type (i)],
+                                             n[i.type (i + 1)],
+                                             n[i.type (i + 2)],
+                                             n[i.type (i + 3)],
+                                             n[i.type (i + 4)],
+                                             n[i.type (i + 5)],
+                                             n[i.type (i + 6)],
+                                             n[i.type (i + 7)]);
+        i += 8;
+    }
+
+    var total = vectorTotal[0] + vectorTotal[1] + vectorTotal[2] + vectorTotal[3]
+                 + vectorTotal[4] + vectorTotal[5] + vectorTotal[6] + vectorTotal[7];
+
+    loop (Array.size & 7)
+        total += n[++i];
+
+    return total;
+}
+
+
+bool test17()
+{
+    int<17> n;
+
+    n[1] = 1;
+    n[7] = 2;
+    n[12] = 3;
+    n[15] = 4;
+
+    return testSum (n) == 10;
+}
+
+T returnSameValue<T> (T x) { return x; }
+
+bool test1()
+{
+    let x = int<2> (1, 2);
+    let y = int[2] (1, 2);
+    let z = int[] (1, 2);
+
+    return returnSameValue (1.0f) == 1.0f
+        && returnSameValue (2.0) == 2.0
+        && returnSameValue (1234) == 1234
+        && returnSameValue (x)[0] == x[0]
+        && returnSameValue (x)[1] == x[1]
+        && returnSameValue (y)[0] == y[0]
+        && returnSameValue (y)[1] == y[1]
+        && returnSameValue (z)[0] == z[0]
+        && returnSameValue (z)[1] == z[1]
+        && returnSameValue (int[](1, 2)[0]) == int[2](1, 2)[0];
+}
+
+T foo<T> (T x) { return x; }
+float foo<T> (T x) { return x; }
+T<2> foo<T> (T<3> x) { return x[0]; }
+T[2] foo<T> (T[3] x) { return x[0]; }
+T::X[2] foo<T, N> (T[3] x, float y) { return x[0]; }
+elementType(T) foo<T> (T x) { elementType(T) z; return x; }
+T.primitiveType foo<T> (T x) { return x; }
+
+T mmm<T> (T x, T y) { return x < y ? x : y; }
+
+bool test2()
+{
+    return mmm (1, 2) == 1 && mmm (2, 1) == 1;
+}
+
+T1.elementType getElement1<T1, T2> (T1 array, T2 index)
+{
+    return array.at (index);
+}
+
+bool test3()
+{
+    let x = int[] (0, 1, 2, 3, 4);
+
+    return getElement1 (x, 2) == 2 && getElement1 (x, 4) == 4 && getElement1 (x, 6) == 1;
+}
+
+struct NameClash {}
+NameClash foo2<NameClash> (NameClash x) { return x; }
+
+bool test4()
+{
+    return foo2 (123) == 123;
+}
+
+int overloadedFunction (float f)           { return 1; }
+int overloadedFunction<T> (T f)            { return 2; }
+int overloadedFunction<T> (T f1, bool b)   { return 3; }
+int overloadedFunction<T> (T f1, float f)  { return 4; }
+
+bool checkBindings()
+{
+    float[4] floatArray4;
+
+    return overloadedFunction (1.0f) == 1 &&
+           overloadedFunction (floatArray4) == 2 &&
+           overloadedFunction (floatArray4, true) == 3 &&
+           overloadedFunction (floatArray4, 1.0f) == 4;
+}
+
+## error 8:12: error: Ambiguous function call: overloadedFunction(int32, int32)
+
+int overloadedFunction (float f)            { return 1; }
+int overloadedFunction<T> (T t, int i)      { return 2; }
+int overloadedFunction<T> (T t, float64 f)  { return 3; }
+
+bool checkBindings()
+{
+    return overloadedFunction (1, 2) == 2;
+}
+
+## error 7:12: error: Ambiguous function call: overloadedFunction(int32, int32)
+
+int overloadedFunction<T> (T t, int i)          { return 2; }
+int overloadedFunction<T> (T t, float64 f)      { return 3; }
+
+bool checkBindings()
+{
+    return overloadedFunction (1, 2) == 2;
+}
+
+## error 7:12: error: Ambiguous function call: overloadedFunction(bool)
+
+bool overloadedFunction<T> (T b)          { return true; }
+T.elementType overloadedFunction<T> (T b) { return false; }
+
+bool checkBindings()
+{
+    return overloadedFunction (true) == true &&
+           overloadedFunction (bool<2> (true, false)) == false;
+}
+
+## error 7:18: error: Cannot pass a const value as a non-const reference
+
+int test (int& i)    { return 0; }
+int test<T> (T i)    { return 1; }
+
+bool test()
+{
+    return test (5) == 1;
+}
+
+## function
+
+namespace X
+{
+    int test (int i)        { return 1; }
+    int test<T> (T i)       { return test (i[0]); }
+}
+
+bool test()
+{
+    int[5] x;
+    return X::test (x) == 1;
+}
+
+## error 2:1: error: The function 'foo' calls itself recursively
+
+int foo<T> (T x) { return foo (x); }
+void test() { foo (1); }
+
+## error 3:23: error: Failed to instantiate generic function foo(int32) //// 2:39: error: Expected an array or vector type
+
+T.elementType foo<T> (T x)   { return x[0]; }
+void test() { let x = foo (123); }
+
+## error 3:23: error: Failed to instantiate generic function foo(int32) //// 2:3: error: 'elementType' can only be applied to an array or vector type
+
+T.elementType foo<T> (T x)   { return 0; }
+void test() { let x = foo (123); }
+
+## error 8:23: error: Failed to instantiate generic function foo(int32) //// 4:5: error: Nope
+
+T.elementType foo<T> (T x)
+{
+    static_assert (T.isArray || T.isVector, "Nope");
+    return x[0];
+}
+
+void test() { let x = foo (123); }
+
+## function
+
+int<8> mySumGenericHelper (int<8> n)
+{
+    return n;
+}
+
+int<8> mySumGenericHelper<T> (T n)
+{
+    let head = n[0:8];
+    let tail = n[8:T.size];
+
+    return head + mySumGenericHelper (tail);
+}
+
+T.elementType mySumGeneric<T> (T n)
+{
+    let sum = mySumGenericHelper (n);
+    return sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5] + sum[6] + sum[7];
+}
+
+bool test()
+{
+    int<16> n;
+
+    n[1] = 1;
+    n[7] = 2;
+    n[12] = 3;
+    n[15] = 4;
+
+    return sum (n) == 10 &&
+           mySumGeneric (n) == 10;
+}
+
+## error 12:13: error: Failed to instantiate generic function mySumGenericHelper(int32<16>) //// 6:19: error: Failed to instantiate generic function mySumGenericHelper(const int32<2>) //// 4:20: error: Invalid array slice range
+
+int<8> mySumGenericHelper<T> (T n)
+{
+    let head = n[0:8];
+    let tail = n[8:10];
+    return head + mySumGenericHelper (tail);
+}
+
+bool test()
+{
+    int<16> n;
+    let x = mySumGenericHelper (n);
+    return true;
+}
+
+## error 12:13: error: Failed to instantiate generic function mySumGenericHelper(int32<16>) //// 6:19: error: Failed to instantiate generic function mySumGenericHelper(const int32) //// 4:16: error: Expected an array or vector type
+
+int<8> mySumGenericHelper<T> (T n)
+{
+    let head = n[0:8];
+    let tail = n[8:9];
+    return head + mySumGenericHelper (tail);
+}
+
+bool test()
+{
+    int<16> n;
+    let x = mySumGenericHelper (n);
+    return true;
+}
+
+## function
+
+T foo1<T> (T[3] x)  { return x[1]; }
+bool test1()        { int[3] x = (1, 2, 3); return foo1 (x) == 2; }
+
+T foo2<T> (T<3> x)  { return x[1]; }
+bool test2()        { int<3> x = (1, 2, 3); return foo2 (x) == 2; }
+
+T foo3<T> (T a, T b)    { return a + b; }
+
+bool test3()        { return foo3 (1.0, 2.0) == 3.0
+                          && foo3 (1.0, 2.0) == 3.0
+                          && foo3 (1.0, 2.0) == 3.0
+                          && foo3 (1.0, 1.0 + 1.0) == 3.0; }
+
+## error 3:52: error: Failed to resolve generic function call foo1(int32) //// 2:8: error: Failed to resolve generic parameter 'T'
+
+T foo1<T> (T[3] x)  { return x[1]; }
+bool test1()        { int[3] x = (1, 2, 3); return foo1 (123) == 2; }
+
+## error 3:54: error: Failed to resolve generic function call foo1(int32) //// 2:8: error: Failed to resolve generic parameter 'T'
+
+T foo1<T> (T[3] x)  { return x[1]; }
+bool test1()        { int[] x = (1, 2, 3, 4); return foo1 (123) == 2; }
+
+## error 3:52: error: Failed to resolve generic function call foo2(int32) //// 2:8: error: Failed to resolve generic parameter 'T'
+
+T foo2<T> (T<3> x)  { return x[1]; }
+bool test2()        { int<3> x = (1, 2, 3); return foo2 (123) == 2; }
+
+## function
+
+void foo<T> (T& x, T y)  { x = y; }
+bool test1()   { int x = 1; foo (x, 2); return x == 2; }
+bool test2()   { float64 x = 1; foo (x, 2.0); return x == 2; }
+
+## error 3:28: error: Failed to instantiate generic function foo(int32, int32) //// 2:38: error: The '=' operator must be given an assignable variable
+
+void foo<T> (const T& x, T y)  { x = y; }
+bool test()   { int x = 1; foo (x, 2); return x == 2; }
+
+## error 4:17: error: Ambiguous function call: foo(int32)
+
+T foo<T> (const T& x)  { return x; }
+T foo<T> (T x)         { return x; }
+void test()   { foo (2); }
+
+## error 4:17: error: Ambiguous function call: foo(int32)
+
+T foo<T> (const T& x)  { return x; }
+T foo<T> (T& x)        { return x; }
+void test()   { foo (2); }
+
+## error 4:46: error: Ambiguous function call: foo(int32[3])
+
+int foo<T> (T[3] x)  { return 1; }
+int foo<T> (T x)     { return 1; }
+bool test()   { int[3] x = (1, 2, 3); return foo (x) == 1; }
+
+## function
+
+int foo<T> (T[3] x)  { return 1; }
+int foo<T> (T[4] x)  { return 2; }
+bool test1()   { int[] x = (1, 2, 3); return foo (x) == 1; }
+bool test2()   { int[] x = (1, 2, 3, 4); return foo (x) == 2; }
+
+## error 4:46: error: Ambiguous function call: foo(int32[3])
+
+int foo<T> (T[3] x)  { return 1; }
+int foo<T> (T x)  { return 2; }
+bool test1()   { int[] x = (1, 2, 3); return foo (x) == 1; }
+bool test2()   { int[] x = (1, 2, 3, 4); return foo (x) == 2; }
+
+## error 4:47: error: Ambiguous function call: foo(int32<3>)
+
+int foo<T> (T<3> x)  { return 1; }
+int foo<T> (T x)  { return 2; }
+bool test1()   { int<3> x = (1, 2, 3); return foo (x) == 1; }
+bool test2()   { int<4> x = (1, 2, 3, 4); return foo (x) == 2; }
+
+## error 4:55: error: No suitable override found for function call: foo(int32[6])
+
+int foo<T> (T[3] x)  { return 1; }
+int foo<T> (T[4] x)  { return 2; }
+bool test1()   { int[] x = (1, 2, 3, 4, 5, 6); return foo (x) == 1; }
+bool test2()   { int[] x = (1, 2, 3, 4, 5); return foo (x) == 2; }
+
+## function
+
+int foo<T> (T[] x)  { return x.at (2); }
+let x = int[] (1, 2, 3, 4);
+bool test1()   { return foo (x) == 3; }
+
+int foo2<T> (const T[] x)  { return x.at (2); }
+bool test3()   { return foo2 (x) == 3; }
+
+## error 31:12: error: Failed to instantiate generic function mySumGeneric(int32<9>) //// 17:15: error: Failed to instantiate generic function mySumGenericHelper(int32<9>) //// 12:19: error: Failed to instantiate generic function mySumGenericHelper(const int32<5>) //// 12:19: error: Failed to instantiate generic function mySumGenericHelper(const int32) //// 9:16: error: Expected an array or vector type
+
+int<4> mySumGenericHelper (int<4> n)
+{
+    return n;
+}
+
+int<4> mySumGenericHelper<T> (T n)
+{
+    let head = n[0:4];
+    let tail = n[4:T.size];
+
+    return head + mySumGenericHelper (tail);
+}
+
+T.elementType mySumGeneric<T> (T n)
+{
+    let sum = mySumGenericHelper (n);
+    return sum[0] + sum[1] + sum[2] + sum[3];
+}
+
+bool test9()
+{
+    int<9> n;
+
+    n[1] = 1;
+    n[7] = 2;
+    n[12] = 3;
+    n[15] = 4;
+
+    return sum (n) == 10 &&
+           mySumGeneric (n) == 10;
+}
+
+## function
+
+int<4> sumHelper (int<1> n) { return int<4> (n[0], 0,    0,    0); }
+int<4> sumHelper (int<2> n) { return int<4> (n[0], n[1], 0,    0); }
+int<4> sumHelper (int<3> n) { return int<4> (n[0], n[1], n[2], 0); }
+int<4> sumHelper (int<4> n) { return n; }
+
+int<4> sumHelper<T> (T n)
+{
+    let head = n[0:4];
+    let tail = n[4:T.size];
+
+    return head + sumHelper (tail);
+}
+
+T.elementType mySumGeneric<T> (T n)
+{
+    let sum = sumHelper (n);
+    return sum[0] + sum[1] + sum[2] + sum[3];
+}
+
+bool test17()
+{
+    int<18> n;
+
+    n[1] = 1;
+    n[7] = 2;
+    n[12] = 3;
+    n[15] = 4;
+
+    return mySumGeneric (n) == 10;
+}
+
+bool fold (bool b)
+{
+    return b;
+}
+
+bool fold<T> (T b)
+{
+    wrap<b.size> i;
+
+    loop (b.size)
+    {
+        if (b[i] == false)
+            return false;
+
+        i++;
+    }
+
+    return true;
+}
+
+bool compare<T> (T t1, T t2)
+{
+    return fold (t1 == t2);
+}
+
+bool testTypes()
+{
+    return compare (3.0f, 3.0f) == true &&
+           compare (1.0f, 2.0f) == false &&
+           compare (float<2> (1.0f, 2.0f), float<2> (1.0f, 2.0f)) == true &&
+           compare (float<2> (1.0f, 2.1f), float<2> (1.0f, 2.0f)) == false;
+}
+
+## error 24:12: error: Failed to instantiate generic function mySum(float32<6>) //// 15:13: error: Failed to instantiate generic function sumHelper(float32<6>) //// 10:12: error: Ambiguous function call: sumHelper(float32<3>)
+
+T<4> sumHelper<T> (T<1> n) { return T<4> (n[0], 0,    0,    0); }
+T<4> sumHelper<T> (T<2> n) { return T<4> (n[0], n[1], 0,    0); }
+T<4> sumHelper<T> (T<3> n) { return T<4> (n[0], n[1], n[2], 0); }
+T<4> sumHelper<T> (T<4> n) { return n; }
+
+T.elementType<4> sumHelper<T> (T t)
+{
+    let s = t.size / 2;
+    return sumHelper (t[0 : s]) + sumHelper (t[s : t.size]);
+}
+
+T.elementType mySum<T> (T n)
+{
+    let s = sumHelper (n);
+    return s[0] + s[1] + s[2] + s[3];
+}
+
+bool test()
+{
+    float<6> floats;
+    floats[0] = 1.0f;
+    floats[3] = 2.0f;
+    return mySum (floats) == 3.0f;
+}
+
+## function
+
+bool takesConstRef<Array> (const Array& n)  { return n[1] == 2; }
+bool takesNonConstRef<Array> (Array& n)     { return n[2] == 3; }
+bool takesConstCopy<Array> (const Array n)  { return n[3] == 4; }
+
+bool test1()
+{
+    let v1 = int<4> (1, 2, 3, 4);
+    var v2 = int<4> (1, 2, 3, 4);
+    return takesConstRef (v1) && takesConstCopy (v1) && takesNonConstRef (v2)
+            && takesConstRef (int<4> (1, 2, 3, 4));
+}
+
+T1 lowByValue<T1, T2> (T1 a, T2 b)
+{
+    if (a < b)
+        return a;
+
+    return b;
+}
+
+bool testByValueSameType()              { return lowByValue (2, 5) == 2; }
+bool testByValueDifferentTypes()        { return lowByValue (2L, 5) == 2; }
+
+## error 7:30: error: Cannot pass a const value as a non-const reference
+
+bool takesNonConstRef<Array> (Array& n)     { return n[2] == 3; }
+
+bool test1()
+{
+    let v1 = int<4> (1, 2, 3, 4);
+    return takesNonConstRef (v1);
+}
+
+## error 3:44: error: Cannot pass a const value as a non-const reference
+
+bool takesNonConstRef<Array> (Array& n)     { return n[2] == 3; }
+bool test1() { return takesNonConstRef (int<4> (1, 2, 3, 4)); }
+
+## error 11:50: error: Failed to resolve generic function call lowByConstReference(int64, int32) //// 2:23: error: Could not find a value for 'T' that satisfies all argument types
+
+T lowByConstReference<T> (const T& a, const T& b)
+{
+    if (a < b)
+        return a;
+
+    return b;
+}
+
+bool testByReferenceSameType()          { return lowByConstReference (2, 5) == 2; }
+bool testByReferenceDifferentTypes()    { return lowByConstReference (2L, 5) == 2; }
+
+
+## function
+
+namespace ns1
+{
+    struct MyStruct
+    {
+        int i;
+    }
+}
+
+namespace ns2
+{
+    struct MyStruct
+    {
+        float f;
+        int i;
+    }
+}
+
+int getElementI<T> (T t)    { return t.i; }
+
+bool test()
+{
+    ns1::MyStruct s1;
+    ns2::MyStruct s2;
+
+    s1.i = 5;
+    s2.i = 6;
+
+    let i1 = getElementI (s1);
+    let i2 = getElementI (s2);
+
+    return i1 == 5 && i2 == 6;
+}
+
+## function
+
+T myMax<T> (T t1, T t2)
+{
+    if (t1 > t2)
+        return t1;
+
+    return t2;
+}
+
+bool test1()
+{
+    return myMax (5, 6) == 6 &&
+           myMax (6.5, 5.0) == 6.5;
+}
+
+bool test2()
+{
+    let i = 5;
+    var j = 6;
+    j++;
+
+    return myMax (i, j) == 7 &&
+           myMax (j, j) == 7 &&
+           myMax (i, i) == 5;
+}
+
+## error 2:11: error: Expected a generic function wildcard name
+
+bool test<int T> (T t)
+{
+    return t == 1;
+}
+
+## error 2:12: error: This identifier cannot have a namespace qualifier
+
+bool test<A::B> (A::B t)
+{
+    return t == 1;
+}
+
+## function
+
+bool byRef<Type> (Type& t1)
+{
+    Type t2 = Type();
+
+    if const (! Type.isArray)
+    {
+        let x = t1 == t2;
+    }
+
+    return true;
+}
+
+bool byConstRef<Type> (const Type& t1)
+{
+    Type t2 = Type();
+
+    if const (! Type.isArray)
+    {
+        let x = t1 == t2;
+    }
+
+    return true;
+}
+
+bool zeroInit<Type>(Type t1)
+{
+    Type t2 = Type();
+
+    if const (! Type.isArray)
+    {
+        let x = t1 == t2;
+    }
+
+    return byRef (t2) && byConstRef (t2);
+}
+
+bool testZeroInit()
+{
+    return zeroInit(int()) && zeroInit (float32()) && zeroInit (float64())
+            && zeroInit (int<3>()) && zeroInit (int[1]()) && zeroInit (bool<5>())
+            && zeroInit (int<3>()) && zeroInit (float<1>()) && zeroInit (bool[1]());
+}
