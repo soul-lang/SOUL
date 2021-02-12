@@ -33,8 +33,8 @@ struct SourceCodeUtilities
 
     static struct CodeLocationRange findRangeOfASTObject (AST::ASTObject&);
 
-    static pool_ptr<AST::ASTObject> findASTObjectAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
-                                                     CodeLocation targetLocation);
+    static std::vector<pool_ref<AST::ASTObject>> findASTObjectsAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
+                                                                   CodeLocation targetLocation);
 
     //==============================================================================
     struct Comment
@@ -58,6 +58,11 @@ struct SourceCodeUtilities
     static void iterateSyntaxTokens (CodeLocation start,
                                      const std::function<bool(std::string_view text,
                                                               std::string_view type)>& handleToken);
+
+    //==============================================================================
+    /// Returns a list of soul keywords and intrinsics which could be used as
+    /// suggestions for code-completion
+    static std::vector<std::string> getCommonCodeCompletionStrings();
 };
 
 

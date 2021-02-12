@@ -38,15 +38,6 @@ inline CodeLocation getSystemModule (std::string_view moduleName)
     return {};
 }
 
-template <typename HandleMatch>
-static void matchBuiltInConstant (Identifier name, HandleMatch&& handleMatch)
-{
-    if (name == "pi")     { handleMatch (Value (pi)); return; }
-    if (name == "twoPi")  { handleMatch (Value (twoPi)); return; }
-    if (name == "nan")    { handleMatch (Value (std::numeric_limits<float>::quiet_NaN())); return; }
-    if (name == "inf")    { handleMatch (Value (std::numeric_limits<float>::infinity())); return; }
-}
-
 inline const char* getSystemModuleCode (std::string_view moduleName)
 {
     // To allow the soul library files to be managed as normal files in the repo,

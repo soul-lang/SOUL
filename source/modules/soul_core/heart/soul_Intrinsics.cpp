@@ -223,4 +223,23 @@ std::string getFullyQualifiedIntrinsicName (IntrinsicType intrinsic)
                                       getIntrinsicName (intrinsic));
 }
 
+static constexpr bool isUserCallable (IntrinsicType t)
+{
+    return t != IntrinsicType::none && t != IntrinsicType::get_array_size;
+}
+
+std::vector<std::string> getListOfCallableIntrinsicsAndConstants()
+{
+    std::vector<std::string> results;
+
+    for (auto c : builtInConstants)
+        results.push_back (std::string (c));
+
+    #define SOUL_LIST_INTRINSIC(i)  if (isUserCallable (IntrinsicType::i)) results.push_back (#i);
+    SOUL_INTRINSICS (SOUL_LIST_INTRINSIC)
+    #undef SOUL_LIST_INTRINSIC
+
+    return results;
+}
+
 } // namespace soul

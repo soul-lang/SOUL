@@ -62,14 +62,35 @@ namespace soul
         readLinearInterpolated
     };
 
-    /** Used for compile-time evaluation of an intrinsic function */
+    /// Used for compile-time evaluation of an intrinsic function
     Value performIntrinsic (IntrinsicType, ArrayView<Value> args);
 
-    /** All intrinsics have function declarations in a dedicated namespace with this name. */
+    /// All intrinsics have function declarations in a dedicated namespace with this name.
     constexpr const char* getIntrinsicsNamespaceName()              { return "soul::intrinsics"; }
 
     IntrinsicType getIntrinsicTypeFromName (std::string_view);
     const char* getIntrinsicName (IntrinsicType);
     std::string getFullyQualifiedIntrinsicName (IntrinsicType);
 
+    //==============================================================================
+    static constexpr std::string_view builtInConstants[] =
+    {
+        "pi",
+        "twoPi",
+        "nan",
+        "inf"
+    };
+
+    template <typename HandleMatch>
+    static void matchBuiltInConstant (Identifier name, HandleMatch&& handleMatch)
+    {
+        if (name == "pi")     { handleMatch (Value (pi)); return; }
+        if (name == "twoPi")  { handleMatch (Value (twoPi)); return; }
+        if (name == "nan")    { handleMatch (Value (std::numeric_limits<float>::quiet_NaN())); return; }
+        if (name == "inf")    { handleMatch (Value (std::numeric_limits<float>::infinity())); return; }
+    }
+
+    //==============================================================================
+    /// Returns the names of built-in functions and constants that a user may want to use
+    std::vector<std::string> getListOfCallableIntrinsicsAndConstants();
 }

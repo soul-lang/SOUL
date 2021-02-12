@@ -112,47 +112,57 @@ CodeLocation SourceCodeUtilities::findNextOccurrence (CodeLocation start, char c
     }
 }
 
-pool_ptr<AST::ASTObject> SourceCodeUtilities::findASTObjectAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
-                                                               CodeLocation targetLocation)
+struct AllObjectVisitor  : public ASTVisitor
 {
-    struct FindLocationVisitor  : public ASTVisitor
+    void visitObject (AST::ASTObject& o) override    { ASTVisitor::visitObject (o); checkObject (o); }
+    void visitObject (AST::ModuleBase& m) override   { ASTVisitor::visitObject (m); checkObject (m); }
+    void visitObject (AST::Expression& e) override   { ASTVisitor::visitObject (e); checkObject (e); }
+    void visitObject (AST::Statement& s) override    { ASTVisitor::visitObject (s); checkObject (s); }
+
+    virtual void checkObject (AST::ASTObject&) = 0;
+};
+
+std::vector<pool_ref<AST::ASTObject>> SourceCodeUtilities::findASTObjectsAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
+                                                                             CodeLocation targetLocation)
+{
+    struct FindLocationVisitor  : public AllObjectVisitor
     {
-        void visitObject (AST::ASTObject& o) override
+        void checkObject (AST::ASTObject& o) override
         {
-            ASTVisitor::visitObject (o);
+            if (target.location > o.context.location.location)
+                return;
 
-            auto distance = target - o.context.location.location.getAddress();
+            try
+            {
+                SimpleTokeniser tokeniser (o.context.location, false);
 
-            if (distance == 0
-                 || (distance > 0
-                      && result != nullptr
-                      && distance < target - result->context.location.location.getAddress()))
-                result = o;
+                if (! tokeniser.matches (Token::eof))
+                    tokeniser.skip();
+
+                if (target.location.getAddress() < tokeniser.location.location.getAddress())
+                    results.push_back (o);
+            }
+            catch (const AbortCompilationException&) {}
         }
 
-        const char* target = nullptr;
-        pool_ptr<AST::ASTObject> result;
+        CodeLocation target;
+        std::vector<pool_ref<AST::ASTObject>> results;
     };
 
     FindLocationVisitor v;
-    v.target = targetLocation.location.getAddress();
+    v.target = targetLocation;
 
     for (auto& m : modulesToSearch)
-    {
         v.ASTVisitor::visitObject (m.get());
 
-        if (v.result != nullptr)
-            break;
-    }
-
-    return v.result;
+    return v.results;
 }
 
 CodeLocationRange SourceCodeUtilities::findRangeOfASTObject (AST::ASTObject& object)
 {
-    struct FindLexicalRangeVisitor  : public ASTVisitor
+    struct FindLexicalRangeVisitor  : public AllObjectVisitor
     {
-        void visitObject (AST::ASTObject& o) override
+        void checkObject (AST::ASTObject& o) override
         {
             ASTVisitor::visitObject (o);
 
@@ -501,5 +511,27 @@ void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
         handleToken (currentSectionStart.getAddress(), currentTokenType);
 }
 
+std::vector<std::string> SourceCodeUtilities::getCommonCodeCompletionStrings()
+{
+    std::vector<std::string> results;
+    results.reserve (128);
+
+   #define SOUL_GET_KEYWORD(name, str) results.push_back (str);
+    SOUL_KEYWORDS (SOUL_GET_KEYWORD)
+   #undef SOUL_GET_KEYWORD
+
+    appendVector (results, getListOfCallableIntrinsicsAndConstants());
+
+    std::sort (results.begin(), results.end(),
+               [] (const std::string& s1, const std::string& s2) -> bool
+               {
+                   if (s1.length() != s2.length())
+                       return s1.length() < s2.length();
+
+                   return toLowerCase (s1) < toLowerCase (s2);
+               });
+
+    return results;
+}
 
 } // namespace soul
