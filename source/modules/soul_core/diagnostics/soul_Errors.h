@@ -325,6 +325,7 @@ namespace soul
     X(cannotOverwriteFile,                  "Cannot overwrite existing file $Q0$") \
     X(cannotCreateOutputFile,               "Cannot create output file $Q0$") \
     X(cannotCreateFolder,                   "Cannot create folder $Q0$") \
+    X(unsupportedAudioFileType,             "Unknown file type $Q0$") \
     X(cannotReadFile,                       "Failed to read from file $Q0$") \
     X(cannotWriteFile,                      "Failed to write to file $Q0$") \
     X(cannotLoadLibrary,                    "Cannot load library $Q0$") \

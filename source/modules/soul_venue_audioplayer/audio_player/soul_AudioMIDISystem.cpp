@@ -367,7 +367,7 @@ struct AudioMIDISystem::Pimpl  : private juce::AudioIODeviceCallback,
 
             if (error.isEmpty())
             {
-                log (soul::utilities::getAudioDeviceSetup (*audioDevice));
+                log (soul::utilities::getAudioDeviceDescription (*audioDevice));
                 audioDevice->start (this);
                 return;
             }

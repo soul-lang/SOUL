@@ -34,6 +34,7 @@
 #include "soul_venue_audioplayer.h"
 
 #include "../../../include/soul/3rdParty/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
+#include "../../../include/soul/common/soul_AudioHelpers.h"
 
 #include "audio_player/soul_AudioMIDISystem.cpp"
 #include "audio_player/soul_AudioPlayer.cpp"
