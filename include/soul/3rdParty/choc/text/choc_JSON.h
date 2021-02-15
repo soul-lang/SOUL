@@ -32,6 +32,9 @@
 #include "choc_FloatToString.h"
 #include "../containers/choc_Value.h"
 
+#undef max
+#undef min
+
 namespace choc::json
 {
 

@@ -27,6 +27,9 @@
 #include <vector>
 #include <atomic>
 
+#undef max
+#undef min
+
 namespace choc::fifo
 {
 
