@@ -218,7 +218,8 @@ public:
     {
         ok,
         noProgramLoaded,
-        wrongNumberOfChannels
+        wrongNumberOfChannels,
+        failure
     };
 
     /** Contains the info needed for a call to the PatchPlayer::render() method. */

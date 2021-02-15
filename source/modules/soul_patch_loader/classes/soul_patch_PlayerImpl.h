@@ -345,13 +345,13 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         auto midiOutStart = reinterpret_cast<MIDIEvent*> (rc.outgoingMIDI);
         auto midiOut = MIDIEventOutputList { midiOutStart, rc.maximumMIDIMessagesOut };
 
-        wrapper.render (choc::buffer::createChannelArrayView (rc.inputChannels, rc.numInputChannels, rc.numFrames),
-                        choc::buffer::createChannelArrayView (rc.outputChannels, rc.numOutputChannels, rc.numFrames),
-                        { midiInStart, midiInStart + rc.numMIDIMessagesIn },
-                        midiOut);
+        auto success = wrapper.render (choc::buffer::createChannelArrayView (rc.inputChannels, rc.numInputChannels, rc.numFrames),
+                                       choc::buffer::createChannelArrayView (rc.outputChannels, rc.numOutputChannels, rc.numFrames),
+                                       { midiInStart, midiInStart + rc.numMIDIMessagesIn },
+                                       midiOut);
 
         rc.numMIDIMessagesOut = static_cast<uint32_t> (midiOut.start - midiOutStart);
-        return RenderResult::ok;
+        return success ? RenderResult::ok : RenderResult::failure;
     }
 
     void handleOutgoingEvents (void* userContext,

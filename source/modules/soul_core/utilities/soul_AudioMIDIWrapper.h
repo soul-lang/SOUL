@@ -684,11 +684,13 @@ struct AudioMIDIWrapper
         eventOutputList.initialise (perf);
     }
 
-    void render (choc::buffer::ChannelArrayView<const float> input,
+    bool render (choc::buffer::ChannelArrayView<const float> input,
                  choc::buffer::ChannelArrayView<float> output,
                  MIDIEventInputList midiIn,
                  MIDIEventOutputList& midiOut)
     {
+        bool success = true;
+
         auto numFrames = output.getNumFrames();
         output.clear();
 
@@ -697,13 +699,13 @@ struct AudioMIDIWrapper
 
         SOUL_ASSERT (input.getNumFrames() == numFrames && maxBlockSize != 0);
 
-        audioInputList.addToFIFO (inputFIFO, totalFramesRendered, input);
-        midiInputList.addToFIFO (inputFIFO, totalFramesRendered, midiIn);
-        parameterList.addToFIFO (inputFIFO, totalFramesRendered);
-        timelineEventEndpointList.addToFIFO (inputFIFO, totalFramesRendered);
+        success &= audioInputList.addToFIFO (inputFIFO, totalFramesRendered, input);
+        success &= midiInputList.addToFIFO (inputFIFO, totalFramesRendered, midiIn);
+        success &= parameterList.addToFIFO (inputFIFO, totalFramesRendered);
+        success &= timelineEventEndpointList.addToFIFO (inputFIFO, totalFramesRendered);
         uint32_t framesDone = 0;
 
-        inputFIFO.prepareForReading (totalFramesRendered, numFrames);
+        success &= inputFIFO.prepareForReading (totalFramesRendered, numFrames);
 
         for (;;)
         {
@@ -720,12 +722,14 @@ struct AudioMIDIWrapper
             performer.advance();
             audioOutputList.handleOutputData (performer, output.getFrameRange ({ framesDone, output.size.numFrames }));
             midiOutputList.handleOutputData (performer, framesDone, midiOut);
-            eventOutputList.postOutputEvents (performer, totalFramesRendered + framesDone);
+            success &= eventOutputList.postOutputEvents (performer, totalFramesRendered + framesDone);
             framesDone += numFramesToDo;
         }
 
         inputFIFO.finishReading();
         totalFramesRendered += framesDone;
+
+        return success;
     }
 
     uint32_t getExpectedNumInputChannels() const     { return audioInputList.totalNumChannels; }
@@ -761,11 +765,13 @@ private:
 
     static constexpr uint32_t maxInternalBlockSize = 512;
 
-    void renderInChunks (choc::buffer::ChannelArrayView<const float> input,
+    bool renderInChunks (choc::buffer::ChannelArrayView<const float> input,
                          choc::buffer::ChannelArrayView<float> output,
                          MIDIEventInputList midiIn,
                          MIDIEventOutputList& midiOut)
     {
+        bool success = true;
+
         auto numFramesRemaining = output.getNumFrames();
 
         for (uint32_t start = 0;;)
@@ -773,9 +779,9 @@ private:
             auto framesToDo = std::min (numFramesRemaining, maxInternalBlockSize);
             auto endFrame = start + framesToDo;
 
-            render (input.getFrameRange ({ start, endFrame }),
-                    output.getFrameRange ({ start, endFrame }),
-                    midiIn.removeEventsBefore (endFrame), midiOut);
+            success &= render (input.getFrameRange ({ start, endFrame }),
+                               output.getFrameRange ({ start, endFrame }),
+                               midiIn.removeEventsBefore (endFrame), midiOut);
 
             if (numFramesRemaining <= framesToDo)
                 break;
@@ -783,6 +789,8 @@ private:
             start += framesToDo;
             numFramesRemaining -= framesToDo;
         }
+
+        return success;
     }
 
     void deliverValueToEndpoint (EndpointHandle endpoint, const choc::value::ValueView& value)
