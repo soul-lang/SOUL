@@ -57,8 +57,7 @@ struct MultiEndpointFIFO
     bool addInputData (soul::EndpointHandle endpoint, uint64_t time,
                        const choc::value::ValueView& value)
     {
-        ScratchWriter scratch;
-
+        scratch.clear();
         scratch.write (std::addressof (time), sizeof (time));
         scratch.write (std::addressof (endpoint), sizeof (endpoint));
 
@@ -71,7 +70,7 @@ struct MultiEndpointFIFO
             return false;
         }
 
-        return fifo.push (scratch.space, scratch.total);
+        return fifo.push (scratch.space.data(), scratch.total);
     }
 
     //==============================================================================
@@ -243,21 +242,33 @@ private:
 
     struct ScratchWriter
     {
-        char space[maxItemSize];
-        char* dest = space;
+        ScratchWriter()
+        {
+            space.resize (4096);
+        }
+
+        void clear()
+        {
+            total = 0;
+        }
+
         uint32_t total = 0;
 
         void write (const void* source, size_t size)
         {
+            auto writePos = total;
             total += static_cast<uint32_t> (size);
 
-            if (total > sizeof (space))
-                choc::value::throwError ("Out of scratch space");
+            if (total > space.size())
+                space.resize (total);
 
-            std::memcpy (dest, source, size);
-            dest += size;
+            std::memcpy (&space[writePos], source, size);
         }
+
+        std::vector<char> space;
     };
+
+    ScratchWriter scratch;
 
     choc::fifo::VariableSizeFIFO fifo;
     choc::fifo::VariableSizeFIFO::BatchReadOperation fifoBatchReadOp;
