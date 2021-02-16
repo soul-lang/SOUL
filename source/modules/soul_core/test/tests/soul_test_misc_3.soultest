@@ -2274,3 +2274,18 @@ namespace t
         int a;
     }
 }
+
+## function
+
+bool test()
+{
+    return check (2) && ! check (4) && ! check (-1);
+}
+
+bool check (int i)
+{
+     if (i < 0 || i > 3)
+         return false;
+
+    return true;
+}

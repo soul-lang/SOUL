@@ -129,11 +129,6 @@ private:
     pool_ptr<AST::ModuleBase> module;
     AST::Scope* currentScope;
 
-    // Bit of a bodge here as a simple way to parse things like float<2 + 2>, this
-    // just forces the parser to ignore any > tokens when parsing an expression. Could be
-    // done more elegantly in future...
-    int ignoreGreaterThanToken = 0;
-
     enum class ParseTypeContext
     {
         variableType,
@@ -1177,6 +1172,15 @@ private:
         return result;
     }
 
+    pool_ptr<AST::Expression> tryToParseChvronExpressionIgnoringErrors()
+    {
+        pool_ptr<AST::Expression> result;
+
+        catchParseErrors ([this, &result] { result = parseShiftOperator(); });
+
+        return result;
+    }
+
     AST::Expression& parseExpression (bool allowAssignment = false)
     {
         auto& lhs = parseTernaryOperator();
@@ -1340,8 +1344,10 @@ private:
     {
         for (pool_ref<AST::Expression> a = parseShiftOperator();;)
         {
-            if (! (matchesAny (Operator::lessThan, Operator::lessThanOrEqual, Operator::greaterThanOrEqual)
-                    || (matches (Operator::greaterThan) && ignoreGreaterThanToken == 0)))
+            if (! matchesAny (Operator::lessThan,
+                              Operator::lessThanOrEqual,
+                              Operator::greaterThanOrEqual,
+                              Operator::greaterThan))
                 return a;
 
             auto context = getContext();
@@ -1700,9 +1706,7 @@ private:
         if (! matchIf (Operator::lessThan))
             return parseArrayTypeSuffixes (elementType, parseContext);
 
-        ++ignoreGreaterThanToken;
-        auto size = tryToParseExpressionIgnoringErrors();
-        --ignoreGreaterThanToken;
+        auto size = tryToParseChvronExpressionIgnoringErrors();
 
         if (size == nullptr || ! matchIf (Operator::greaterThan))
         {
