@@ -42,7 +42,7 @@ std::unique_ptr<AudioFileFactory::DataSource> AudioFileFactory::createMemoryData
                 return 0;
 
             if (start + numBytes > size)
-                numBytes = size - start;
+                numBytes = static_cast<size_t> (size - start);
 
             memcpy (dest, static_cast<const char*> (data) + start, numBytes);
             return numBytes;

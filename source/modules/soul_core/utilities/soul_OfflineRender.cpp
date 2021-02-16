@@ -79,7 +79,7 @@ struct RenderState
             performer->advance();
             writeNextBlock (framesToDo);
 
-            if (handleProgress != nullptr && ! handleProgress (framesProcessed / (double) options.outputFileProperties.numFrames))
+            if (handleProgress != nullptr && ! handleProgress ((double) framesProcessed / (double) options.outputFileProperties.numFrames))
                 return false;
 
             framesProcessed += framesToDo;
