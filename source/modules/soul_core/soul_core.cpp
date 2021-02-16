@@ -61,7 +61,6 @@
 
 #include "utilities/soul_Tokeniser.h"
 #include "utilities/soul_StringUtilities.cpp"
-#include "utilities/soul_UTF8Reader.cpp"
 #include "utilities/soul_MiscUtilities.cpp"
 #include "utilities/soul_AudioDataGeneration.cpp"
 #include "utilities/soul_AudioFiles.cpp"

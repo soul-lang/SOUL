@@ -63,7 +63,7 @@ std::string CompileMessage::getFullDescription() const
 
 bool CompileMessage::hasPosition() const
 {
-    return location.location.getAddress() != nullptr;
+    return location.location.data() != nullptr;
 }
 
 std::string CompileMessage::getPositionString() const
@@ -86,7 +86,7 @@ std::string CompileMessage::getSeverity() const
 
 std::string CompileMessage::getAnnotatedSourceLine() const
 {
-    if (location.location.getAddress() != nullptr)
+    if (location.location.data() != nullptr)
     {
         auto lc = location.getLineAndColumn();
 

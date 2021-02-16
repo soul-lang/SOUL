@@ -21,7 +21,20 @@
 namespace soul
 {
 
+using UnicodeChar = uint32_t;
+
 bool isDigit (char);
+
+inline bool isWhitespace (choc::text::UTF8Pointer p) noexcept  { return p.data() != nullptr && choc::text::isWhitespace (*p.data()); }
+inline bool isDigit (choc::text::UTF8Pointer p) noexcept       { return p.data() != nullptr && soul::isDigit (*p.data()); }
+
+inline choc::text::UTF8Pointer findEndOfWhitespace (choc::text::UTF8Pointer p)
+{
+    while (isWhitespace (p))
+        ++p;
+
+    return p;
+}
 
 std::string repeatedCharacter (char, size_t num);
 std::string padded (const std::string&, int minSize);

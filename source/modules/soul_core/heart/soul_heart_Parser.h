@@ -29,7 +29,7 @@ namespace Operator
 //==============================================================================
 struct DummyKeywordMatcher
 {
-    static TokenType match (int, UTF8Reader) noexcept  { return {}; }
+    static TokenType match (int, choc::text::UTF8Pointer) noexcept  { return {}; }
 };
 
 //==============================================================================
@@ -87,9 +87,9 @@ namespace HEARTOperator
 
     struct Matcher
     {
-        static TokenType match (UTF8Reader& text) noexcept
+        static TokenType match (choc::text::UTF8Pointer& text) noexcept
         {
-            #define SOUL_COMPARE_OPERATOR(name, str) if (text.advanceIfStartsWith (str)) return name;
+            #define SOUL_COMPARE_OPERATOR(name, str) if (text.skipIfStartsWith (str)) return name;
             SOUL_HEART_OPERATORS (SOUL_COMPARE_OPERATOR)
             #undef SOUL_COMPARE_OPERATOR
             return {};
@@ -106,7 +106,7 @@ struct FunctionParseState
     struct BlockCode
     {
         heart::Block& block;
-        UTF8Reader code;
+        choc::text::UTF8Pointer code;
     };
 
     void setCurrentBlock (BlockCode& b)
@@ -150,8 +150,8 @@ private:
         ScannedTopLevelItem (Module& m) : module (m) {}
 
         Module& module;
-        UTF8Reader moduleStartPos;
-        std::vector<UTF8Reader> functionParamCode, functionBodyCode, structBodyCode, inputDecls, outputDecls, stateVariableDecls;
+        choc::text::UTF8Pointer moduleStartPos;
+        std::vector<choc::text::UTF8Pointer> functionParamCode, functionBodyCode, structBodyCode, inputDecls, outputDecls, stateVariableDecls;
     };
 
     Program program;
@@ -323,7 +323,7 @@ private:
 
         for (size_t i = 0; i < item.functionBodyCode.size(); ++i)
         {
-            if (item.functionBodyCode[i] != UTF8Reader())
+            if (item.functionBodyCode[i] != choc::text::UTF8Pointer())
             {
                 resetPosition (item.functionBodyCode[i]);
                 parseFunctionBody (module->functions.at (i));

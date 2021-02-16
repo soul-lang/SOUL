@@ -42,61 +42,63 @@ struct UTF8Pointer
     UTF8Pointer (const UTF8Pointer&) = default;
     UTF8Pointer& operator= (const UTF8Pointer&) = default;
 
-    /** Returns the raw data that this points to. */
+    /// Returns the raw data that this points to.
     const char* data() const noexcept                   { return text; }
 
-    /** Returns true if the pointer is not null. */
+    /// Returns true if the pointer is not null.
     operator bool() const noexcept                      { return text != nullptr; }
 
-    /** Returns true if the pointer is either null or points to a null terminator char. */
+    /// Returns true if the pointer is either null or points to a null terminator char.
     bool empty() const                                  { return text == nullptr || *text == 0; }
 
-    /** Returns the length by iterating all unicode chars and counting them.
-        Note that this is slow, and is not a count of the number of bytes in the string!
-    */
+    /// Returns the length by iterating all unicode chars and counting them.
+    /// Note that this is slow, and is not a count of the number of bytes in the string!
     size_t length() const;
 
     //==============================================================================
-    /** Returns the first unicode character in the string. */
+    /// Returns the first unicode character in the string.
     uint32_t operator*() const;
 
-    /** Skips past the first unicode character.
-        Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
-    */
+    /// Skips past the first unicode character.
+    /// Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
     UTF8Pointer& operator++();
 
-    /** Skips past the first unicode character.
-        Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
-    */
+    /// Skips past the first unicode character.
+    /// Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
     UTF8Pointer operator++ (int);
 
-    /** Moves backwards to the previous unicode character.
-        Moving beyond the end of the string is undefined behaviour.
-    */
+    /// Moves backwards to the previous unicode character.
+    /// Moving beyond the end of the string is undefined behaviour.
     UTF8Pointer operator--();
 
-    /** Skips past the given number of unicode characters.
-        Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
-    */
-    UTF8Pointer& operator+= (int numCharsToSkip);
+    /// Skips past the given number of unicode characters.
+    /// Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
+    UTF8Pointer& operator+= (size_t numCharsToSkip);
 
-    /** Returns the first unicode character, and also moves the pointer forwards to the next character.
-        Reading beyond the end of the string is undefined behaviour and will trigger an assertion.
-    */
+    /// Returns a pointer which points to the n-th unicode character in the text
+    /// Reading beyond the end of the string is undefined behaviour and may trigger an assertion.
+    UTF8Pointer operator+ (size_t numCharsToSkip) const;
+
+    /// Returns a pointer which points to the n-th unicode character in the text.
+    /// Reading beyond the end of the string is undefined behaviour and may trigger an assertion.
     UTF8Pointer operator+ (int numCharsToSkip) const;
 
-    /** Skips past the first unicode character and returns it as a code-point.
-        Calling this when the current character is the terminator will leave the pointer in an
-        invalid state.
-    */
+    /// Skips past the first unicode character and returns it as a code-point.
+    /// Calling this when the current character is the terminator will leave the pointer in an
+    /// invalid state.
     uint32_t popFirstChar();
 
-    /** If the first character matches the given one, this will advance the pointer and return true. */
+    /// Finds the next occurrence of the given string, or return a nullptr if not found.
+    UTF8Pointer find (const char* textToFind) const;
+
+    /// Returns true if the text starts with this string
+    bool startsWith (const char* textToMatch) const;
+
+    /// If the first character matches the given one, this will advance the pointer and return true.
     bool skipIfStartsWith (char charToMatch);
 
-    /** If the start of the text matches the given string, this will advance this pointer to skip
-        past it, and return true. If not, it will return false without modifying this pointer.
-    */
+    /// If the start of the text matches the given string, this will advance this pointer to skip
+    /// past it, and return true. If not, it will return false without modifying this pointer.
     bool skipIfStartsWith (const char* textToMatch);
 
     //==============================================================================
@@ -122,17 +124,17 @@ struct UTF8Pointer
     EndIterator end() const;
 
     //==============================================================================
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator== (UTF8Pointer other) const noexcept      { return text == other.text; }
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator!= (UTF8Pointer other) const noexcept      { return text != other.text; }
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator<  (UTF8Pointer other) const noexcept      { return text <  other.text; }
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator>  (UTF8Pointer other) const noexcept      { return text >  other.text; }
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator<= (UTF8Pointer other) const noexcept      { return text <= other.text; }
-    /** This does a pointer comparison, NOT a comparison of the text itself! */
+    /// This does a pointer comparison, NOT a comparison of the text itself!
     bool operator>= (UTF8Pointer other) const noexcept      { return text >= other.text; }
 
     bool operator== (decltype(nullptr)) const noexcept      { return text == nullptr; }
@@ -143,24 +145,22 @@ private:
 };
 
 //==============================================================================
-/** Checks a given chunk of data to see whether it's valid, null-terminated UTF8.
-    If no errors are found, this returns nullptr. If an error is found, it returns the address
-    of the offending byte.
-*/
-const char* findInvalidUTF8Data (const void* dataToCheck, size_t numbytes);
+/// Checks a given chunk of data to see whether it's valid, null-terminated UTF8.
+/// If no errors are found, this returns nullptr. If an error is found, it returns the address
+/// of the offending byte.
+const char* findInvalidUTF8Data (const void* dataToCheck, size_t maxNumBytesToRead);
 
-/** Writes the bytes for a unicode character, and returns the number of bytes that were needed.
-    The buffer passed in needs to have at least 4 bytes capacity.
-*/
+/// Writes the bytes for a unicode character, and returns the number of bytes that were needed.
+/// The buffer passed in needs to have at least 4 bytes capacity.
 uint32_t convertUnicodeCodepointToUTF8 (char* dest, uint32_t unicodeChar);
 
-/** Checks whether a given codepoint is a high-surrogate */
+/// Checks whether a given codepoint is a high-surrogate
 bool isUnicodeHighSurrogate (uint32_t codepoint);
 
-/** Checks whether a given codepoint is a low-surrogate */
+/// Checks whether a given codepoint is a low-surrogate
 bool isUnicodeLowSurrogate (uint32_t codepoint);
 
-/** Combines a high and low surrogate into a single codepoint. */
+/// Combines a high and low surrogate into a single codepoint.
 uint32_t createUnicodeFromHighAndLowSurrogates (uint32_t high, uint32_t low);
 
 
@@ -287,21 +287,28 @@ inline UTF8Pointer UTF8Pointer::operator--()
     return *this;
 }
 
-inline UTF8Pointer& UTF8Pointer::operator+= (int numCharsToSkip)
+inline UTF8Pointer& UTF8Pointer::operator+= (size_t numCharsToSkip)
 {
-    CHOC_ASSERT (numCharsToSkip >= 0);
-
-    while (--numCharsToSkip >= 0)
+    while (numCharsToSkip != 0)
+    {
+        --numCharsToSkip;
         operator++();
+    }
 
     return *this;
 }
 
-inline UTF8Pointer UTF8Pointer::operator+ (int numCharsToSkip) const
+inline UTF8Pointer UTF8Pointer::operator+ (size_t numCharsToSkip) const
 {
     auto p = *this;
     p += numCharsToSkip;
     return p;
+}
+
+inline UTF8Pointer UTF8Pointer::operator+ (int numCharsToSkip) const
+{
+    CHOC_ASSERT (numCharsToSkip >= 0);
+    return operator+ (static_cast<size_t> (numCharsToSkip));
 }
 
 inline uint32_t UTF8Pointer::popFirstChar()
@@ -337,9 +344,36 @@ inline uint32_t UTF8Pointer::popFirstChar()
     return unicodeChar;
 }
 
+inline bool UTF8Pointer::startsWith (const char* textToMatch) const
+{
+    CHOC_ASSERT (textToMatch != nullptr);
+
+    if (auto p = text)
+    {
+        while (*textToMatch != 0)
+            if (*textToMatch++ != *p++)
+                return false;
+
+        return true;
+    }
+
+    return false;
+}
+
+inline UTF8Pointer UTF8Pointer::find (const char* textToFind) const
+{
+    CHOC_ASSERT (textToFind != nullptr);
+
+    for (auto t = *this;; ++t)
+        if (t.startsWith (textToFind) || t.empty())
+            return t;
+
+    return {};
+}
+
 inline bool UTF8Pointer::skipIfStartsWith (char charToMatch)
 {
-    if (text != nullptr && *text == charToMatch)
+    if (text != nullptr && *text == charToMatch && charToMatch != 0)
     {
         ++text;
         return true;

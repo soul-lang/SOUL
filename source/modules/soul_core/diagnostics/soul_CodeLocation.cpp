@@ -63,10 +63,10 @@ CodeLocation CodeLocation::createFromSourceFile (const SourceFile& f)
 
 void CodeLocation::validateUTF8() const
 {
-    if (auto invalidBytes = location.findInvalidData())
+    if (auto invalidBytes = choc::text::findInvalidUTF8Data (location.data(), std::strlen (location.data())))
     {
         CodeLocation c (*this);
-        c.location = UTF8Reader (invalidBytes);
+        c.location = choc::text::UTF8Pointer (invalidBytes);
         c.throwError (Errors::invalidUTF8());
     }
 }
@@ -86,7 +86,7 @@ std::string CodeLocation::getFilename() const
 
 size_t CodeLocation::getByteOffsetInFile() const
 {
-    auto diff = location.getAddress() - sourceCode->utf8.getAddress();
+    auto diff = location.data() - sourceCode->utf8.data();
     SOUL_ASSERT (diff >= 0);
     return static_cast<size_t> (diff);
 }
@@ -98,7 +98,7 @@ CodeLocation::LineAndColumn CodeLocation::getLineAndColumn() const
 
     LineAndColumn lc = { 1, 1 };
 
-    for (auto i = sourceCode->utf8; i < location && ! i.isEmpty(); ++i)
+    for (auto i = sourceCode->utf8; i < location && ! i.empty(); ++i)
     {
         ++lc.column;
         if (*i == '\n')  { lc.column = 1; lc.line++; }
@@ -117,7 +117,7 @@ CodeLocation CodeLocation::getOffset (uint32_t linesToAdd, uint32_t columnsToAdd
         if (lc.line == linesToAdd && lc.column == columnsToAdd)
             return l;
 
-        if (l.location.isEmpty())
+        if (l.location.empty())
             return {};
 
         ++lc.column;
@@ -128,7 +128,7 @@ CodeLocation CodeLocation::getOffset (uint32_t linesToAdd, uint32_t columnsToAdd
 
 CodeLocation CodeLocation::getStartOfLine() const
 {
-    if (location.getAddress() == nullptr)
+    if (location.data() == nullptr)
         return {};
 
     auto l = *this;
@@ -150,14 +150,14 @@ CodeLocation CodeLocation::getStartOfLine() const
 
 CodeLocation CodeLocation::getEndOfLine() const
 {
-    if (location.getAddress() == nullptr)
+    if (location.data() == nullptr)
         return {};
 
     auto l = *this;
 
-    while (! l.location.isEmpty())
+    while (! l.location.empty())
     {
-        auto c = l.location.getAndAdvance();
+        auto c = l.location.popFirstChar();
 
         if (c == '\r' || c == '\n')
             break;
@@ -170,10 +170,10 @@ CodeLocation CodeLocation::getStartOfNextLine() const
 {
     for (auto l = *this;;)
     {
-        if (l.location.isEmpty())
+        if (l.location.empty())
             return {};
 
-        if (l.location.getAndAdvance() == '\n')
+        if (l.location.popFirstChar() == '\n')
             return l;
     }
 }
@@ -182,7 +182,7 @@ CodeLocation CodeLocation::getStartOfPreviousLine() const
 {
     auto l = getStartOfLine();
 
-    if (l.location.getAddress() == nullptr)
+    if (l.location.data() == nullptr)
         return {};
 
     if (l.location <= sourceCode->utf8)
@@ -194,14 +194,14 @@ CodeLocation CodeLocation::getStartOfPreviousLine() const
 
 std::string CodeLocation::getSourceLine() const
 {
-    if (location.getAddress() == nullptr)
+    if (location.data() == nullptr)
         return {};
 
     auto s = getStartOfLine();
     auto e = getEndOfLine();
 
-    return { s.location.getAddress(),
-             e.location.getAddress() };
+    return { s.location.data(),
+             e.location.data() };
 }
 
 void CodeLocation::emitMessage (CompileMessage message) const
@@ -216,7 +216,7 @@ void CodeLocation::emitMessage (CompileMessage message) const
 
 bool CodeLocationRange::isEmpty() const
 {
-    return start.sourceCode == nullptr || start.location.getAddress() == end.location.getAddress();
+    return start.sourceCode == nullptr || start.location.data() == end.location.data();
 }
 
 std::string CodeLocationRange::toString() const
@@ -227,8 +227,8 @@ std::string CodeLocationRange::toString() const
         return {};
     }
 
-    SOUL_ASSERT (end.sourceCode != nullptr && end.location.getAddress() >= start.location.getAddress());
-    return std::string (start.location.getAddress(), end.location.getAddress());
+    SOUL_ASSERT (end.sourceCode != nullptr && end.location.data() >= start.location.data());
+    return std::string (start.location.data(), end.location.data());
 }
 
 } // namespace soul

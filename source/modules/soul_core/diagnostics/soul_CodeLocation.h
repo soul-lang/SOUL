@@ -31,7 +31,7 @@ struct SourceCodeText  final : public RefCountedObject
     static Ptr createInternal (std::string name, std::string text);
 
     const std::string filename, content;
-    const UTF8Reader utf8;
+    const choc::text::UTF8Pointer utf8;
     const bool isInternal;
 
 private:
@@ -97,7 +97,7 @@ struct CodeLocation   final
     SourceCodeText::Ptr sourceCode;
 
     /// The raw pointer to the text.
-    UTF8Reader location;
+    choc::text::UTF8Pointer location;
 };
 
 //==============================================================================

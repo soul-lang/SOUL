@@ -113,7 +113,7 @@ static ArrayWithPreallocation<CodeLocation, 4> getHEARTFiles (const BuildBundle&
     {
         auto code = CodeLocation::createFromSourceFile (file);
 
-        if (code.location.findEndOfWhitespace().startsWith ("#SOUL"))
+        if (findEndOfWhitespace (code.location).startsWith ("#SOUL"))
             result.push_back (code);
     }
 

@@ -43,7 +43,7 @@ namespace Keyword
 
     struct Matcher
     {
-        static TokenType match (int len, UTF8Reader p) noexcept
+        static TokenType match (int len, choc::text::UTF8Pointer p) noexcept
         {
             #define SOUL_COMPARE_KEYWORD(name, str) if (len == (int) sizeof (str) - 1 && p.startsWith (str)) return name;
             SOUL_KEYWORDS (SOUL_COMPARE_KEYWORD)
@@ -56,7 +56,7 @@ namespace Keyword
 //==============================================================================
 struct StandardOperatorMatcher
 {
-    static TokenType match (UTF8Reader& text) noexcept
+    static TokenType match (choc::text::UTF8Pointer& text) noexcept
     {
         auto p = text;
         #define SOUL_COMPARE_OPERATOR(name, str) if (p.startsWith (str)) { text = p + (sizeof (str) - 1); return Operator::name; }

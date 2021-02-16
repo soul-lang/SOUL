@@ -92,7 +92,7 @@ struct Tokeniser
         if (shouldIgnoreComments)
             skipWhitespaceAndComments();
         else
-            input = input.findEndOfWhitespace();
+            input = findEndOfWhitespace (input);
 
         location.location = input;
         auto last = currentType;
@@ -100,9 +100,9 @@ struct Tokeniser
         return last;
     }
 
-    UTF8Reader getCurrentTokeniserPosition() const noexcept     { return location.location; }
+    choc::text::UTF8Pointer getCurrentTokeniserPosition() const noexcept     { return location.location; }
 
-    void resetPosition (UTF8Reader newPos)
+    void resetPosition (choc::text::UTF8Pointer newPos)
     {
         if (input != newPos)
         {
@@ -155,37 +155,41 @@ struct Tokeniser
     constexpr static const size_t maxIdentifierLength = 256;
 
 private:
-    UTF8Reader input;
+    choc::text::UTF8Pointer input;
     TokenType literalType = {};
+
+    static bool skipIfStartsWithAny (choc::text::UTF8Pointer& p, const char* text)                      { return p.skipIfStartsWith (text); }
+    template <typename... Args>
+    static bool skipIfStartsWithAny (choc::text::UTF8Pointer& p, const char* text, Args... others)      { return p.skipIfStartsWith (text) || skipIfStartsWithAny (p, others...); }
 
     TokenType matchNextToken()
     {
         if (IdentifierMatcher::isIdentifierStart (*input))
         {
             auto end = input;
-            int len = 1;
+            size_t len = 1;
 
             while (IdentifierMatcher::isIdentifierBody (*++end))
-                if (++len > (int) maxIdentifierLength)
+                if (++len > maxIdentifierLength)
                     throwError (Errors::identifierTooLong());
 
-            if (auto keyword = KeywordList::match (len, input))
+            if (auto keyword = KeywordList::match ((int) len, input))
             {
                 input += len;
                 return keyword;
             }
 
-            currentStringValue = std::string (input.getAddress(), end.getAddress());
+            currentStringValue = std::string (input.data(), end.data());
             input = end;
             return IdentifierMatcher::categoriseIdentifier (currentStringValue);
         }
 
-        if (input.isDigit())
+        if (isDigit (input))
             return parseNumericLiteral (false);
 
         auto currentChar = *input;
 
-        if (currentChar == '-' && (input + 1).isDigit())
+        if (currentChar == '-' && isDigit (input + 1))
         {
             ++input;
             auto tok = parseNumericLiteral (true);
@@ -211,7 +215,7 @@ private:
             if (c2 == '/')
             {
                 auto end = input.find ("\n");
-                currentStringValue = std::string (input.getAddress(), end.getAddress());
+                currentStringValue = std::string (input.data(), end.data());
                 input = end;
                 return Token::comment;
             }
@@ -220,9 +224,9 @@ private:
             {
                 location.location = input;
                 auto end = (input + 2).find ("*/");
-                if (end.isEmpty()) throwError (Errors::unterminatedComment());
+                if (end.empty()) throwError (Errors::unterminatedComment());
                 end += 2;
-                currentStringValue = std::string (input.getAddress(), end.getAddress());
+                currentStringValue = std::string (input.data(), end.data());
                 input = end;
                 return Token::comment;
             }
@@ -234,8 +238,8 @@ private:
         if (currentChar == '_' && IdentifierMatcher::isIdentifierBody (*(input + 1)))
             throwError (Errors::noLeadingUnderscoreAllowed());
 
-        if (! input.isEmpty())
-            throwError (Errors::illegalCharacter (std::string (input.getAddress(), (input + 1).getAddress())));
+        if (! input.empty())
+            throwError (Errors::illegalCharacter (std::string (input.data(), (input + 1).data())));
 
         return Token::eof;
     }
@@ -244,7 +248,7 @@ private:
     {
         for (;;)
         {
-            input = input.findEndOfWhitespace();
+            input = findEndOfWhitespace (input);
 
             if (*input == '/')
             {
@@ -256,7 +260,7 @@ private:
                 {
                     location.location = input;
                     input = (input + 2).find ("*/");
-                    if (input.isEmpty()) throwError (Errors::unterminatedComment());
+                    if (input.empty()) throwError (Errors::unterminatedComment());
                     input += 2; continue;
                 }
             }
@@ -293,7 +297,7 @@ private:
 
     void checkCharacterImmediatelyAfterLiteral()
     {
-        if (input.isDigit() || IdentifierMatcher::isIdentifierBody (*input))
+        if (isDigit (input) || IdentifierMatcher::isIdentifierBody (*input))
         {
             location.location = input;
             throwError (Errors::unrecognisedLiteralSuffix());
@@ -302,8 +306,8 @@ private:
 
     TokenType parseSuffixForIntLiteral()
     {
-        if (input.advanceIfStartsWith ("i64", "_i64", "L", "_L"))   return Token::literalInt64;
-        if (input.advanceIfStartsWith ("i32", "_i32"))              return Token::literalInt32;
+        if (skipIfStartsWithAny (input, "i64", "_i64", "L", "_L"))   return Token::literalInt64;
+        if (skipIfStartsWithAny (input, "i32", "_i32"))              return Token::literalInt32;
 
         return Token::literalInt32;
     }
@@ -317,7 +321,7 @@ private:
     {
         auto t = input;
 
-        if (t.advanceIfStartsWith ("0x", "0X"))
+        if (skipIfStartsWithAny (t, "0x", "0X"))
             return parseIntegerWithBase<16> (t, [] (UnicodeChar c) -> int { return choc::text::hexDigitToInt (c); });
 
         return false;
@@ -327,7 +331,7 @@ private:
     {
         auto t = input;
 
-        if (t.advanceIfStartsWith ("0b", "0B"))
+        if (skipIfStartsWithAny (t, "0b", "0B"))
             return parseIntegerWithBase<2> (t, [] (UnicodeChar c) -> int { return c == '0' ? 0 : (c == '1' ? 1 : -1); });
 
         return false;
@@ -337,7 +341,7 @@ private:
     {
         auto t = input;
 
-        return *t == '0' && (t + 1).isDigit()
+        return *t == '0' && isDigit (t + 1)
                 && parseIntegerWithBase<8> (t, [this] (UnicodeChar c) -> int
                                                {
                                                     if (c >= '0' && c <= '7')  return ((int) c) - '0';
@@ -347,7 +351,7 @@ private:
     }
 
     template <int base, typename GetNextDigitFn>
-    bool parseIntegerWithBase (UTF8Reader t, GetNextDigitFn&& getNextDigit)
+    bool parseIntegerWithBase (choc::text::UTF8Pointer t, GetNextDigitFn&& getNextDigit)
     {
         uint64_t v = 0;
         size_t numDigits = 0;
@@ -386,10 +390,10 @@ private:
 
     TokenType parseSuffixForFloatLiteral()
     {
-        if (input.advanceIfStartsWith ("f32i", "_f32i", "fi"))    return Token::literalImag32;
-        if (input.advanceIfStartsWith ("f64i", "_f64i", "i"))     return Token::literalImag64;
-        if (input.advanceIfStartsWith ("f64", "_f64"))            return Token::literalFloat64;
-        if (input.advanceIfStartsWith ("f32", "_f32", "f", "_f")) return Token::literalFloat32;
+        if (skipIfStartsWithAny (input, "f32i", "_f32i", "fi"))    return Token::literalImag32;
+        if (skipIfStartsWithAny (input, "f64i", "_f64i", "i"))     return Token::literalImag64;
+        if (skipIfStartsWithAny (input, "f64", "_f64"))            return Token::literalFloat64;
+        if (skipIfStartsWithAny (input, "f32", "_f32", "f", "_f")) return Token::literalFloat32;
 
         return Token::literalFloat64;
     }
@@ -398,12 +402,12 @@ private:
     {
         int numDigits = 0;
         auto t = input;
-        while (t.isDigit())  { ++t; ++numDigits; }
+        while (isDigit (t))  { ++t; ++numDigits; }
 
         const bool hasPoint = (*t == '.');
 
         if (hasPoint)
-            while ((++t).isDigit())  ++numDigits;
+            while (isDigit (++t))  ++numDigits;
 
         if (numDigits == 0)
             return false;
@@ -415,14 +419,14 @@ private:
         {
             c = *++t;
             if (c == '+' || c == '-')  ++t;
-            if (! t.isDigit()) return false;
-            while ((++t).isDigit()) {}
+            if (! isDigit (t)) return false;
+            while (isDigit (++t)) {}
         }
 
         if (! (hasExponent || hasPoint))
             return false;
 
-        literalDoubleValue = std::stod (std::string (input.getAddress(), t.getAddress()));
+        literalDoubleValue = std::stod (std::string (input.data(), t.data()));
         input = t;
         literalType = parseSuffixForFloatLiteral();
         checkCharacterImmediatelyAfterLiteral();
@@ -439,14 +443,14 @@ private:
 
         for (;;)
         {
-            auto c = input.getAndAdvance();
+            auto c = input.popFirstChar();
 
             if (c == quoteChar)
                 break;
 
             if (c == '\\')
             {
-                c = input.getAndAdvance();
+                c = input.popFirstChar();
 
                 switch (c)
                 {
@@ -468,7 +472,7 @@ private:
 
                         for (int i = 4; --i >= 0;)
                         {
-                            auto digitValue = choc::text::hexDigitToInt (input.getAndAdvance());
+                            auto digitValue = choc::text::hexDigitToInt (input.popFirstChar());
 
                             if (digitValue < 0)
                             {

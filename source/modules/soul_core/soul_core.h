@@ -105,12 +105,9 @@ namespace soul
 #include "utilities/soul_RefCountedObject.h"
 #include "utilities/soul_ArrayWithPreallocation.h"
 #include "utilities/soul_StringUtilities.h"
-#include "utilities/soul_UTF8Reader.h"
 #include "utilities/soul_Identifier.h"
 #include "utilities/soul_ObjectHandleList.h"
 #include "utilities/soul_PoolAllocator.h"
-#include "utilities/soul_FIFO.h"
-#include "utilities/soul_ChannelSetFIFO.h"
 #include "utilities/soul_Resampler.h"
 #include "utilities/soul_AccessCount.h"
 

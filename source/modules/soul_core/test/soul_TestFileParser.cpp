@@ -89,7 +89,7 @@ struct TestFileParser::TestList
 
         for (size_t i = 0; i < lines.size(); ++i)
         {
-            nextLocation.location = UTF8Reader (nextLocation.location.getAddress() + lines[i].length());
+            nextLocation.location = choc::text::UTF8Pointer (nextLocation.location.data() + lines[i].length());
             auto trimmedLine = choc::text::trimStart (lines[i]);
 
             if (choc::text::startsWith (trimmedLine, "##"))
@@ -705,7 +705,7 @@ processor TestFunctionCaller
                 return result;
 
             auto expectedOutput = choc::text::trim (sectionHeaderLine.substr (sectionHeaderLine.find ("console") + 7));
-            auto actualOutput = soul::UTF8Reader (consoleOutput.c_str()).createEscapedVersion();
+            auto actualOutput = choc::json::addEscapeCharacters (choc::text::UTF8Pointer (consoleOutput.c_str()));
 
             if (actualOutput == expectedOutput)
                 return Result::OK;

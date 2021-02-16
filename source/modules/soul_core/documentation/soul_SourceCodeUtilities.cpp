@@ -139,7 +139,7 @@ std::vector<pool_ref<AST::ASTObject>> SourceCodeUtilities::findASTObjectsAt (Arr
                 if (! tokeniser.matches (Token::eof))
                     tokeniser.skip();
 
-                if (target.location.getAddress() < tokeniser.location.location.getAddress())
+                if (target.location.data() < tokeniser.location.location.data())
                     results.push_back (o);
             }
             catch (const AbortCompilationException&) {}
@@ -301,7 +301,7 @@ CodeLocation SourceCodeUtilities::findStartOfPrecedingComment (CodeLocation loca
     {
         auto fileStart = prevLineStart.sourceCode->utf8;
         auto start = prevLineStart;
-        start.location += static_cast<int> (choc::text::trimEnd (prevLine).length() - 2);
+        start.location += choc::text::trimEnd (prevLine).length() - 2;
 
         if (start.location > fileStart + 1)
         {
@@ -330,10 +330,10 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
         return {};
 
     Comment result;
-    pos.location = pos.location.findEndOfWhitespace();
+    pos.location = findEndOfWhitespace (pos.location);
     result.range.start = pos;
 
-    if (pos.location.advanceIfStartsWith ("/*"))
+    if (pos.location.skipIfStartsWith ("/*"))
     {
         result.valid = true;
         result.isStarSlash = true;
@@ -344,7 +344,7 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
             ++(pos.location);
         }
     }
-    else if (pos.location.advanceIfStartsWith ("//"))
+    else if (pos.location.skipIfStartsWith ("//"))
     {
         result.valid = true;
         result.isStarSlash = false;
@@ -360,7 +360,7 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
         return {};
     }
 
-    if (pos.location.advanceIfStartsWith ("<"))
+    if (pos.location.skipIfStartsWith ("<"))
         result.isReferringBackwards = true;
 
     while (*pos.location == ' ')
@@ -370,14 +370,14 @@ SourceCodeUtilities::Comment SourceCodeUtilities::parseComment (CodeLocation pos
     {
         auto closeComment = pos.location.find ("*/");
 
-        if (closeComment.isEmpty())
+        if (closeComment.empty())
             return {};
 
-        result.lines = choc::text::splitIntoLines (std::string (pos.location.getAddress(),
-                                                                closeComment.getAddress()),
+        result.lines = choc::text::splitIntoLines (std::string (pos.location.data(),
+                                                                closeComment.data()),
                                                    false);
 
-        auto firstLineIndent = pos.location.getAddress() - pos.getStartOfLine().location.getAddress();
+        auto firstLineIndent = pos.location.data() - pos.getStartOfLine().location.data();
 
         for (auto& l : result.lines)
         {
@@ -491,8 +491,8 @@ void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
 
             if (newType != currentTokenType)
             {
-                std::string_view tokenText (currentSectionStart.getAddress(),
-                                            static_cast<size_t> (newPos.getAddress() - currentSectionStart.getAddress()));
+                std::string_view tokenText (currentSectionStart.data(),
+                                            static_cast<size_t> (newPos.data() - currentSectionStart.data()));
 
                 if (! tokenText.empty())
                     if (! handleToken (tokenText, currentTokenType))
@@ -507,8 +507,8 @@ void SourceCodeUtilities::iterateSyntaxTokens (CodeLocation start,
     }
     catch (const AbortCompilationException&) {}
 
-    if (currentSectionStart.isNotEmpty())
-        handleToken (currentSectionStart.getAddress(), currentTokenType);
+    if (! currentSectionStart.empty())
+        handleToken (currentSectionStart.data(), currentTokenType);
 }
 
 std::vector<std::string> SourceCodeUtilities::getCommonCodeCompletionStrings()
