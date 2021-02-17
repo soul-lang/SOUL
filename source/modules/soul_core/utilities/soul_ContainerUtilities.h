@@ -161,9 +161,9 @@ static choc::value::Value replaceStringsWithValues (const choc::value::ValueView
 
 //==============================================================================
 /** This is a bit like a lite version of std::span.
-    However, it does have the huge advantage that it asserts when mistakes are made like
-    out-of-bounds accesses, so that we get clean internal compiler rather than crashes
-    and UB.
+    However, it does have the huge advantage that it asserts when things like
+    out-of-bounds accesses occur, so that we get clean internal compiler errors
+    rather than crashes and UB.
 */
 template <typename Type>
 struct ArrayView
