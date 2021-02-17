@@ -133,19 +133,33 @@ struct MIDIInputCollector::Pimpl  : private juce::Timer,
         return { inputMIDIBuffer.data(), inputMIDIBuffer.data() + inputMIDIBuffer.size() };
     }
 
+    void splitIntoShortMessages (const juce::MidiMessage& message, std::function<void(const choc::midi::ShortMessage&)> publish)
+    {
+        auto bytes = message.getRawData();
+        auto length = message.getRawDataSize();
+
+        for (int i = 0; i < length; i += 3)
+        {
+            auto availableBytes = length - i;
+
+            auto m = choc::midi::ShortMessage (bytes[i],
+                                               availableBytes > 1 ? bytes[i + 1] : 0,
+                                               availableBytes > 2 ? bytes[i + 2] : 0);
+
+            publish (m);
+        }
+    }
+
     void handleIncomingMidiMessage (juce::MidiInput*, const juce::MidiMessage& message) override
     {
-        if (message.getRawDataSize() < 4)  // long messages are ignored for now...
-        {
-            auto bytes = message.getRawData();
-            auto m = choc::midi::ShortMessage (bytes[0], bytes[1], bytes[2]);
-
-           #if JUCE_BELA
-            inputMIDIBuffer.push_back ({ 0, m });
-           #else
-            midiFIFO.push ({ MIDIClock::now(), m });
-           #endif
-        }
+        splitIntoShortMessages (message, [&] (const choc::midi::ShortMessage& m)
+                                {
+                                   #if JUCE_BELA
+                                    inputMIDIBuffer.push_back ({ 0, m });
+                                   #else
+                                    midiFIFO.push ({ MIDIClock::now(), m });
+                                   #endif
+                                });
     }
 };
 

@@ -295,6 +295,20 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
 
     using juce::AudioProcessor::processBlock;
 
+    static void splitMidiMessage (juce::MidiMessageMetadata& message, std::function<void (const choc::midi::ShortMessage&)> publish)
+    {
+        for (int i = 0; i < message.numBytes; i += 3)
+        {
+            auto availableBytes = message.numBytes - i;
+
+            auto m = choc::midi::ShortMessage (message.data[i],
+                                               availableBytes > 1 ? message.data[i + 1] : 0,
+                                               availableBytes > 2 ? message.data[i + 2] : 0);
+
+            publish (m);
+        }
+    }
+
     void processBlock (juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi) override
     {
         auto numFrames = audio.getNumSamples();
@@ -344,9 +358,11 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
                 {
                     auto message = *iter++;
 
-                    if (message.numBytes < 4)
-                        messageSpaceIn[i++] = { static_cast<uint32_t> (message.samplePosition),
-                                                { message.data[0], message.data[1], message.data[2] } };
+                    splitMidiMessage (message, [&] (const choc::midi::ShortMessage& m)
+                                      {
+                                          if (i < maxEvents)
+                                              messageSpaceIn[i++] = {static_cast<uint32_t> (message.samplePosition), m};
+                                      });
                 }
 
                 rc.numMIDIMessagesIn = (uint32_t) i;
