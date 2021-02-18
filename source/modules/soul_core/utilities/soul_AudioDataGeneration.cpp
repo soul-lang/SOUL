@@ -27,96 +27,6 @@
 namespace soul
 {
 
-namespace WaveGenerators
-{
-    //==============================================================================
-    struct Generator
-    {
-        Generator() = default;
-        virtual ~Generator() = default;
-
-        void init (double frequency, double sampleRate)
-        {
-            phaseIncrement = frequency / sampleRate;
-        }
-
-        virtual double getSample() = 0;
-
-        void advance()
-        {
-            currentPhase += phaseIncrement;
-
-            while (currentPhase >= 1.0)
-                currentPhase -= 1.0;
-        }
-
-        double phaseIncrement = 0;
-        double currentPhase   = 0;
-    };
-
-
-    //==============================================================================
-    struct Sine  : public Generator
-    {
-        double getSample() override
-        {
-            return std::sin (currentPhase * twoPi);
-        }
-    };
-
-    //==============================================================================
-    struct Blep  : public Generator
-    {
-        double blep (double phase)
-        {
-            if (phase < phaseIncrement)
-            {
-                phase = phase / phaseIncrement;
-                return (phase + phase) - (phase * phase) - 1.0f;
-            }
-
-            if (phase > (1.0f - phaseIncrement))
-            {
-                phase = (phase - 1.0f) / phaseIncrement;
-                return (phase * phase) + (phase + phase) + 1.0f;
-            }
-
-            return 0;
-        }
-    };
-
-    //==============================================================================
-    struct Saw  : public Blep
-    {
-        double getSample() override
-        {
-            return -1.0 + (2.0 * currentPhase) - blep (currentPhase);
-        }
-    };
-
-    //==============================================================================
-    struct Square  : public Blep
-    {
-        double getSample() override
-        {
-            return (currentPhase < 0.5 ? -1.0f : 1.0f) - blep (currentPhase)
-                    + blep (std::fmod (currentPhase + 0.5, 1.0));
-        }
-    };
-
-    //==============================================================================
-    struct Triangle  : public Square
-    {
-        double getSample() override
-        {
-            sum += 4.0 * phaseIncrement * Square::getSample();
-            return sum;
-        }
-
-        double sum = 1;
-    };
-}
-
 //==============================================================================
 template <typename ChannelSet>
 choc::value::Value createArrayFromChannelSet (ChannelSet source, uint32_t targetNumChans)
@@ -250,61 +160,43 @@ choc::value::Value coerceAudioFileObjectToTargetType (const Type& targetType, co
 }
 
 //==============================================================================
-choc::value::Value generateWaveform (double frequency, double sampleRate, int64_t numFrames,
-                                     WaveGenerators::Generator& generator,
-                                     uint32_t oversamplingFactor)
+template <typename Oscillator>
+static choc::value::Value renderOscillator (double frequency, double sampleRate,
+                                            int64_t numFrames, uint32_t oversamplingFactor)
 {
-    if (numFrames > 0 && frequency > 0 && sampleRate > 0 && numFrames < 48000 * 60 * 60 * 2)
-    {
-        choc::buffer::ChannelArrayBuffer<float> data (1, (uint32_t) (numFrames * oversamplingFactor));
-        auto dst = data.getIterator (0);
+    choc::buffer::ChannelArrayBuffer<float> data (1, (uint32_t) (numFrames * oversamplingFactor));
 
-        generator.init (frequency, sampleRate * oversamplingFactor);
+    choc::oscillator::render<Oscillator> (data, frequency, sampleRate * oversamplingFactor);
 
-        for (uint32_t i = 0; i < data.getNumFrames(); ++i)
-        {
-            *dst = (float) generator.getSample();
-            ++dst;
-            generator.advance();
-        }
+    if (oversamplingFactor == 1)
+        return convertAudioDataToObject (data, sampleRate);
 
-        if (oversamplingFactor == 1)
-            return convertAudioDataToObject (data, sampleRate);
-
-        // Resample to the right size
-        choc::buffer::ChannelArrayBuffer<float> resampledData (1, (uint32_t) numFrames);
-        resampleToFit (resampledData, data);
-        return convertAudioDataToObject (resampledData, sampleRate);
-    }
-
-    return {};
-}
-
-template <class Generator>
-static choc::value::Value generateWaveform (const Annotation& annotation, uint32_t oversamplingFactor)
-{
-    Generator g;
-
-    return generateWaveform (annotation.getDouble ("frequency"),
-                             annotation.getDouble ("rate"),
-                             annotation.getInt64 ("numFrames"),
-                             g,
-                             oversamplingFactor);
+    // Resample to the right size
+    choc::buffer::ChannelArrayBuffer<float> resampledData (1, (uint32_t) numFrames);
+    resampleToFit (resampledData, data);
+    return convertAudioDataToObject (resampledData, sampleRate);
 }
 
 choc::value::Value generateWaveform (const Annotation& annotation)
 {
-    if (annotation.getBool ("sinewave") || annotation.getBool ("sine"))
-        return generateWaveform<WaveGenerators::Sine> (annotation, 1);
+    auto freq    = annotation.getDouble ("frequency");
+    auto rate    = annotation.getDouble ("rate");
+    auto frames  = annotation.getInt64 ("numFrames");
 
-    if (annotation.getBool ("sawtooth") || annotation.getBool ("saw"))
-        return generateWaveform<WaveGenerators::Saw> (annotation, 2);
+    if (frames > 0 && freq > 0 && rate > 0 && frames < 48000 * 60 * 60 * 2)
+    {
+        if (annotation.getBool ("sinewave") || annotation.getBool ("sine"))
+            return renderOscillator<choc::oscillator::Sine<double>> (freq, rate, frames, 1);
 
-    if (annotation.getBool ("triangle"))
-        return generateWaveform<WaveGenerators::Triangle> (annotation, 2);
+        if (annotation.getBool ("sawtooth") || annotation.getBool ("saw"))
+            return renderOscillator<choc::oscillator::Saw<double>> (freq, rate, frames, 2);
 
-    if (annotation.getBool ("squarewave") || annotation.getBool ("square"))
-        return generateWaveform<WaveGenerators::Square> (annotation, 2);
+        if (annotation.getBool ("triangle"))
+            return renderOscillator<choc::oscillator::Triangle<double>> (freq, rate, frames, 2);
+
+        if (annotation.getBool ("squarewave") || annotation.getBool ("square"))
+            return renderOscillator<choc::oscillator::Square<double>> (freq, rate, frames, 2);
+    }
 
     return {};
 }

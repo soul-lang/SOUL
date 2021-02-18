@@ -38,6 +38,7 @@
 
 #include "../../../include/soul/3rdParty/choc/text/choc_JSON.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_HTML.h"
+#include "../../../include/soul/3rdParty/choc/audio/choc_Oscillators.h"
 
 #if SOUL_INTEL
  #include <xmmintrin.h>
