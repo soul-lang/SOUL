@@ -21,13 +21,11 @@
 namespace soul::patch
 {
 
-/**
-    Implementation of the PatchInstance interface.
-*/
+/// Implementation of the PatchInstance interface.
 struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInstanceImpl>
 {
     PatchInstanceImpl (std::unique_ptr<soul::PerformerFactory> factory, const BuildSettings& settings, VirtualFile::Ptr f)
-        : performerFactory (std::move (factory)), buildSettings (settings), manifestFile (std::move (f))
+        : defaultPerformerFactory (std::move (factory)), buildSettings (settings), manifestFile (std::move (f))
     {
         fileList.initialiseFromManifestFile (manifestFile);
     }
@@ -46,7 +44,8 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         }
         catch (const PatchLoadError& e)
         {
-            description = fileList.createDescriptionWithMessage (e.message);
+            auto message = formatErrorMessage ("error", e.description, e.filename, e.line, e.column);
+            description = fileList.createDescriptionWithMessage (message);
         }
     }
 
@@ -71,10 +70,11 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         return fileList.getMostRecentModificationTime();
     }
 
-    PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration& config,
-                                   CompilerCache* cache,
-                                   SourceFilePreprocessor* preprocessor,
-                                   ExternalDataProvider* externalDataProvider) override
+    PatchPlayer::Ptr compilePlayer (soul::PerformerFactory& performerFactory,
+                                    const PatchPlayerConfiguration& config,
+                                    CompilerCache* cache,
+                                    SourceFilePreprocessor* preprocessor,
+                                    ExternalDataProvider* externalDataProvider)
     {
         PatchPlayer::Ptr patch;
 
@@ -82,7 +82,7 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         {
             refreshFileList();
 
-            auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory->createPerformer());
+            auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory.createPerformer());
             patch = PatchPlayer::Ptr (patchImpl);
 
             buildSettings.sampleRate = config.sampleRate;
@@ -92,22 +92,116 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
         }
         catch (const PatchLoadError& e)
         {
-            auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory->createPerformer());
+            auto patchImpl = new PatchPlayerImpl (fileList, config, performerFactory.createPerformer());
             patch = PatchPlayer::Ptr (patchImpl);
 
             CompilationMessage cm;
-            cm.fullMessage = makeString (e.message);
-            cm.description = cm.fullMessage;
+            cm.severity = makeString (std::string ("error"));
+            cm.description = makeString (e.description);
+            cm.filename = makeString (e.filename);
+            cm.line = e.line;
+            cm.column = e.column;
             cm.isError = true;
 
             patchImpl->compileMessages.push_back (cm);
             patchImpl->updateCompileMessageStatus();
         }
 
+        return patch;
+    }
+
+    PatchPlayer* compileNewPlayer (const PatchPlayerConfiguration& config,
+                                   CompilerCache* cache,
+                                   SourceFilePreprocessor* preprocessor,
+                                   ExternalDataProvider* externalDataProvider) override
+    {
+        auto patch = compilePlayer (*defaultPerformerFactory, config, cache, preprocessor, externalDataProvider);
         return patch.incrementAndGetPointer();
     }
 
-    std::unique_ptr<soul::PerformerFactory> performerFactory;
+    //==============================================================================
+    struct LinkedProgramImpl  : public RefCountHelper<LinkedProgram, LinkedProgramImpl>
+    {
+        virtual ~LinkedProgramImpl() = default;
+
+        Span<CompilationMessage> getCompileMessages() const override    { return compileMessagesSpan; }
+        const char* getHEARTCode() const override                       { return heartCode.c_str(); }
+
+        std::vector<CompilationMessage> compileMessages;
+        Span<CompilationMessage> compileMessagesSpan;
+        std::string heartCode;
+    };
+
+    LinkedProgram* getLinkedProgram (const PatchPlayerConfiguration& config,
+                                     CompilerCache* cache,
+                                     SourceFilePreprocessor* preprocessor,
+                                     ExternalDataProvider* externalDataProvider) override
+    {
+        auto linkedProgram = new LinkedProgramImpl();
+        auto linkedProgramPtr = LinkedProgram::Ptr (linkedProgram);
+
+        struct NonLinkingPerformerFactory  : public soul::PerformerFactory
+        {
+            NonLinkingPerformerFactory() = default;
+
+            std::unique_ptr<soul::Performer> createPerformer() override
+            {
+                return std::make_unique<NonLinkingPerformer> (*this);
+            }
+
+            struct NonLinkingPerformer  : public soul::PerformerWrapper
+            {
+                NonLinkingPerformer (NonLinkingPerformerFactory& f)
+                    : PerformerWrapper (soul::llvm::createPerformer()), factory (f)
+                {}
+
+                bool load (soul::CompileMessageList& list, const soul::Program& p) noexcept override
+                {
+                    factory.loadedProgram = p;
+                    return PerformerWrapper::load (list, p);
+                }
+
+                bool link (soul::CompileMessageList& messageList, const soul::BuildSettings& settings, soul::LinkerCache*) noexcept override
+                {
+                    return true;
+                    SOUL_TODO // enable this and remove prepareProgramForCodeGen from the cpp gen
+//                    try
+//                    {
+//                        CompileMessageHandler handler (messageList);
+//                        auto settingsCopy = settings;
+//                        factory.loadedProgram = transformations::prepareProgramForCodeGen (factory.loadedProgram, settingsCopy);
+//                        return true;
+//                    }
+//                    catch (AbortCompilationException) {}
+//
+//                    return false;
+                }
+
+                NonLinkingPerformerFactory& factory;
+            };
+
+            soul::Program loadedProgram;
+        };
+
+        NonLinkingPerformerFactory nonLinkingPerformerFactory;
+
+        if (auto player = compilePlayer (nonLinkingPerformerFactory, config, cache, preprocessor, externalDataProvider))
+        {
+            auto playerImpl = dynamic_cast<PatchPlayerImpl*> (player.get());
+            SOUL_ASSERT (playerImpl != nullptr);
+
+            if (! nonLinkingPerformerFactory.loadedProgram.isEmpty())
+                linkedProgram->heartCode = nonLinkingPerformerFactory.loadedProgram.toHEART();
+
+            linkedProgram->compileMessages = playerImpl->compileMessages;
+            linkedProgram->compileMessagesSpan = makeSpan (linkedProgram->compileMessages);
+        }
+
+        return linkedProgramPtr.incrementAndGetPointer();
+    }
+
+    //==============================================================================
+    std::unique_ptr<soul::PerformerFactory> defaultPerformerFactory;
     BuildSettings buildSettings;
     VirtualFile::Ptr manifestFile;
     FileList fileList;

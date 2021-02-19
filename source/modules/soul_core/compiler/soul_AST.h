@@ -191,10 +191,9 @@ struct AST
                 {
                     if (f->originalCallLeadingToSpecialisation != nullptr)
                     {
-                        CompileMessage error { "Failed to instantiate generic function "
-                                                  + f->originalCallLeadingToSpecialisation->getDescription (f->originalGenericFunction->name),
-                                               f->originalCallLeadingToSpecialisation->context.location,
-                                               CompileMessage::Type::error };
+                        auto error = CompileMessage::createError ("Failed to instantiate generic function "
+                                                                    + f->originalCallLeadingToSpecialisation->getDescription (f->originalGenericFunction->name),
+                                                                  f->originalCallLeadingToSpecialisation->context.location);
 
                         if (location.sourceCode->isInternal)
                         {
@@ -205,11 +204,11 @@ struct AST
                             else
                                 error.description += ", error: " + message.description;
 
-                            messages.messages.push_back (error);
+                            messages.messages.push_back (std::move (error));
                         }
                         else
                         {
-                            messages.messages.insert (messages.messages.begin(), error);
+                            messages.messages.insert (messages.messages.begin(), std::move (error));
                         }
 
                         p = f->originalCallLeadingToSpecialisation->context.parentScope;

@@ -2819,15 +2819,15 @@ private:
 
             if (function.context.location.sourceCode->isInternal)
             {
-                messages.messages.push_back ({ "Could not resolve argument types for function call " + call.getDescription (function.name),
-                                               call.context.location, CompileMessage::Type::error });
+                messages.messages.push_back (CompileMessage::createError ("Could not resolve argument types for function call " + call.getDescription (function.name),
+                                                                          call.context.location));
             }
             else
             {
-                messages.messages.push_back ({ "Failed to resolve generic function call " + call.getDescription (function.name),
-                                               call.context.location, CompileMessage::Type::error });
+                messages.messages.push_back (CompileMessage::createError ("Failed to resolve generic function call " + call.getDescription (function.name),
+                                                                          call.context.location));
 
-                messages.messages.push_back ({ errorMessage, errorLocation.location, CompileMessage::Type::error });
+                messages.messages.push_back (CompileMessage::createError (errorMessage, errorLocation.location));
             }
 
             soul::throwError (messages);

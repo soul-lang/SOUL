@@ -384,13 +384,13 @@ public:
     static CompileMessage createMessage (CompileMessage::Category category, CodeLocation location,
                                          CompileMessage::Type type, const char* text, Args&&... args)
     {
-        std::string result (text);
+        std::string description (text);
         std::vector<std::string> stringArgs { convertToString (args)... };
 
         for (size_t i = 0; i < stringArgs.size(); ++i)
-            result = replaceArgument (result, i, stringArgs[i]);
+            description = replaceArgument (description, i, stringArgs[i]);
 
-        return CompileMessage { choc::text::trim (result), location, type, category };
+        return CompileMessage::create (choc::text::trim (description), std::move (location), type, category);
     }
 
     template <typename... Args>

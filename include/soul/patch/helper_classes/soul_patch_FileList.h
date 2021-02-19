@@ -84,13 +84,13 @@ struct FileList
     VirtualFile::Ptr checkAndCreateVirtualFile (const std::string& relativePath) const
     {
         if (relativePath.empty())
-            throwPatchLoadError ("Empty file name");
+            throwPatchLoadError ("Empty file name", {});
 
         if (root != nullptr)
             if (auto f = VirtualFile::Ptr (root->getChildFile (relativePath.c_str())))
                 return f;
 
-        throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath));
+        throwPatchLoadError ("Cannot find file " + choc::text::addDoubleQuotes (relativePath), {});
     }
 
     FileState checkAndCreateFileState (const std::string& relativePath) const
@@ -103,7 +103,7 @@ struct FileList
     void findManifestFile()
     {
         if (manifestFile == nullptr || ! choc::text::endsWith (manifestName, getManifestSuffix()))
-            throwPatchLoadError ("Expected a .soulpatch file");
+            throwPatchLoadError ("Expected a .soulpatch file", {});
 
         manifest = { manifestFile, manifestName, 0 };
         manifest.lastModificationTime = manifest.getLastModificationTime();
@@ -112,12 +112,7 @@ struct FileList
 
     void parseManifest()
     {
-        std::string error;
-        manifestJSON = parseManifestFile (*manifest.file, error);
-
-        if (! error.empty())
-            throwPatchLoadError (std::move (error));
-
+        manifestJSON = parseManifestFile (*manifest.file);
         checkExternalsList();
     }
 
@@ -129,7 +124,7 @@ struct FileList
         auto addFile = [&] (const choc::value::ValueView& file)
         {
             if (! file.isString())
-                throwPatchLoadError (manifest.path + ": error: Expected the '" + propertyName + "' variable to be a filename or array of files");
+                throwPatchLoadError ("Expected the '" + propertyName + "' variable to be a filename or array of files", manifest.path);
 
             paths.push_back (std::string (file.getString()));
         };
@@ -180,7 +175,7 @@ struct FileList
             auto content = loadVirtualFileAsString (*source, readError);
 
             if (! readError.empty())
-                throwPatchLoadError (std::move (readError));
+                throwPatchLoadError (readError, fileState.path);
 
             build.sourceFiles.push_back ({ fileState.path, std::move (content) });
         }
@@ -208,9 +203,9 @@ struct FileList
             return;
 
         if (! externals.isObject())
-            throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object");
+            throwPatchLoadError ("The 'externals' field in the manifest must be a JSON object", manifest.path);
 
-        externals.visitObjectMembers ([] (std::string_view memberName, const choc::value::ValueView&)
+        externals.visitObjectMembers ([this] (std::string_view memberName, const choc::value::ValueView&)
         {
             auto name = choc::text::trim (memberName);
 
@@ -218,10 +213,10 @@ struct FileList
             auto path = IdentifierPath::fromString (tempAllocator, std::string (name));
 
             if (! path.isValid())
-                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (std::string (name)));
+                throwPatchLoadError ("Invalid symbol name for external binding " + quoteName (std::string (name)), manifest.path);
 
             if (path.isUnqualified())
-                throwPatchLoadError ("The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor");
+                throwPatchLoadError ("The external symbol name " + quoteName (std::string (name)) + " must include the name of the processor", manifest.path);
         });
     }
 

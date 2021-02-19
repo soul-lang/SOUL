@@ -144,18 +144,12 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
         for (auto& m : messageList.messages)
         {
             CompilationMessage cm;
-            auto sourceLine = m.getAnnotatedSourceLine();
-
-            if (sourceLine.empty())
-                cm.fullMessage = makeString (m.getFullDescription());
-            else
-                cm.fullMessage = makeString (m.getFullDescription() + "\n" + sourceLine);
-
-            cm.filename = makeString (m.location.getFilename());
+            cm.severity = makeString (m.getSeverity());
             cm.description = makeString (m.description);
-            auto lc = m.location.getLineAndColumn();
-            cm.line = lc.line;
-            cm.column = lc.column;
+            cm.filename = makeString (m.filename);
+            cm.sourceLine = makeString (m.sourceLine);
+            cm.line = m.line;
+            cm.column = m.column;
             cm.isError = m.isError();
 
             compileMessages.push_back (cm);
@@ -205,9 +199,11 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
                                                      return choc::value::createString (s);
                                                  });
             }
-            catch (const PatchLoadError& error)
+            catch (const PatchLoadError& e)
             {
-                throwPatchLoadError ("Error resolving external " + quoteName (ev.name) + ": " + error.message);
+                auto error = e;
+                error.description = "Error resolving external " + quoteName (ev.name) + ": " + error.description;
+                throw error;
             }
         }
 
@@ -395,8 +391,8 @@ struct PatchPlayerImpl final  : public RefCountHelper<PatchPlayer, PatchPlayerIm
     //==============================================================================
     void checkSampleRateAndBlockSize() const
     {
-        if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate");
-        if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size");
+        if (config.sampleRate <= 0)         throwPatchLoadError ("Illegal sample rate", {});
+        if (config.maxFramesPerBlock <= 0)  throwPatchLoadError ("Illegal block size", {});
     }
 
     std::vector<CompilationMessage> compileMessages;

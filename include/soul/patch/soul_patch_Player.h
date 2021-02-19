@@ -135,9 +135,14 @@ struct PatchPlayerConfiguration
 /** Description of an error or warning message. */
 struct CompilationMessage
 {
-    String::Ptr fullMessage, filename, description;
+    String::Ptr severity, description, filename, sourceLine;
     uint32_t line = 0, column = 0;
     bool isError = false;
+
+    std::string getFullMessage() const
+    {
+        return formatAnnotatedErrorMessage (severity, description, filename, sourceLine, line, column);
+    }
 };
 
 //==============================================================================

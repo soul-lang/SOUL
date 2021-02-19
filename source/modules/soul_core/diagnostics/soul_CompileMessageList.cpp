@@ -33,37 +33,45 @@ bool CompileMessage::isWarning() const                  { return type == Type::w
 bool CompileMessage::isError() const                    { return type == Type::error || isInternalCompilerError(); }
 bool CompileMessage::isInternalCompilerError() const    { return type == Type::internalCompilerError; }
 
-CompileMessage CompileMessage::withLocation (CodeLocation l) const
+CompileMessage CompileMessage::withLocation (CodeLocation location) const
 {
-    return { description, std::move (l), type };
+    auto m = *this;
+
+    m.filename = location.getFilename();
+
+    auto lc = location.getLineAndColumn();
+    m.line = lc.line;
+    m.column = lc.column;
+
+    if (location.location.data() != nullptr && lc.column != 0)
+        m.sourceLine = location.getSourceLine();
+
+    return m;
+}
+
+CompileMessage CompileMessage::create (std::string desc, CodeLocation l, Type t, Category c)
+{
+    return CompileMessage { std::move (desc), {}, {}, 0, 0, t, c }.withLocation (std::move (l));
+}
+
+CompileMessage CompileMessage::createError (std::string desc, CodeLocation l)
+{
+    return create (std::move (desc), std::move (l), Type::error, Category::syntax);
 }
 
 std::string CompileMessage::getFullDescriptionWithoutFilename() const
 {
-    std::string filename;
-
-    if (hasPosition())
-        filename = getPositionString() + ": ";
-
-    return filename + getSeverity() + ": " + description;
+    return formatErrorMessage (getSeverity(), description, {}, line, column);
 }
 
 std::string CompileMessage::getFullDescription() const
 {
-    auto filename = location.getFilename();
-
-    if (filename.empty())
-        return getFullDescriptionWithoutFilename();
-
-    if (hasPosition())
-        filename += ":" + getPositionString();
-
-    return filename + ": " + getSeverity() + ": " + description;
+    return formatErrorMessage (getSeverity(), description, filename, line, column);
 }
 
 bool CompileMessage::hasPosition() const
 {
-    return location.location.data() != nullptr;
+    return line != 0;
 }
 
 std::string CompileMessage::getPositionString() const
@@ -71,8 +79,7 @@ std::string CompileMessage::getPositionString() const
     if (! hasPosition())
         return "0:0";
 
-    auto lc = location.getLineAndColumn();
-    return std::to_string (lc.line) + ":" + std::to_string (lc.column);
+    return std::to_string (line) + ":" + std::to_string (column);
 }
 
 std::string CompileMessage::getSeverity() const
@@ -86,26 +93,7 @@ std::string CompileMessage::getSeverity() const
 
 std::string CompileMessage::getAnnotatedSourceLine() const
 {
-    if (location.location.data() != nullptr)
-    {
-        auto lc = location.getLineAndColumn();
-
-        if (lc.column != 0)
-        {
-            auto sourceLine = location.getSourceLine();
-            std::string indent;
-
-            // because some fools insist on using tab characters, we need to make sure we mirror
-            // any tabs in the original source line when indenting the '^' character, so that when
-            // it's printed underneath it lines-up regardless of tab size
-            for (size_t i = 0; i < lc.column - 1; ++i)
-                indent += sourceLine[i] == '\t' ? '\t' : ' ';
-
-            return sourceLine + "\n" + indent + "^";
-        }
-    }
-
-    return {};
+    return formatAnnotatedErrorMessageSourceLine (sourceLine, column);
 }
 
 //==============================================================================
@@ -119,12 +107,12 @@ void CompileMessageList::add (const CompileMessage& message)
 
 void CompileMessageList::addError (const std::string& desc, CodeLocation location)
 {
-    add ({ desc, location, CompileMessage::Type::error });
+    add (CompileMessage::createError (desc, location));
 }
 
 void CompileMessageList::addWarning (const std::string& desc, CodeLocation location)
 {
-    add ({ desc, location, CompileMessage::Type::warning });
+    add (CompileMessage::create (desc, location, CompileMessage::Type::warning, CompileMessage::Category::syntax));
 }
 
 void CompileMessageList::add (const CompileMessageList& other)
@@ -271,8 +259,10 @@ void emitMessage (CompileMessage m)
 
 [[noreturn]] void throwInternalCompilerError (const std::string& message)
 {
-    soul::throwError ({ "Internal compiler error: " + choc::text::addDoubleQuotes (message),
-                        CodeLocation(), CompileMessage::Type::internalCompilerError });
+    soul::throwError (CompileMessage::create ("Internal compiler error: " + choc::text::addDoubleQuotes (message),
+                                              CodeLocation(),
+                                              CompileMessage::Type::internalCompilerError,
+                                              CompileMessage::Category::none));
 }
 
 [[noreturn]] void throwInternalCompilerError (const char* location, int line)

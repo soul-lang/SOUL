@@ -19,7 +19,7 @@ namespace patch
 /** The library compatibility API version is used to make sure this set of header
     files is compatible with the library that gets loaded.
 */
-static constexpr int currentLibraryAPIVersion = 0x100a;
+static constexpr int currentLibraryAPIVersion = 0x100b;
 
 //==============================================================================
 /**
@@ -36,7 +36,7 @@ struct SOULPatchLibrary
         if (handle != nullptr)
             if (auto getVersionFn = (GetLibraryVersionFunction) getFunction (handle, "getSOULPatchLibraryVersion"))
                 if (isCompatibleLibraryVersion (getVersionFn()))
-                    createBuilderFunction = (CreateBuilderFunction) getFunction (handle, "createSOULPatchBundle");
+                    createInstanceFunction = (CreateInstanceFunction) getFunction (handle, "createSOULPatchBundle");
     }
 
     /** Make sure you don't delete the library while any objects are still in use! */
@@ -49,7 +49,7 @@ struct SOULPatchLibrary
     /** Returns true if the library has been loaded and is ready to use. */
     bool loadedSuccessfully() const
     {
-        return createBuilderFunction != nullptr;
+        return createInstanceFunction != nullptr;
     }
 
     /** Creates a new instance of a PatchInstance for a given file path.
@@ -87,15 +87,15 @@ struct SOULPatchLibrary
 private:
     void* const handle;
     using GetLibraryVersionFunction = int(*)();
-    using CreateBuilderFunction = PatchInstance*(*)(VirtualFile*, const char*);
-    CreateBuilderFunction createBuilderFunction = {};
+    using CreateInstanceFunction = PatchInstance*(*)(VirtualFile*, const char*);
+    CreateInstanceFunction createInstanceFunction = {};
 
     bool isCompatibleLibraryVersion (int version)         { return version == currentLibraryAPIVersion; }
 
     PatchInstance::Ptr create (VirtualFile* file, const char* path) const
     {
         if (loadedSuccessfully())
-            if (auto c = createBuilderFunction (file, path))
+            if (auto c = createInstanceFunction (file, path))
                 return PatchInstance::Ptr (c);
 
         return {};

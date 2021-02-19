@@ -141,7 +141,7 @@ struct AudioFileToValue
         if (auto reader = createAudioFileReader (file))
             return loadAudioFileAsValue (*reader, fileName, annotation);
 
-        throwPatchLoadError ("Failed to read file " + quoteName (fileName));
+        throwPatchLoadError ("Failed to read file " + quoteName (fileName), {});
         return {};
     }
 
@@ -154,10 +154,10 @@ private:
         if (reader.sampleRate > 0)
         {
             if (reader.numChannels > maxNumChannels)
-                throwPatchLoadError ("Too many channels in audio file: " + quoteName (fileName));
+                throwPatchLoadError ("Too many channels in audio file: " + quoteName (fileName), {});
 
             if (reader.lengthInSamples > (juce::int64) maxNumFrames)
-                throwPatchLoadError ("Audio file was too long to load into memory: " + quoteName (fileName));
+                throwPatchLoadError ("Audio file was too long to load into memory: " + quoteName (fileName), {});
 
             auto numSourceChannels = (uint32_t) reader.numChannels;
             auto numFrames         = (uint32_t) reader.lengthInSamples;
@@ -174,7 +174,7 @@ private:
             auto result = convertAudioDataToObject (buffer, reader.sampleRate);
 
             if (result.isVoid())
-                throwPatchLoadError ("Could not load audio file");
+                throwPatchLoadError ("Could not load audio file", {});
 
             return result;
         }
@@ -209,7 +209,7 @@ private:
                 }
             }
 
-            throwPatchLoadError ("The value of the 'resample' annotation was out of range");
+            throwPatchLoadError ("The value of the 'resample' annotation was out of range", {});
         }
     }
 
@@ -228,7 +228,7 @@ private:
                 return;
             }
 
-            throwPatchLoadError ("The value of the 'sourceChannel' annotation was out of range");
+            throwPatchLoadError ("The value of the 'sourceChannel' annotation was out of range", {});
         }
     }
 

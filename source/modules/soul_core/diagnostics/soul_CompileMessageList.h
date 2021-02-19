@@ -24,21 +24,6 @@ namespace soul
 //==============================================================================
 struct CompileMessage  final
 {
-    bool isWarning() const;
-    bool isError() const;
-    bool isInternalCompilerError() const;
-
-    std::string getFullDescription() const;
-    std::string getFullDescriptionWithoutFilename() const;
-
-    bool hasPosition() const;
-    std::string getPositionString() const;
-
-    std::string getSeverity() const;
-    std::string getAnnotatedSourceLine() const;
-
-    CompileMessage withLocation (CodeLocation) const;
-
     enum class Type
     {
         error,
@@ -55,8 +40,25 @@ struct CompileMessage  final
         runtimeProblem
     };
 
-    std::string description;
-    CodeLocation location;
+    bool isWarning() const;
+    bool isError() const;
+    bool isInternalCompilerError() const;
+
+    std::string getFullDescription() const;
+    std::string getFullDescriptionWithoutFilename() const;
+
+    bool hasPosition() const;
+    std::string getPositionString() const;
+
+    std::string getSeverity() const;
+    std::string getAnnotatedSourceLine() const;
+
+    CompileMessage withLocation (CodeLocation) const;
+    static CompileMessage create (std::string description, CodeLocation, Type, Category);
+    static CompileMessage createError (std::string description, CodeLocation);
+
+    std::string description, filename, sourceLine;
+    uint32_t line = 0, column = 0;
     Type type = Type::error;
     Category category = Category::none;
 };

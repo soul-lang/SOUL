@@ -151,12 +151,14 @@ inline const char* getManifestTopLevelPropertyName()    { return "soulPatchV1"; 
 //==============================================================================
 struct PatchLoadError
 {
-    std::string message;
+    std::string description, filename;
+    uint32_t line, column;
 };
 
-[[noreturn]] static inline void throwPatchLoadError (std::string message)
+[[noreturn]] static inline void throwPatchLoadError (std::string description, std::string filename,
+                                                     uint32_t line = 0, uint32_t column = 0)
 {
-    throw PatchLoadError { std::move (message) };
+    throw PatchLoadError { std::move (description), std::move (filename), line, column };
 }
 
 //==============================================================================
@@ -165,45 +167,41 @@ inline choc::value::ValueView getManifestContentObject (const choc::value::Value
     return topLevelObject[getManifestTopLevelPropertyName()];
 }
 
-/** Attempts to parse the JSON object from a manifest file, returning an error if
-    something fails.
-*/
-inline choc::value::Value parseManifestFile (VirtualFile& manifestFile, std::string& errorMessage)
+/// Attempts to parse the JSON object from a manifest file, throwing an error if something fails.
+inline choc::value::Value parseManifestFile (VirtualFile& manifestFile)
 {
+    auto manifestPath = String::Ptr (manifestFile.getAbsolutePath()).toString<std::string>();
+
     try
     {
-        auto content = loadVirtualFileAsString (manifestFile, errorMessage);
+        std::string loadError;
+        auto content = loadVirtualFileAsString (manifestFile, loadError);
 
-        if (errorMessage.empty())
-        {
-            auto topLevelObject = choc::json::parse (content);
-            auto contentObject = getManifestContentObject (topLevelObject);
+        if (! loadError.empty())
+            throwPatchLoadError (loadError, manifestPath);
 
-            if (contentObject.isObject())
-                return choc::value::Value (contentObject);
+        auto topLevelObject = choc::json::parse (content);
+        auto contentObject = getManifestContentObject (topLevelObject);
 
-            errorMessage = "Expected an object called '" + std::string (getManifestTopLevelPropertyName()) + "'";
-        }
+        if (contentObject.isObject())
+            return choc::value::Value (contentObject);
     }
     catch (choc::json::ParseError error)
     {
-        errorMessage = String::Ptr (manifestFile.getAbsolutePath()).toString<std::string>()
-                        + ":" + std::to_string (error.line) + ":" + std::to_string (error.column) + ": error: " + error.message;
+        throwPatchLoadError (error.message, manifestPath, error.line, error.column);
     }
 
-    return {};
+    throwPatchLoadError ("Expected an object called '" + std::string (getManifestTopLevelPropertyName()) + "'", manifestPath);
 }
 
 /** Parses a manifest file and returns a list of the "view" files that it contains. */
 inline std::vector<VirtualFile::Ptr> findViewFiles (VirtualFile& manifestFile)
 {
     std::vector<VirtualFile::Ptr> views;
-    std::string error;
-    auto manifestContent = parseManifestFile (manifestFile, error);
 
-    if (error.empty())
+    try
     {
-        auto viewList = manifestContent["view"];
+        auto viewList = parseManifestFile (manifestFile)["view"];
 
         if (viewList.isArray())
         {
@@ -217,6 +215,8 @@ inline std::vector<VirtualFile::Ptr> findViewFiles (VirtualFile& manifestFile)
                 views.push_back (f);
         }
     }
+    catch (const PatchLoadError&)
+    {}
 
     return views;
 }

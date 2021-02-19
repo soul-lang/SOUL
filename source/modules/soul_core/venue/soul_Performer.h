@@ -255,4 +255,46 @@ public:
     virtual std::unique_ptr<Performer> createPerformer() = 0;
 };
 
+
+//==============================================================================
+/**
+    A converter class that can be used to wrap one performer inside another one and forward
+    its method calls. Useful if you need to take an existing performer and just intercept a
+    couple of methods.
+*/
+struct PerformerWrapper  : public soul::Performer
+{
+    PerformerWrapper (std::unique_ptr<soul::Performer> p) : performer (std::move (p)) {}
+
+    bool load (soul::CompileMessageList& list, const soul::Program& p) noexcept override                                    { return performer->load (list, p); }
+    soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() noexcept override                                      { return performer->getInputEndpoints(); }
+    soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() noexcept override                                     { return performer->getOutputEndpoints(); }
+    void unload() noexcept override                                                                                         { performer->unload(); }
+    void reset() noexcept override                                                                                          { performer->reset(); }
+    bool isLoaded() noexcept override                                                                                       { return performer->isLoaded(); }
+    bool link (soul::CompileMessageList& ml, const soul::BuildSettings& s, soul::LinkerCache* c) noexcept override          { return performer->link (ml, s, c); }
+    bool isLinked() noexcept override                                                                                       { return performer->isLinked(); }
+    soul::EndpointHandle getEndpointHandle (const soul::EndpointID& e) noexcept override                                    { return performer->getEndpointHandle (e); }
+    soul::ArrayView<const soul::ExternalVariable> getExternalVariables() noexcept override                                  { return performer->getExternalVariables(); }
+    bool setExternalVariable (const char* name, const choc::value::ValueView& v) noexcept override                          { return performer->setExternalVariable (name, std::move (v)); }
+    void setNextInputStreamFrames (soul::EndpointHandle h, const choc::value::ValueView& v) noexcept override               { performer->setNextInputStreamFrames (h, v); }
+    void setSparseInputStreamTarget (soul::EndpointHandle h, const choc::value::ValueView& v, uint32_t t) noexcept override { performer->setSparseInputStreamTarget (h, v, t); }
+    void setInputValue (soul::EndpointHandle h, const choc::value::ValueView& v) noexcept override                          { performer->setInputValue (h, v); }
+    void addInputEvent (soul::EndpointHandle h, const choc::value::ValueView& v) noexcept override                          { performer->addInputEvent (h, v); }
+    choc::value::ValueView getOutputStreamFrames (soul::EndpointHandle h) noexcept override                                 { return performer->getOutputStreamFrames (h); }
+    choc::value::ValueView getOutputValue (soul::EndpointHandle h) noexcept override                                        { return performer->getOutputValue (h); }
+    void iterateOutputEvents (soul::EndpointHandle h, HandleNextOutputEventFn f) noexcept override                          { return performer->iterateOutputEvents (h, std::move (f)); }
+    bool isEndpointActive (const soul::EndpointID& e) noexcept override                                                     { return performer->isEndpointActive (e); }
+    uint32_t getLatency()  noexcept override                                                                                { return performer->getLatency(); }
+    void prepare (uint32_t samples) noexcept override                                                                       { return performer->prepare (samples); }
+    void advance() noexcept override                                                                                        { return performer->advance(); }
+    uint32_t getXRuns() noexcept override                                                                                   { return performer->getXRuns(); }
+    uint32_t getBlockSize() noexcept override                                                                               { return performer->getBlockSize(); }
+    bool hasError() noexcept override                                                                                       { return performer->hasError(); }
+    const char* getError() noexcept override                                                                                { return performer->getError(); }
+
+    std::unique_ptr<soul::Performer> performer;
+};
+
+
 } // namespace soul

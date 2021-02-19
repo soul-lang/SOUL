@@ -137,7 +137,7 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         juce::StringArray errors;
 
         for (auto& m : player->getCompileMessages())
-            errors.add (m.fullMessage);
+            errors.add (m.getFullMessage());
 
         return errors.joinIntoString ("\n");
     }

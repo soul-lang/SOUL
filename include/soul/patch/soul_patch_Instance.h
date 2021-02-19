@@ -99,6 +99,24 @@ public:
     virtual VirtualFile* getExternalFile (const char* externalVariableName) = 0;
 };
 
+
+//==============================================================================
+/** Returned by PatchInstance::getLinkedProgram(), this represents the result of linking
+    a patch into a ready-to-run HEART program.
+*/
+class LinkedProgram  : public RefCountedBase
+{
+public:
+    using Ptr = RefCountingPtr<LinkedProgram>;
+
+    /// Returns a list of any errors or warnings that happened during compilation.
+    virtual Span<CompilationMessage> getCompileMessages() const = 0;
+
+    /// Returns the HEART code for the program. You can turn it into an actual
+    /// soul::Program object using soul::Program::createFromHEART().
+    virtual const char* getHEARTCode() const = 0;
+};
+
 //==============================================================================
 /**
     Represents an instance of a SOUL patch.
@@ -141,6 +159,15 @@ public:
                                            CompilerCache* cacheToUse,
                                            SourceFilePreprocessor* preprocessor,
                                            ExternalDataProvider* externalDataProvider) = 0;
+
+    /** For code-generation purposes, this will return a HEART program that can
+        be transpiled into other languages like C++. The object that is returned will
+        either report some compile errors, or a valid HEART program.
+    */
+    virtual LinkedProgram* getLinkedProgram (const PatchPlayerConfiguration&,
+                                             CompilerCache* cacheToUse,
+                                             SourceFilePreprocessor* preprocessor,
+                                             ExternalDataProvider* externalDataProvider) = 0;
 };
 
 

@@ -265,6 +265,56 @@ struct TimelinePosition
 };
 
 //==============================================================================
+inline std::string formatErrorMessage (const std::string& severity, const std::string& description,
+                                       std::string filename, uint32_t line, uint32_t column)
+{
+    std::string position;
+
+    if (line != 0 || column != 0)
+        position = std::to_string (line) + ":" + std::to_string (column);
+
+    if (filename.empty())
+    {
+        if (! position.empty())
+            filename = position + ": ";
+
+        return filename + severity + ": " + description;
+    }
+
+    if (! position.empty())
+        filename += ":" + position;
+
+    return filename + ": " + severity + ": " + description;
+}
+
+inline std::string formatAnnotatedErrorMessageSourceLine (const std::string& sourceLine, uint32_t column)
+{
+    std::string indent;
+
+    // because some fools insist on using tab characters, we need to make sure we mirror
+    // any tabs in the original source line when indenting the '^' character, so that when
+    // it's printed underneath it lines-up regardless of tab size
+    for (size_t i = 0; i < column - 1; ++i)
+        indent += sourceLine[i] == '\t' ? '\t' : ' ';
+
+    return sourceLine + "\n" + indent + "^";
+}
+
+inline std::string formatAnnotatedErrorMessage (const std::string& severity, const std::string& description,
+                                                std::string filename, const std::string& sourceLine,
+                                                uint32_t line, uint32_t column)
+{
+    auto mainDesc = formatErrorMessage (severity, description, std::move (filename), line, column);
+    auto annotatedLine = formatAnnotatedErrorMessageSourceLine (sourceLine, column);
+
+    if (annotatedLine.empty())
+        return mainDesc;
+
+    return mainDesc + "\n" + sourceLine + "\n" + annotatedLine;
+}
+
+
+//==============================================================================
 /**
     A collection of properties needed by the compiler, linker and loaders when
     building SOUL programs.
