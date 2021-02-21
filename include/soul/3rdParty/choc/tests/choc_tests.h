@@ -22,6 +22,8 @@
 #ifndef CHOC_TESTS_HEADER_INCLUDED
 #define CHOC_TESTS_HEADER_INCLUDED
 
+#include <iostream>
+
 #include "../platform/choc_Platform.h"
 #include "../platform/choc_SpinLock.h"
 #include "../text/choc_CodePrinter.h"
@@ -345,6 +347,30 @@ inline void testStringUtilities (TestProgress& progress)
         CHOC_EXPECT_FALSE (choc::text::endsWith ("test", "x"));
         CHOC_EXPECT_FALSE (choc::text::endsWith ("test", "ttest"));
         CHOC_EXPECT_TRUE  (choc::text::endsWith ("test", ""));
+    }
+
+    {
+        CHOC_TEST (Durations)
+
+        CHOC_EXPECT_EQ ("0 sec", choc::text::getDurationDescription (std::chrono::milliseconds (0)));
+        CHOC_EXPECT_EQ ("999 microseconds", choc::text::getDurationDescription (std::chrono::microseconds (999)));
+        CHOC_EXPECT_EQ ("1 microsecond", choc::text::getDurationDescription (std::chrono::microseconds (1)));
+        CHOC_EXPECT_EQ ("-1 microsecond", choc::text::getDurationDescription (std::chrono::microseconds (-1)));
+        CHOC_EXPECT_EQ ("1 ms", choc::text::getDurationDescription (std::chrono::milliseconds (1)));
+        CHOC_EXPECT_EQ ("-1 ms", choc::text::getDurationDescription (std::chrono::milliseconds (-1)));
+        CHOC_EXPECT_EQ ("2 ms", choc::text::getDurationDescription (std::chrono::milliseconds (2)));
+        CHOC_EXPECT_EQ ("1.5 ms", choc::text::getDurationDescription (std::chrono::microseconds (1495)));
+        CHOC_EXPECT_EQ ("2 ms", choc::text::getDurationDescription (std::chrono::microseconds (1995)));
+        CHOC_EXPECT_EQ ("1 sec", choc::text::getDurationDescription (std::chrono::seconds (1)));
+        CHOC_EXPECT_EQ ("2 sec", choc::text::getDurationDescription (std::chrono::seconds (2)));
+        CHOC_EXPECT_EQ ("2.3 sec", choc::text::getDurationDescription (std::chrono::milliseconds (2300)));
+        CHOC_EXPECT_EQ ("2.31 sec", choc::text::getDurationDescription (std::chrono::milliseconds (2310)));
+        CHOC_EXPECT_EQ ("2.31 sec", choc::text::getDurationDescription (std::chrono::milliseconds (2314)));
+        CHOC_EXPECT_EQ ("2.31 sec", choc::text::getDurationDescription (std::chrono::milliseconds (2305)));
+        CHOC_EXPECT_EQ ("1 min 3 sec", choc::text::getDurationDescription (std::chrono::milliseconds (63100)));
+        CHOC_EXPECT_EQ ("2 min 3 sec", choc::text::getDurationDescription (std::chrono::milliseconds (123100)));
+        CHOC_EXPECT_EQ ("1 hour 2 min", choc::text::getDurationDescription (std::chrono::seconds (3726)));
+        CHOC_EXPECT_EQ ("-1 hour 2 min", choc::text::getDurationDescription (std::chrono::seconds (-3726)));
     }
 }
 
@@ -720,13 +746,13 @@ inline void testJSON (TestProgress& progress)
         auto v = holder.getView();
 
         // Test some aspects of the parsed JSON
-        EXPECT_TRUE (v.getType().isObject());
+        CHOC_EXPECT_TRUE (v.getType().isObject());
 
-        EXPECT_EQ ("test1",   v["tests"][0]["name"].get<std::string>());
-        EXPECT_NEAR (44100.0, v["tests"][0]["actions"][0]["sampleRate"].get<double>(), 0.0001);
-        EXPECT_EQ (32,        v["tests"][0]["actions"][0]["blockSize"].get<int>());
+        CHOC_EXPECT_EQ ("test1",   v["tests"][0]["name"].get<std::string>());
+        CHOC_EXPECT_NEAR (44100.0, v["tests"][0]["actions"][0]["sampleRate"].get<double>(), 0.0001);
+        CHOC_EXPECT_EQ (32,        v["tests"][0]["actions"][0]["blockSize"].get<int>());
 
-        EXPECT_EQ ("test2", v["tests"][1]["name"].get<std::string>());
+        CHOC_EXPECT_EQ ("test2", v["tests"][1]["name"].get<std::string>());
     }
 
     {
@@ -734,7 +760,7 @@ inline void testJSON (TestProgress& progress)
         auto json = R"({"tests": [{"name": "\"\\\n\r\t\a\b\f\u12ab", "actions": [{"action": "standardTestSteps", "deviceType": "llvm", "deviceName": "llvm", "codeName": "adsr", "sampleRate": 44100, "blockSize": 32, "requiredSamples": 1000}]}, {"name": "test2", "actions": [{"action": "standardTestSteps", "deviceType": "cpp", "deviceName": "cpp", "codeName": "adsr", "sampleRate": 44100, "array": [1, 2, 3, 4, 5], "emptyArray": [], "requiredSamples": 1000}]}]})";
         auto holder = choc::json::parse (json);
         auto output = choc::json::toString (holder.getView());
-        EXPECT_EQ (json, output);
+        CHOC_EXPECT_EQ (json, output);
     }
 }
 
@@ -999,10 +1025,10 @@ inline void testChannelSets (TestProgress& progress)
         CHOC_TEST (DiscreteChannelSetFrame)
 
         choc::buffer::ChannelArrayBuffer<uint32_t> channels (3, 10);
-        ASSERT_EQ (channels.getNumChannels(), 3UL);
-        ASSERT_EQ (channels.getNumFrames(), 10UL);
-        ASSERT_EQ (channels.getIterator(0).stride, 1UL);
-        ASSERT_EQ (channels.getView().data.offset, 0UL);
+        CHOC_EXPECT_EQ (channels.getNumChannels(), 3UL);
+        CHOC_EXPECT_EQ (channels.getNumFrames(), 10UL);
+        CHOC_EXPECT_EQ (channels.getIterator(0).stride, 1UL);
+        CHOC_EXPECT_EQ (channels.getView().data.offset, 0UL);
 
         for (uint32_t i = 0 ; i < 10; i ++)
         {
@@ -1017,9 +1043,9 @@ inline void testChannelSets (TestProgress& progress)
 
             channels.getSamplesInFrame (i, frame);
 
-            EXPECT_EQ (i, frame[0]);
-            EXPECT_EQ (i + 100, frame[1]);
-            EXPECT_EQ (i + 200, frame[2]);
+            CHOC_EXPECT_EQ (i, frame[0]);
+            CHOC_EXPECT_EQ (i + 100, frame[1]);
+            CHOC_EXPECT_EQ (i + 200, frame[2]);
         }
     }
 
@@ -1240,7 +1266,7 @@ inline void testFIFOs (TestProgress& progress)
         choc::fifo::VariableSizeFIFO queue;
         queue.reset (10000);
 
-        ASSERT_EQ (false, queue.push (nullptr, 0));
+        CHOC_EXPECT_EQ (false, queue.push (nullptr, 0));
 
         for (int i = 0; i < 100; ++i)
         {
@@ -1343,6 +1369,8 @@ inline bool runAllTests (TestProgress& progress)
 
     progress.printReport();
     return progress.numFails == 0;
+}
+
 }
 
 #endif

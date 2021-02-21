@@ -256,7 +256,7 @@ inline void VariableSizeFIFO::BatchReadOperation::release() noexcept    { if (fi
 template <typename HandleItem>
 bool VariableSizeFIFO::BatchReadOperation::pop (HandleItem&& handleItem)
 {
-    SOUL_ASSERT (fifo != nullptr);
+    CHOC_ASSERT (fifo != nullptr);
     auto originalWritePos = fifo->writePos.load();
 
     while (newReadPos != originalWritePos)

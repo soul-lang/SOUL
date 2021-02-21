@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <chrono>
 #include <assert.h>
 
 #ifndef CHOC_ASSERT
@@ -39,43 +40,42 @@ namespace choc::text
 //==============================================================================
 inline bool isWhitespace (char c)                               { return c == ' ' || (c <= 13 && c >= 9); }
 
-/** Replaces all occurrences of a one or more substrings.
-    The arguments must be a sequence of pairs of strings, where the first of each pair is the string to
-    look for, followed by its replacement.
-*/
+/// Replaces all occurrences of a one or more substrings.
+/// The arguments must be a sequence of pairs of strings, where the first of each pair is the string to
+/// look for, followed by its replacement.
 template <typename StringType, typename... OtherReplacements>
 std::string replace (StringType textToSearch,
                      std::string_view firstSubstringToReplace, std::string_view firstReplacement,
                      OtherReplacements&&... otherPairsOfStringsToReplace);
 
-/** Returns a string with any whitespace trimmed from its start and end. */
+/// Returns a string with any whitespace trimmed from its start and end.
 std::string trim (std::string textToTrim);
 
-/** Returns a string with any whitespace trimmed from its start and end. */
+/// Returns a string with any whitespace trimmed from its start and end.
 std::string_view trim (std::string_view textToTrim);
 
-/** Returns a string with any whitespace trimmed from its start and end. */
+/// Returns a string with any whitespace trimmed from its start and end.
 std::string_view trim (const char* textToTrim);
 
-/** Returns a string with any whitespace trimmed from its start. */
+/// Returns a string with any whitespace trimmed from its start.
 std::string trimStart (std::string textToTrim);
 
-/** Returns a string with any whitespace trimmed from its start. */
+/// Returns a string with any whitespace trimmed from its start.
 std::string_view trimStart (std::string_view textToTrim);
 
-/** Returns a string with any whitespace trimmed from its start. */
+/// Returns a string with any whitespace trimmed from its start.
 std::string_view trimStart (const char* textToTrim);
 
-/** Returns a string with any whitespace trimmed from its end. */
+/// Returns a string with any whitespace trimmed from its end.
 std::string trimEnd (std::string textToTrim);
 
-/** Returns a string with any whitespace trimmed from its end. */
+/// Returns a string with any whitespace trimmed from its end.
 std::string_view trimEnd (std::string_view textToTrim);
 
-/** Returns a string with any whitespace trimmed from its end. */
+/// Returns a string with any whitespace trimmed from its end.
 std::string_view trimEnd (const char* textToTrim);
 
-/** If the given character is at the start and end of the string, it trims it away. */
+/// If the given character is at the start and end of the string, it trims it away.
 std::string removeOuterCharacter (std::string text, char outerChar);
 
 inline std::string removeDoubleQuotes (std::string text)       { return removeOuterCharacter (std::move (text), '"'); }
@@ -83,6 +83,9 @@ inline std::string removeSingleQuotes (std::string text)       { return removeOu
 
 inline std::string addDoubleQuotes (std::string text)          { return "\"" + std::move (text) + "\""; }
 inline std::string addSingleQuotes (std::string text)          { return "'" + std::move (text) + "'"; }
+
+std::string toLowerCase (std::string);
+std::string toUpperCase (std::string);
 
 template <typename IsDelimiterChar>
 std::vector<std::string> splitString (std::string_view textToSplit,
@@ -101,35 +104,41 @@ std::vector<std::string> splitString (std::string_view textToSplit,
 
 std::vector<std::string> splitAtWhitespace (std::string_view text, bool keepDelimiters = false);
 
-/** Splits a string at newline characters, returning an array of strings. */
+/// Splits a string at newline characters, returning an array of strings.
 std::vector<std::string> splitIntoLines (std::string_view text, bool includeNewLinesInResult);
 
-/** Returns true if this text contains the given sub-string. */
+/// Joins some kind of array of strings into a single string, adding the given separator
+/// between them (but not adding it at the start or end)
+template <typename ArrayOfStrings>
+std::string joinStrings (const ArrayOfStrings& strings, std::string_view separator);
+
+/// Returns true if this text contains the given sub-string.
 bool contains (std::string_view text, std::string_view possibleSubstring);
-/** Returns true if this text starts with the given character. */
+/// Returns true if this text starts with the given character.
 bool startsWith (std::string_view text, char possibleStart);
-/** Returns true if this text starts with the given sub-string. */
+/// Returns true if this text starts with the given sub-string.
 bool startsWith (std::string_view text, std::string_view possibleStart);
-/** Returns true if this text ends with the given sub-string. */
+/// Returns true if this text ends with the given sub-string.
 bool endsWith (std::string_view text, char possibleEnd);
-/** Returns true if this text ends with the given sub-string. */
+/// Returns true if this text ends with the given sub-string.
 bool endsWith (std::string_view text, std::string_view possibleEnd);
 
-/** Calculates the Levenstein distance between two strings. */
+/// Calculates the Levenstein distance between two strings.
 template <typename StringType>
 size_t getLevenshteinDistance (const StringType& string1,
                                const StringType& string2);
 
-/** Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit. */
+/// Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit.
 int hexDigitToInt (uint32_t unicodeChar);
 
-/** Returns a hex string for the given value.
-    If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
-*/
+/// Returns a hex string for the given value.
+/// If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
 template <typename IntegerType>
 std::string createHexString (IntegerType value, int minNumDigits = 0);
 
-
+/// Returns a truncated, easy-to-read version of a time as hours, seconds or milliseconds,
+/// depending on its magnitude. The use-cases include things like logging or console app output.
+std::string getDurationDescription (std::chrono::duration<double, std::micro>);
 
 //==============================================================================
 //        _        _           _  _
@@ -282,6 +291,18 @@ inline std::string removeOuterCharacter (std::string t, char outerChar)
     return t;
 }
 
+inline std::string toLowerCase (std::string s)
+{
+    std::transform (s.begin(), s.end(), s.begin(), [] (auto c) { return std::tolower (c); });
+    return s;
+}
+
+inline std::string toUpperCase (std::string s)
+{
+    std::transform (s.begin(), s.end(), s.begin(), [] (auto c) { return std::toupper (c); });
+    return s;
+}
+
 template <typename CharStartsDelimiter, typename CharIsInDelimiterBody>
 std::vector<std::string> splitString (std::string_view source,
                                       CharStartsDelimiter&& isDelimiterStart,
@@ -362,6 +383,29 @@ inline std::vector<std::string> splitIntoLines (std::string_view text, bool incl
     return splitString (text, '\n', includeNewLinesInResult);
 }
 
+template <typename ArrayOfStrings>
+inline std::string joinStrings (const ArrayOfStrings& strings, std::string_view sep)
+{
+    if (strings.empty())
+        return {};
+
+    auto spaceNeeded = sep.length() * strings.size();
+
+    for (auto& s : strings)
+        spaceNeeded += s.length();
+
+    std::string result (strings.front());
+    result.reserve (spaceNeeded);
+
+    for (size_t i = 1; i < strings.size(); ++i)
+    {
+        result += sep;
+        result += strings[i];
+    }
+
+    return result;
+}
+
 inline bool contains   (std::string_view t, std::string_view s)   { return t.find (s) != std::string::npos; }
 inline bool startsWith (std::string_view t, char s)               { return ! t.empty() && t.front() == s; }
 inline bool endsWith   (std::string_view t, char s)               { return ! t.empty() && t.back()  == s; }
@@ -376,6 +420,64 @@ inline bool endsWith (std::string_view t, std::string_view s)
 {
     auto len1 = t.length(), len2 = s.length();
     return len1 >= len2 && t.substr (len1 - len2) == s;
+}
+
+inline std::string getDurationDescription (std::chrono::duration<double, std::micro> d)
+{
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds> (d).count();
+
+    if (microseconds < 0)    return "-" + getDurationDescription (-d);
+    if (microseconds == 0)   return "0 sec";
+
+    std::string result;
+
+    auto addLevel = [&] (int64_t size, std::string_view units, int64_t decimalScale, int64_t modulo) -> bool
+    {
+        if (microseconds < size)
+            return false;
+
+        if (! result.empty())
+            result += ' ';
+
+        auto scaled = (microseconds * decimalScale + size / 2) / size;
+        auto whole = scaled / decimalScale;
+
+        if (modulo != 0)
+            whole = whole % modulo;
+
+        result += std::to_string (whole);
+
+        if (auto fraction = scaled % decimalScale)
+        {
+            result += '.';
+            result += ('0' + static_cast<char> (fraction / 10));
+
+            if (fraction % 10 != 0)
+                result += ('0' + static_cast<char> (fraction % 10));
+        }
+
+        result += (whole == 1 && units.length() > 3 && units.back() == 's') ? units.substr (0, units.length() - 1) : units;
+        return true;
+    };
+
+    bool hours = addLevel (60000000ll * 60ll, " hours", 1, 0);
+    bool mins  = addLevel (60000000ll,        " min", 1, hours ? 60 : 0);
+
+    if (hours)
+        return result;
+
+    if (mins)
+    {
+        addLevel (1000000, " sec", 1, 60);
+    }
+    else
+    {
+        if (! addLevel (1000000,   " sec", 100, 0))
+            if (! addLevel (1000,  " ms", 100, 0))
+                addLevel (1,       " microseconds", 100, 0);
+    }
+
+    return result;
 }
 
 template <typename StringType>
