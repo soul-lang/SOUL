@@ -163,3 +163,4 @@ namespace soul
 #include "documentation/soul_HTMLGeneration.h"
 
 #include "code_generation/soul_CPPGenerator.h"
+#include "code_generation/soul_PatchGenerator.h"

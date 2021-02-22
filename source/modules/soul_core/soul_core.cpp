@@ -108,6 +108,7 @@
 #include "code_generation/soul_CPPGenerator_resources.h"
 #include "code_generation/soul_CPPGenerator.cpp"
 #include "code_generation/soul_JUCEProjectGenerator.cpp"
+#include "code_generation/soul_PatchGenerator.cpp"
 
 #ifdef __clang__
  #pragma clang diagnostic pop
