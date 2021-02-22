@@ -283,7 +283,7 @@ struct ModuleCloner
 
     heart::AggregateInitialiserList& cloneInitialiserList (const heart::AggregateInitialiserList& old)
     {
-        auto& l = newModule.allocate<heart::AggregateInitialiserList> (old.location, old.type);
+        auto& l = newModule.allocate<heart::AggregateInitialiserList> (old.location, cloneType (old.type));
 
         for (auto& i : old.items)
             l.items.push_back (cloneExpression (i));

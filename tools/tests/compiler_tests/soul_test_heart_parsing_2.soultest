@@ -78,7 +78,7 @@ processor gain [[ ]]
   }
 }
 
-## error 8:16: error: Cannot find symbol '$g'
+## error 8:16: error: Cannot find symbol 'g'
 #SOUL 1
 
 namespace tests
@@ -598,7 +598,7 @@ processor gain [[ main: true ]]
   }
 }
 
-## error 11:14: error: The name '$a' is already in use
+## error 11:14: error: The name 'a' is already in use
 #SOUL 1
 
 processor gain [[ main: true ]]

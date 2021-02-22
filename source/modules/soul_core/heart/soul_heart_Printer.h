@@ -487,7 +487,7 @@ private:
 
             if (auto fc = cast<heart::PureFunctionCall> (e))
             {
-                out << getFunctionName (fc->function);
+                out << "purecall " << getFunctionName (fc->function);
                 printArgList (fc->arguments);
                 return;
             }
@@ -500,6 +500,7 @@ private:
 
             if (auto list = cast<heart::AggregateInitialiserList> (e))
             {
+                out << "cast " << getTypeDescription (list->type);
                 printArgList (list->items);
                 return;
             }
@@ -511,10 +512,7 @@ private:
         {
             SOUL_ASSERT (! name.empty());
 
-            if (name[0] == '$')
-                out << name;
-            else
-                out << "$" << removeCharacter (name, '$');
+            out << "$" << name;
         }
 
         std::string getTypeDescription (const Type& type) const

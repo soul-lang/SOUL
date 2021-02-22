@@ -167,7 +167,7 @@ namespace tests
 }
 
 
-## error 8:27: error: The name '$stateVariable' is already in use
+## error 8:27: error: The name 'stateVariable' is already in use
 #SOUL 1
 
 processor gain
@@ -186,7 +186,7 @@ processor gain
 }
 
 
-## error 7:3: error: Expected a graph, processor or namespace declaration
+## disabled error 7:3: error: Expected a graph, processor or namespace declaration
 #SOUL 1
 
 graph test
@@ -958,7 +958,7 @@ processor Gain [[ main]]
   }
 }
 
-## error 13:18: error: The name '$i' is already in use
+## error 13:18: error: The name 'i' is already in use
 #SOUL 1
 
 processor test
@@ -1005,7 +1005,7 @@ processor test
 }
 
 
-## error 14:20: error: The name '$i' is already in use
+## error 14:20: error: The name 'i' is already in use
 #SOUL 1
 
 processor test

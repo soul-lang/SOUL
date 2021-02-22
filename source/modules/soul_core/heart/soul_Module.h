@@ -68,6 +68,12 @@ public:
         void add (heart::Variable&);
         void clear();
 
+        template <typename Predicate>
+        inline bool removeIf (Predicate&& pred)
+        {
+            return soul::removeIf (stateVariables, pred);
+        }
+
     private:
         ArrayWithPreallocation<pool_ref<heart::Variable>, 32> stateVariables;
     };

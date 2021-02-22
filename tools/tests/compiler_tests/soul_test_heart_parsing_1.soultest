@@ -134,3 +134,33 @@ namespace tests
         return equals ($i[2], 0);
     }
 }
+
+## processor
+#SOUL 1
+
+processor Test
+{
+  output  out stream  int32;
+
+  processor.latency = 12;
+
+  function run() -> void
+  {
+    @block_0:
+      branch_if equals (processor.latency, 12) ? @ternary_true_0 : @ternary_false_0;
+    @ternary_true_0:
+      branch @ternary_end_0 (1);
+    @ternary_false_0:
+      branch @ternary_end_0 (0);
+    @ternary_end_0 (int32 $_T0):
+      write out $_T0;
+      branch @loop_0;
+    @loop_0:
+      advance;
+      write out -1;
+      branch @loop_0;
+    @break_0:
+      return;
+  }
+
+}

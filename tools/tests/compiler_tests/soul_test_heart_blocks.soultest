@@ -105,7 +105,7 @@ namespace tests
     }
 }
 
-## error error: Use of uninitialised variable '$0' in function variableDeclaredInDifferentBlock
+## error error: Use of uninitialised variable '0' in function variableDeclaredInDifferentBlock
 #SOUL 1
 
 namespace tests
@@ -124,7 +124,7 @@ namespace tests
     }
 }
 
-## error error: Use of uninitialised variable '$0' in function variableDeclaredInDifferentBlock
+## error error: Use of uninitialised variable '0' in function variableDeclaredInDifferentBlock
 #SOUL 1
 
 namespace tests
@@ -275,7 +275,7 @@ namespace tests
     }
 }
 
-## error 14:14: error: Cannot find symbol '$x'
+## error 14:14: error: Cannot find symbol 'x'
 #SOUL 1
 
 namespace tests

@@ -803,7 +803,7 @@ private:
                 rangeLoopVar->context.throwError (Errors::rangeBasedForMustBeWrapType());
 
             auto numIterations = type.getBoundedIntLimit();
-            auto& counterVar = builder.createMutableLocalVariable (Type::getBoundedIntSizeType(), "$counter_" + std::to_string (labelIndex));
+            auto& counterVar = builder.createMutableLocalVariable (Type::getBoundedIntSizeType(), "_counter_" + std::to_string (labelIndex));
 
             if (auto init = rangeLoopVar->initialValue)
                 builder.addAssignment (counterVar, builder.createCastIfNeeded (rangeLoopVar->getGeneratedVariable(), Type::getBoundedIntSizeType()));
@@ -840,7 +840,7 @@ private:
                 }
             }
 
-            auto& counterVar = builder.createMutableLocalVariable (indexType, "$counter_" + std::to_string (labelIndex));
+            auto& counterVar = builder.createMutableLocalVariable (indexType, "_counter_" + std::to_string (labelIndex));
             builder.addAssignment (counterVar, builder.createCastIfNeeded (evaluateAsExpression (*l.numIterations), indexType));
 
             builder.beginBlock (startBlock);
@@ -905,7 +905,7 @@ private:
 
         auto& paramVar = module.allocate<heart::Variable> (t.context.location,
                                                            targetVar.getType().removeReferenceIfPresent(),
-                                                           module.allocator.get ("$_T" + std::to_string (labelIndex)),
+                                                           module.allocator.get ("_T" + std::to_string (labelIndex)),
                                                            heart::Variable::Role::parameter);
 
         endBlock.addParameter (paramVar);

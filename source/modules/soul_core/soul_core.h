@@ -133,6 +133,7 @@ namespace soul
 #include "heart/soul_heart_AST.h"
 #include "heart/soul_Program.h"
 #include "heart/soul_Module.h"
+#include "heart/soul_heart_Checker.h"
 #include "heart/soul_heart_Utilities.h"
 #include "heart/soul_heart_FunctionBuilder.h"
 #include "heart/soul_heart_CallFlowGraph.h"

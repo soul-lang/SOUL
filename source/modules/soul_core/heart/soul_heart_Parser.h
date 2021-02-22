@@ -285,18 +285,17 @@ private:
         {
             if (matchIf ("node"))        return parseNode();
             if (matchIf ("connection"))  return parseConnection();
+            if (matchIf ("processor"))   return parseLatency();
         }
-        else
-        {
-            if (matchIf ("struct"))      return scanStruct (item);
-            if (matchIf ("function"))    return scanFunction (item, false);
-            if (matchIf ("var"))         return scanStateVariable (item, false);
 
-            if (module->isProcessor())
-            {
-                if (matchIf ("event"))       return scanFunction (item, true);
-                if (matchIf ("processor"))   return parseLatency();
-            }
+        if (matchIf ("struct"))      return scanStruct (item);
+        if (matchIf ("function"))    return scanFunction (item, false);
+        if (matchIf ("var"))         return scanStateVariable (item, false);
+
+        if (module->isProcessor())
+        {
+            if (matchIf ("event"))       return scanFunction (item, true);
+            if (matchIf ("processor"))   return parseLatency();
         }
 
         if (matchIf ("let"))
@@ -705,7 +704,7 @@ private:
         if (! f.functionType.isEvent())
         {
             expect (HEARTOperator::rightArrow);
-            f.returnType = readValueType();
+            f.returnType = readValueOrRefType();
         }
 
         parseAnnotation (f.annotation);
@@ -918,6 +917,26 @@ private:
         }
     }
 
+    heart::Expression& parsePureFunctionCall (const FunctionParseState& state)
+    {
+        auto errorLocation = location;
+        auto name = readQualifiedGeneralIdentifier();
+
+        ArrayWithPreallocation<Type, 8> argTypes;
+        heart::FunctionCall::ArgListType args;
+        parseFunctionArguments (state, argTypes, args);
+
+        if (auto fn = findFunction (name, argTypes))
+        {
+            auto& f =  module->allocate<heart::PureFunctionCall> (errorLocation, *fn);
+            f.arguments = args;
+
+            return f;
+        }
+
+        errorLocation.throwError (Errors::unknownFunction (name));
+    }
+
     void parseFunctionCall (FunctionParseState& state, FunctionBuilder& builder, const AssignmentTarget& target)
     {
         auto errorLocation = location;
@@ -1118,10 +1137,9 @@ private:
     {
         if (containsChar (name, ':'))
         {
-            SOUL_ASSERT (name[0] == '$');
-            TokenisedPathString path (name.substr (1));
+            TokenisedPathString path (name);
             auto variableName = path.getLastPart();
-            return program.findVariableWithName (TokenisedPathString::join (path.getParentPath(), "$" + variableName));
+            return program.findVariableWithName (TokenisedPathString::join (path.getParentPath(), variableName));
         }
 
         for (auto& v : state.variables)
@@ -1268,7 +1286,7 @@ private:
     heart::TypeCast& parseCast (const FunctionParseState& state)
     {
         auto pos = location;
-        auto destType = readValueType();
+        auto destType = readValueOrRefType();
         expect (HEARTOperator::openParen);
         auto& source = parseExpression (state);
         expect (HEARTOperator::closeParen);
@@ -1311,6 +1329,9 @@ private:
 
             if (matchIf ("processor"))
                 return parseProcessorProperty();
+
+            if (matchIf ("purecall"))
+                return parsePureFunctionCall (state);
         }
 
         if (matches (Token::literalInt32))       return parseConstantAsExpression (state, PrimitiveType::int32);
@@ -1358,7 +1379,7 @@ private:
     {
         if (matches (Token::variableIdentifier))
         {
-            if (auto v = findVariable (state, currentStringValue))
+            if (auto v = findVariable (state, getIdentifierAsVariableName()))
             {
                 skip();
                 return parseSuffixOperators (state, *v);
@@ -1651,17 +1672,22 @@ private:
 
     std::string readVariableIdentifier()
     {
-        auto name = currentStringValue;
-
-        if (matchesAnyIdentifier() && ! matches (Token::variableIdentifier))
-            throwError (Errors::invalidVariableName (name));
-
-        if (name.length() < 2)
-            throwError (Errors::invalidVariableName (name));
-
+        auto name = getIdentifierAsVariableName();
         expect (Token::variableIdentifier);
 
         return name;
+    }
+
+    std::string getIdentifierAsVariableName()
+    {
+        if (matchesAnyIdentifier() && ! matches (Token::variableIdentifier))
+            throwError (Errors::invalidVariableName (currentStringValue));
+
+        if (currentStringValue.length() < 2 || currentStringValue[0] != '$')
+            throwError (Errors::invalidVariableName (currentStringValue));
+
+        // Strip leading $
+        return currentStringValue.substr(1);
     }
 
     std::string readGeneralIdentifier()
