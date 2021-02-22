@@ -106,8 +106,6 @@ static std::string addSuffixToMakeUnique (const std::string& name, IsAlreadyUsed
     return nameToUse;
 }
 
-std::string getDescriptionOfTimeInSeconds (double numSeconds);
-std::string getReadableDescriptionOfByteSize (uint64_t bytes);
 std::string toCppStringLiteral (const std::string& text,
                                 int maxCharsOnLine, bool breakAtNewLines,
                                 bool replaceSingleQuotes, bool allowStringBreaks);

@@ -36,7 +36,7 @@ public:
         TestResults() = default;
         TestResults (bool success);
 
-        double totalSeconds = 0.0;
+        std::chrono::duration<double> totalSeconds;
         int numPasses = 0, numFails = 0, numDisabled = 0;
 
         void addResults (const TestResults&);

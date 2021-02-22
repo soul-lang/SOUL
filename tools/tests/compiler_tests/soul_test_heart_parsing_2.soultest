@@ -1402,7 +1402,7 @@ namespace tests
     }
 }
 
-## error error: Stack size limit exceeded - program requires 228.8 MB, maximum allowed is 20.0 MB
+## error error: Stack size limit exceeded - program requires 228.9 MB, maximum allowed is 20 MB
 #SOUL 1
 
 namespace tests

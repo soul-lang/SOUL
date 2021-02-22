@@ -59,7 +59,7 @@ struct TestFileParser::TestList
             log (test.getTestNameAndLine());
             messages.add (test.messageList);
             log (padded (test.getTestNameAndLine(), 10) + getDescription (test.testResult)
-                   + "   (" + getDescriptionOfTimeInSeconds (test.timeInSeconds) + ")");
+                   + "   (" + choc::text::getDurationDescription (test.timeInSeconds) + ")");
 
             switch (test.testResult)
             {
@@ -272,7 +272,7 @@ struct TestFileParser::TestList
         CodeLocation location;
         CompileMessageList messageList;
         Result testResult;
-        double timeInSeconds = 0;
+        std::chrono::duration<double> timeInSeconds;
 
         bool isHeart() const
         {
@@ -813,7 +813,7 @@ std::string TestFileParser::TestResults::toString() const
         << " Failed:      " << numFails << std::endl
         << " Disabled:    " << numDisabled << std::endl
         << "" << std::endl
-        << " Total time:  " << getDescriptionOfTimeInSeconds (totalSeconds) << std::endl
+        << " Total time:  " << choc::text::getDurationDescription (totalSeconds) << std::endl
         << "========================================================";
 
     return oss.str();

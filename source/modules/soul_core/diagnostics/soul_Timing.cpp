@@ -40,14 +40,14 @@ ScopedTimer::~ScopedTimer()
     SOUL_LOG (description, [&] { return getElapsedTimeDescription(); });
 }
 
-double ScopedTimer::getElapsedSeconds() const
+std::chrono::duration<double> ScopedTimer::getElapsedSeconds() const
 {
-    return toSeconds (clock::now() - start);
+    return clock::now() - start;
 }
 
 std::string ScopedTimer::getElapsedTimeDescription() const
 {
-    return getDescriptionOfTimeInSeconds (getElapsedSeconds());
+    return choc::text::getDurationDescription (getElapsedSeconds());
 }
 
 //==============================================================================

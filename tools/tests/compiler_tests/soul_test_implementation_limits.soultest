@@ -168,7 +168,7 @@ const int[] x = int[2147483648L]();
 
 let x = int[2147483648L] (1);
 
-## error error: Stack size limit exceeded - program requires 381.4 MB, maximum allowed is 20.0 MB
+## error error: Stack size limit exceeded - program requires 381.5 MB, maximum allowed is 20 MB
 
 int foo()
 {
@@ -177,7 +177,7 @@ int foo()
     return x[1];
 }
 
-## error error: Stack size limit exceeded - program requires 8.0 GB, maximum allowed is 20.0 MB
+## error error: Stack size limit exceeded - program requires 8 GB, maximum allowed is 20 MB
 
 int foo()
 {

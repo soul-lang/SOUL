@@ -28,7 +28,7 @@ struct ScopedTimer  final
     ScopedTimer (std::string desc) noexcept;
     ~ScopedTimer();
 
-    double getElapsedSeconds() const;
+    std::chrono::duration<double> getElapsedSeconds() const;
     std::string getElapsedTimeDescription() const;
 
     std::string description;

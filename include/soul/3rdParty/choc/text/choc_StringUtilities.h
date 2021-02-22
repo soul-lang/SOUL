@@ -30,6 +30,9 @@
 #include <chrono>
 #include <assert.h>
 
+#undef max   // It's never a smart idea to include any C headers before your C++ ones, as they
+#undef min   // often pollute your namespace with all kinds of dangerous macros like these ones.
+
 #ifndef CHOC_ASSERT
  #define CHOC_ASSERT(x)  assert(x);
 #endif
@@ -139,6 +142,11 @@ std::string createHexString (IntegerType value, int minNumDigits = 0);
 /// Returns a truncated, easy-to-read version of a time as hours, seconds or milliseconds,
 /// depending on its magnitude. The use-cases include things like logging or console app output.
 std::string getDurationDescription (std::chrono::duration<double, std::micro>);
+
+/// Returns an easy-to-read description of a size in bytes. Depending on the magnitude,
+/// it might choose different units such as GB, MB, KB or just bytes.
+std::string getByteSizeDescription (uint64_t sizeInBytes);
+
 
 //==============================================================================
 //        _        _           _  _
@@ -524,6 +532,32 @@ size_t getLevenshteinDistance (const StringType& string1, const StringType& stri
 
     std::unique_ptr<size_t[]> costs (new size_t[sizeNeeded]);
     return calculate (costs.get(), sizeNeeded, string1, string2);
+}
+
+inline std::string getByteSizeDescription (uint64_t size)
+{
+    auto intToStringWith1DecPlace = [] (uint64_t n, uint64_t divisor) -> std::string
+    {
+        auto scaled = (n * 10 + divisor / 2) / divisor;
+        auto result = std::to_string (scaled / 10);
+
+        if (auto fraction = scaled % 10)
+        {
+            result += '.';
+            result += ('0' + static_cast<char> (fraction));
+        }
+
+        return result;
+    };
+
+    static constexpr uint64_t maxValue = std::numeric_limits<uint64_t>::max() / 10;
+
+    if (size >= 0x40000000)  return intToStringWith1DecPlace (std::min (maxValue, size), 0x40000000) + " GB";
+    if (size >= 0x100000)    return intToStringWith1DecPlace (size, 0x100000) + " MB";
+    if (size >= 0x400)       return intToStringWith1DecPlace (size, 0x400)    + " KB";
+    if (size != 1)           return std::to_string (size) + " bytes";
+
+    return "1 byte";
 }
 
 } // namespace choc::text

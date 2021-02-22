@@ -193,28 +193,6 @@ std::string makeIdentifierRemovingColons (std::string s)
     return makeSafeIdentifierName (choc::text::replace (trimCharacterAtStart (s, ':'), "::", "_"));
 }
 
-std::string getDescriptionOfTimeInSeconds (double numSeconds)
-{
-    auto toStringWithDecPlaces = [] (double n, size_t numDecPlaces)
-    {
-        auto s = choc::text::floatToString (n, (int) numDecPlaces);
-        auto dot = s.find ('.');
-        return dot == std::string::npos ? s : s.substr (0, std::min (s.length(), dot + 1 + numDecPlaces));
-    };
-
-    return numSeconds < 1.0 ? (toStringWithDecPlaces (numSeconds * 1000.0, numSeconds < 0.1 ? 2 : 1) + " ms")
-                            : (toStringWithDecPlaces (numSeconds, 2) + " sec");
-}
-
-std::string getReadableDescriptionOfByteSize (uint64_t bytes)
-{
-    if (bytes == 1)                  return "1 byte";
-    if (bytes < 1024)                return std::to_string (bytes) + " bytes";
-    if (bytes < 1024 * 1024)         return choc::text::floatToString (double (bytes) / 1024.0, 1)                     + " KB";
-    if (bytes < 1024 * 1024 * 1024)  return choc::text::floatToString (double (bytes) / (1024.0 * 1024.0), 1)          + " MB";
-    else                             return choc::text::floatToString (double (bytes) / (1024.0 * 1024.0 * 1024.0), 1) + " GB";
-}
-
 std::string convertToString (const std::string& name)        { return name; }
 std::string convertToString (const Identifier& name)         { return name.toString(); }
 std::string convertToString (const IdentifierPath& name)     { return Program::stripRootNamespaceFromQualifiedPath (name.toString()); }

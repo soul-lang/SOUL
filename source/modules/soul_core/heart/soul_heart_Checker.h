@@ -295,7 +295,8 @@ struct heart::Checker
         }
 
         if (maxStackSize != 0 && callSequenceCheckResult.maximumStackSize > maxStackSize)
-            CodeLocation().throwError (Errors::maximumStackSizeExceeded (getReadableDescriptionOfByteSize (callSequenceCheckResult.maximumStackSize), getReadableDescriptionOfByteSize (maxStackSize)));
+            CodeLocation().throwError (Errors::maximumStackSizeExceeded (choc::text::getByteSizeDescription (callSequenceCheckResult.maximumStackSize),
+                                                                         choc::text::getByteSizeDescription (maxStackSize)));
     }
 
     static void checkStreamOperations (const Program& program)
