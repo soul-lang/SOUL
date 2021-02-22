@@ -271,13 +271,16 @@ Program::Program (Program&&) = default;
 Program& Program::operator= (const Program&) = default;
 Program& Program::operator= (Program&&) = default;
 
-Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation heartCode)
+Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation heartCode, bool runSanityCheck)
 {
     try
     {
         CompileMessageHandler handler (messageList);
         auto program = heart::Parser::parse (std::move (heartCode));
-        heart::Checker::sanityCheck (program);
+
+        if (runSanityCheck)
+            heart::Checker::sanityCheck (program);
+
         return program;
     }
     catch (AbortCompilationException) {}

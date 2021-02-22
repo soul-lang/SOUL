@@ -53,7 +53,7 @@ public:
     /** Converts a chunk of HEART code that was emitted by toHEART() back to a Program.
         @see toString()
     */
-    static Program createFromHEART (CompileMessageList&, CodeLocation heartCode);
+    static Program createFromHEART (CompileMessageList&, CodeLocation heartCode, bool runSanityCheck);
 
     //==============================================================================
     /** Return true if the program contains no modules. */

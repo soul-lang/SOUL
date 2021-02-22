@@ -163,18 +163,16 @@ struct PatchInstanceImpl final  : public RefCountHelper<PatchInstance, PatchInst
 
                 bool link (soul::CompileMessageList& messageList, const soul::BuildSettings& settings, soul::LinkerCache*) noexcept override
                 {
-                    return true;
-                    SOUL_TODO // enable this and remove prepareProgramForCodeGen from the cpp gen
-//                    try
-//                    {
-//                        CompileMessageHandler handler (messageList);
-//                        auto settingsCopy = settings;
-//                        factory.loadedProgram = transformations::prepareProgramForCodeGen (factory.loadedProgram, settingsCopy);
-//                        return true;
-//                    }
-//                    catch (AbortCompilationException) {}
-//
-//                    return false;
+                    try
+                    {
+                        CompileMessageHandler handler (messageList);
+                        auto settingsCopy = settings;
+                        factory.loadedProgram = transformations::prepareProgramForCodeGen (factory.loadedProgram, settingsCopy);
+                        return true;
+                    }
+                    catch (AbortCompilationException) {}
+
+                    return false;
                 }
 
                 NonLinkingPerformerFactory& factory;

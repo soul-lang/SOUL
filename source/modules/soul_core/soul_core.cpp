@@ -40,6 +40,8 @@
 #include "../../../include/soul/3rdParty/choc/text/choc_HTML.h"
 #include "../../../include/soul/3rdParty/choc/audio/choc_Oscillators.h"
 
+#include "../../../include/soul/patch/helper_classes/soul_patch_Utilities.h"
+
 #if SOUL_INTEL
  #include <xmmintrin.h>
 #endif
@@ -102,6 +104,10 @@
 #include "documentation/soul_SourceCodeOperations.cpp"
 #include "documentation/soul_SourceCodeModel.cpp"
 #include "documentation/soul_HTMLGeneration.cpp"
+
+#include "code_generation/soul_CPPGenerator_resources.h"
+#include "code_generation/soul_CPPGenerator.cpp"
+#include "code_generation/soul_JUCEProjectGenerator.cpp"
 
 #ifdef __clang__
  #pragma clang diagnostic pop
