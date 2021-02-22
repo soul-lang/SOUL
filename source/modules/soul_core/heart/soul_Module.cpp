@@ -169,11 +169,13 @@ Module& Module::createProcessor (Program& p)    { return p.getAllocator().alloca
 Module& Module::createGraph     (Program& p)    { return p.getAllocator().allocate<Module> (p, ModuleType::graphModule); }
 Module& Module::createNamespace (Program& p)    { return p.getAllocator().allocate<Module> (p, ModuleType::namespaceModule); }
 
-bool Module::isProcessor() const        { return moduleType == ModuleType::processorModule; }
-bool Module::isGraph() const            { return moduleType == ModuleType::graphModule; }
-bool Module::isNamespace() const        { return moduleType == ModuleType::namespaceModule; }
+bool Module::isProcessor() const                { return moduleType == ModuleType::processorModule; }
+bool Module::isGraph() const                    { return moduleType == ModuleType::graphModule; }
+bool Module::isNamespace() const                { return moduleType == ModuleType::namespaceModule; }
 
-bool Module::isSystemModule() const     { return choc::text::startsWith (originalFullName, "soul::"); }
+bool Module::isSystemModule() const             { return choc::text::startsWith (originalFullName, "soul::"); }
+
+std::string Module::getReadableName() const     { return Program::stripRootNamespaceFromQualifiedPath (originalFullName); }
 
 pool_ptr<heart::InputDeclaration> Module::findInput (std::string_view name) const
 {

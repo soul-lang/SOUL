@@ -64,7 +64,7 @@ struct CPPGenerator
                    << "{" << blankLine;
 
         if (options.className.empty())
-            options.className = mangleStructOrFunctionName (mainProcessor.originalFullName);
+            options.className = mangleStructOrFunctionName (mainProcessor.getReadableName());
 
         if (options.className != makeSafeIdentifier (options.className))
             CodeLocation().throwError (Errors::invalidName (options.className));
@@ -185,7 +185,7 @@ struct CPPGenerator
     {
         stream << sectionBreak
                << "// Generated from " << (mainProcessor.isGraph() ? "graph" : "processor")
-               << " " << choc::text::addSingleQuotes (Program::stripRootNamespaceFromQualifiedPath (mainProcessor.originalFullName));
+               << " " << choc::text::addSingleQuotes (mainProcessor.getReadableName());
 
         if (! options.sourceDescription.empty())
             stream << ", " << options.sourceDescription;

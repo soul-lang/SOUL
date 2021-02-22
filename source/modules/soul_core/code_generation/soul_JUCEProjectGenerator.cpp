@@ -60,7 +60,7 @@ struct JUCEExporter
 
         isSynth = needsMIDI && ! needsMicrophone;
 
-        auto nameRoot = Program::stripRootNamespaceFromQualifiedPath (mainProcessor.originalFullName);
+        auto nameRoot = mainProcessor.getReadableName();
         nameRoot = choc::text::replace (nameRoot, "::", "_");
 
         projectName     = nameRoot;

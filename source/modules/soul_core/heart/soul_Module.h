@@ -112,7 +112,9 @@ public:
 
     std::string shortName;          ///< The unqualified module name without a namespace
     std::string fullName;           ///< The fully-qualified name, with all namespace levels, including the root
-    std::string originalFullName;   ///< The fully-qualified name as a user would expect to see it, without a root or other manglings
+    std::string originalFullName;   ///< The fully-qualified name
+
+    std::string getReadableName() const;    ///< Returns a cleaned-up, user-readable version of this module's name
 
     std::vector<pool_ref<heart::InputDeclaration>> inputs;
     std::vector<pool_ref<heart::OutputDeclaration>> outputs;

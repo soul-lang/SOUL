@@ -268,7 +268,7 @@ Program Compiler::link (CompileMessageList& messageList, const BuildSettings& se
 
         reset();
 
-        SOUL_LOG (program.getMainProcessor().originalFullName + ": linked HEART",
+        SOUL_LOG (program.getMainProcessor().getReadableName() + ": linked HEART",
                   [&] { return program.toHEART(); });
 
         heart::Checker::testHEARTRoundTrip (program);
