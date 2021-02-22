@@ -143,7 +143,7 @@ std::string replaceLine (const std::string& text, size_t line, const std::string
 {
     auto lines = choc::text::splitIntoLines (text, true);
     lines[line] = replacementLine + (containsChar (lines[line], '\r') ? "\r\n" : "\n");
-    return joinStrings (lines, {});
+    return choc::text::joinStrings (lines, {});
 }
 
 std::string loadFileAsString (const char* filename)
@@ -208,12 +208,6 @@ bool sanityCheckString (const char* s, size_t maxLength)
                 return choc::text::findInvalidUTF8Data (s, i) == nullptr;
 
     return false;
-}
-
-std::string toLowerCase (std::string s)
-{
-    std::transform (s.begin(), s.end(), s.begin(), [] (auto c) { return std::tolower (c); });
-    return s;
 }
 
 //==============================================================================

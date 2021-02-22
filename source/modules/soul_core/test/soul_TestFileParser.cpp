@@ -246,7 +246,7 @@ struct TestFileParser::TestList
 
         static std::string rebuildCodeFromLines (ArrayView<std::string> lines, size_t initialPaddingLines)
         {
-            return repeatedCharacter ('\n', initialPaddingLines) + joinStrings (lines, {});
+            return repeatedCharacter ('\n', initialPaddingLines) + choc::text::joinStrings (lines, {});
         }
 
         std::string getTestNameAndLine() const
@@ -642,7 +642,7 @@ processor TestFunctionCaller
                 for (auto& m : sectionErrors.messages)
                     errors.push_back (m.getFullDescriptionWithoutFilename());
 
-                auto error = joinStrings (errors, " //// ");
+                auto error = choc::text::joinStrings (errors, " //// ");
 
                 auto expectedError = choc::text::trim (sectionHeaderLine.substr (sectionHeaderLine.find ("error") + 5));
 

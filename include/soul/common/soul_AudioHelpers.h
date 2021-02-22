@@ -108,7 +108,7 @@ struct JUCEAudioFileFactory  : public soul::AudioFileFactory
         if (dataSink == nullptr)
             return {};
 
-        if (soul::toLowerCase (properties.fileType) != "wav" && ! properties.fileType.empty())
+        if (choc::text::toLowerCase (properties.fileType) != "wav" && ! properties.fileType.empty())
             soul::throwError (soul::Errors::unsupportedAudioFileType (properties.fileType));
 
         struct OutputStreamWrapper  : public juce::OutputStream
@@ -219,7 +219,7 @@ inline std::string getAudioDeviceDescription (juce::AudioIODevice& audioDevice)
             if (b[i])
                 bits.push_back (std::to_string (i));
 
-        return joinStrings (bits, ", ");
+        return choc::text::joinStrings (bits, ", ");
     };
 
     auto inChans  = getListOfActiveBits (audioDevice.getActiveInputChannels());

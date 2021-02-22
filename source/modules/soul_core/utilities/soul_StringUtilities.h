@@ -50,23 +50,6 @@ std::string removeCharacter (std::string s, char charToRemove);
 // trim and coalesce whitespace into single spaces
 std::string simplifyWhitespace (std::string);
 
-template <typename StringArray>
-static std::string joinStrings (const StringArray& strings, const std::string& separator)
-{
-    if (strings.empty())
-        return {};
-
-    std::string s (strings.front());
-
-    for (size_t i = 1; i < strings.size(); ++i)
-    {
-        s += separator;
-        s += strings[i];
-    }
-
-    return s;
-}
-
 template <typename Array, typename StringifyFn>
 static std::string joinStrings (const Array& strings, const std::string& separator, StringifyFn&& stringify)
 {
@@ -122,8 +105,6 @@ std::string quoteName (const Identifier& name);
 
 bool sanityCheckString (const char* s, size_t maxLength = 8192);
 
-std::string toLowerCase (std::string);
-
 //==============================================================================
 /** Creates a table of strings, where each column gets padded out based on the longest
     item that it contains. Use calls to startRow/appendItem to create the table, then
@@ -165,6 +146,7 @@ struct HashBuilder
     HashBuilder& operator<< (const std::string&) noexcept;
     HashBuilder& operator<< (ArrayView<char>) noexcept;
 
+    /// Returns a 32 char hex number
     std::string toString() const;
 
 private:

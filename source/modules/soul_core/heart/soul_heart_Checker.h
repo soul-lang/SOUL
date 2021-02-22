@@ -291,7 +291,7 @@ struct heart::Checker
 
             if (functionNames.size() == 1)  location.throwError (Errors::functionCallsItselfRecursively (functionNames.front()));
             if (functionNames.size() == 2)  location.throwError (Errors::functionsCallEachOtherRecursively (functionNames[0], functionNames[1]));
-            if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (joinStrings (functionNames, ", ")));
+            if (functionNames.size() >  2)  location.throwError (Errors::recursiveFunctionCallSequence (choc::text::joinStrings (functionNames, ", ")));
         }
 
         if (maxStackSize != 0 && callSequenceCheckResult.maximumStackSize > maxStackSize)

@@ -240,7 +240,7 @@ std::string SourceCodeUtilities::getFileSummaryTitle (const Comment& summary)
     {
         auto firstLine = choc::text::trim (summary.lines[0]);
 
-        if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
+        if (choc::text::startsWith (choc::text::toLowerCase (firstLine), "title:"))
         {
             auto title = choc::text::trim (firstLine.substr (6));
 
@@ -260,7 +260,7 @@ std::string SourceCodeUtilities::getFileSummaryBody (const Comment& summary)
     {
         auto firstLine = choc::text::trim (summary.lines[0]);
 
-        if (choc::text::startsWith (toLowerCase (firstLine), "title:"))
+        if (choc::text::startsWith (choc::text::toLowerCase (firstLine), "title:"))
         {
             auto lines = summary.lines;
             lines.erase (lines.begin());
@@ -268,7 +268,7 @@ std::string SourceCodeUtilities::getFileSummaryBody (const Comment& summary)
             while (! lines.empty() && lines.front().empty())
                 lines.erase (lines.begin());
 
-            return joinStrings (lines, "\n");
+            return choc::text::joinStrings (lines, "\n");
         }
     }
 
@@ -528,7 +528,7 @@ std::vector<std::string> SourceCodeUtilities::getCommonCodeCompletionStrings()
                    if (s1.length() != s2.length())
                        return s1.length() < s2.length();
 
-                   return toLowerCase (s1) < toLowerCase (s2);
+                   return choc::text::toLowerCase (s1) < choc::text::toLowerCase (s2);
                });
 
     return results;

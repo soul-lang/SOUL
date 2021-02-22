@@ -438,7 +438,7 @@ struct heart::Utilities
             nodesInCycle.push_back (nodesInCycle.front());
             std::reverse (nodesInCycle.begin(), nodesInCycle.end());
 
-            errorContext.throwError (Errors::feedbackInGraph (joinStrings (nodesInCycle, " -> ")));
+            errorContext.throwError (Errors::feedbackInGraph (choc::text::joinStrings (nodesInCycle, " -> ")));
         }
     };
 

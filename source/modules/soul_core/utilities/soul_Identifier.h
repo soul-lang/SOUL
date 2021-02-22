@@ -33,6 +33,7 @@ struct Identifier  final
     operator const std::string&() const                             { SOUL_ASSERT (isValid()); return *name; }
     operator std::string_view() const                               { SOUL_ASSERT (isValid()); return std::string_view (*name); }
     const std::string& toString() const                             { SOUL_ASSERT (isValid()); return *name; }
+    size_t length() const                                           { SOUL_ASSERT (isValid()); return name->length(); }
     std::string toStringWithFallback (const std::string& fallback) const  { return isValid() ? *name : fallback; }
 
     bool operator== (const Identifier& other) const noexcept        { return name == other.name; }
@@ -295,7 +296,7 @@ struct IdentifierPath  final
 
     std::string toString() const
     {
-        return joinStrings (pathSections, "::");
+        return choc::text::joinStrings (pathSections, "::");
     }
 
     ArrayWithPreallocation<Identifier, 8> pathSections;
