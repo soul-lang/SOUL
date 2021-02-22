@@ -1267,7 +1267,7 @@ private:
         expect (HEARTOperator::closeParen);
         const auto& lhsType = lhs.getType();
 
-        if (! lhsType.isEqual (rhs.getType(), Type::ignoreReferences))
+        if (! lhsType.isEqual (rhs.getType(), Type::ignoreReferences | Type::ignoreConst))
             pos.throwError (Errors::illegalTypesForBinaryOperator (BinaryOp::getSymbol (opType),
                                                                    lhs.getType().getDescription(),
                                                                    rhs.getType().getDescription()));
@@ -1275,7 +1275,7 @@ private:
         const auto& operandType = lhsType;
         auto binOpTypes = BinaryOp::getTypes (opType, operandType, operandType);
 
-        if (! binOpTypes.operandType.isEqual (operandType, Type::ignoreReferences))
+        if (! binOpTypes.operandType.isEqual (operandType, Type::ignoreReferences | Type::ignoreConst))
             pos.throwError (Errors::illegalTypesForBinaryOperator (BinaryOp::getSymbol (opType),
                                                                    lhs.getType().getDescription(),
                                                                    rhs.getType().getDescription()));
