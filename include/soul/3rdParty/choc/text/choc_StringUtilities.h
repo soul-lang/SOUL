@@ -458,10 +458,10 @@ inline std::string getDurationDescription (std::chrono::duration<double, std::mi
         if (auto fraction = scaled % decimalScale)
         {
             result += '.';
-            result += ('0' + static_cast<char> (fraction / 10));
+            result += static_cast<char> ('0' + (fraction / 10));
 
             if (fraction % 10 != 0)
-                result += ('0' + static_cast<char> (fraction % 10));
+                result += static_cast<char> ('0' + (fraction % 10));
         }
 
         result += (whole == 1 && units.length() > 3 && units.back() == 's') ? units.substr (0, units.length() - 1) : units;
@@ -544,7 +544,7 @@ inline std::string getByteSizeDescription (uint64_t size)
         if (auto fraction = scaled % 10)
         {
             result += '.';
-            result += ('0' + static_cast<char> (fraction));
+            result += static_cast<char> ('0' + fraction);
         }
 
         return result;
