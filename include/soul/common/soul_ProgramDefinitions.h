@@ -289,6 +289,9 @@ inline std::string formatErrorMessage (const std::string& severity, const std::s
 
 inline std::string formatAnnotatedErrorMessageSourceLine (const std::string& sourceLine, uint32_t column)
 {
+    if (sourceLine.empty() || sourceLine.length() < column)
+        return {};
+
     std::string indent;
 
     // because some fools insist on using tab characters, we need to make sure we mirror
