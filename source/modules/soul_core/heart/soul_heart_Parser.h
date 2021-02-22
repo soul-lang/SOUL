@@ -1795,11 +1795,22 @@ private:
 
     Type readValueOrRefType()
     {
+        auto errorPos = location;
+        bool isConst = matchIf ("const");
+
         auto t = readValueType();
 
         if (matchIf (HEARTOperator::bitwiseAnd))
-            return t.createReference();
+        {
+            if (isConst)
+                t = t.createConst();
 
+            return t.createReference();
+        }
+
+        if (isConst)
+            errorPos.throwError (Errors::notYetImplemented ("const"));
+        
         return t;
     }
 

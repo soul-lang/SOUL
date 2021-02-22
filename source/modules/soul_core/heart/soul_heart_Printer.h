@@ -515,9 +515,12 @@ private:
             out << "$" << name;
         }
 
-        std::string getTypeDescription (const Type& type) const
+        std::string getTypeDescription (Type type) const
         {
-            return module.program.getTypeDescriptionWithQualificationIfNeeded (module, type.removeConstIfPresent());
+            if (! type.isReference())
+                type = type.removeConstIfPresent();
+
+            return module.program.getTypeDescriptionWithQualificationIfNeeded (module, type);
         }
 
         static const char* getUnaryOpName (UnaryOp::Op o)
