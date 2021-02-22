@@ -1628,16 +1628,36 @@ graph TopLevel [[main]]
         sliderIn -> e.sliderIn;
     }
 }
+
 processor ErrorReplicator
 {
     input stream float audioIn;
     output stream float audioOut;
     input stream float sliderIn [[name: "Slider", min: 0, max: 10, step: 0.1, init:3]];
-    void run()
-    {
-        loop
-        {
-            advance();
-        }
-    }
+
+    void run() { loop advance(); }
+}
+
+## disabled processor
+
+graph test
+{
+    output stream int out;
+    connection G -> out;
+}
+
+graph G
+{
+    input stream int in;
+    output stream int out;
+
+    connection P.out[1] -> out;
+}
+
+processor P
+{
+    input stream int in[2];
+    output stream int out[2];
+
+    void run() { out[1] << 1; advance(); loop { out << -1; advance(); } }
 }
