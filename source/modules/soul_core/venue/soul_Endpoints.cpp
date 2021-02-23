@@ -86,7 +86,18 @@ bool isParameterInput (const EndpointDetails& details)
 uint32_t getNumAudioChannels (const EndpointDetails& details)
 {
     if (isStream (details))
-        return details.getFrameType().getNumElements();
+    {
+        auto frameType = details.getFrameType();
+
+        if (auto numElements = frameType.getNumElements())
+        {
+            if (frameType.isVector())
+                frameType = frameType.getElementType();
+
+            if (frameType.isFloat() || frameType.isInt())
+                return numElements;
+        }
+    }
 
     return 0;
 }
@@ -94,6 +105,15 @@ uint32_t getNumAudioChannels (const EndpointDetails& details)
 bool isAudioEndpoint (const EndpointDetails& details)
 {
     return getNumAudioChannels (details) != 0;
+}
+
+bool isAudioFloat32Endpoint (const EndpointDetails& details)
+{
+    if (! isAudioEndpoint (details))
+        return false;
+
+    auto frameType = details.getFrameType();
+    return frameType.isFloat32() || (frameType.isVector() && frameType.getElementType().isFloat32());
 }
 
 InputEndpointType getInputEndpointType (const EndpointDetails& details)

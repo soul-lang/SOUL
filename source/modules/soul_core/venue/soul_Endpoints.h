@@ -70,6 +70,7 @@ Type createMIDIEventEndpointType();
 bool isParameterInput (const EndpointDetails&);
 bool isConsoleEndpoint (const std::string& endpointName);
 bool isAudioEndpoint (const EndpointDetails&);
+bool isAudioFloat32Endpoint (const EndpointDetails&);
 uint32_t getNumAudioChannels (const EndpointDetails&);
 
 enum class InputEndpointType
