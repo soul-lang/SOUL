@@ -278,6 +278,9 @@ Program Program::createFromHEART (CompileMessageList& messageList, CodeLocation 
         CompileMessageHandler handler (messageList);
         auto program = heart::Parser::parse (std::move (heartCode));
 
+        for (auto& m : program.getModules())
+            m->rebuildVariableUseCounts();
+
         if (runSanityCheck)
             heart::Checker::sanityCheck (program);
 
