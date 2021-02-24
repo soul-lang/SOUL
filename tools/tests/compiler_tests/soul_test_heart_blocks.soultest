@@ -362,3 +362,51 @@ namespace tests
       return bool true;
   }
 }
+
+## disabled error
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+      return bool true;
+      return bool true;
+    }
+}
+
+## disabled error
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+      branch @block_1;
+      branch @block_1;
+
+    @block_1:
+      return bool true;
+    }
+}
+
+## disabled error
+#SOUL 1
+
+namespace tests
+{
+    function test1 () -> bool
+    {
+    @block_0:
+      branch_if bool true ? @block_1 : @block_2;
+      branch_if bool true ? @block_1 : @block_2;
+
+    @block_1:
+      return bool true;
+
+    @block_2:
+      return bool false;
+    }
+}
