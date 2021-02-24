@@ -48,27 +48,27 @@
 */
 namespace soul::patch
 {
-    /** This function can be used as an implementation for the getSOULPatchLibraryVersion() function
-        which a patch-loader DLL must export.
-    */
+    /// This function can be used as an implementation for the getSOULPatchLibraryVersion() function
+    /// which a patch-loader DLL must export.
     int getLibraryVersion();
 
-    /** This function can be used as an implementation for the createSOULPatchBundle() function
-        which a patch-loader DLL must export. It just requires a PerformerFactory to provide
-        some kind of JIT engine back-end.
-    */
+    /// This function can be used as an implementation for the createSOULPatchBundle() function
+    /// which a patch-loader DLL must export. It just requires a PerformerFactory to provide
+    /// some kind of JIT engine back-end.
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory>,
                                         const soul::BuildSettings&,
                                         const char* path);
 
-    /** This function can be used as an implementation for the createSOULPatchBundle() function
-        which a patch-loader DLL must export. It just requires a PerformerFactory to provide
-        some kind of JIT engine back-end.
-    */
+    /// This function can be used as an implementation for the createSOULPatchBundle() function
+    /// which a patch-loader DLL must export. It just requires a PerformerFactory to provide
+    /// some kind of JIT engine back-end.
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory>,
                                         const soul::BuildSettings&,
                                         soul::patch::VirtualFile::Ptr);
 
-    /** Creates a VirtualFile instance for a file or URL. */
-    VirtualFile* createLocalOrRemoteFile (const char* fileOrURL);
+    /// Creates a VirtualFile instance for a file or URL.
+    VirtualFile::Ptr createLocalOrRemoteFile (const char* fileOrURL);
+
+    /// Creates a fake VirtualFile with the given path but the supplied content
+    VirtualFile::Ptr createFakeFileWithContent (const char* path, std::string content);
 }

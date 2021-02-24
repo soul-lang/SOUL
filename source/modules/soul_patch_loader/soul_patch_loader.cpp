@@ -52,10 +52,7 @@ namespace soul::patch
                                         const char* path)
     {
         if (sanityCheckString (path))
-        {
-            auto file = soul::patch::VirtualFile::Ptr (createLocalOrRemoteFile (path));
-            return createPatchInstance (std::move (performerFactory), buildSettings, std::move (file));
-        }
+            return createPatchInstance (std::move (performerFactory), buildSettings, createLocalOrRemoteFile (path));
 
         return {};
     }

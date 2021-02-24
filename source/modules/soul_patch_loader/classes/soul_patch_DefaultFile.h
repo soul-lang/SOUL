@@ -147,7 +147,7 @@ struct LocalFile final  : public RefCountHelper<VirtualFile, LocalFile>
 
 //==============================================================================
 /** Creates either a LocalFile or RemoteFile object, based on the path provided */
-VirtualFile* createLocalOrRemoteFile (const char* pathOrURL)
+VirtualFile::Ptr createLocalOrRemoteFile (const char* pathOrURL)
 {
     if (! sanityCheckString (pathOrURL))
         return {};
@@ -156,9 +156,45 @@ VirtualFile* createLocalOrRemoteFile (const char* pathOrURL)
 
     for (auto* protocol : { "http:", "https:", "ftp:", "sftp:", "file:" })
         if (path.startsWithIgnoreCase (protocol))
-            return new RemoteFile (juce::URL (path));
+            return VirtualFile::Ptr (new RemoteFile (juce::URL (path)));
 
-    return new LocalFile (path);
+    return VirtualFile::Ptr (new LocalFile (path));
 }
 
+VirtualFile::Ptr createFakeFileWithContent (const char* path, std::string fileContent)
+{
+    struct FakeVirtualFile final  : public soul::patch::RefCountHelper<soul::patch::VirtualFile, FakeVirtualFile>
+    {
+        FakeVirtualFile (soul::patch::VirtualFile::Ptr f, std::string c)
+            : file (std::move (f)), content (std::move (c)) {}
+
+        ~FakeVirtualFile() = default;
+
+        soul::patch::String* getName() override                          { return file->getName(); }
+        soul::patch::String* getAbsolutePath() override                  { return file->getAbsolutePath(); }
+        soul::patch::VirtualFile* getParent() override                   { return file->getParent(); }
+        int64_t getSize() override                                       { return static_cast<int64_t> (content.length()); }
+        int64_t getLastModificationTime() override                       { return 0; }
+        soul::patch::VirtualFile* getChildFile (const char* p) override  { return file->getChildFile (p); }
+
+        int64_t read (uint64_t start, void* targetBuffer, uint64_t size) override
+        {
+            if (targetBuffer == nullptr)
+                return -1;
+
+            if (size == 0 || start >= content.length())
+                return 0;
+
+            auto num = std::min (size, content.length() - start);
+            std::memcpy (targetBuffer, &content[0], num);
+            return static_cast<int64_t> (num);
+        }
+
+        soul::patch::VirtualFile::Ptr file;
+        std::string content;
+    };
+
+    return VirtualFile::Ptr (new FakeVirtualFile (createLocalOrRemoteFile (path), std::move (fileContent)));
 }
+
+} // namespace soul::patch
