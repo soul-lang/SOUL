@@ -1198,7 +1198,7 @@ struct AST
 
             for (auto& e : p.getEndpoints())
             {
-                if (!e->isConsoleEndpoint && e->isInput == wantInput)
+                if (! e->isConsoleEndpoint && e->isInput == wantInput)
                 {
                     if (found != nullptr)
                         errorContext.throwError (Errors::mustBeOnlyOneEndpoint());

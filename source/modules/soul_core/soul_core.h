@@ -153,7 +153,6 @@ namespace soul
 #include "utilities/soul_AudioDataGeneration.h"
 #include "utilities/soul_AudioMIDIWrapper.h"
 #include "utilities/soul_AudioFiles.h"
-#include "utilities/soul_OfflineRender.h"
 
 #include "test/soul_TestFileParser.h"
 

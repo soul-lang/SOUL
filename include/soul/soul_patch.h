@@ -19,8 +19,8 @@
 
 #include <cstdint>
 
-#if defined (WIN32)
- #if !defined (_WINDOWS_)
+#ifdef WIN32
+ #ifndef _WINDOWS_
   // Since windows.h hasn't been included, we will need to declare these functions
   // If you see an error related to these declarations, it's likely you've included windows.h after including these
   // To resolve, move your windows.h include to the first header in your compilation unit

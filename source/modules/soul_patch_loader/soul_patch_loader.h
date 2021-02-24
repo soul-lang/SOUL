@@ -67,7 +67,7 @@ namespace soul::patch
     */
     PatchInstance* createPatchInstance (std::unique_ptr<soul::PerformerFactory>,
                                         const soul::BuildSettings&,
-                                        soul::patch::VirtualFile*);
+                                        soul::patch::VirtualFile::Ptr);
 
     /** Creates a VirtualFile instance for a file or URL. */
     VirtualFile* createLocalOrRemoteFile (const char* fileOrURL);

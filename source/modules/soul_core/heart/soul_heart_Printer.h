@@ -278,7 +278,7 @@ private:
             auto labelIndent = out.createIndent (2);
             out << getBlockName (b);
 
-            if (!b.parameters.empty())
+            if (! b.parameters.empty())
                 printParameters (b.parameters);
 
             out << ":" << newLine;

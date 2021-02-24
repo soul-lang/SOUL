@@ -145,4 +145,21 @@ void emitMessage (const CompileMessageGroup&);
 [[noreturn]] void throwError (const CompileMessageGroup&);
 
 
+/// Given a soul::patch::CompilationMessage as its argument, converts it to a CompileMessage
+template <typename PatchCompileMessage>
+CompileMessage createCompileMessageFromPatchMessage (const PatchCompileMessage& m)
+{
+    CompileMessage result;
+    result.description = m.description.template toString<std::string>();
+    result.filename = m.filename.template toString<std::string>();
+    result.sourceLine = m.sourceLine.template toString<std::string>();
+    result.line = m.line;
+    result.column = m.column;
+    result.type = m.isError ? CompileMessage::Type::error : CompileMessage::Type::warning;
+    result.category = CompileMessage::Category::syntax;
+    return result;
+}
+
+
+
 } // namespace soul

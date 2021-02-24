@@ -67,7 +67,6 @@
 #include "utilities/soul_MiscUtilities.cpp"
 #include "utilities/soul_AudioDataGeneration.cpp"
 #include "utilities/soul_AudioFiles.cpp"
-#include "utilities/soul_OfflineRender.cpp"
 #include "types/soul_Struct.cpp"
 #include "types/soul_StringDictionary.cpp"
 #include "types/soul_ConstantTable.cpp"
