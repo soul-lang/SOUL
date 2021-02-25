@@ -2289,3 +2289,30 @@ bool check (int i)
 
     return true;
 }
+
+## function
+
+bool test()
+{
+    let values = float<2>[1] ( float<2> (1.0f, 3.0f));
+
+    return values.size == 1 && values[0][0] == 1.0f && values[0][1] == 3.0f;
+}
+
+## disabled function
+
+bool test()
+{
+    let values = float<2>[] ( float<2> (1.0f, 3.0f));
+
+    return values.size == 1 && values[0][0] == 1.0f && values[0][1] == 3.0f;
+}
+
+## disabled function
+
+bool test()
+{
+    let values = float<2>[] ((1.0f, 3.0f));
+
+    return values.size == 1 && values[0][0] == 1.0f && values[0][1] == 3.0f;
+}
