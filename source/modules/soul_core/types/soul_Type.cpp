@@ -173,7 +173,7 @@ bool Type::isIdentical (const Type& other) const
 
 bool Type::hasIdenticalLayout (const Type& other) const
 {
-    return isEqual (other, ignoreVectorSize1 | duckTypeStructures);
+    return isEqual (other, ignoreVectorSize1 | duckTypeStructures | ignoreConst);
 }
 
 bool Type::isPresentIn (ArrayView<Type> types) const
