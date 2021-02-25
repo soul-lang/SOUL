@@ -1638,26 +1638,50 @@ processor ErrorReplicator
     void run() { loop advance(); }
 }
 
-## disabled processor
+## processor
 
 graph test
 {
-    output stream int out;
-    connection G -> out;
+    output stream int tOut;
+    connection G.gOut -> tOut;
 }
 
 graph G
 {
-    input stream int in;
-    output stream int out;
+    input stream int gIn;
+    output stream int gOut;
 
-    connection P.out[1] -> out;
+    connection P.pOut[1] -> gOut;
 }
 
 processor P
 {
-    input stream int in[2];
-    output stream int out[2];
+    input stream int pIn[2];
+    output stream int pOut[2];
 
-    void run() { out[1] << 1; advance(); loop { out << -1; advance(); } }
+    void run() { pOut[1] << 1; advance(); loop { pOut << -1; advance(); } }
+}
+
+## processor
+
+graph test
+{
+    output stream int tOut;
+    connection G.gOut[1] -> tOut;
+}
+
+graph G
+{
+    input stream int gIn[2];
+    output stream int gOut[2];
+
+    connection P.pOut -> gOut;
+}
+
+processor P
+{
+    input stream int pIn[2];
+    output stream int pOut[2];
+
+    void run() { pOut[1] << 1; advance(); loop { pOut << -1; advance(); } }
 }
