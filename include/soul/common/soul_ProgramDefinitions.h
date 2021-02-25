@@ -300,7 +300,7 @@ inline std::string formatAnnotatedErrorMessageSourceLine (const std::string& sou
     for (size_t i = 0; i < column - 1; ++i)
         indent += sourceLine[i] == '\t' ? '\t' : ' ';
 
-    return sourceLine + "\n" + indent + "^";
+    return choc::text::trimEnd (sourceLine) + "\n" + indent + "^";
 }
 
 inline std::string formatAnnotatedErrorMessage (const std::string& severity, const std::string& description,
@@ -313,7 +313,7 @@ inline std::string formatAnnotatedErrorMessage (const std::string& severity, con
     if (annotatedLine.empty())
         return mainDesc;
 
-    return mainDesc + "\n" + sourceLine + "\n" + annotatedLine;
+    return mainDesc + "\n" + annotatedLine;
 }
 
 
