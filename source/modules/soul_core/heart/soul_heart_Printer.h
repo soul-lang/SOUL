@@ -433,22 +433,19 @@ private:
             if (auto arrayElement = cast<heart::ArrayElement> (e))
             {
                 printExpression (arrayElement->parent);
+                out << '[';
+
+                if (arrayElement->isRangeTrusted)
+                    out << "trusted ";
 
                 if (arrayElement->dynamicIndex != nullptr)
-                {
-                    out << '[';
                     printExpression (*arrayElement->dynamicIndex);
-                    out << ']';
-                    return;
-                }
+                else if (arrayElement->isSingleElement())
+                    out << arrayElement->fixedStartIndex;
+                else
+                    out << arrayElement->fixedStartIndex << ":" << arrayElement->fixedEndIndex;
 
-                if (arrayElement->isSingleElement())
-                {
-                    out << '[' << arrayElement->fixedStartIndex << ']';
-                    return;
-                }
-
-                out << '[' << arrayElement->fixedStartIndex << ":" << arrayElement->fixedEndIndex << ']';
+                out << ']';
                 return;
             }
 
@@ -511,7 +508,6 @@ private:
         void printVarWithPrefix (const std::string& name)
         {
             SOUL_ASSERT (! name.empty());
-
             out << "$" << name;
         }
 

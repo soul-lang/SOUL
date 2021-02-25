@@ -1163,7 +1163,8 @@ private:
         return program.findVariableWithName (name);
     }
 
-    heart::Expression& parseArraySlice (const FunctionParseState& state, heart::Expression& lhs, int64_t start, int64_t end)
+    heart::Expression& parseArraySlice (const FunctionParseState& state, heart::Expression& lhs,
+                                        int64_t start, int64_t end, bool isRangeTrusted)
     {
         if (! lhs.getType().isArrayOrVector())
             throwError (Errors::targetIsNotAnArray());
@@ -1172,6 +1173,7 @@ private:
             throwError (Errors::illegalSliceSize());
 
         auto& s = module->allocate<heart::ArrayElement> (location, lhs, (size_t) start, (size_t) end);
+        s.isRangeTrusted = isRangeTrusted;
         return parseSuffixOperators (state, s);
     }
 
@@ -1194,11 +1196,14 @@ private:
 
         if (matchIf (HEARTOperator::openBracket))
         {
+            bool isRangeTrusted = matchIf ("trusted");
+            auto pos = location;
+
             if (matchIf (HEARTOperator::colon))
             {
                 auto endIndex = parseInt32();
                 expect (HEARTOperator::closeBracket);
-                return parseArraySlice (state, lhs, 0, endIndex);
+                return parseArraySlice (state, lhs, 0, endIndex, isRangeTrusted);
             }
 
             const auto& arrayOrVectorType = lhs.getType();
@@ -1214,7 +1219,7 @@ private:
 
                 if (matchIf (HEARTOperator::closeBracket))
                     return parseArraySlice (state, lhs, constStart.getAsInt64(),
-                                            (int64_t) arrayOrVectorType.getArrayOrVectorSize());
+                                            (int64_t) arrayOrVectorType.getArrayOrVectorSize(), isRangeTrusted);
 
                 auto& endIndex = parseExpression (state);
                 expect (HEARTOperator::closeBracket);
@@ -1224,21 +1229,27 @@ private:
                 if (! constEnd.getType().isPrimitiveInteger())
                     throwError (Errors::nonConstArraySize());
 
-                return parseArraySlice (state, lhs, constStart.getAsInt64(), constEnd.getAsInt64());
+                return parseArraySlice (state, lhs, constStart.getAsInt64(), constEnd.getAsInt64(), isRangeTrusted);
             }
 
             if (! (startIndex.getType().isPrimitiveInteger() || startIndex.getType().isBoundedInt()))
                 throwError (Errors::nonIntegerArrayIndex());
 
             if (matchAndReplaceIf (HEARTOperator::closeDoubleBracket, HEARTOperator::closeBracket))
-                return parseSuffixOperators (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
+            {
+                auto& element = module->allocate<heart::ArrayElement> (pos, lhs, startIndex);
+                element.isRangeTrusted = isRangeTrusted;
+                return parseSuffixOperators (state, element);
+            }
 
             expect (HEARTOperator::closeBracket);
 
             if (! lhs.getType().isArrayOrVector())
                 location.throwError (Errors::expectedArrayOrVector());
 
-            return parseSuffixOperators (state, module->allocate<heart::ArrayElement> (location, lhs, startIndex));
+            auto& element = module->allocate<heart::ArrayElement> (pos, lhs, startIndex);
+            element.isRangeTrusted = isRangeTrusted;
+            return parseSuffixOperators (state, element);
         }
 
         return lhs;

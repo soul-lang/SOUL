@@ -258,7 +258,7 @@ namespace tests
 }
 
 
-## error 9:26: error: Index is out of range
+## error 9:23: error: Index is out of range
 #SOUL 1
 
 namespace tests
