@@ -158,7 +158,7 @@ inline uint8_t ShortMessage::length() const
     constexpr uint8_t lastGroupLengths[] = { 1, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
     auto firstByte = data[0];
-    auto group = (firstByte >> 4);
+    auto group = (firstByte >> 4) & 7;
 
     if (group < 7)    return groupLengths[group];
     if (group == 7)   return lastGroupLengths[firstByte & 0xf];
