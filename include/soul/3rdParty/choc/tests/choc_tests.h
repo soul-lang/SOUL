@@ -40,6 +40,7 @@
 #include "../containers/choc_SingleReaderSingleWriterFIFO.h"
 #include "../containers/choc_VariableSizeFIFO.h"
 #include "../audio/choc_MIDI.h"
+#include "../audio/choc_MIDIFile.h"
 #include "../audio/choc_SampleBuffers.h"
 
 /**
@@ -371,6 +372,20 @@ inline void testStringUtilities (TestProgress& progress)
         CHOC_EXPECT_EQ ("2 min 3 sec", choc::text::getDurationDescription (std::chrono::milliseconds (123100)));
         CHOC_EXPECT_EQ ("1 hour 2 min", choc::text::getDurationDescription (std::chrono::seconds (3726)));
         CHOC_EXPECT_EQ ("-1 hour 2 min", choc::text::getDurationDescription (std::chrono::seconds (-3726)));
+    }
+
+    {
+        CHOC_TEST (BytesSizes)
+
+        CHOC_EXPECT_EQ ("0 bytes", choc::text::getByteSizeDescription (0));
+        CHOC_EXPECT_EQ ("1 byte", choc::text::getByteSizeDescription (1));
+        CHOC_EXPECT_EQ ("2 bytes", choc::text::getByteSizeDescription (2));
+        CHOC_EXPECT_EQ ("1 KB", choc::text::getByteSizeDescription (1024));
+        CHOC_EXPECT_EQ ("1.1 KB", choc::text::getByteSizeDescription (1024 + 100));
+        CHOC_EXPECT_EQ ("1 MB", choc::text::getByteSizeDescription (1024 * 1024));
+        CHOC_EXPECT_EQ ("1.2 MB", choc::text::getByteSizeDescription ((1024 + 200) * 1024));
+        CHOC_EXPECT_EQ ("1 GB", choc::text::getByteSizeDescription (1024 * 1024 * 1024));
+        CHOC_EXPECT_EQ ("1.3 GB", choc::text::getByteSizeDescription ((1024 + 300) * 1024 * 1024));
     }
 }
 
@@ -1356,6 +1371,64 @@ inline void testFIFOs (TestProgress& progress)
     }
 }
 
+//==============================================================================
+inline void testMIDIFiles (TestProgress& progress)
+{
+    auto simpleHash = [] (const std::string& s)
+    {
+        int64_t n = 123;
+
+        for (auto c : s)
+            n = (n * 127) + c;
+
+        return (uint64_t) n;
+    };
+
+    CHOC_CATEGORY (MIDIFile);
+
+    {
+        CHOC_TEST (SimpleFile)
+
+        uint8_t testData[] =
+             {77,84,104,100,0,0,0,6,0,1,0,2,1,0,77,84,114,107,0,0,0,25,0,255,88,4,3,3,36,8,0,255,89,2,255,1,0,255,81,3,
+              12,53,0,1,255,47,0,77,84,114,107,0,0,1,40,0,192,0,0,176,121,0,0,176,64,0,0,176,91,48,0,176,10,51,0,176,7,100,0,176,
+              121,0,0,176,64,0,0,176,91,48,0,176,10,51,0,176,7,100,0,255,3,5,80,105,97,110,111,0,144,62,74,64,128,62,0,0,144,64,83,64,
+              128,64,0,0,144,65,86,64,128,65,0,0,144,67,92,64,128,67,0,0,144,69,93,64,128,69,0,0,144,70,89,64,128,70,0,0,144,61,69,64,
+              128,61,0,0,144,70,98,64,128,70,0,0,144,69,83,64,128,69,0,0,144,67,83,64,128,67,0,0,144,65,78,64,128,65,0,0,144,64,73,64,
+              128,64,0,0,144,65,86,0,144,50,76,64,128,50,0,0,144,52,82,64,128,65,0,0,128,52,0,0,144,69,95,0,144,53,84,64,128,53,0,0,
+              144,55,91,64,128,69,0,0,128,55,0,0,144,74,98,0,144,57,87,64,128,57,0,0,144,58,90,64,128,74,0,0,128,58,0,0,144,67,69,0,
+              144,49,73,64,128,49,0,0,144,58,87,64,128,67,0,0,128,58,0,0,144,73,98,0,144,57,81,64,128,57,0,0,144,55,83,64,128,73,0,0,
+              128,55,0,0,144,76,90,0,144,53,81,64,128,53,0,0,144,52,81,64,128,76,0,0,128,52,0,1,255,47,0,0,0};
+
+        choc::midi::File mf;
+
+        try
+        {
+            mf.load (testData, sizeof (testData));
+            CHOC_EXPECT_EQ (2u, mf.tracks.size());
+
+            std::string output;
+
+            mf.iterateEvents ([&] (const choc::midi::ShortMessage& m, double time)
+                              {
+                                  output += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
+                              });
+
+            // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
+            CHOC_EXPECT_EQ (12302625756566664388ull, simpleHash (output));
+        }
+        catch (...) { CHOC_FAIL ("Exception thrown"); }
+
+        testData[51] = 0x90;
+
+        try
+        {
+            mf.load (testData, sizeof (testData));
+            CHOC_FAIL ("Expected a failure")
+        }
+        catch (...) {}
+    }
+}
 
 //==============================================================================
 inline bool runAllTests (TestProgress& progress)
@@ -1366,6 +1439,7 @@ inline bool runAllTests (TestProgress& progress)
     testMIDI (progress);
     testChannelSets (progress);
     testFIFOs (progress);
+    testMIDIFiles (progress);
 
     progress.printReport();
     return progress.numFails == 0;

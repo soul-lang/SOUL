@@ -56,6 +56,7 @@ inline bool render (RenderOptions options,
 
     soul::patch::PatchPlayer::RenderContext renderContext = {};
     choc::buffer::ChannelArrayBuffer<float> inputBuffer, outputBuffer;
+    choc::midi::File midiFile;
 
     try
     {
@@ -67,19 +68,44 @@ inline bool render (RenderOptions options,
 
         if (! options.inputFilename.empty())
         {
-            reader = audioFileFactory.createFileReader (AudioFileFactory::createFileDataSource (options.inputFilename));
-            readerProperties = reader->getProperties();
+            auto dataSource = AudioFileFactory::createFileDataSource (options.inputFilename);
 
-            if (readerProperties.sampleRate < 1)
-                throwError (Errors::cannotReadFile (options.inputFilename));
+            if (choc::text::endsWith (choc::text::toLowerCase (options.inputFilename), ".mid"))
+            {
+                auto fileSize = dataSource->getTotalSize();
 
-            if (options.outputFileProperties.numFrames == 0)
-                options.outputFileProperties.numFrames = readerProperties.numFrames;
+                if (fileSize > 1024 * 1024 * 10)
+                    throwError (Errors::customRuntimeError ("MIDI file too large to load"));
 
-            if (options.outputFileProperties.sampleRate == 0)
-                options.outputFileProperties.sampleRate = readerProperties.sampleRate;
-            else if (options.outputFileProperties.sampleRate != readerProperties.sampleRate)
-                throwError (Errors::customRuntimeError ("Cannot use an input file with a different sample rate to the output rate"));
+                std::vector<uint8_t> midiFileContent;
+                midiFileContent.resize ((size_t) fileSize);
+                dataSource->read (0, midiFileContent.data(), (size_t) fileSize);
+
+                try
+                {
+                    midiFile.load (midiFileContent.data(), (size_t) fileSize);
+                }
+                catch (choc::midi::File::ReadError)
+                {
+                    throwError (Errors::customRuntimeError ("Error reading MIDI file"));
+                }
+            }
+            else
+            {
+                reader = audioFileFactory.createFileReader (std::move (dataSource));
+                readerProperties = reader->getProperties();
+
+                if (readerProperties.sampleRate < 1)
+                    throwError (Errors::cannotReadFile (options.inputFilename));
+
+                if (options.outputFileProperties.numFrames == 0)
+                    options.outputFileProperties.numFrames = readerProperties.numFrames;
+
+                if (options.outputFileProperties.sampleRate == 0)
+                    options.outputFileProperties.sampleRate = readerProperties.sampleRate;
+                else if (options.outputFileProperties.sampleRate != readerProperties.sampleRate)
+                    throwError (Errors::customRuntimeError ("Cannot use an input file with a different sample rate to the output rate"));
+            }
         }
 
         if (auto player = soul::patch::PatchPlayer::Ptr (patchInstance.compileNewPlayer ({ options.outputFileProperties.sampleRate, framesPerBlock },
@@ -137,12 +163,51 @@ inline bool render (RenderOptions options,
                 auto writer = audioFileFactory.createFileWriter (options.outputFileProperties,
                                                                  AudioFileFactory::createFileDataSink (options.outputFilename));
 
+                struct MIDIEvent
+                {
+                    uint64_t frame;
+                    choc::midi::ShortMessage message;
+                };
+
+                std::vector<MIDIEvent> inputMIDIEvents;
+
+                midiFile.iterateEvents ([&] (const choc::midi::ShortMessage& message, double timeSeconds)
+                                        {
+                                            inputMIDIEvents.push_back ({ static_cast<uint64_t> (timeSeconds * options.outputFileProperties.sampleRate), message });
+                                        });
+
                 uint64_t framesDone = 0;
+                std::vector<soul::MIDIEvent> midiEvents;
+                size_t nextMIDIEvent = 0;
 
                 while (framesDone < options.outputFileProperties.numFrames)
                 {
                     renderContext.numFrames = static_cast<uint32_t> (std::min (static_cast<uint64_t> (framesPerBlock),
                                                                                options.outputFileProperties.numFrames - framesDone));
+
+                    midiEvents.clear();
+
+                    while (nextMIDIEvent < inputMIDIEvents.size())
+                    {
+                        auto& event = inputMIDIEvents[nextMIDIEvent];
+
+                        if (event.frame >= framesDone + renderContext.numFrames)
+                            break;
+
+                        midiEvents.push_back ({ (uint32_t) (event.frame - framesDone), event.message });
+                        ++nextMIDIEvent;
+                    }
+
+                    if (midiEvents.empty())
+                    {
+                        renderContext.incomingMIDI = nullptr;
+                        renderContext.numMIDIMessagesIn = 0;
+                    }
+                    else
+                    {
+                        renderContext.incomingMIDI = midiEvents.data();
+                        renderContext.numMIDIMessagesIn = (uint32_t) midiEvents.size();
+                    }
 
                     if (reader != nullptr)
                     {
