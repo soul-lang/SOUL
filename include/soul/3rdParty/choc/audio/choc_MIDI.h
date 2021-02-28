@@ -77,17 +77,25 @@ struct NoteNumber
 
 //==============================================================================
 /**
+    A short (3-byte) MIDI message.
+
+    For a data type that can also hold long messages, use choc::midi::Message.
 */
 struct ShortMessage
 {
     ShortMessage() = default;
     ShortMessage (uint8_t byte0, uint8_t byte1, uint8_t byte2)  : data { byte0, byte1, byte2 } {}
 
+    /// The raw data. (Actual message length is determined by interpreting the content)
     uint8_t data[3] = {};
 
+    /// Returns true if this is an empty, uninitialised message.
     bool isNull() const                                 { return data[0] == 0; }
 
+    /// Returns the size of the message in bytes.
     uint8_t length() const;
+    /// Returns the size of the message in bytes.
+    uint8_t size() const;
 
     uint8_t getChannel0to15() const                     { return data[0] & 0x0f; }
     uint8_t getChannel1to16() const                     { return static_cast<uint8_t> (getChannel0to15() + 1u); }
@@ -121,15 +129,15 @@ struct ShortMessage
     bool isContinue() const                             { return data[0] == 0xfb; }
     bool isStop() const                                 { return data[0] == 0xfc; }
     bool isActiveSense() const                          { return data[0] == 0xfe; }
-    bool isResetOrMeta() const                          { return data[0] == 0xff; }
+    bool isMetaEvent() const                            { return data[0] == 0xff; }
 
     bool isSongPositionPointer() const                  { return data[0] == 0xf2; }
     uint32_t getSongPositionPointerValue() const        { return get14BitValue(); }
 
-    /** Returns a human-readable description of the message. */
+    /// Returns a human-readable description of the message.
     std::string getDescription() const;
 
-    /** Returns a hex string dump of the message. */
+    /// Returns a hex string dump of the message.
     std::string toHexString() const                     { return printHexMIDIData (data, length()); }
 
     bool operator== (const ShortMessage&) const;
@@ -138,6 +146,86 @@ struct ShortMessage
 private:
     bool isVoiceMessage (uint8_t type) const            { return (data[0] & 0xf0) == type; }
     uint32_t get14BitValue() const                      { return data[1] | (static_cast<uint32_t> (data[2]) << 7); }
+};
+
+//==============================================================================
+/**
+    Holds any kind of MIDI message.
+
+    If all you need are short (3-byte) messages, then you'd be better off using
+    choc::midi::ShortMessage, which doesn't need to do any heap allocation.
+*/
+struct Message
+{
+    Message() = default;
+    ~Message() = default;
+
+    Message (const void* data, size_t size);
+    Message (ShortMessage);
+
+    Message (Message&&) = default;
+    Message (const Message&) = default;
+    Message& operator= (Message&&) = default;
+    Message& operator= (const Message&) = default;
+    Message& operator= (ShortMessage);
+
+    /// Returns true if the message is uninitialised.
+    bool empty() const;
+    /// Returns the size of the message in bytes.
+    size_t length() const;
+    /// Returns the size of the message in bytes.
+    uint8_t size() const;
+    /// Returns a byte from the message
+    uint8_t operator[] (size_t index) const;
+    /// Returns a pointer to the raw message data.
+    const uint8_t* data() const;
+
+    /// Returns true if this is a short message (up to 3 bytes).
+    bool isShortMessage() const;
+    /// Returns true if this is a sysex.
+    bool isSysex() const;
+    /// Returns true if this is a meta-event.
+    bool isMetaEvent() const;
+    /// Returns true if this is a meta-event with the given type.
+    bool isMetaEventOfType (uint8_t type) const;
+
+    /// If this is a short message, this method will return it. If not, it
+    /// will trigger an assertion, so be sure to check isShortMessage() first.
+    ShortMessage getShortMessage() const;
+
+    /// If this is a short message, then this cast will succeed. If not, it
+    /// will trigger an assertion, so be sure to check isShortMessage() first.
+    operator ShortMessage() const;
+
+    /// If this is a meta-event, this will return its meta-type byte. If it isn't
+    /// a meta-event, this will trigger an assertion, so you should check beforehand.
+    uint8_t getMetaEventType() const;
+
+    /// If this is a meta-event, this will return a description of its type. If it isn't
+    /// a meta-event, this will trigger an assertion, so you should check beforehand.
+    std::string getMetaEventTypeName() const;
+
+    /// If this is a meta-event, this will return the payload data (i.e. the chunk of
+    /// variable-length data after the type and length fields). If it isn't a meta-event,
+    /// this will trigger an assertion, so you should check beforehand. If the message
+    /// data is malformed, this may return an empty value.
+    std::string_view getMetaEventData() const;
+
+    /// Returns a human-readable description of the message.
+    std::string getDescription() const;
+
+    /// Returns a hex string dump of the message.
+    std::string toHexString() const;
+
+    bool operator== (const Message&) const;
+    bool operator!= (const Message&) const;
+
+    /// For some use-cases, this is handy for building a message by concatenating chunks
+    void appendData (const void* data, size_t size);
+
+private:
+    std::string content; // std::string makes a good container here, as most
+                         // implementations will use a short-string optimisation
 };
 
 
@@ -165,6 +253,8 @@ inline uint8_t ShortMessage::length() const
 
     return 0;
 }
+
+inline uint8_t ShortMessage::size() const   { return length(); }
 
 inline bool ShortMessage::operator== (const ShortMessage& other) const
 {
@@ -197,7 +287,7 @@ inline std::string ShortMessage::getDescription() const
     if (isStart())                 return "Start";
     if (isContinue())              return "Continue";
     if (isStop())                  return "Stop";
-    if (isResetOrMeta())           return "Reset/Meta-event";
+    if (isMetaEvent())             return "Meta-event: type " + std::to_string (data[1]);
     if (isSongPositionPointer())   return "Song Position: " + std::to_string (getSongPositionPointerValue());
 
     return toHexString();
@@ -205,6 +295,9 @@ inline std::string ShortMessage::getDescription() const
 
 inline std::string printHexMIDIData (const uint8_t* data, size_t numBytes)
 {
+    if (numBytes == 0)
+        return "[empty]";
+
     std::string s;
     s.reserve (3 * numBytes);
 
@@ -265,6 +358,138 @@ inline std::string getControllerName (uint8_t controllerNumber)
 
     return std::to_string (controllerNumber);
 }
+
+//==============================================================================
+inline Message::Message (const void* data, size_t size)  : content (static_cast<const char*> (data), size) {}
+inline Message::Message (ShortMessage m)  : Message (m.data, m.length()) {}
+inline Message& Message::operator= (ShortMessage m) { return operator= (Message (m)); }
+inline void Message::appendData (const void* data, size_t size)    { content.append (static_cast<const char*> (data), size); }
+
+inline bool Message::empty() const           { return content.empty(); }
+inline size_t Message::length() const        { return content.length(); }
+inline const uint8_t* Message::data() const  { return reinterpret_cast<const uint8_t*> (content.data()); }
+
+inline uint8_t Message::operator[] (size_t i) const { CHOC_ASSERT (i < content.length()); return static_cast<uint8_t> (content[i]); }
+
+inline bool Message::isShortMessage() const
+{
+    auto len = content.length();
+
+    if (len == 0 || len > 3)
+        return false;
+
+    auto firstByte = content[0];
+    return firstByte != (char) 0xff && firstByte != (char) 0xf0;
+}
+
+inline bool Message::isSysex() const                         { return content.length() > 1 && content[0] == (char) 0xf0; }
+inline bool Message::isMetaEvent() const                     { return content.length() > 2 && content[0] == (char) 0xff; }
+inline bool Message::isMetaEventOfType (uint8_t type) const  { return content.length() > 2 && content[1] == (char) type && content[0] == (char) 0xff; }
+
+inline ShortMessage Message::getShortMessage() const
+{
+    auto size = content.length();
+    auto d = data();
+
+    if (size == 3)  return { d[0], d[1], d[2] };
+    if (size == 2)  return { d[0], d[1], 0 };
+    if (size == 1)  return { d[0], 0, 0 };
+
+    CHOC_ASSERT (false); // You must check that this is actually a short message before calling this method
+    return {};
+}
+
+inline Message::operator ShortMessage() const       { return getShortMessage(); }
+
+inline uint8_t Message::getMetaEventType() const
+{
+    CHOC_ASSERT (isMetaEvent()); // You must check that this is a meta-event before calling this method
+    return data()[1];
+}
+
+inline std::string Message::getMetaEventTypeName() const
+{
+    auto type = getMetaEventType();
+    const char* result = nullptr;
+
+    switch (type)
+    {
+        case 0x00:  result = "Sequence number";     break;
+        case 0x01:  result = "Text";                break;
+        case 0x02:  result = "Copyright notice";    break;
+        case 0x03:  result = "Track name";          break;
+        case 0x04:  result = "Instrument name";     break;
+        case 0x05:  result = "Lyrics";              break;
+        case 0x06:  result = "Marker";              break;
+        case 0x07:  result = "Cue point";           break;
+        case 0x20:  result = "Channel prefix";      break;
+        case 0x2F:  result = "End of track";        break;
+        case 0x51:  result = "Set tempo";           break;
+        case 0x54:  result = "SMPTE offset";        break;
+        case 0x58:  result = "Time signature";      break;
+        case 0x59:  result = "Key signature";       break;
+        case 0x7F:  result = "Sequencer specific";  break;
+        default:    return std::to_string (type);
+    }
+
+    return result;
+}
+
+inline std::string_view Message::getMetaEventData() const
+{
+    CHOC_ASSERT (isMetaEvent()); // You must check that this is a meta-event before calling this method
+
+    auto totalLength = content.length();
+
+    if (totalLength < 4)
+        return {}; // malformed data
+
+    uint32_t contentLength = 0, lengthBytes = 0;
+    auto d = data() + 2; // skip to the length field
+
+    for (;;)
+    {
+        auto byte = *d++;
+        ++lengthBytes;
+        contentLength = (contentLength << 7) | (byte & 0x7fu);
+
+        if (byte < 0x80)
+            break;
+
+        if (lengthBytes == 4 || lengthBytes + 2 == totalLength)
+            return {}; // malformed data
+    }
+
+    auto contentStart = lengthBytes + 2;
+
+    if (contentStart + contentLength > totalLength)
+        return {}; // malformed data
+
+    return std::string_view (content.data() + contentStart, contentLength);
+}
+
+inline std::string Message::getDescription() const
+{
+    if (isShortMessage())  return getShortMessage().getDescription();
+    if (isSysex())         return "Sysex: " + toHexString();
+
+    if (isMetaEvent())
+    {
+        auto metadataContent = getMetaEventData();
+        return "Meta-event: " + getMetaEventTypeName()
+                 + ", length: " + std::to_string (metadataContent.length())
+                 + ", data: " + printHexMIDIData (reinterpret_cast<const uint8_t*> (metadataContent.data()),
+                                                  metadataContent.length());
+    }
+
+    return toHexString();
+}
+
+inline std::string Message::toHexString() const     { return printHexMIDIData (data(), length()); }
+
+inline bool Message::operator== (const Message& other) const   { return content == other.content; }
+inline bool Message::operator!= (const Message& other) const   { return content != other.content; }
+
 
 } // namespace choc::midi
 

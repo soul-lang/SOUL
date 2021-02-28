@@ -1409,13 +1409,13 @@ inline void testMIDIFiles (TestProgress& progress)
 
             std::string output;
 
-            mf.iterateEvents ([&] (const choc::midi::ShortMessage& m, double time)
+            mf.iterateEvents ([&] (const choc::midi::Message& m, double time)
                               {
                                   output += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
                               });
 
             // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
-            CHOC_EXPECT_EQ (12302625756566664388ull, simpleHash (output));
+            CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output));
         }
         catch (...) { CHOC_FAIL ("Exception thrown"); }
 

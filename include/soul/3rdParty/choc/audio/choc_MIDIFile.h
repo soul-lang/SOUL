@@ -47,9 +47,8 @@ struct File
 
     struct Event
     {
-        ShortMessage shortMessage;
+        Message message;
         uint32_t tickPosition = 0;
-        uint32_t newMicrosecondsPerQuarterNote = 0; /// if non-zero, this event is a tempo change
     };
 
     struct Track
@@ -58,7 +57,7 @@ struct File
     };
 
     /// Iterates all the events on all tracks, returning each one with its playback time in seconds.
-    void iterateEvents (const std::function<void(const ShortMessage&, double timeInSeconds)>&);
+    void iterateEvents (const std::function<void(const Message&, double timeInSeconds)>&);
 
     //==============================================================================
     std::vector<Track> tracks;
@@ -203,30 +202,25 @@ namespace
 
             if (statusByte == 0xff) // meta-event
             {
-                auto type   = reader.read<uint8_t>();
+                auto start = reader.data;
+                reader.skip (1); // skip the type
                 auto length = reader.readVariableLength();
+                reader.skip (length);
 
-                if (type == 0x51) // tempo meta-event
-                {
-                    if (length != 3)
-                        throw File::ReadError();
-
-                    uint32_t microseconds = reader.read<uint8_t>();
-                    microseconds = (microseconds << 8) | reader.read<uint8_t>();
-                    microseconds = (microseconds << 8) | reader.read<uint8_t>();
-
-                    result.push_back ({ {}, tickPosition, microseconds });
-                }
-                else
-                {
-                    reader.skip (length);
-                }
+                Message meta (std::addressof (statusByte), 1);
+                meta.appendData (start, static_cast<size_t> (reader.data - start));
+                result.push_back ({ std::move (meta), tickPosition });
             }
             else if (statusByte == 0xf0) // sysex
             {
-                // just skip these for now..
+                Message sysex (std::addressof (statusByte), 1);
+                auto start = reader.data;
+
                 while (reader.read<uint8_t>() < 0x80)
                 {}
+
+                sysex.appendData (start, static_cast<size_t> (reader.data - start));
+                result.push_back ({ std::move (sysex), tickPosition });
             }
             else
             {
@@ -236,7 +230,7 @@ namespace
                 if (length > 1)  m.data[1] = reader.read<uint8_t>();
                 if (length > 2)  m.data[2] = reader.read<uint8_t>();
 
-                result.push_back ({ m, tickPosition, 0 });
+                result.push_back ({ Message (m), tickPosition });
             }
         }
 
@@ -280,7 +274,7 @@ inline void File::load (const void* midiFileData, size_t dataSize)
     }
 }
 
-inline void File::iterateEvents (const std::function<void(const ShortMessage&, double timeInSeconds)>& handleEvent)
+inline void File::iterateEvents (const std::function<void(const Message&, double timeInSeconds)>& handleEvent)
 {
     std::vector<Event> allEvents;
 
@@ -303,19 +297,28 @@ inline void File::iterateEvents (const std::function<void(const ShortMessage&, d
         CHOC_ASSERT (event.tickPosition >= lastTempoChangeTick);
         auto eventTimeSeconds = lastTempoChangeSeconds + secondsPerTick * (event.tickPosition - lastTempoChangeTick);
 
-        if (event.newMicrosecondsPerQuarterNote != 0)
+        if (event.message.isMetaEventOfType (0x51)) // tempo meta-event
         {
+            auto content = event.message.getMetaEventData();
+
+            if (content.length() != 3)
+                throw File::ReadError();
+
+            uint32_t microsecondsPerQuarterNote = (uint8_t) content[0];
+            microsecondsPerQuarterNote = (microsecondsPerQuarterNote << 8) | (uint8_t) content[1];
+            microsecondsPerQuarterNote = (microsecondsPerQuarterNote << 8) | (uint8_t) content[2];
+
             if (timeFormat > 0)
             {
                 lastTempoChangeTick = event.tickPosition;
                 lastTempoChangeSeconds = eventTimeSeconds;
-                auto secondsPerQuarterNote = event.newMicrosecondsPerQuarterNote / 1000000.0;
+                auto secondsPerQuarterNote = microsecondsPerQuarterNote / 1000000.0;
                 secondsPerTick = secondsPerQuarterNote / (timeFormat & 0x7fff);
             }
         }
         else
         {
-            handleEvent (event.shortMessage, eventTimeSeconds);
+            handleEvent (event.message, eventTimeSeconds);
         }
     }
 }

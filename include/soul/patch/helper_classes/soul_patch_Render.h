@@ -65,6 +65,7 @@ inline bool render (RenderOptions options,
 
         std::unique_ptr<AudioFileReader> reader;
         AudioFileProperties readerProperties;
+        double midiFileLengthSeconds = 0;
 
         if (! options.inputFilename.empty())
         {
@@ -84,6 +85,11 @@ inline bool render (RenderOptions options,
                 try
                 {
                     midiFile.load (midiFileContent.data(), (size_t) fileSize);
+
+                    midiFile.iterateEvents ([&] (const choc::midi::Message&, double timeSeconds)
+                                            {
+                                                midiFileLengthSeconds = std::max (midiFileLengthSeconds, timeSeconds);
+                                            });
                 }
                 catch (choc::midi::File::ReadError)
                 {
@@ -132,8 +138,17 @@ inline bool render (RenderOptions options,
                     renderContext.inputChannels = inputBuffer.getView().data.channels;
                 }
 
+                if (options.outputFileProperties.sampleRate == 0)
+                    options.outputFileProperties.sampleRate = 48000;
+
                 if (options.outputFileProperties.numFrames == 0)
-                    throwError (Errors::customRuntimeError ("Must specify more than zero output samples"));
+                {
+                    if (midiFileLengthSeconds <= 0)
+                        throwError (Errors::customRuntimeError ("Must specify more than zero output samples"));
+
+                    options.outputFileProperties.numFrames = static_cast<uint64_t> ((midiFileLengthSeconds + 0.1)
+                                                                                     * options.outputFileProperties.sampleRate);
+                }
 
                 renderContext.numOutputChannels = 0;
 
@@ -149,9 +164,6 @@ inline bool render (RenderOptions options,
 
                 if (options.outputFileProperties.numChannels == 0 || options.outputFileProperties.numChannels > 512)
                     throwError (Errors::unsupportedNumChannels());
-
-                if (options.outputFileProperties.sampleRate == 0)
-                    options.outputFileProperties.sampleRate = 48000;
 
                 if (options.outputFileProperties.sampleRate < 10 || options.outputFileProperties.sampleRate > 10000000)
                     throwError (Errors::unsupportedSampleRate());
@@ -171,9 +183,11 @@ inline bool render (RenderOptions options,
 
                 std::vector<MIDIEvent> inputMIDIEvents;
 
-                midiFile.iterateEvents ([&] (const choc::midi::ShortMessage& message, double timeSeconds)
+                midiFile.iterateEvents ([&] (const choc::midi::Message& message, double timeSeconds)
                                         {
-                                            inputMIDIEvents.push_back ({ static_cast<uint64_t> (timeSeconds * options.outputFileProperties.sampleRate), message });
+                                            if (message.isShortMessage())
+                                                inputMIDIEvents.push_back ({ static_cast<uint64_t> (timeSeconds * options.outputFileProperties.sampleRate),
+                                                                             message.getShortMessage() });
                                         });
 
                 uint64_t framesDone = 0;
