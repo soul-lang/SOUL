@@ -29,7 +29,7 @@ namespace soul
 size_t Module::Functions::size() const                                      { return functions.size(); }
 pool_ptr<heart::Function> Module::Functions::findRunFunction() const        { return find (heart::getRunFunctionName()); }
 heart::Function& Module::Functions::getRunFunction() const                  { return *findRunFunction(); }
-ArrayView<pool_ref<heart::Function>> Module::Functions::get() const         { return functions; }
+choc::span<pool_ref<heart::Function>> Module::Functions::get() const        { return functions; }
 heart::Function& Module::Functions::get (std::string_view name) const       { return *find (name); }
 heart::Function& Module::Functions::at (size_t index) const                 { return functions[index]; }
 bool Module::Functions::remove (heart::Function& f)                         { return removeItem (functions, f); }
@@ -78,7 +78,7 @@ heart::Function& Module::Functions::add (const heart::InputDeclaration& input, c
 
 //==============================================================================
 size_t Module::StateVariables::size() const                                 { return stateVariables.size(); }
-ArrayView<pool_ref<heart::Variable>> Module::StateVariables::get() const    { return stateVariables; }
+choc::span<pool_ref<heart::Variable>> Module::StateVariables::get() const   { return stateVariables; }
 void Module::StateVariables::clear()                                        { stateVariables.clear(); }
 
 pool_ptr<heart::Variable> Module::StateVariables::find (std::string_view name) const
@@ -99,7 +99,7 @@ void Module::StateVariables::add (heart::Variable& v)
 //==============================================================================
 size_t Module::Structs::size() const  { return structs.size(); }
 
-ArrayView<StructurePtr> Module::Structs::get() const
+choc::span<StructurePtr> Module::Structs::get() const
 {
     return structs;
 }

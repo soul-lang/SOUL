@@ -116,8 +116,8 @@ namespace soul::audioplayer
         //==============================================================================
         bool createSession (SessionReadyCallback) override;
 
-        ArrayView<const EndpointDetails> getExternalInputEndpoints() override;
-        ArrayView<const EndpointDetails> getExternalOutputEndpoints() override;
+        choc::span<const EndpointDetails> getExternalInputEndpoints() override;
+        choc::span<const EndpointDetails> getExternalOutputEndpoints() override;
 
     private:
         struct Pimpl;

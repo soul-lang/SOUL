@@ -23,7 +23,7 @@ namespace soul
 
 struct heart::Utilities
 {
-    static std::string getDescriptionOfTypeList (ArrayView<Type> types, bool alwaysParenthesise)
+    static std::string getDescriptionOfTypeList (choc::span<Type> types, bool alwaysParenthesise)
     {
         if (! alwaysParenthesise)
         {
@@ -105,7 +105,7 @@ struct heart::Utilities
     //==============================================================================
     struct VariableListByType
     {
-        VariableListByType (ArrayView<pool_ref<Variable>> variables)
+        VariableListByType (choc::span<pool_ref<Variable>> variables)
         {
             for (auto& v : variables)
                 getType (v->type).variables.push_back (v);
@@ -294,7 +294,7 @@ struct heart::Utilities
                 dest = newDest;
     }
 
-    static bool areAllTerminatorsUnconditional (ArrayView<pool_ref<Block>> blocks)
+    static bool areAllTerminatorsUnconditional (choc::span<pool_ref<Block>> blocks)
     {
         for (auto b : blocks)
             if (b->terminator->isConditional())
@@ -428,7 +428,7 @@ struct heart::Utilities
             visitedStack.pop_back();
         }
 
-        static void throwCycleError (ArrayView<const Node*> stack, const ContextType& errorContext)
+        static void throwCycleError (choc::span<const Node*> stack, const ContextType& errorContext)
         {
             std::vector<std::string> nodesInCycle;
 

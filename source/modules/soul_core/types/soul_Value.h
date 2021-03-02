@@ -55,8 +55,8 @@ struct Value  final
     explicit Value (std::complex<double>);
 
     static Value zeroInitialiser (Type);
-    static Value createArrayOrVector (Type arrayOrVectorType, ArrayView<Value> elements);
-    static Value createStruct (Structure&, ArrayView<Value> members);
+    static Value createArrayOrVector (Type arrayOrVectorType, choc::span<Value> elements);
+    static Value createStruct (Structure&, choc::span<Value> members);
     static Value createStringLiteral (StringDictionary::Handle);
     static Value createUnsizedArray (const Type& elementType, ConstantTable::Handle);
     static Value createFromRawData (Type type, const void* data, size_t dataSize);

@@ -162,7 +162,7 @@ struct ModuleCloner
         return cloneType (structMappings, t);
     }
 
-    std::vector<Type> cloneTypes (ArrayView<Type> types)
+    std::vector<Type> cloneTypes (choc::span<Type> types)
     {
         std::vector<Type> result;
         result.reserve (types.size());

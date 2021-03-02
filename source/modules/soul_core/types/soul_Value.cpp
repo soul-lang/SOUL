@@ -277,7 +277,7 @@ struct Value::PackedData
         }
     }
 
-    void setFrom (ArrayView<Value> values) const
+    void setFrom (choc::span<Value> values) const
     {
         if (values.size() == 0)
             return clear();
@@ -475,14 +475,14 @@ Value::Value (bool     v)  : Value (Type (PrimitiveType::bool_))     { getData()
 Value::Value (std::complex<float> v)  : Value (Type (PrimitiveType::complex32))   { getData().setAs (v); }
 Value::Value (std::complex<double> v) : Value (Type (PrimitiveType::complex64))   { getData().setAs (v); }
 
-Value Value::createArrayOrVector (Type t, ArrayView<Value> elements)
+Value Value::createArrayOrVector (Type t, choc::span<Value> elements)
 {
     Value v (std::move (t));
     v.getData().setFrom (elements);
     return v;
 }
 
-Value Value::createStruct (Structure& s, ArrayView<Value> members)
+Value Value::createStruct (Structure& s, choc::span<Value> members)
 {
     Value v (Type::createStruct (s));
     v.getData().setFrom (members);

@@ -1068,7 +1068,7 @@ struct heart
     //==============================================================================
     struct Terminator  : public Object
     {
-        virtual ArrayView<pool_ref<Block>> getDestinationBlocks()   { return {}; }
+        virtual choc::span<pool_ref<Block>> getDestinationBlocks()  { return {}; }
         virtual bool isConditional() const                          { return false; }
         virtual bool isReturn() const                               { return false; }
         virtual bool readsVariable (Variable&) const                { return false; }
@@ -1079,7 +1079,7 @@ struct heart
     struct Branch  : public Terminator
     {
         Branch (Block& b)  : target (b) {}
-        ArrayView<pool_ref<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
+        choc::span<pool_ref<Block>> getDestinationBlocks() override  { return { &target, &target + 1 }; }
 
         void visitExpressions (ExpressionVisitorFn fn) override
         {
@@ -1106,7 +1106,7 @@ struct heart
             SOUL_ASSERT (targets[0] != targets[1]);
         }
 
-        ArrayView<pool_ref<Block>> getDestinationBlocks() override    { return { targets, targets + (isConditional() ? 2 : 1) }; }
+        choc::span<pool_ref<Block>> getDestinationBlocks() override   { return { targets, targets + (isConditional() ? 2 : 1) }; }
         bool isConditional() const override                           { return targets[0] != targets[1]; }
         bool isParameterised() const override                         { return (! targetArgs[0].empty()) || (! targetArgs[1].empty()); }
 

@@ -1161,7 +1161,7 @@ struct CPPGenerator
             stream << blankLine;
     }
 
-    static bool anyBlockJumpsTo (ArrayView<pool_ref<heart::Block>> allBlocks, heart::Block& target)
+    static bool anyBlockJumpsTo (choc::span<pool_ref<heart::Block>> allBlocks, heart::Block& target)
     {
         for (auto& b : allBlocks)
             if (contains (b->terminator->getDestinationBlocks(), target))
@@ -1170,7 +1170,7 @@ struct CPPGenerator
         return false;
     }
 
-    void printBlock (ArrayView<pool_ref<heart::Block>> allBlocks, heart::Block& b,
+    void printBlock (choc::span<pool_ref<heart::Block>> allBlocks, heart::Block& b,
                      const heart::Block* nextBlock, bool needsBraces)
     {
         size_t labelLength = 0;
@@ -1527,7 +1527,7 @@ struct CPPGenerator
         return true;
     }
 
-    std::string createIntrinsicCall (const heart::Function& f, ArrayView<pool_ref<heart::Expression>> args)
+    std::string createIntrinsicCall (const heart::Function& f, choc::span<pool_ref<heart::Expression>> args)
     {
         SOUL_ASSERT (f.functionType.isIntrinsic());
 
@@ -1576,18 +1576,18 @@ struct CPPGenerator
     }
 
     std::string createIntrinsicCall (const char* scalarFunction, const char* vectorFunction,
-                                     ArrayView<pool_ref<heart::Expression>> args)
+                                     choc::span<pool_ref<heart::Expression>> args)
     {
         const auto& argType = args.front()->getType();
         return (argType.isVector() ? vectorFunction : scalarFunction) + createArgList (args);
     }
 
-    std::string createIntrinsicCall (const std::string& functionName, ArrayView<pool_ref<heart::Expression>> args)
+    std::string createIntrinsicCall (const std::string& functionName, choc::span<pool_ref<heart::Expression>> args)
     {
         return functionName + createArgList (args);
     }
 
-    std::string createArgList (ArrayView<pool_ref<heart::Expression>> args)
+    std::string createArgList (choc::span<pool_ref<heart::Expression>> args)
     {
         if (args.empty())
             return "()";
@@ -1931,8 +1931,8 @@ struct CPPGenerator
     }
 
     void printFunctionWithMultiLineParamList (const std::string functionDecl,
-                                              ArrayView<std::string> paramTypes,
-                                              ArrayView<std::string> paramNames)
+                                              choc::span<std::string> paramTypes,
+                                              choc::span<std::string> paramNames)
     {
         PaddedStringTable table;
 

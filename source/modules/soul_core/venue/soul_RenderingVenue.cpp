@@ -298,12 +298,12 @@ struct RenderingVenue::Pimpl
 
         //==============================================================================
         // TODO: performer access needs locking
-        ArrayView<const EndpointDetails> getInputEndpoints() override       { return performer->getInputEndpoints(); }
-        ArrayView<const EndpointDetails> getOutputEndpoints() override      { return performer->getOutputEndpoints(); }
+        choc::span<const EndpointDetails> getInputEndpoints() override      { return performer->getInputEndpoints(); }
+        choc::span<const EndpointDetails> getOutputEndpoints() override     { return performer->getOutputEndpoints(); }
 
         bool connectExternalEndpoint (EndpointID, EndpointID) override      { return false; }
 
-        ArrayView<const ExternalVariable> getExternalVariables() override                      { return performer->getExternalVariables(); }
+        choc::span<const ExternalVariable> getExternalVariables() override                     { return performer->getExternalVariables(); }
         bool setExternalVariable (const char* name, const choc::value::ValueView& v) override  { return performer->setExternalVariable (name, v); }
 
         //==============================================================================
@@ -524,8 +524,8 @@ bool RenderingVenue::createSession (SessionReadyCallback callback)
     return pimpl->createSession (std::move (callback));
 }
 
-ArrayView<const EndpointDetails> RenderingVenue::getExternalInputEndpoints()    { return {}; }
-ArrayView<const EndpointDetails> RenderingVenue::getExternalOutputEndpoints()   { return {}; }
+choc::span<const EndpointDetails> RenderingVenue::getExternalInputEndpoints()    { return {}; }
+choc::span<const EndpointDetails> RenderingVenue::getExternalOutputEndpoints()   { return {}; }
 
 const char* RenderingVenue::render (uint32_t numFrames)
 {

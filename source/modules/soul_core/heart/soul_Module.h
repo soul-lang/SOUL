@@ -36,7 +36,7 @@ public:
         Functions (Module& m) : module (m) {}
 
         size_t size() const;
-        ArrayView<pool_ref<heart::Function>> get() const;
+        choc::span<pool_ref<heart::Function>> get() const;
         pool_ptr<heart::Function> findRunFunction() const;
         heart::Function& getRunFunction() const;
         heart::Function& get (std::string_view name) const;
@@ -63,7 +63,7 @@ public:
     {
     public:
         size_t size() const;
-        ArrayView<pool_ref<heart::Variable>> get() const;
+        choc::span<pool_ref<heart::Variable>> get() const;
         pool_ptr<heart::Variable> find (std::string_view name) const;
         void add (heart::Variable&);
         void clear();
@@ -83,7 +83,7 @@ public:
     {
     public:
         size_t size() const;
-        ArrayView<StructurePtr> get() const;
+        choc::span<StructurePtr> get() const;
         Structure& add (std::string name);
         Structure& add (Structure&);
         Structure& addCopy (Structure&);

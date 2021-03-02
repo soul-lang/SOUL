@@ -954,7 +954,7 @@ private:
         errorLocation.throwError (Errors::unknownFunction (name));
     }
 
-    static bool functionArgTypesMatch (const heart::Function& fn, ArrayView<Type> argTypes)
+    static bool functionArgTypesMatch (const heart::Function& fn, choc::span<Type> argTypes)
     {
         auto numParams = fn.parameters.size();
 
@@ -968,7 +968,7 @@ private:
         return true;
     }
 
-    pool_ptr<heart::Function> findFunction (const std::string& name, ArrayView<Type> argTypes)
+    pool_ptr<heart::Function> findFunction (const std::string& name, choc::span<Type> argTypes)
     {
         if (! containsChar (name, ':'))
         {

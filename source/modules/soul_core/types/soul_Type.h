@@ -88,7 +88,7 @@ struct Type  final
     bool isEqual (const Type&, int comparisonFlags) const;
     bool isIdentical (const Type&) const;
     bool hasIdenticalLayout (const Type&) const;
-    bool isPresentIn (ArrayView<Type> types) const;
+    bool isPresentIn (choc::span<Type> types) const;
 
     //==============================================================================
     uint64_t getPackedSizeInBytes() const;
@@ -282,7 +282,7 @@ struct SubElementPath
 
     TypeAndOffset getElement (const Type& parentType) const;
 
-    ArrayView<size_t> getPath() const;
+    choc::span<size_t> getPath() const;
 
 private:
     ArrayWithPreallocation<size_t, 4> indexes;

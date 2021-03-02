@@ -55,10 +55,10 @@ struct SourceCodeOperations
     void clear();
     bool reload (CompileMessageList&, CodeLocation code, ApplyModificationFn applyModificationFn);
 
-    ArrayView<ModuleDeclaration> getAllModules() const      { return allModules; }
-    ArrayView<ModuleDeclaration> getProcessors() const      { return processors; }
-    ArrayView<ModuleDeclaration> getGraphs() const          { return graphs; }
-    ArrayView<ModuleDeclaration> getNamespaces() const      { return namespaces; }
+    choc::span<ModuleDeclaration> getAllModules() const      { return allModules; }
+    choc::span<ModuleDeclaration> getProcessors() const      { return processors; }
+    choc::span<ModuleDeclaration> getGraphs() const          { return graphs; }
+    choc::span<ModuleDeclaration> getNamespaces() const      { return namespaces; }
 
     void removeProcessor (AST::ProcessorBase&);
     void addProcessor (AST::ProcessorBase&);

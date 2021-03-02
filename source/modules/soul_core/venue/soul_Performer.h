@@ -61,17 +61,17 @@ public:
     /** When a program has been loaded, this returns a list of the input endpoints that
         the program provides.
     */
-    virtual ArrayView<const EndpointDetails> getInputEndpoints() noexcept = 0;
+    virtual choc::span<const EndpointDetails> getInputEndpoints() noexcept = 0;
 
     /** When a program has been loaded, this returns a list of the output endpoints that
         the program provides.
     */
-    virtual ArrayView<const EndpointDetails> getOutputEndpoints() noexcept = 0;
+    virtual choc::span<const EndpointDetails> getOutputEndpoints() noexcept = 0;
 
     /** Returns the list of external variables that need to be resolved before a loaded
         program can be linked.
     */
-    virtual ArrayView<const ExternalVariable> getExternalVariables() noexcept = 0;
+    virtual choc::span<const ExternalVariable> getExternalVariables() noexcept = 0;
 
     /** Set the value of an external in the loaded program. */
     virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) noexcept = 0;
@@ -267,15 +267,15 @@ struct PerformerWrapper  : public soul::Performer
     PerformerWrapper (std::unique_ptr<soul::Performer> p) : performer (std::move (p)) {}
 
     bool load (soul::CompileMessageList& list, const soul::Program& p) noexcept override                                    { return performer->load (list, p); }
-    soul::ArrayView<const soul::EndpointDetails> getInputEndpoints() noexcept override                                      { return performer->getInputEndpoints(); }
-    soul::ArrayView<const soul::EndpointDetails> getOutputEndpoints() noexcept override                                     { return performer->getOutputEndpoints(); }
+    choc::span<const soul::EndpointDetails> getInputEndpoints() noexcept override                                           { return performer->getInputEndpoints(); }
+    choc::span<const soul::EndpointDetails> getOutputEndpoints() noexcept override                                          { return performer->getOutputEndpoints(); }
     void unload() noexcept override                                                                                         { performer->unload(); }
     void reset() noexcept override                                                                                          { performer->reset(); }
     bool isLoaded() noexcept override                                                                                       { return performer->isLoaded(); }
     bool link (soul::CompileMessageList& ml, const soul::BuildSettings& s, soul::LinkerCache* c) noexcept override          { return performer->link (ml, s, c); }
     bool isLinked() noexcept override                                                                                       { return performer->isLinked(); }
     soul::EndpointHandle getEndpointHandle (const soul::EndpointID& e) noexcept override                                    { return performer->getEndpointHandle (e); }
-    soul::ArrayView<const soul::ExternalVariable> getExternalVariables() noexcept override                                  { return performer->getExternalVariables(); }
+    choc::span<const soul::ExternalVariable> getExternalVariables() noexcept override                                       { return performer->getExternalVariables(); }
     bool setExternalVariable (const char* name, const choc::value::ValueView& v) noexcept override                          { return performer->setExternalVariable (name, std::move (v)); }
     void setNextInputStreamFrames (soul::EndpointHandle h, const choc::value::ValueView& v) noexcept override               { performer->setNextInputStreamFrames (h, v); }
     void setSparseInputStreamTarget (soul::EndpointHandle h, const choc::value::ValueView& v, uint32_t t) noexcept override { performer->setSparseInputStreamTarget (h, v, t); }

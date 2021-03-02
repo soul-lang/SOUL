@@ -275,7 +275,7 @@ HashBuilder& HashBuilder::operator<< (const std::string& s) noexcept
     return *this;
 }
 
-HashBuilder& HashBuilder::operator<< (ArrayView<char> s) noexcept
+HashBuilder& HashBuilder::operator<< (choc::span<char> s) noexcept
 {
     for (auto c : s)
         *this << c;

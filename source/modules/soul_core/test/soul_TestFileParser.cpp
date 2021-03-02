@@ -244,7 +244,7 @@ struct TestFileParser::TestList
             return Compiler::build (options.messages, build);
         }
 
-        static std::string rebuildCodeFromLines (ArrayView<std::string> lines, size_t initialPaddingLines)
+        static std::string rebuildCodeFromLines (choc::span<std::string> lines, size_t initialPaddingLines)
         {
             return repeatedCharacter ('\n', initialPaddingLines) + choc::text::joinStrings (lines, {});
         }
@@ -329,7 +329,7 @@ struct TestFileParser::TestList
                     CodeLocation().throwError (Errors::customRuntimeError ("Expected no input endpoints"));
 
                 bool shouldStop = false;
-                auto outputEndpoints = performer->getOutputEndpoints().toVector();
+                auto outputEndpoints = performer->getOutputEndpoints().createVector();
                 auto handleConsole = getConsoleHandlerFn (*performer, outputEndpoints);
                 auto handleOutput = getOutputHandlerFn (*performer, outputEndpoints, shouldStop);
 

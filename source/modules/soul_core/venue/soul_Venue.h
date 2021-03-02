@@ -77,12 +77,12 @@ public:
         /** When a program has been loaded, this returns a list of the input endpoints that
             the program provides.
         */
-        virtual ArrayView<const EndpointDetails> getInputEndpoints() = 0;
+        virtual choc::span<const EndpointDetails> getInputEndpoints() = 0;
 
         /** When a program has been loaded, this returns a list of the output endpoints that
             the program provides.
         */
-        virtual ArrayView<const EndpointDetails> getOutputEndpoints() = 0;
+        virtual choc::span<const EndpointDetails> getOutputEndpoints() = 0;
 
         /** Connects one of the venue's external endpoints to an endpoint in the currently loaded program. */
         virtual bool connectExternalEndpoint (EndpointID programEndpoint, EndpointID externalEndpoint) = 0;
@@ -90,7 +90,7 @@ public:
         /** Returns the list of external variables that need to be resolved before a loaded
             program can be linked.
         */
-        virtual ArrayView<const ExternalVariable> getExternalVariables() = 0;
+        virtual choc::span<const ExternalVariable> getExternalVariables() = 0;
 
         /** Set the value of an external in the loaded program. */
         virtual bool setExternalVariable (const char* name, const choc::value::ValueView& value) = 0;
@@ -210,10 +210,10 @@ public:
 
     //==============================================================================
     /** Returns a list of any external inputs that the venue provides. */
-    virtual ArrayView<const EndpointDetails> getExternalInputEndpoints() = 0;
+    virtual choc::span<const EndpointDetails> getExternalInputEndpoints() = 0;
 
     /** Returns a list of any external outputs that the venue provides. */
-    virtual ArrayView<const EndpointDetails> getExternalOutputEndpoints() = 0;
+    virtual choc::span<const EndpointDetails> getExternalOutputEndpoints() = 0;
 };
 
 

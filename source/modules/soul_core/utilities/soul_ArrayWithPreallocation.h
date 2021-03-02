@@ -172,8 +172,8 @@ struct ArrayWithPreallocation
     size_t size() const noexcept                            { return numActive; }
     bool empty() const noexcept                             { return numActive == 0; }
 
-    bool operator== (ArrayView<Item> other) const           { return ArrayView<Item> (*this) == other; }
-    bool operator!= (ArrayView<Item> other) const           { return ArrayView<Item> (*this) != other; }
+    bool operator== (choc::span<Item> other) const          { return choc::span<Item> (*this) == other; }
+    bool operator!= (choc::span<Item> other) const          { return choc::span<Item> (*this) != other; }
 
     void push_back (const Item& item)                       { reserve (numActive + 1); new (items + numActive) Item (item); ++numActive; }
     void push_back (Item&& item)                            { reserve (numActive + 1); new (items + numActive) Item (std::move (item)); ++numActive; }

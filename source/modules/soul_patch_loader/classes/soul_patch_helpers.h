@@ -33,7 +33,7 @@ struct ParameterList
 {
     ParameterList() = default;
 
-    void rebuildList (ArrayView<EndpointDetails> endpoints, ParameterStateList& stateList)
+    void rebuildList (choc::span<EndpointDetails> endpoints, ParameterStateList& stateList)
     {
         parameters.clear();
         parameters.reserve (endpoints.size());

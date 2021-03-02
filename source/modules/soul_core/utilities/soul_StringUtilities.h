@@ -144,7 +144,7 @@ struct HashBuilder
 {
     HashBuilder& operator<< (char) noexcept;
     HashBuilder& operator<< (const std::string&) noexcept;
-    HashBuilder& operator<< (ArrayView<char>) noexcept;
+    HashBuilder& operator<< (choc::span<char>) noexcept;
 
     /// Returns a 32 char hex number
     std::string toString() const;

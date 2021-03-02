@@ -169,7 +169,7 @@ struct SanityCheckPass  final
         }
     }
 
-    static void expectSilentCastPossible (const AST::Context& context, ArrayView<Type> targetTypes, AST::Expression& source)
+    static void expectSilentCastPossible (const AST::Context& context, choc::span<Type> targetTypes, AST::Expression& source)
     {
         auto sourceType = source.getResultType();
 
@@ -270,7 +270,7 @@ struct SanityCheckPass  final
         latency.context.throwError (Errors::latencyMustBeConstInteger());
     }
 
-    static void checkForDuplicateFunctions (ArrayView<pool_ref<AST::Function>> functions)
+    static void checkForDuplicateFunctions (choc::span<pool_ref<AST::Function>> functions)
     {
         std::vector<std::string> functionSigs;
         functionSigs.reserve (functions.size());

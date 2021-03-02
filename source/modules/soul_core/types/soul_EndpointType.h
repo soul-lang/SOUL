@@ -149,7 +149,7 @@ inline EndpointDetails endpointToEndpointDetails (const Endpoint& e)
     return d;
 }
 
-inline std::vector<EndpointDetails> endpointToEndpointDetails (ArrayView<Endpoint> endpoints)
+inline std::vector<EndpointDetails> endpointToEndpointDetails (choc::span<Endpoint> endpoints)
 {
     std::vector<EndpointDetails> results;
     results.reserve (endpoints.size());
@@ -174,7 +174,7 @@ inline Endpoint endpointDetailsToEndpoint (const EndpointDetails& d)
     return e;
 }
 
-inline std::vector<Endpoint> endpointDetailsToEndpoint (ArrayView<EndpointDetails> endpoints)
+inline std::vector<Endpoint> endpointDetailsToEndpoint (choc::span<EndpointDetails> endpoints)
 {
     std::vector<Endpoint> results;
     results.reserve (endpoints.size());

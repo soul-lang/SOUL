@@ -70,6 +70,7 @@
 
 #define CHOC_ASSERT(x)  SOUL_ASSERT(x)
 
+#include "../../../include/soul/3rdParty/choc/containers/choc_Span.h"
 #include "../../../include/soul/3rdParty/choc/containers/choc_Value.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_StringUtilities.h"
 #include "../../../include/soul/3rdParty/choc/text/choc_JSON.h"

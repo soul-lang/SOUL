@@ -241,7 +241,7 @@ struct ASTUtilities
     }
 
     static AST::StaticAssertion& createStaticAssertion (const AST::Context& context, AST::Allocator& allocator,
-                                                        ArrayView<pool_ref<AST::Expression>> args)
+                                                        choc::span<pool_ref<AST::Expression>> args)
     {
         auto numArgs = args.size();
 
@@ -346,7 +346,7 @@ private:
     }
 
     static std::string makeUniqueEndpointName (AST::ProcessorBase& parent,
-                                               ArrayView<AST::ChildEndpointPath::PathSection> path)
+                                               choc::span<AST::ChildEndpointPath::PathSection> path)
     {
         std::string root = "expose";
 
@@ -392,7 +392,7 @@ private:
     static void resolveEndpoint (AST::Allocator& allocator,
                                  AST::Graph& parentGraph,
                                  AST::EndpointDeclaration& hoistedEndpoint,
-                                 ArrayView<AST::ChildEndpointPath::PathSection> path)
+                                 choc::span<AST::ChildEndpointPath::PathSection> path)
     {
         SOUL_ASSERT (path.size() > 1);
 

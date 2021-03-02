@@ -32,7 +32,7 @@ namespace soul
 struct SourceCodeModel
 {
     //==============================================================================
-    bool rebuild (CompileMessageList&, ArrayView<SourceCodeText::Ptr> files);
+    bool rebuild (CompileMessageList&, choc::span<SourceCodeText::Ptr> files);
 
     //==============================================================================
     struct Expression

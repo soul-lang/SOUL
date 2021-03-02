@@ -34,6 +34,7 @@
 #include "../text/choc_UTF8.h"
 #include "../math/choc_MathHelpers.h"
 #include "../containers/choc_DirtyList.h"
+#include "../containers/choc_Span.h"
 #include "../containers/choc_Value.h"
 #include "../containers/choc_MultipleReaderMultipleWriterFIFO.h"
 #include "../containers/choc_SingleReaderMultipleWriterFIFO.h"
@@ -42,6 +43,12 @@
 #include "../audio/choc_MIDI.h"
 #include "../audio/choc_MIDIFile.h"
 #include "../audio/choc_SampleBuffers.h"
+
+#ifndef CHOC_JAVASCRIPT_IMPLEMENTATION
+ #define CHOC_JAVASCRIPT_IMPLEMENTATION 1
+#endif
+
+#include "../javascript/choc_javascript.h"
 
 /**
     To keep things simpole for users, I've just shoved all the tests for everything into this
@@ -90,14 +97,15 @@ bool runAllTests (TestProgress&);
 // have a look at the tests for choc functions, and it should be pretty obvious how the
 // macros are supposed to be used.
 
-#define CHOC_CATEGORY(category)       progress.startCategory (#category);
-#define CHOC_TEST(name)               ScopedTest scopedTest_ ## __LINE__ (progress, #name);
-#define CHOC_FAIL(message)            progress.fail (__FILE__, __LINE__, message);
-#define CHOC_EXPECT_TRUE(b)           progress.check (b, __FILE__, __LINE__, "Expected " #b);
-#define CHOC_EXPECT_FALSE(b)          progress.check (! (b), __FILE__, __LINE__, "Expected ! " #b);
-#define CHOC_EXPECT_EQ(a, b)          { auto x = a; auto y = b; progress.check (x == y, __FILE__, __LINE__, "Expected " #a " (" + choc::test::convertToString (x) + ") == " #b " (" + choc::test::convertToString (y) + ")"); }
-#define CHOC_EXPECT_NE(a, b)          { auto x = a; auto y = b; progress.check (x != y, __FILE__, __LINE__, "Expected " #a " (" + choc::test::convertToString (x) + ") != " #b); }
-#define CHOC_EXPECT_NEAR(a, b, diff)  { auto x = a; auto y = b; auto d = diff; progress.check (std::abs (x - y) <= d, __FILE__, __LINE__, #a " (" + choc::test::convertToString (x) + ") and " #b " (" + choc::test::convertToString (y) + ") differ by more than " + choc::test::convertToString (d)); }
+#define CHOC_CATEGORY(category)          progress.startCategory (#category);
+#define CHOC_TEST(name)                  ScopedTest scopedTest_ ## __LINE__ (progress, #name);
+#define CHOC_FAIL(message)               progress.fail (__FILE__, __LINE__, message);
+#define CHOC_EXPECT_TRUE(b)              progress.check (b, __FILE__, __LINE__, "Expected " #b);
+#define CHOC_EXPECT_FALSE(b)             progress.check (! (b), __FILE__, __LINE__, "Expected ! " #b);
+#define CHOC_EXPECT_EQ(a, b)             { auto x = a; auto y = b; progress.check (x == y, __FILE__, __LINE__, "Expected " #a " (" + choc::test::convertToString (x) + ") == " #b " (" + choc::test::convertToString (y) + ")"); }
+#define CHOC_EXPECT_NE(a, b)             { auto x = a; auto y = b; progress.check (x != y, __FILE__, __LINE__, "Expected " #a " (" + choc::test::convertToString (x) + ") != " #b); }
+#define CHOC_EXPECT_NEAR(a, b, diff)     { auto x = a; auto y = b; auto d = diff; progress.check (std::abs (x - y) <= d, __FILE__, __LINE__, #a " (" + choc::test::convertToString (x) + ") and " #b " (" + choc::test::convertToString (y) + ") differ by more than " + choc::test::convertToString (d)); }
+#define CHOC_CATCH_UNEXPECTED_EXCEPTION  catch (...) { CHOC_FAIL ("Unexpected exception thrown"); }
 
 
 //==============================================================================
@@ -193,7 +201,29 @@ std::string convertToString (Type n)
 }
 
 //==============================================================================
+//
+//  The tests themselves....
+//
 //==============================================================================
+inline void testContainerUtils (TestProgress& progress)
+{
+    CHOC_CATEGORY (Containers);
+
+    {
+        CHOC_TEST (Span)
+
+        std::vector<int>  v { 1, 2, 3 };
+        int a[] = { 1, 2, 3 };
+
+        CHOC_EXPECT_TRUE (choc::span<int>().empty());
+        CHOC_EXPECT_FALSE (choc::span<int> (a).empty());
+        CHOC_EXPECT_TRUE (choc::span<int> (v).size() == 3);
+        CHOC_EXPECT_TRUE (choc::span<int> (v).tail().size() == 2);
+        CHOC_EXPECT_TRUE (choc::span<int> (v).createVector().size() == 3);
+        CHOC_EXPECT_TRUE (choc::span<int> (v) == choc::span<int> (a));
+    }
+}
+
 inline void testStringUtilities (TestProgress& progress)
 {
     CHOC_CATEGORY (Strings);
@@ -1376,10 +1406,10 @@ inline void testMIDIFiles (TestProgress& progress)
 {
     auto simpleHash = [] (const std::string& s)
     {
-        int64_t n = 123;
+        uint64_t n = 123;
 
         for (auto c : s)
-            n = (n * 127) + c;
+            n = (n * 127) + (uint8_t) c;
 
         return (uint64_t) n;
     };
@@ -1417,7 +1447,7 @@ inline void testMIDIFiles (TestProgress& progress)
             // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
             CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output));
         }
-        catch (...) { CHOC_FAIL ("Exception thrown"); }
+        CHOC_CATCH_UNEXPECTED_EXCEPTION
 
         testData[51] = 0x90;
 
@@ -1431,8 +1461,92 @@ inline void testMIDIFiles (TestProgress& progress)
 }
 
 //==============================================================================
+inline void testJavascript (TestProgress& progress)
+{
+    CHOC_CATEGORY (Javascript);
+
+    {
+        CHOC_TEST (Basics)
+
+        try
+        {
+            choc::javascript::Context context;
+
+            CHOC_EXPECT_EQ (3, context.evaluate ("1 + 2").get<int>());
+            CHOC_EXPECT_EQ (3.5, context.evaluate ("1 + 2.5").get<double>());
+            CHOC_EXPECT_EQ ("hello", context.evaluate ("\"hello\"").get<std::string>());
+
+            context.evaluate ("const x = 100; function foo() { return 200; }");
+            CHOC_EXPECT_EQ (300, context.evaluate ("x + foo()").get<int>());
+
+            context.evaluate ("const a = [1, 2, 3, [4, 5]]");
+            CHOC_EXPECT_EQ ("[1, 2, 3, [4, 5]]", choc::json::toString (context.evaluate ("a")));
+
+            context.evaluate ("const b = [1, 2, 3, { x: 123, y: 4.3, z: [2, 3], s: \"abc\" }, [4, 5], {}]");
+            CHOC_EXPECT_EQ ("[1, 2, 3, {\"x\": 123, \"y\": 4.3, \"z\": [2, 3], \"s\": \"abc\"}, [4, 5], {}]", choc::json::toString (context.evaluate ("b")));
+        }
+        CHOC_CATCH_UNEXPECTED_EXCEPTION
+    }
+
+    {
+        CHOC_TEST (Errors)
+
+        try
+        {
+            choc::javascript::Context context;
+            context.evaluate ("function foo() { dfgdfsg> }");
+            CHOC_FAIL ("Expected an error");
+        }
+        catch (const choc::javascript::Error& e)
+        {
+            CHOC_EXPECT_EQ ("SyntaxError: parse error (line 1, end of input)\n    at [anon] (eval:1) internal\n    at [anon] (duk_js_compiler.c:3740) internal", e.message);
+        }
+    }
+
+    {
+        CHOC_TEST (NativeBindings)
+
+        try
+        {
+            choc::javascript::Context context;
+
+            context.registerFunction ("addUp", [] (const choc::value::Value* args, size_t numArgs) -> choc::value::Value
+                                                   {
+                                                       int total = 0;
+                                                       for (size_t i = 0; i < numArgs; ++i)
+                                                           total += args[i].get<int>();
+
+                                                       return choc::value::createInt32 (total);
+                                                   });
+
+            context.registerFunction ("concat", [] (const choc::value::Value* args, size_t numArgs) -> choc::value::Value
+                                                   {
+                                                       std::string s;
+                                                       for (size_t i = 0; i < numArgs; ++i)
+                                                           s += args[i].get<std::string>();
+
+                                                       return choc::value::createString (s);
+                                                   });
+
+            CHOC_EXPECT_EQ (50, context.evaluate ("addUp (11, 12, 13, 14)").get<int>());
+            CHOC_EXPECT_EQ (45, context.evaluate ("addUp (11, 12, addUp (1, 1)) + addUp (5, 15)").get<int>());
+            CHOC_EXPECT_EQ ("abcdef", context.evaluate ("concat (\"abc\", \"def\")").get<std::string>());
+            CHOC_EXPECT_TRUE (context.evaluate ("const xx = concat (\"abc\", \"def\")").isVoid());
+
+            choc::value::Value args[] = { choc::value::createInt32 (100), choc::value::createInt32 (200), choc::value::createInt32 (300) };
+            CHOC_EXPECT_EQ (0, context.invoke ("addUp", (const choc::value::ValueView*) nullptr, 0).get<int>());
+            CHOC_EXPECT_EQ (100, context.invoke ("addUp", args, 1).get<int>());
+            CHOC_EXPECT_EQ (300, context.invoke ("addUp", args, 2).get<int>());
+            CHOC_EXPECT_EQ (600, context.invoke ("addUp", args, 3).get<int>());
+        }
+        CHOC_CATCH_UNEXPECTED_EXCEPTION
+    }
+}
+
+//==============================================================================
 inline bool runAllTests (TestProgress& progress)
 {
+    testContainerUtils (progress);
     testStringUtilities (progress);
     testValues (progress);
     testJSON (progress);
@@ -1440,6 +1554,7 @@ inline bool runAllTests (TestProgress& progress)
     testChannelSets (progress);
     testFIFOs (progress);
     testMIDIFiles (progress);
+    testJavascript (progress);
 
     progress.printReport();
     return progress.numFails == 0;

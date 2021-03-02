@@ -63,7 +63,7 @@ namespace soul
     };
 
     /// Used for compile-time evaluation of an intrinsic function
-    Value performIntrinsic (IntrinsicType, ArrayView<Value> args);
+    Value performIntrinsic (IntrinsicType, choc::span<Value> args);
 
     /// All intrinsics have function declarations in a dedicated namespace with this name.
     constexpr const char* getIntrinsicsNamespaceName()              { return "soul::intrinsics"; }

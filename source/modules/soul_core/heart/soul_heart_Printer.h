@@ -246,7 +246,7 @@ private:
                 printFunction (f);
         }
 
-        void printParameters (ArrayView<pool_ref<Variable>> parameters)
+        void printParameters (choc::span<pool_ref<Variable>> parameters)
         {
             if (parameters.empty())
             {
@@ -605,7 +605,7 @@ private:
             printExpression (a.source);
         }
 
-        void printArgList (const ArrayView<pool_ref<heart::Expression>>& args)
+        void printArgList (const choc::span<pool_ref<heart::Expression>>& args)
         {
             if (args.empty())
             {

@@ -2369,8 +2369,8 @@ private:
             PossibleFunction() = delete;
             PossibleFunction (PossibleFunction&&) = default;
 
-            PossibleFunction (AST::Function& f, ArrayView<Type> argTypes,
-                              ArrayView<pool_ptr<AST::Constant>> constantArgValues)
+            PossibleFunction (AST::Function& f, choc::span<Type> argTypes,
+                              choc::span<pool_ptr<AST::Constant>> constantArgValues)
                 : function (f)
             {
                 for (size_t i = 0; i < argTypes.size(); ++i)
@@ -2499,12 +2499,12 @@ private:
             return results;
         }
 
-        static size_t countNumberOfExactMatches (ArrayView<PossibleFunction> matches)
+        static size_t countNumberOfExactMatches (choc::span<PossibleFunction> matches)
         {
             return (size_t) std::count_if (matches.begin(), matches.end(), [=] (const PossibleFunction& f) { return f.isExactMatch(); });
         }
 
-        static size_t countNumberOfMatchesWithCast (ArrayView<PossibleFunction> matches)
+        static size_t countNumberOfMatchesWithCast (choc::span<PossibleFunction> matches)
         {
             return (size_t) std::count_if (matches.begin(), matches.end(), [=] (const PossibleFunction& f) { return f.requiresCast && ! f.isImpossible; });
         }
@@ -2714,7 +2714,7 @@ private:
 
         pool_ptr<AST::Function> getOrCreateSpecialisedFunction (AST::CallOrCast& call,
                                                                 AST::Function& genericFunction,
-                                                                ArrayView<Type> callerArgumentTypes,
+                                                                choc::span<Type> callerArgumentTypes,
                                                                 bool shouldIgnoreErrors)
         {
             auto parentScope = genericFunction.getParentScope();
@@ -2741,7 +2741,7 @@ private:
             return {};
         }
 
-        bool findGenericFunctionTypes (AST::CallOrCast& call, AST::Function& function, ArrayView<Type> callerArgumentTypes, AST::TypeArray& resolvedTypes, bool shouldIgnoreErrors)
+        bool findGenericFunctionTypes (AST::CallOrCast& call, AST::Function& function, choc::span<Type> callerArgumentTypes, AST::TypeArray& resolvedTypes, bool shouldIgnoreErrors)
         {
             for (auto wildcardToResolve : function.genericWildcards)
             {

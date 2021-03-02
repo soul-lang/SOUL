@@ -176,7 +176,7 @@ bool Type::hasIdenticalLayout (const Type& other) const
     return isEqual (other, ignoreVectorSize1 | duckTypeStructures | ignoreConst);
 }
 
-bool Type::isPresentIn (ArrayView<Type> types) const
+bool Type::isPresentIn (choc::span<Type> types) const
 {
     for (auto& t : types)
         if (isIdentical (t))
@@ -545,7 +545,7 @@ SubElementPath::~SubElementPath() = default;
 SubElementPath::SubElementPath (size_t index)                     { indexes.push_back (index); }
 SubElementPath& SubElementPath::operator+= (size_t index)         { indexes.push_back (index); return *this; }
 SubElementPath SubElementPath::operator+ (size_t index) const     { auto p = *this; return p += index; }
-ArrayView<size_t> SubElementPath::getPath() const                 { return indexes; }
+choc::span<size_t> SubElementPath::getPath() const                { return indexes; }
 
 SubElementPath::TypeAndOffset SubElementPath::getElement (const Type& parentType) const
 {

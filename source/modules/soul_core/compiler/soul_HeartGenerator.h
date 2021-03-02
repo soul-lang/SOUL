@@ -27,8 +27,8 @@ namespace soul
 */
 struct HEARTGenerator  : public ASTVisitor
 {
-    static void build (ArrayView<pool_ref<AST::ModuleBase>> sourceModules,
-                       ArrayView<pool_ref<Module>> targetModules,
+    static void build (choc::span<pool_ref<AST::ModuleBase>> sourceModules,
+                       choc::span<pool_ref<Module>> targetModules,
                        uint32_t maxNestedExpressionDepth = 255)
     {
         for (auto& m : sourceModules)
@@ -377,13 +377,13 @@ private:
                                                             }));
     }
 
-    void generateStructs (ArrayView<pool_ref<AST::StructDeclaration>> structs)
+    void generateStructs (choc::span<pool_ref<AST::StructDeclaration>> structs)
     {
         for (auto& s : structs)
             module.structs.add (s->getStruct());
     }
 
-    void generateFunctions (ArrayView<pool_ref<AST::Function>> functions)
+    void generateFunctions (choc::span<pool_ref<AST::Function>> functions)
     {
         for (auto& f : functions)
             if (! f->isGeneric())
@@ -1010,7 +1010,7 @@ private:
         createAssignmentToCurrentTarget (c);
     }
 
-    void initialiseArrayOrStructElements (heart::Expression& target, ArrayView<pool_ref<AST::Expression>> list,
+    void initialiseArrayOrStructElements (heart::Expression& target, choc::span<pool_ref<AST::Expression>> list,
                                           const AST::Context& errorLocation)
     {
         const auto& targetType = target.getType();
@@ -1134,7 +1134,7 @@ private:
         builder.addAdvance (a.context.location);
     }
 
-    void createSeriesOfWrites (AST::Expression& target, ArrayView<pool_ref<AST::Expression>> values)
+    void createSeriesOfWrites (AST::Expression& target, choc::span<pool_ref<AST::Expression>> values)
     {
         // Two choices - the target can be an output declaration, or an element of an output declaration
         if (auto output = cast<AST::OutputEndpointRef> (target))

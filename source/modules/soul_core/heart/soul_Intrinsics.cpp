@@ -29,19 +29,19 @@ namespace soul
 namespace CompileTimeIntrinsicEvaluation
 {
     template <typename ReturnType, typename ArgType>
-    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType))
+    static Value perform (choc::span<Value> args, ReturnType (*fn)(ArgType))
     {
         SOUL_ASSERT (args.size() == 1); return Value (fn (static_cast<ArgType> (args.front())));
     }
 
     template <typename ReturnType, typename ArgType>
-    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType, ArgType))
+    static Value perform (choc::span<Value> args, ReturnType (*fn)(ArgType, ArgType))
     {
         SOUL_ASSERT (args.size() == 2); return Value (fn (static_cast<ArgType> (args[0]), static_cast<ArgType> (args[1])));
     }
 
     template <typename ReturnType, typename ArgType>
-    static Value perform (ArrayView<Value> args, ReturnType (*fn)(ArgType, ArgType, ArgType))
+    static Value perform (choc::span<Value> args, ReturnType (*fn)(ArgType, ArgType, ArgType))
     {
         SOUL_ASSERT (args.size() == 3); return Value (fn (static_cast<ArgType> (args[0]), static_cast<ArgType> (args[1]), static_cast<ArgType> (args[2])));
     }
@@ -82,7 +82,7 @@ namespace CompileTimeIntrinsicEvaluation
     static bool     isnan_d        (double n)                              { return std::isnan (n); }
     static bool     isinf_d        (double n)                              { return std::isinf (n); }
 
-    Value perform (IntrinsicType i, ArrayView<Value> args, bool isFloat)
+    Value perform (IntrinsicType i, choc::span<Value> args, bool isFloat)
     {
         switch (i)
         {
@@ -129,7 +129,7 @@ namespace CompileTimeIntrinsicEvaluation
     }
 }
 
-Value performIntrinsic (IntrinsicType i, ArrayView<Value> args)
+Value performIntrinsic (IntrinsicType i, choc::span<Value> args)
 {
     auto argType = args.front().getType();
 

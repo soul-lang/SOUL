@@ -122,7 +122,7 @@ struct AllObjectVisitor  : public ASTVisitor
     virtual void checkObject (AST::ASTObject&) = 0;
 };
 
-std::vector<pool_ref<AST::ASTObject>> SourceCodeUtilities::findASTObjectsAt (ArrayView<pool_ref<AST::ModuleBase>> modulesToSearch,
+std::vector<pool_ref<AST::ASTObject>> SourceCodeUtilities::findASTObjectsAt (choc::span<pool_ref<AST::ModuleBase>> modulesToSearch,
                                                                              CodeLocation targetLocation)
 {
     struct FindLocationVisitor  : public AllObjectVisitor
