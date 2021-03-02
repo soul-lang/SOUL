@@ -726,24 +726,59 @@ private:
         FunctionBuilder builder (*module);
         FunctionParseState state (f);
 
-        if (! matchIf (HEARTOperator::closeBrace))
-            scanBlocks (state, builder);
+        if (matchIf (HEARTOperator::closeBrace))
+            f.location.throwError (Errors::emptyFunction (f.name));
+
+        scanBlocks (state, builder);
 
         builder.beginFunction (f);
 
-        for (auto& b : state.blocks)
+        while (true)
         {
-            resetPosition (b.code);
-            builder.beginBlock (b.block);
-            state.setCurrentBlock (b);
+            int blocksProcessed = 0;
+            int errors = 0;
 
-            while (! parseTerminator (state, builder))
-                if (! parseStatement (state, builder))
-                    throwError (Errors::expectedStatement());
+            CompileMessageGroup firstError;
+
+            {
+                CompileMessageHandler handler ([&] (const CompileMessageGroup& message)
+                                               {
+                                                   if (firstError.messages.empty())
+                                                       firstError = message;
+                                               });
+
+                for (auto& b : state.blocks)
+                {
+                    if (b.block.processed)
+                        continue;
+
+                    resetPosition (b.code);
+                    builder.beginBlock (b.block);
+                    state.setCurrentBlock (b);
+
+                    try
+                    {
+                        while (! parseTerminator (state, builder))
+                            if (! parseStatement (state, builder))
+                                throwError (Errors::expectedStatement());
+
+                        blocksProcessed++;
+                        b.block.processed = true;
+                    }
+                    catch (const AbortCompilationException& message)
+                    {
+                        b.block.statements.clear();
+                        errors++;
+                    }
+                }
+            }
+
+            if (errors == 0)
+                break;
+
+            if (blocksProcessed == 0)
+                soul::throwError (firstError);
         }
-
-        if (f.blocks.empty())
-            f.location.throwError (Errors::emptyFunction (f.name));
 
         builder.endFunction();
     }
@@ -1322,6 +1357,9 @@ private:
             auto errorPos = location;
             auto name = readQualifiedVariableIdentifier();
 
+            if (name == "tmpVar")
+                findVariable (state, name);
+            
             if (auto v = findVariable (state, name))
                 return parseSuffixOperators (state, *v);
 

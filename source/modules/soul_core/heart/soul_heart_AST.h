@@ -1051,6 +1051,7 @@ struct heart
         std::vector<pool_ref<Block>> predecessors;
         bool doNotOptimiseAway = false;
         TemporaryDataHolder tempData;
+        bool processed = false;
     };
 
     struct Statement  : public Object

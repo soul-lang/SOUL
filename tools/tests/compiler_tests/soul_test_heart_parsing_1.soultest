@@ -116,22 +116,22 @@ processor test
 
 namespace tests
 {
-    function test() -> bool
+    function myTest() -> bool
     {
     @block_0:
         branch @block_2;
     @block_1:
-        $i = int32[4] { 1, 2, 3, 4 };
-        return equals ($i[2], 0);
+        $tmpVar = int32[4] { 1, 2, 3, 4 };
+        return equals ($tmpVar[2], 0);
 
     @block_2:
         // $i hasn't been declared at this point since @block_1 hasn't been visited
-        $j = $i;
+        $j = $tmpVar;
 
-        branch_if equals ($i[2], 0) ? @block_1 : @block_3;
+        branch_if equals ($tmpVar[2], 0) ? @block_1 : @block_3;
 
     @block_3:
-        return equals ($i[2], 0);
+        return equals ($tmpVar[2], 0);
     }
 }
 

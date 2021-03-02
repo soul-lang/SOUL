@@ -74,3 +74,52 @@ processor gain [[ main: true ]]
       return;
   }
 }
+
+## error error: Cannot return reference type
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  output audioIn stream float32;
+
+  var int32 $i = 1;
+
+  function run() -> void
+  {
+    @block_0:
+      $j = call returnStateReference();
+      $j = add ($j, 1);
+      advance;
+      return;
+  }
+
+  function returnStateReference() -> int32&
+  {
+    @block_0:
+      return $i;
+  }
+}
+
+## error error: Cannot return reference type
+#SOUL 1
+
+processor gain [[ main: true ]]
+{
+  output audioIn stream float32;
+
+  function run() -> void
+  {
+    @block_0:
+      $j = call returnLocalReference();
+      $j = add ($j, 1);
+      advance;
+      return;
+  }
+
+  function returnLocalReference() -> int32&
+  {
+    @block_0:
+      $i = 0;
+      return $i;
+  }
+}

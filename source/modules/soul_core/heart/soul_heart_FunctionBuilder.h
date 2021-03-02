@@ -489,7 +489,9 @@ struct FunctionBuilder  : public BlockBuilder
     void beginBlock (pool_ptr<heart::Block> b)
     {
         SOUL_ASSERT (currentFunction != nullptr);
-        SOUL_ASSERT (currentBlock != b);
+
+        if (currentBlock == b)
+            return;
 
         if (b != nullptr && currentBlock != nullptr && ! currentBlock->isTerminated())
             return addBranch (*b, b);
@@ -498,8 +500,9 @@ struct FunctionBuilder  : public BlockBuilder
 
         if (b != nullptr)
         {
-            SOUL_ASSERT (heart::Utilities::findBlock (*currentFunction, b->name) == nullptr);
-            currentFunction->blocks.push_back (*b);
+            if (heart::Utilities::findBlock (*currentFunction, b->name) == nullptr)
+                currentFunction->blocks.push_back (*b);
+            
             lastStatementInCurrentBlock = b->statements.getLast();
         }
     }

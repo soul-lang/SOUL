@@ -23,7 +23,7 @@ namespace soul
 
 struct heart::Checker
 {
-    static void sanityCheck (const Program& program, const BuildSettings settings = {});
+    static void sanityCheck (const Program& program, const BuildSettings settings = {}, bool isFlattened = false);
     static void testHEARTRoundTrip (const Program& program);
 
     struct Impl;

@@ -23,9 +23,11 @@ namespace soul
 
 struct heart::Checker::Impl
 {
-    static void sanityCheck (const Program& program, const BuildSettings settings = {})
+    static void sanityCheck (const Program& program, const BuildSettings settings, bool isFlattened)
     {
+        ignoreUnused (isFlattened);
         ignoreUnused (program.getMainProcessor());
+
         sanityCheckModules (program);
         sanityCheckAdvanceAndStreamCalls (program);
         checkConnections (program);
@@ -34,6 +36,11 @@ struct heart::Checker::Impl
         checkBlockParameters (program);
         checkForCyclesInGraphs (program);
         checkStreamOperations (program);
+
+        if (! isFlattened)
+        {
+            checkFunctionReturnTypes (program);
+        }
     }
 
     static void sanityCheckModules (const Program& program)
@@ -364,6 +371,16 @@ struct heart::Checker::Impl
         }
     }
 
+    static void checkFunctionReturnTypes (const Program& program)
+    {
+        for (auto& m : program.getModules())
+        {
+            for (auto& f : m->functions.get())
+                if (f->returnType.isReference())
+                    f->location.throwError (Errors::cannotReturnReferenceType());
+        }
+    }
+
     static void checkBlockParameters (const Program& program)
     {
         for (auto& m : program.getModules())
@@ -430,9 +447,9 @@ struct heart::Checker::Impl
     }
 };
 
-void heart::Checker::sanityCheck (const Program& program, const BuildSettings settings)
+void heart::Checker::sanityCheck (const Program& program, const BuildSettings settings, bool isFlattened)
 {
-    heart::Checker::Impl::sanityCheck (program, settings);
+    heart::Checker::Impl::sanityCheck (program, settings, isFlattened);
 }
 
 void heart::Checker::testHEARTRoundTrip (const Program& program)
