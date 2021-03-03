@@ -30,6 +30,11 @@
 #include <algorithm>
 #include <memory>
 
+#ifndef CHOC_ASSERT
+ #include <assert.h>
+ #define CHOC_ASSERT(x)  assert(x);
+#endif
+
 namespace choc::value
 {
 
@@ -924,10 +929,6 @@ static Value createObject (std::string_view className, Members&&... members);
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
-
-#ifndef CHOC_ASSERT
- #define CHOC_ASSERT(x)  assert(x);
-#endif
 
 namespace
 {
