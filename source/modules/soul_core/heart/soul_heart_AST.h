@@ -109,7 +109,7 @@ struct heart
         template <typename Type>
         Identifier get (const Type& newString)                { return identifiers.get (newString); }
 
-        PoolAllocator pool;
+        choc::memory::Pool pool;
         Identifier::Pool identifiers;
     };
 

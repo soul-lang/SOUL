@@ -1437,15 +1437,19 @@ inline void testMIDIFiles (TestProgress& progress)
             mf.load (testData, sizeof (testData));
             CHOC_EXPECT_EQ (2u, mf.tracks.size());
 
-            std::string output;
+            std::string output1, output2;
 
             mf.iterateEvents ([&] (const choc::midi::Message& m, double time)
                               {
-                                  output += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
+                                  output1 += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
                               });
 
+            for (auto& e : mf.toSequence())
+                output2 += choc::text::floatToString (e.timeInSeconds, 3) + " " + e.message.toHexString() + "\n";
+
             // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
-            CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output));
+            CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output1));
+            CHOC_EXPECT_EQ (output1, output2);
         }
         CHOC_CATCH_UNEXPECTED_EXCEPTION
 

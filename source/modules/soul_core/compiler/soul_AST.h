@@ -162,11 +162,11 @@ struct AST
 
         void clear()
         {
-            pool.clear();
+            pool.reset();
             identifiers.clear();
         }
 
-        PoolAllocator pool;
+        choc::memory::Pool pool;
         Identifier::Pool identifiers;
         StringDictionary stringDictionary;
     };

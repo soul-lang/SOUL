@@ -32,8 +32,8 @@
 #include "choc_FloatToString.h"
 #include "../containers/choc_Value.h"
 
-#undef max
-#undef min
+#undef max   // It's never a smart idea to include any C headers before your C++ ones, as it
+#undef min   // risks polluting your namespace with all kinds of dangerous macros like these ones.
 
 namespace choc::json
 {

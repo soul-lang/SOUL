@@ -25,7 +25,7 @@
 #define CHOC_UTF8_HEADER_INCLUDED
 
 #include <cstddef>
-#include <cassert>
+#include "../platform/choc_Assert.h"
 
 namespace choc::text
 {
@@ -175,10 +175,6 @@ uint32_t createUnicodeFromHighAndLowSurrogates (uint32_t high, uint32_t low);
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
-
-#ifndef CHOC_ASSERT
- #define CHOC_ASSERT(x)  assert(x);
-#endif
 
 inline size_t UTF8Pointer::length() const
 {

@@ -21,11 +21,10 @@
 namespace soul
 {
 
-class PoolAllocator;
 template <typename Type> struct pool_ref;
 
 //==============================================================================
-/** A smart-pointer for objects which were created by a PoolAllocator.
+/** A smart-pointer for objects which were created by a choc::memory::Pool.
 
     Almost all the AST classes are pool_ptrs to avoid the horror of trying dealing with
     ownership within a huge spaghetti-like graph of interconnected objects.
@@ -86,7 +85,7 @@ private:
 };
 
 //==============================================================================
-/** A never-null smart-pointer for objects which were created by a PoolAllocator.
+/** A never-null smart-pointer for objects which were created by a choc::memory::Pool.
 
     This is like a pool_ptr but cannot contain a null pointer, so has more
     reference-like access methods and needs less checking.
@@ -199,141 +198,6 @@ inline bool is_type (SrcType& object)
     else
         return dynamic_cast<TargetType*> (&object) != nullptr;
 }
-
-//==============================================================================
-/**
-    An object pool.
-
-    Objects added to the pool will all be deleted when the pool is destroyed, but
-    no items are ever removed - the pool can only grow in size.
-
-    Allocation of pool objects is very fast, since it allocates memory in bulk
-    internally, and is designed to be single-threaded so has no overhead wasted
-    on locking.
-
-    When you create an object via the allocate() method, the best practice used in
-    the SOUL codebase is to either keep a reference to it, or a pool_ptr, but never
-    a raw pointer.
-*/
-class PoolAllocator  final
-{
-public:
-    PoolAllocator()    { clear(); }
-    ~PoolAllocator() = default;
-
-    PoolAllocator (const PoolAllocator&) = delete;
-    PoolAllocator& operator= (const PoolAllocator&) = delete;
-    PoolAllocator (PoolAllocator&&) = default;
-    PoolAllocator& operator= (PoolAllocator&&) = default;
-
-    /** Clears the pool (deleting all the objects in it) */
-    void clear()
-    {
-        pools.clear();
-        pools.reserve (32);
-        addNewPool();
-    }
-
-    /** Allocates a new object for the pool, returning a reference to it. */
-    template <typename Type, typename... Args>
-    Type& allocate (Args&&... args)
-    {
-        static_assert (sizeof (Type) + itemHeaderSize <= sizeof (Pool::space), "Can't allocate a pool object bigger than the pool block size");
-        auto& newItem = allocateSpaceForObject (sizeof (Type));
-        auto newObject = new (std::addressof (newItem.item)) Type (std::forward<Args> (args)...);
-
-        // NB: the constructor may throw, so we have to be careful not to register its destructor until afterwards
-        if constexpr (! std::is_trivially_destructible<Type>::value)
-            newItem.destructor = [] (void* t) { static_cast<Type*> (t)->~Type(); };
-
-        return *newObject;
-    }
-
-private:
-    using DestructorFn = void(void*);
-
-    static constexpr const size_t poolSize = 1024 * 64 - 32;
-    static constexpr const size_t poolItemAlignment = 16;
-
-    struct PoolItem
-    {
-        size_t size;
-        DestructorFn* destructor;
-        alignas(poolItemAlignment) void* item;
-    };
-
-    static constexpr const size_t itemHeaderSize = offsetof (PoolItem, item);
-
-    struct Pool
-    {
-        Pool()
-        {
-            SOUL_ASSERT (isAlignedPointer<poolItemAlignment> (getNextAddress()));
-        }
-
-        Pool (const Pool&) = delete;
-        Pool (Pool&&) = delete;
-
-        ~Pool()
-        {
-            for (size_t i = 0; i < nextSlot;)
-            {
-                auto item = getItem (i);
-
-                if (item->destructor != nullptr)
-                    item->destructor (&item->item);
-
-                i += item->size;
-            }
-        }
-
-        bool hasSpaceFor (size_t size) const
-        {
-            return nextSlot + getAlignedSize<poolItemAlignment> (size + itemHeaderSize) <= poolSize;
-        }
-
-        void* getNextAddress()
-        {
-            auto item = getItem (nextSlot);
-            return &item->item;
-        }
-
-        PoolItem& createItem (size_t size)
-        {
-            size = getAlignedSize<poolItemAlignment> (size + itemHeaderSize);
-            auto item = getItem (nextSlot);
-            item->size = size;
-            item->destructor = nullptr;
-            nextSlot += size;
-            return *item;
-        }
-
-        PoolItem* getItem (size_t byteOffset) noexcept  { return reinterpret_cast<PoolItem*> (space.data() + byteOffset); }
-
-        size_t nextSlot = 0;
-        alignas(poolItemAlignment) std::array<char, poolSize> space;
-    };
-
-    std::vector<std::unique_ptr<Pool>> pools;
-    Pool* currentPool = nullptr;
-
-    void addNewPool()
-    {
-        currentPool = new Pool();
-        pools.emplace_back (currentPool);
-    }
-
-    PoolItem& allocateSpaceForObject (size_t size)
-    {
-        if (! currentPool->hasSpaceFor (size))
-        {
-            addNewPool();
-            SOUL_ASSERT (currentPool->hasSpaceFor (size));
-        }
-
-        return currentPool->createItem (size);
-    }
-};
 
 } // namespace soul
 

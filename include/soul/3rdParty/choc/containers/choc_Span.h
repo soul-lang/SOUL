@@ -25,10 +25,7 @@
 #define CHOC_SPAN_HEADER_INCLUDED
 
 #include <vector>
-
-#ifndef CHOC_ASSERT
- #define CHOC_ASSERT(x)  assert(x);
-#endif
+#include "../platform/choc_Assert.h"
 
 namespace choc
 {

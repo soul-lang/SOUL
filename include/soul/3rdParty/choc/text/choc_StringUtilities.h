@@ -28,14 +28,7 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
-#include <assert.h>
-
-#undef max   // It's never a smart idea to include any C headers before your C++ ones, as they
-#undef min   // often pollute your namespace with all kinds of dangerous macros like these ones.
-
-#ifndef CHOC_ASSERT
- #define CHOC_ASSERT(x)  assert(x);
-#endif
+#include "../platform/choc_Assert.h"
 
 namespace choc::text
 {

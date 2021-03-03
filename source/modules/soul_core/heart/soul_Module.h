@@ -172,7 +172,7 @@ private:
     Module (Program&, ModuleType);
     Module (Program&, const Module& toClone);
 
-    friend class PoolAllocator;
+    friend class choc::memory::Pool;
 
     static Module& createProcessor (Program&);
     static Module& createGraph     (Program&);

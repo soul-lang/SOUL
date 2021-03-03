@@ -29,11 +29,7 @@
 #include <cstring>
 #include <algorithm>
 #include <memory>
-
-#ifndef CHOC_ASSERT
- #include <assert.h>
- #define CHOC_ASSERT(x)  assert(x);
-#endif
+#include "../platform/choc_Assert.h"
 
 namespace choc::value
 {

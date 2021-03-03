@@ -22,7 +22,7 @@
 #ifndef CHOC_MIDIFILE_HEADER_INCLUDED
 #define CHOC_MIDIFILE_HEADER_INCLUDED
 
-#include "choc_MIDI.h"
+#include "choc_MIDISequence.h"
 
 namespace choc::midi
 {
@@ -57,7 +57,10 @@ struct File
     };
 
     /// Iterates all the events on all tracks, returning each one with its playback time in seconds.
-    void iterateEvents (const std::function<void(const Message&, double timeInSeconds)>&);
+    void iterateEvents (const std::function<void(const Message&, double timeInSeconds)>&) const;
+
+    /// Merges all the events from this file into a single MIDI Sequence object.
+    choc::midi::Sequence toSequence() const;
 
     //==============================================================================
     std::vector<Track> tracks;
@@ -274,7 +277,7 @@ inline void File::load (const void* midiFileData, size_t dataSize)
     }
 }
 
-inline void File::iterateEvents (const std::function<void(const Message&, double timeInSeconds)>& handleEvent)
+inline void File::iterateEvents (const std::function<void(const Message&, double timeInSeconds)>& handleEvent) const
 {
     std::vector<Event> allEvents;
 
@@ -322,6 +325,19 @@ inline void File::iterateEvents (const std::function<void(const Message&, double
         }
     }
 }
+
+inline choc::midi::Sequence File::toSequence() const
+{
+    choc::midi::Sequence sequence;
+
+    iterateEvents ([&] (const Message& m, double time)
+    {
+        sequence.events.push_back ({ time, m });
+    });
+
+    return sequence;
+}
+
 
 
 } // namespace choc::midi

@@ -181,18 +181,11 @@ inline bool render (RenderOptions options,
                     choc::midi::ShortMessage message;
                 };
 
-                std::vector<MIDIEvent> inputMIDIEvents;
-
-                midiFile.iterateEvents ([&] (const choc::midi::Message& message, double timeSeconds)
-                                        {
-                                            if (message.isShortMessage())
-                                                inputMIDIEvents.push_back ({ static_cast<uint64_t> (timeSeconds * options.outputFileProperties.sampleRate),
-                                                                             message.getShortMessage() });
-                                        });
+                auto midiSequence = midiFile.toSequence();
+                auto midiIterator = midiSequence.getIterator();
 
                 uint64_t framesDone = 0;
                 std::vector<soul::MIDIEvent> midiEvents;
-                size_t nextMIDIEvent = 0;
 
                 while (framesDone < options.outputFileProperties.numFrames)
                 {
@@ -201,15 +194,13 @@ inline bool render (RenderOptions options,
 
                     midiEvents.clear();
 
-                    while (nextMIDIEvent < inputMIDIEvents.size())
+                    for (auto& e : midiIterator.readNextEvents (renderContext.numFrames / (double) options.outputFileProperties.sampleRate))
                     {
-                        auto& event = inputMIDIEvents[nextMIDIEvent];
-
-                        if (event.frame >= framesDone + renderContext.numFrames)
-                            break;
-
-                        midiEvents.push_back ({ (uint32_t) (event.frame - framesDone), event.message });
-                        ++nextMIDIEvent;
+                        if (e.message.isShortMessage())
+                        {
+                            auto eventFrame = static_cast<uint64_t> (e.timeInSeconds * options.outputFileProperties.sampleRate);
+                            midiEvents.push_back ({ (uint32_t) (eventFrame - framesDone), e.message.getShortMessage() });
+                        }
                     }
 
                     if (midiEvents.empty())

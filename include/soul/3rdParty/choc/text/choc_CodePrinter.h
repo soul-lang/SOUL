@@ -26,6 +26,7 @@
 
 #include <string>
 #include <vector>
+#include "../platform/choc_Assert.h"
 #include "choc_FloatToString.h"
 #include "choc_StringUtilities.h"
 
@@ -147,10 +148,6 @@ private:
 //   Code beyond this point is implementation detail...
 //
 //==============================================================================
-
-#ifndef CHOC_ASSERT
- #define CHOC_ASSERT(x)  assert(x);
-#endif
 
 inline CodePrinter& CodePrinter::operator<< (const char* s)            { writeBlock (s); return *this; }
 inline CodePrinter& CodePrinter::operator<< (const std::string& s)     { writeBlock (s); return *this; }
