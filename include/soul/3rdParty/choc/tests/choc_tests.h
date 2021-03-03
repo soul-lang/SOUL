@@ -1441,14 +1441,14 @@ inline void testMIDIFiles (TestProgress& progress)
 
             mf.iterateEvents ([&] (const choc::midi::Message& m, double time)
                               {
-                                  output1 += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
+                                  output1 += choc::text::floatToString (time, 3) + " " + m.toHexString() + " - " + m.getDescription() + "\n";
                               });
 
             for (auto& e : mf.toSequence())
-                output2 += choc::text::floatToString (e.timeInSeconds, 3) + " " + e.message.toHexString() + "\n";
+                output2 += choc::text::floatToString (e.timeInSeconds, 3) + " " + e.message.toHexString() + " - " + e.message.getDescription() + "\n";
 
             // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
-            CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output1));
+            CHOC_EXPECT_EQ (4421340477417540317ull, simpleHash (output1));
             CHOC_EXPECT_EQ (output1, output2);
         }
         CHOC_CATCH_UNEXPECTED_EXCEPTION
@@ -1462,6 +1462,37 @@ inline void testMIDIFiles (TestProgress& progress)
         }
         catch (...) {}
     }
+
+    {
+        CHOC_TEST (NoteNumber)
+
+        choc::midi::NoteNumber n { 69 };
+
+        CHOC_EXPECT_EQ (69, n);
+        CHOC_EXPECT_EQ (9, n.getChromaticScaleIndex());
+        CHOC_EXPECT_EQ (3, n.getOctaveNumber());
+        CHOC_EXPECT_EQ (440.0, n.getFrequency());
+        CHOC_EXPECT_EQ ("A", std::string (n.getName()));
+        CHOC_EXPECT_EQ ("A", std::string (n.getNameWithSharps()));
+        CHOC_EXPECT_EQ ("A", std::string (n.getNameWithFlats()));
+        CHOC_EXPECT_EQ (true, n.isWhiteNote());
+        CHOC_EXPECT_EQ ("A3", n.getNameWithOctaveNumber());
+
+    }
+
+    {
+        CHOC_TEST (NoteOn)
+
+        choc::midi::ShortMessage m (0x93, 0x40, 0x53);
+
+        CHOC_EXPECT_EQ ("93 40 53", m.toHexString());
+        CHOC_EXPECT_EQ ("Note-On:  E3  Channel 4  Velocity 83", m.getDescription());
+        CHOC_EXPECT_EQ (3, m.getChannel0to15());
+        CHOC_EXPECT_EQ (4, m.getChannel1to16());
+        CHOC_EXPECT_EQ (true, m.isNoteOn());
+        CHOC_EXPECT_EQ (false, m.isNoteOff());
+    }
+
 }
 
 //==============================================================================
