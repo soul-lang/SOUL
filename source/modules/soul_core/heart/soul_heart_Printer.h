@@ -211,26 +211,21 @@ private:
 
         void printStateVariables()
         {
-            heart::Utilities::VariableListByType list (module.stateVariables.get());
-
-            for (auto& type : list.types)
+            for (auto& v : module.stateVariables.get())
             {
-                for (auto& v : type.variables)
+                out << (v->isExternal() ? "let external " : (v->isConstant() ? "let " : "var "))
+                    << getTypeDescription (v->getType()) << ' ';
+
+                printVarWithPrefix (v->name);
+
+                if (v->initialValue != nullptr)
                 {
-                    out << (v->isExternal() ? "let external " : (v->isConstant() ? "let " : "var "))
-                        << getTypeDescription (type.type) << ' ';
-
-                    printVarWithPrefix (v->name);
-
-                    if (v->initialValue != nullptr)
-                    {
-                        out << " = ";
-                        printExpression (*v->initialValue);
-                    }
-
-                    printDescription (v->annotation);
-                    out << ';' << newLine;
+                    out << " = ";
+                    printExpression (*v->initialValue);
                 }
+
+                printDescription (v->annotation);
+                out << ';' << newLine;
             }
         }
 
