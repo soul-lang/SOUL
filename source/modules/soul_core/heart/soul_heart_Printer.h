@@ -294,6 +294,9 @@ private:
         {
             SOUL_ASSERT (f.name.isValid());
 
+            if (f.functionType.isIntrinsic())
+                f.annotation.set ("intrin", soul::getIntrinsicName (f.intrinsicType));
+
             out << (f.functionType.isEvent() ? "event " : "function ");
             out << getFunctionName (f);
 
