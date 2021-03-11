@@ -1017,9 +1017,6 @@ private:
                                              Identifier name, const AST::Context& nameLocation,
                                              std::vector<pool_ref<AST::UnqualifiedName>> genericWildcards)
     {
-        if (AST::isResolvedAsType (returnType) && returnType.getConstness() == AST::Constness::definitelyConst)
-            throwError (Errors::functionReturnTypeCannotBeConst());
-
         auto& f = allocate<AST::Function> (context);
         ScopedScope scope (*this, f);
 

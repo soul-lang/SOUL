@@ -977,7 +977,7 @@ bool testBoolVectorConstRef()
     return update2 (bv[4]);
 }
 
-## error 5:20: error: Function return type cannot be const
+## error 5:5: error: Function return type cannot be const
 
 processor test
 {

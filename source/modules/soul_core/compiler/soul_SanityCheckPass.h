@@ -597,6 +597,10 @@ private:
                     if (auto v = cast<AST::VariableDeclaration> (s))
                         duplicateNameChecker.check (v->name, v->context);
             }
+
+            if (f.originalGenericFunction == nullptr && AST::isResolvedAsType (f.returnType))
+                if (f.returnType->getConstness() == AST::Constness::definitelyConst)
+                    f.returnType->context.throwError (Errors::functionReturnTypeCannotBeConst());
         }
 
         void visit (AST::StructDeclaration& s) override
