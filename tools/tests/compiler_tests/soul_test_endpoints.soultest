@@ -402,3 +402,48 @@ graph eventHandler
     input event int in;
     output event int out[2];
 }
+
+## error 3:18: error: void is not a valid endpoint type
+processor test
+{
+    input stream void in;
+    output stream float out;
+
+    void run() { advance(); }
+}
+
+## error 3:18: error: bool is not a valid type for stream endpoints
+processor test
+{
+    input stream bool in;
+    output stream float out;
+
+    void run() { advance(); }
+}
+
+## error 4:19: error: bool is not a valid type for stream endpoints
+processor test
+{
+    input stream float in;
+    output stream bool<2> out;
+
+    void run() { advance(); }
+}
+
+## error 3:18: error: Only primitives or vectors supported by this endpoint type
+processor test
+{
+    input stream string in;
+    output stream float out;
+
+    void run() { advance(); }
+}
+
+## error 4:19: error: Only primitives or vectors supported by this endpoint type
+processor test
+{
+    input stream float in;
+    output stream string out;
+
+    void run() { advance(); }
+}

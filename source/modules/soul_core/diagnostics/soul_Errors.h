@@ -123,6 +123,7 @@ namespace soul
     X(illegalTypeForEndpoint,               "Only primitives or vectors supported by this endpoint type") \
     X(illegalTypeForEndpointArray,          "Endpoint arrays do not support array data types") \
     X(voidCannotBeUsedForEndpoint,          "void is not a valid endpoint type") \
+    X(boolCannotBeUsedForStreamEndpoint,    "bool is not a valid type for stream endpoints") \
     X(noMultipleTypesOnEndpoint,            "Multiple data types not supported by this endpoint type") \
     X(endpointHasMultipleTypes,             "This endpoint has more than one type") \
     X(incompatibleRatesOnEndpoints,         "Endpoints have incompatible sample rates: $0$ and $1$") \

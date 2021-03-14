@@ -304,12 +304,18 @@ struct SanityCheckPass  final
         SOUL_ASSERT (types.size() != 0 && resolvedTypes.size() == types.size());
         auto dataType = resolvedTypes.front();
 
+        if (dataType.isVoid())
+            types.front()->context.throwError (Errors::voidCannotBeUsedForEndpoint());
+
         if (isStream (details.endpointType))
         {
             SOUL_ASSERT (types.size() == 1);
 
             if (! (dataType.isPrimitive() || dataType.isVector()))
                 types.front()->context.throwError (Errors::illegalTypeForEndpoint());
+
+            if (dataType.isBool())
+                types.front()->context.throwError (Errors::boolCannotBeUsedForStreamEndpoint());
         }
         else
         {
