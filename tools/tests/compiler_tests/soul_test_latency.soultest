@@ -331,3 +331,27 @@ graph test
         source -> delay4 -> Zero -> delay3;
     }
 }
+
+
+## processor
+
+graph test [[main]]
+{
+    output stream float audioOut;
+    let d1 = Delay;
+    let d2 = Delay;
+    connection
+    {
+        d1.feedbackOut[0] -> [10] -> d2.feedbackIn;
+//        d1.feedbackOut[0] -> d2.feedbackIn;
+    }
+}
+processor Delay
+{               
+    input stream float feedbackIn;
+    output stream float feedbackOut[2];
+    void run ()
+    {
+        advance ();
+    }
+}

@@ -2366,27 +2366,3 @@ processor ErrorReplicator (const string annotationName)
         }
     }
 }
-
-
-## disabled processor
-
-graph test [[main]]
-{
-    output stream float audioOut;
-    let d1 = Delay;
-    let d2 = Delay;
-    connection
-    {
-        d1.feedbackOut[0] -> [1] -> d2.feedbackIn;
-//        d1.feedbackOut[0] -> d2.feedbackIn;
-    }
-}
-processor Delay
-{               
-    input stream float feedbackIn;
-    output stream float feedbackOut[2];
-    void run ()
-    {
-        advance ();
-    }
-}
