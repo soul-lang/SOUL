@@ -355,3 +355,27 @@ processor Delay
         advance ();
     }
 }
+
+## processor
+
+graph test [[main]]
+{
+    output event int out;
+    let d1 = Delay;
+    
+    connection
+    {
+        d1.feedbackOut[0] -> [10] -> d1.feedbackIn;
+        d1.feedbackOut[0] -> out;
+    }
+}
+processor Delay
+{               
+    input event int feedbackIn;
+    output event int feedbackOut[2];
+    void run ()
+    {
+        feedbackOut[0] << -1;
+        advance ();
+    }
+}
