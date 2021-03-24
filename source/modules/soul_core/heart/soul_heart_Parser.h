@@ -116,7 +116,7 @@ struct FunctionParseState
 
     heart::Function& function;
     std::vector<BlockCode> blocks;
-    std::vector<pool_ref<heart::Variable>> variables;
+    std::vector<pool_ptr<heart::Variable>> variables;
     BlockCode* currentBlock = nullptr;
 
 };
@@ -754,6 +754,7 @@ private:
 
                     resetPosition (b.code);
                     builder.beginBlock (b.block);
+                    auto variableCount = state.variables.size();
                     state.setCurrentBlock (b);
 
                     try
@@ -768,6 +769,7 @@ private:
                     catch (const AbortCompilationException& message)
                     {
                         b.block.statements.clear();
+                        state.variables.resize (variableCount);
                         errors++;
                     }
                 }
