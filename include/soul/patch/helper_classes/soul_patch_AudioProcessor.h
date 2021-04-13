@@ -154,6 +154,21 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         d = createPluginDescription (*patch);
     }
 
+    template <typename T>
+    static auto setUID (T& d, int value) -> decltype (T::uniqueId)
+    {
+        d.uniqueId = value;
+        d.deprecatedUid = value;
+        return 0;
+    }
+
+    template <typename T>
+    static auto setUID (T& d, int value) -> decltype (T::uid)
+    {
+        d.uid = value;
+        return 0;
+    }
+
     static juce::PluginDescription createPluginDescription (soul::patch::PatchInstance& instance)
     {
         juce::PluginDescription d;
@@ -168,8 +183,9 @@ struct SOULPatchAudioProcessor    : public juce::AudioPluginInstance,
         d.fileOrIdentifier    = String::Ptr (instance.getLocation()->getAbsolutePath());
         d.lastFileModTime     = juce::Time (instance.getLastModificationTime());
         d.lastInfoUpdateTime  = juce::Time::getCurrentTime();
-        d.uid                 = static_cast<int> (juce::String (desc->UID).hash());
         d.isInstrument        = desc->isInstrument;
+
+        setUID (d, static_cast<int> (juce::String (desc->UID).hash()));
 
         return d;
     }
