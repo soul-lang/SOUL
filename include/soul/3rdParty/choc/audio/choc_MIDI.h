@@ -1,23 +1,20 @@
-/*
-    ██████ ██   ██  ██████   ██████
-   ██      ██   ██ ██    ██ ██         Clean Header-Only Classes
-   ██      ███████ ██    ██ ██         Copyright (C)2020 Julian Storer
-   ██      ██   ██ ██    ██ ██
-    ██████ ██   ██  ██████   ██████
-
-   The code in this file is provided under the terms of the ISC license:
-
-   Permission to use, copy, modify, and/or distribute this software for any purpose with
-   or without fee is hereby granted, provided that the above copyright notice and this
-   permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO
-   THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT
-   SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR
-   ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-   CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE
-   OR PERFORMANCE OF THIS SOFTWARE.
-*/
+//
+//    ██████ ██   ██  ██████   ██████
+//   ██      ██   ██ ██    ██ ██            ** Clean Header-Only Classes **
+//   ██      ███████ ██    ██ ██
+//   ██      ██   ██ ██    ██ ██           https://github.com/Tracktion/choc
+//    ██████ ██   ██  ██████   ██████
+//
+//   CHOC is (C)2021 Tracktion Corporation, and is offered under the terms of the ISC license:
+//
+//   Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//   without fee is hereby granted, provided that the above copyright notice and this permission
+//   notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//   WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//   CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #ifndef CHOC_MIDI_HEADER_INCLUDED
 #define CHOC_MIDI_HEADER_INCLUDED
@@ -32,48 +29,53 @@ namespace choc::midi
 static constexpr float  A440_frequency   = 440.0f;
 static constexpr int    A440_noteNumber  = 69;
 
-/** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+/// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
 inline float noteNumberToFrequency (int note)          { return A440_frequency * std::pow (2.0f, (static_cast<float> (note) - A440_noteNumber) * (1.0f / 12.0f)); }
-/** Converts a MIDI note (usually in the range 0-127) to a frequency in Hz. */
+/// Converts a MIDI note (usually in the range 0-127) to a frequency in Hz.
 inline float noteNumberToFrequency (float note)        { return A440_frequency * std::pow (2.0f, (note - static_cast<float> (A440_noteNumber)) * (1.0f / 12.0f)); }
-/** Converts a frequency in Hz to an equivalent MIDI note number. */
+/// Converts a frequency in Hz to an equivalent MIDI note number.
 inline float frequencyToNoteNumber (float frequency)   { return static_cast<float> (A440_noteNumber) + (12.0f / std::log (2.0f)) * std::log (frequency * (1.0f / A440_frequency)); }
 
-/** Returns the name for a MIDI controller number. */
+/// Returns the name for a MIDI controller number.
 inline std::string getControllerName (uint8_t controllerNumber);
 
-/** Returns a space-separated string of hex digits in a fomrat that's appropriate for a MIDI data dump. */
+/// Returns a space-separated string of hex digits in a fomrat that's appropriate for a MIDI data dump.
 inline std::string printHexMIDIData (const uint8_t* data, size_t numBytes);
 
 //==============================================================================
 /**
+    A class to hold a 0-127 MIDI note number, which provides some helpful methods.
 */
 struct NoteNumber
 {
-    /** The MIDI note number, which must be in the range 0-127. */
+    /// The MIDI note number, which must be in the range 0-127.
     uint8_t note;
 
+    /// A NoteNumber can be cast to an integer to get the raw MIDI note number.
     operator uint8_t() const                                    { return note; }
 
-    /** Returns this note's position within an octave, 0-11, where C is 0. */
+    /// Returns this note's position within an octave, 0-11, where C is 0.
     uint8_t getChromaticScaleIndex() const                      { return note % 12; }
 
-    /** Returns the note's octave number. */
+    /// Returns the note's octave number.
     int getOctaveNumber (int octaveForMiddleC = 3) const        { return note / 12 + (octaveForMiddleC - 5); }
 
-    /** Returns the note as a frequency in Hz. */
+    /// Returns the note as a frequency in Hertz.
     float getFrequency() const                                  { return noteNumberToFrequency (static_cast<int> (note)); }
 
-    /** Returns the note name, adding sharps and flats where necessary */
-    const char* getName() const                                 { return std::addressof ("C\0\0C#\0D\0\0Eb\0E\0\0F\0\0F#\0G\0\0G#\0A\0\0Bb\0B"[3 * getChromaticScaleIndex()]); }
-    /** Returns the note name, adding sharps where necessary */
-    const char* getNameWithSharps() const                       { return std::addressof ("C\0\0C#\0D\0\0D#\0E\0\0F\0\0F#\0G\0\0G#\0A\0\0A#\0B"[3 * getChromaticScaleIndex()]); }
-    /** Returns the note name, adding flats where necessary */
-    const char* getNameWithFlats() const                        { return std::addressof ("C\0\0Db\0D\0\0Eb\0E\0\0F\0\0Gb\0G\0\0Ab\0A\0\0Bb\0B"[3 * getChromaticScaleIndex()]); }
-    /** Returns true if this is a "white" major scale note. */
-    bool isWhiteNote() const                                    { return (0b101010110101 & (1 << getChromaticScaleIndex())) != 0; }
-    /** Returns the note name and octave number (using default choices for things like sharp/flat/octave number). */
-    std::string getNameWithOctaveNumber() const                 { return getName() + std::to_string (getOctaveNumber()); }
+    /// Returns the note name, adding sharps and flats where necessary.
+    std::string_view getName() const                            { return std::addressof ("C\0\0C#\0D\0\0Eb\0E\0\0F\0\0F#\0G\0\0G#\0A\0\0Bb\0B"[3 * getChromaticScaleIndex()]); }
+    /// Returns the note name, adding sharps where necessary.
+    std::string_view getNameWithSharps() const                  { return std::addressof ("C\0\0C#\0D\0\0D#\0E\0\0F\0\0F#\0G\0\0G#\0A\0\0A#\0B"[3 * getChromaticScaleIndex()]); }
+    /// Returns the note name, adding flats where necessary.
+    std::string_view getNameWithFlats() const                   { return std::addressof ("C\0\0Db\0D\0\0Eb\0E\0\0F\0\0Gb\0G\0\0Ab\0A\0\0Bb\0B"[3 * getChromaticScaleIndex()]); }
+    /// Returns the note name and octave number (using default choices for things like sharp/flat/octave number).
+    std::string getNameWithOctaveNumber() const                 { return std::string (getName()) + std::to_string (getOctaveNumber()); }
+
+    /// Returns true if this is a natural note in the C major scale.
+    bool isNatural() const                                      { return (0b101010110101 & (1 << getChromaticScaleIndex())) != 0; }
+    /// Returns true if this is an accidental note, i.e. a sharp or flat.
+    bool isAccidental() const                                   { return ! isNatural(); }
 };
 
 //==============================================================================
@@ -372,6 +374,9 @@ inline const uint8_t* Message::data() const  { return reinterpret_cast<const uin
 
 inline uint8_t Message::operator[] (size_t i) const { CHOC_ASSERT (i < content.length()); return static_cast<uint8_t> (content[i]); }
 
+static constexpr char sysexStartByte      = -16; // 0xf0
+static constexpr char metaEventStartByte  = -1;  // 0xff
+
 inline bool Message::isShortMessage() const
 {
     auto len = content.length();
@@ -380,12 +385,12 @@ inline bool Message::isShortMessage() const
         return false;
 
     auto firstByte = content[0];
-    return firstByte != (char) 0xff && firstByte != (char) 0xf0;
+    return firstByte != sysexStartByte && firstByte != metaEventStartByte;
 }
 
-inline bool Message::isSysex() const                         { return content.length() > 1 && content[0] == (char) 0xf0; }
-inline bool Message::isMetaEvent() const                     { return content.length() > 2 && content[0] == (char) 0xff; }
-inline bool Message::isMetaEventOfType (uint8_t type) const  { return content.length() > 2 && content[1] == (char) type && content[0] == (char) 0xff; }
+inline bool Message::isSysex() const                         { return content.length() > 1 && content[0] == sysexStartByte; }
+inline bool Message::isMetaEvent() const                     { return content.length() > 2 && content[0] == metaEventStartByte; }
+inline bool Message::isMetaEventOfType (uint8_t type) const  { return content.length() > 2 && content[1] == (char) type && content[0] == metaEventStartByte; }
 
 inline ShortMessage Message::getShortMessage() const
 {

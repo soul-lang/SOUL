@@ -18,12 +18,16 @@ The choice of content is driven by what I (and any other contributors) need for 
 
 Some of the trinkets that you'll find in here include:
 
-- A fast, round-trip-accurate [float/double to string converter](./text/choc_FloatToString.h)
+- A fast, round-trip-accurate [float/double to string converter](./text/choc_FloatToString.h).
 - Some [type and value](./containers/choc_Value.h) classes which can represent typed values, but also build them dynamically, serialise them to a compact binary format, and also as [JSON](./text/choc_JSON.h).
-- Some [classes](./audio/choc_SampleBuffers.h) for managing buffers of multi-channel sample data, which can flexibly handle both owned buffers and non-owned views in either packed/interleaved or separate-channel formats
-- Some utility classes for handling [MIDI messages](./audio/choc_MIDI.h)
-- Some [UTF8](./text/choc_UTF8.h) validation and iteration classes that have been useful in compiler tokenisers
-- A scrappy collection of maths, text and container helpers which will grow randomly over time..
+- Some [audio buffer classes](./audio/choc_SampleBuffers.h) for managing blocks of multi-channel sample data. These can flexibly handle both owned buffers and non-owned views in either packed/interleaved or separate-channel formats.
+- Some [UTF8](./text/choc_UTF8.h) validation and iteration classes that have been useful in compiler tokenisers.
+- A handy [SmallVector](./containers/choc_SmallVector.h) class which offers a std::vector interface but has pre-allocated internal storage.
+- A [CodePrinter](./text/CodePrinter.h) class to help creating indented code listings.
+- Some utility classes for handling [MIDI messages](./audio/choc_MIDI.h) and [MIDI files](./.audio/choc_MIDIFile.h).
+- Some basic audio utilities like simple [oscillators](./audio/choc_Oscillators.h).
+- A [Javascript](./javascript/choc_javascript.h) interpreter (which is a clean C++ wrapper around the duktape library).
+- Various other maths, text and container helpers which will grow randomly over time..
 
 Hopefully some people out there will find some of these things useful! If you do use any of it, please note that choc is not trying to be a "product" and is very much a background task for me. So requests for help, advice, features, PRs, bikeshedding, etc are likely to be respectfully ignored :)
 

@@ -1,23 +1,20 @@
-/*
-    ██████ ██   ██  ██████   ██████
-   ██      ██   ██ ██    ██ ██         Clean Header-Only Classes
-   ██      ███████ ██    ██ ██         Copyright (C)2020 Julian Storer
-   ██      ██   ██ ██    ██ ██
-    ██████ ██   ██  ██████   ██████
-
-   The code in this file is provided under the terms of the ISC license:
-
-   Permission to use, copy, modify, and/or distribute this software for any purpose with
-   or without fee is hereby granted, provided that the above copyright notice and this
-   permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO
-   THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT
-   SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR
-   ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-   CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE
-   OR PERFORMANCE OF THIS SOFTWARE.
-*/
+//
+//    ██████ ██   ██  ██████   ██████
+//   ██      ██   ██ ██    ██ ██            ** Clean Header-Only Classes **
+//   ██      ███████ ██    ██ ██
+//   ██      ██   ██ ██    ██ ██           https://github.com/Tracktion/choc
+//    ██████ ██   ██  ██████   ██████
+//
+//   CHOC is (C)2021 Tracktion Corporation, and is offered under the terms of the ISC license:
+//
+//   Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//   without fee is hereby granted, provided that the above copyright notice and this permission
+//   notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//   WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//   CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #ifndef CHOC_TESTS_HEADER_INCLUDED
 #define CHOC_TESTS_HEADER_INCLUDED
@@ -40,6 +37,8 @@
 #include "../containers/choc_SingleReaderMultipleWriterFIFO.h"
 #include "../containers/choc_SingleReaderSingleWriterFIFO.h"
 #include "../containers/choc_VariableSizeFIFO.h"
+#include "../containers/choc_SmallVector.h"
+#include "../containers/choc_PoolAllocator.h"
 #include "../audio/choc_MIDI.h"
 #include "../audio/choc_MIDIFile.h"
 #include "../audio/choc_SampleBuffers.h"
@@ -417,6 +416,19 @@ inline void testStringUtilities (TestProgress& progress)
         CHOC_EXPECT_EQ ("1 GB", choc::text::getByteSizeDescription (1024 * 1024 * 1024));
         CHOC_EXPECT_EQ ("1.3 GB", choc::text::getByteSizeDescription ((1024 + 300) * 1024 * 1024));
     }
+
+    {
+        CHOC_TEST (UTF8)
+        {
+            auto text = "line1\xd7\x90\n\xcf\x88line2\nli\xe1\xb4\x81ne3\nline4\xe1\xb4\xa8";
+            choc::text::UTF8Pointer p (text);
+
+            CHOC_EXPECT_TRUE (choc::text::findInvalidUTF8Data (text, std::string_view (text).length()) == nullptr);
+            CHOC_EXPECT_EQ (2u, choc::text::findLineAndColumn (p, p.find ("ine2")).line);
+            CHOC_EXPECT_EQ (3u, choc::text::findLineAndColumn (p, p.find ("ine2")).column);
+            CHOC_EXPECT_TRUE (p.find ("ine4").findStartOfLine (p).startsWith ("line4"));
+        }
+    }
 }
 
 //==============================================================================
@@ -663,8 +675,8 @@ inline void testJSON (TestProgress& progress)
         catch (choc::json::ParseError& e)
         {
             CHOC_EXPECT_EQ (e.message, message);
-            CHOC_EXPECT_EQ (e.line, line);
-            CHOC_EXPECT_EQ (e.column, column);
+            CHOC_EXPECT_EQ (e.lineAndColumn.line, line);
+            CHOC_EXPECT_EQ (e.lineAndColumn.column, column);
         }
     };
 
@@ -843,10 +855,11 @@ inline void testMIDI (TestProgress& progress)
             CHOC_EXPECT_EQ (0,           note.getChromaticScaleIndex());
             CHOC_EXPECT_EQ (3,           note.getOctaveNumber());
             CHOC_EXPECT_NEAR (261.625f,  note.getFrequency(), 0.001f);
-            CHOC_EXPECT_EQ ("C",         std::string (note.getName()));
-            CHOC_EXPECT_EQ ("C",         std::string (note.getNameWithSharps()));
-            CHOC_EXPECT_EQ ("C",         std::string (note.getNameWithFlats()));
-            CHOC_EXPECT_TRUE (note.isWhiteNote());
+            CHOC_EXPECT_EQ ("C",         note.getName());
+            CHOC_EXPECT_EQ ("C",         note.getNameWithSharps());
+            CHOC_EXPECT_EQ ("C",         note.getNameWithFlats());
+            CHOC_EXPECT_TRUE (note.isNatural());
+            CHOC_EXPECT_FALSE (note.isAccidental());
             CHOC_EXPECT_EQ ("C3",        note.getNameWithOctaveNumber());
         }
 
@@ -857,10 +870,11 @@ inline void testMIDI (TestProgress& progress)
             CHOC_EXPECT_EQ (1,           note.getChromaticScaleIndex());
             CHOC_EXPECT_EQ (4,           note.getOctaveNumber());
             CHOC_EXPECT_NEAR (554.365f,  note.getFrequency(), 0.001f);
-            CHOC_EXPECT_EQ ("C#",        std::string (note.getName()));
-            CHOC_EXPECT_EQ ("C#",        std::string (note.getNameWithSharps()));
-            CHOC_EXPECT_EQ ("Db",        std::string (note.getNameWithFlats()));
-            CHOC_EXPECT_FALSE (note.isWhiteNote());
+            CHOC_EXPECT_EQ ("C#",        note.getName());
+            CHOC_EXPECT_EQ ("C#",        note.getNameWithSharps());
+            CHOC_EXPECT_EQ ("Db",        note.getNameWithFlats());
+            CHOC_EXPECT_FALSE (note.isNatural());
+            CHOC_EXPECT_TRUE (note.isAccidental());
             CHOC_EXPECT_EQ ("C#4",       note.getNameWithOctaveNumber());
         }
     }
@@ -1441,14 +1455,14 @@ inline void testMIDIFiles (TestProgress& progress)
 
             mf.iterateEvents ([&] (const choc::midi::Message& m, double time)
                               {
-                                  output1 += choc::text::floatToString (time, 3) + " " + m.toHexString() + " - " + m.getDescription() + "\n";
+                                  output1 += choc::text::floatToString (time, 3) + " " + m.toHexString() + "\n";
                               });
 
             for (auto& e : mf.toSequence())
-                output2 += choc::text::floatToString (e.timeInSeconds, 3) + " " + e.message.toHexString() + " - " + e.message.getDescription() + "\n";
+                output2 += choc::text::floatToString (e.timeInSeconds, 3) + " " + e.message.toHexString() + "\n";
 
             // This is just a simple regression test to see whether anything changes. Update the hash number if it does.
-            CHOC_EXPECT_EQ (4421340477417540317ull, simpleHash (output1));
+            CHOC_EXPECT_EQ (5294939095423848520ull, simpleHash (output1));
             CHOC_EXPECT_EQ (output1, output2);
         }
         CHOC_CATCH_UNEXPECTED_EXCEPTION
@@ -1462,37 +1476,6 @@ inline void testMIDIFiles (TestProgress& progress)
         }
         catch (...) {}
     }
-
-    {
-        CHOC_TEST (NoteNumber)
-
-        choc::midi::NoteNumber n { 69 };
-
-        CHOC_EXPECT_EQ (69, n);
-        CHOC_EXPECT_EQ (9, n.getChromaticScaleIndex());
-        CHOC_EXPECT_EQ (3, n.getOctaveNumber());
-        CHOC_EXPECT_EQ (440.0, n.getFrequency());
-        CHOC_EXPECT_EQ ("A", std::string (n.getName()));
-        CHOC_EXPECT_EQ ("A", std::string (n.getNameWithSharps()));
-        CHOC_EXPECT_EQ ("A", std::string (n.getNameWithFlats()));
-        CHOC_EXPECT_EQ (true, n.isWhiteNote());
-        CHOC_EXPECT_EQ ("A3", n.getNameWithOctaveNumber());
-
-    }
-
-    {
-        CHOC_TEST (NoteOn)
-
-        choc::midi::ShortMessage m (0x93, 0x40, 0x53);
-
-        CHOC_EXPECT_EQ ("93 40 53", m.toHexString());
-        CHOC_EXPECT_EQ ("Note-On:  E3  Channel 4  Velocity 83", m.getDescription());
-        CHOC_EXPECT_EQ (3, m.getChannel0to15());
-        CHOC_EXPECT_EQ (4, m.getChannel1to16());
-        CHOC_EXPECT_EQ (true, m.isNoteOn());
-        CHOC_EXPECT_EQ (false, m.isNoteOff());
-    }
-
 }
 
 //==============================================================================

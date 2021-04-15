@@ -1,25 +1,20 @@
-/*
-    ██████ ██   ██  ██████   ██████
-   ██      ██   ██ ██    ██ ██         Clean Header-Only Classes
-   ██      ███████ ██    ██ ██         Copyright (C)2020 Julian Storer
-   ██      ██   ██ ██    ██ ██
-    ██████ ██   ██  ██████   ██████    https://github.com/julianstorer/choc
-
-   This file is part of the CHOC C++ collection - see the github page to find out more.
-
-   The code in this file is provided under the terms of the ISC license:
-
-   Permission to use, copy, modify, and/or distribute this software for any purpose with
-   or without fee is hereby granted, provided that the above copyright notice and this
-   permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO
-   THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT
-   SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR
-   ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-   CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE
-   OR PERFORMANCE OF THIS SOFTWARE.
-*/
+//
+//    ██████ ██   ██  ██████   ██████
+//   ██      ██   ██ ██    ██ ██            ** Clean Header-Only Classes **
+//   ██      ███████ ██    ██ ██
+//   ██      ██   ██ ██    ██ ██           https://github.com/Tracktion/choc
+//    ██████ ██   ██  ██████   ██████
+//
+//   CHOC is (C)2021 Tracktion Corporation, and is offered under the terms of the ISC license:
+//
+//   Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//   without fee is hereby granted, provided that the above copyright notice and this permission
+//   notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//   WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//   CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #ifndef CHOC_JSON_HEADER_INCLUDED
 #define CHOC_JSON_HEADER_INCLUDED
@@ -43,7 +38,7 @@ namespace choc::json
 struct ParseError
 {
     const char* message;
-    size_t line, column;
+    choc::text::LineAndColumn lineAndColumn;
 };
 
 /** Parses some JSON text into a choc::value::Value object, using the given pool.
@@ -222,29 +217,9 @@ inline std::string toString (const value::ValueView& v)
 }
 
 //==============================================================================
-struct LineAndColumn { size_t line = 0, column = 0; };
-
-template <typename StringType>
-static inline LineAndColumn getLineAndColumn (StringType start, StringType targetPos)
-{
-    if (start == nullptr || targetPos == nullptr)
-        return {};
-
-    LineAndColumn lc { 1, 1 };
-
-    while (start < targetPos && ! start.empty())
-    {
-        ++lc.column;
-        if (*start++ == '\n')  { lc.line++; lc.column = 1; }
-    }
-
-    return lc;
-}
-
 [[noreturn]] static inline void throwParseError (const char* error, text::UTF8Pointer source, text::UTF8Pointer errorPos)
 {
-    auto pos = getLineAndColumn (source, errorPos);
-    throw ParseError { error, pos.line, pos.column };
+    throw ParseError { error, text::findLineAndColumn (source, errorPos) };
 }
 
 inline value::Value parse (text::UTF8Pointer text)

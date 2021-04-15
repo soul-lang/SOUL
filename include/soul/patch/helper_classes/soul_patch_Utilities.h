@@ -188,7 +188,9 @@ inline choc::value::Value parseManifestFile (VirtualFile& manifestFile)
     }
     catch (choc::json::ParseError error)
     {
-        throwPatchLoadError (error.message, manifestPath, static_cast<uint32_t> (error.line), static_cast<uint32_t> (error.column));
+        throwPatchLoadError (error.message, manifestPath,
+                             static_cast<uint32_t> (error.lineAndColumn.line),
+                             static_cast<uint32_t> (error.lineAndColumn.column));
     }
 
     throwPatchLoadError ("Expected an object called '" + std::string (getManifestTopLevelPropertyName()) + "'", manifestPath);

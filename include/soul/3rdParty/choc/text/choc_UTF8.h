@@ -1,34 +1,32 @@
-/*
-    ██████ ██   ██  ██████   ██████
-   ██      ██   ██ ██    ██ ██         Clean Header-Only Classes
-   ██      ███████ ██    ██ ██         Copyright (C)2020 Julian Storer
-   ██      ██   ██ ██    ██ ██
-    ██████ ██   ██  ██████   ██████    https://github.com/julianstorer/choc
-
-   This file is part of the CHOC C++ collection - see the github page to find out more.
-
-   The code in this file is provided under the terms of the ISC license:
-
-   Permission to use, copy, modify, and/or distribute this software for any purpose with
-   or without fee is hereby granted, provided that the above copyright notice and this
-   permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO
-   THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT
-   SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR
-   ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-   CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE
-   OR PERFORMANCE OF THIS SOFTWARE.
-*/
+//
+//    ██████ ██   ██  ██████   ██████
+//   ██      ██   ██ ██    ██ ██            ** Clean Header-Only Classes **
+//   ██      ███████ ██    ██ ██
+//   ██      ██   ██ ██    ██ ██           https://github.com/Tracktion/choc
+//    ██████ ██   ██  ██████   ██████
+//
+//   CHOC is (C)2021 Tracktion Corporation, and is offered under the terms of the ISC license:
+//
+//   Permission to use, copy, modify, and/or distribute this software for any purpose with or
+//   without fee is hereby granted, provided that the above copyright notice and this permission
+//   notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+//   WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+//   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+//   CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+//   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+//   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #ifndef CHOC_UTF8_HEADER_INCLUDED
 #define CHOC_UTF8_HEADER_INCLUDED
 
 #include <cstddef>
-#include "../platform/choc_Assert.h"
+#include "choc_StringUtilities.h"
 
 namespace choc::text
 {
+
+/// An integer type to represent a unicode code-point.
+using UnicodeChar = uint32_t;
 
 //==============================================================================
 /** A non-owning pointer which can iterate over a chunk of null-terminated UTF8 text
@@ -57,7 +55,7 @@ struct UTF8Pointer
 
     //==============================================================================
     /// Returns the first unicode character in the string.
-    uint32_t operator*() const;
+    UnicodeChar operator*() const;
 
     /// Skips past the first unicode character.
     /// Moving beyond the end of the string is undefined behaviour and will trigger an assertion.
@@ -86,7 +84,7 @@ struct UTF8Pointer
     /// Skips past the first unicode character and returns it as a code-point.
     /// Calling this when the current character is the terminator will leave the pointer in an
     /// invalid state.
-    uint32_t popFirstChar();
+    UnicodeChar popFirstChar();
 
     /// Finds the next occurrence of the given string, or return a nullptr if not found.
     UTF8Pointer find (const char* textToFind) const;
@@ -101,6 +99,17 @@ struct UTF8Pointer
     /// past it, and return true. If not, it will return false without modifying this pointer.
     bool skipIfStartsWith (const char* textToMatch);
 
+    /// Returns a pointer to the first non-whitespace character in the given string (which may
+    /// be the terminating null character if it's all whitespace).
+    UTF8Pointer findEndOfWhitespace() const;
+
+    /// Iterates backwards from this position to find the first character that follows
+    /// a new-line. The pointer provided marks the furthest back that the function should search
+    UTF8Pointer findStartOfLine (UTF8Pointer startOfValidText) const;
+
+    /// Searches forwards for the next character that is followed by a new-line or a null-terminator.
+    UTF8Pointer findEndOfLine() const;
+
     //==============================================================================
     struct EndIterator {};
 
@@ -110,7 +119,7 @@ struct UTF8Pointer
         Iterator (const Iterator&) = default;
         Iterator& operator= (const Iterator&) = default;
 
-        uint32_t operator*() const              { return *UTF8Pointer (text); }
+        UnicodeChar operator*() const           { return *UTF8Pointer (text); }
         Iterator& operator++()                  { UTF8Pointer p (text); ++p; text = p.text; return *this; }
         Iterator operator++ (int)               { auto old = *this; ++*this; return old; }
         bool operator== (EndIterator) const     { return *text == 0; }
@@ -152,17 +161,40 @@ const char* findInvalidUTF8Data (const void* dataToCheck, size_t maxNumBytesToRe
 
 /// Writes the bytes for a unicode character, and returns the number of bytes that were needed.
 /// The buffer passed in needs to have at least 4 bytes capacity.
-uint32_t convertUnicodeCodepointToUTF8 (char* dest, uint32_t unicodeChar);
+uint32_t convertUnicodeCodepointToUTF8 (char* dest, UnicodeChar codepoint);
+
+/// Appends a unicode codepoint to a std::string as a sequence of UTF8 bytes.
+void appendUTF8 (std::string& target, UnicodeChar codepoint);
 
 /// Checks whether a given codepoint is a high-surrogate
-bool isUnicodeHighSurrogate (uint32_t codepoint);
+bool isUnicodeHighSurrogate (UnicodeChar codepoint);
 
 /// Checks whether a given codepoint is a low-surrogate
-bool isUnicodeLowSurrogate (uint32_t codepoint);
+bool isUnicodeLowSurrogate (UnicodeChar codepoint);
 
 /// Combines a high and low surrogate into a single codepoint.
-uint32_t createUnicodeFromHighAndLowSurrogates (uint32_t high, uint32_t low);
+UnicodeChar createUnicodeFromHighAndLowSurrogates (UnicodeChar high, UnicodeChar low);
 
+//==============================================================================
+/// Represents a line and column index within a block of text.
+struct LineAndColumn
+{
+    /// Valid line and column values start at 1.
+    /// If either is 0, it means that the LineAndColumn object is uninitialised.
+    size_t line = 0, column = 0;
+
+    /// Returns true if neither the line nor column is zero.
+    bool isValid() const noexcept          { return line != 0 && column != 0; }
+
+    /// Turns this location into a [line]:[col] string suitable for use in a
+    /// standard compiler error message format.
+    std::string toString() const;
+};
+
+/// Given a block of text and a position within it, this will work out the
+/// line and column of that position.
+LineAndColumn findLineAndColumn (UTF8Pointer fullText,
+                                 UTF8Pointer targetPosition);
 
 
 //==============================================================================
@@ -238,7 +270,7 @@ inline const char* findInvalidUTF8Data (const void* dataToCheck, size_t numBytes
     return source + offset;
 }
 
-inline uint32_t UTF8Pointer::operator*() const
+inline UnicodeChar UTF8Pointer::operator*() const
 {
     return UTF8Pointer (*this).popFirstChar();
 }
@@ -307,11 +339,11 @@ inline UTF8Pointer UTF8Pointer::operator+ (int numCharsToSkip) const
     return operator+ (static_cast<size_t> (numCharsToSkip));
 }
 
-inline uint32_t UTF8Pointer::popFirstChar()
+inline UnicodeChar UTF8Pointer::popFirstChar()
 {
     CHOC_ASSERT (text != nullptr); // mustn't use this on nullptrs
     auto firstByte = static_cast<signed char> (*text++);
-    uint32_t unicodeChar = static_cast<unsigned char> (firstByte);
+    UnicodeChar unicodeChar = static_cast<unsigned char> (firstByte);
 
     if (firstByte < 0)
     {
@@ -363,8 +395,6 @@ inline UTF8Pointer UTF8Pointer::find (const char* textToFind) const
     for (auto t = *this;; ++t)
         if (t.startsWith (textToFind) || t.empty())
             return t;
-
-    return {};
 }
 
 inline bool UTF8Pointer::skipIfStartsWith (char charToMatch)
@@ -395,11 +425,81 @@ inline bool UTF8Pointer::skipIfStartsWith (const char* textToMatch)
     return false;
 }
 
+inline UTF8Pointer UTF8Pointer::findEndOfWhitespace() const
+{
+    auto p = *this;
+
+    if (p.text != nullptr)
+        while (choc::text::isWhitespace (*p.text))
+            ++p;
+
+    return p;
+}
+
+inline UTF8Pointer UTF8Pointer::findStartOfLine (UTF8Pointer start) const
+{
+    if (text == nullptr)
+        return {};
+
+    auto l = *this;
+    CHOC_ASSERT (l.text >= start.text && start.text != nullptr);
+
+    while (l.text > start.text)
+    {
+        auto prev = l;
+        auto c = *--prev;
+
+        if (c == '\r' || c == '\n')
+            break;
+
+        l = prev;
+    }
+
+    return l;
+}
+
+inline UTF8Pointer UTF8Pointer::findEndOfLine() const
+{
+    if (text == nullptr)
+        return {};
+
+    auto l = *this;
+
+    while (! l.empty())
+    {
+        auto c = l.popFirstChar();
+
+        if (c == '\r' || c == '\n')
+            break;
+    }
+
+    return l;
+}
+
 inline UTF8Pointer::Iterator UTF8Pointer::begin() const      { CHOC_ASSERT (text != nullptr); return Iterator (text); }
 inline UTF8Pointer::EndIterator UTF8Pointer::end() const     { return EndIterator(); }
 
+inline LineAndColumn findLineAndColumn (UTF8Pointer start, UTF8Pointer targetPosition)
+{
+    if (start == nullptr || targetPosition == nullptr)
+        return {};
+
+    CHOC_ASSERT (start <= targetPosition);
+    LineAndColumn lc { 1, 1 };
+
+    while (start < targetPosition && ! start.empty())
+    {
+        ++lc.column;
+        if (*start++ == '\n')  { lc.line++; lc.column = 1; }
+    }
+
+    return lc;
+}
+
+inline std::string LineAndColumn::toString() const   { return std::to_string (line) + ':' + std::to_string (column); }
+
 //==============================================================================
-inline uint32_t convertUnicodeCodepointToUTF8 (char* dest, uint32_t unicodeChar)
+inline uint32_t convertUnicodeCodepointToUTF8 (char* dest, UnicodeChar unicodeChar)
 {
     if (unicodeChar < 0x80)
     {
@@ -425,10 +525,17 @@ inline uint32_t convertUnicodeCodepointToUTF8 (char* dest, uint32_t unicodeChar)
     return extraBytes + 1;
 }
 
-inline bool isUnicodeHighSurrogate (uint32_t codepoint)   { return codepoint >= 0xd800 && codepoint <= 0xdbff; }
-inline bool isUnicodeLowSurrogate  (uint32_t codepoint)   { return codepoint >= 0xdc00 && codepoint <= 0xdfff; }
+inline void appendUTF8 (std::string& target, UnicodeChar unicodeChar)
+{
+    char bytes[4];
+    auto num = convertUnicodeCodepointToUTF8 (bytes, unicodeChar);
+    target.append (bytes, num);
+}
 
-inline uint32_t createUnicodeFromHighAndLowSurrogates (uint32_t codepoint1, uint32_t codepoint2)
+inline bool isUnicodeHighSurrogate (UnicodeChar codepoint)   { return codepoint >= 0xd800 && codepoint <= 0xdbff; }
+inline bool isUnicodeLowSurrogate  (UnicodeChar codepoint)   { return codepoint >= 0xdc00 && codepoint <= 0xdfff; }
+
+inline UnicodeChar createUnicodeFromHighAndLowSurrogates (UnicodeChar codepoint1, UnicodeChar codepoint2)
 {
     if (! isUnicodeHighSurrogate (codepoint1))   return codepoint1;
     if (! isUnicodeLowSurrogate (codepoint2))    return 0;
